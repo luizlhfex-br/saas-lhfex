@@ -105,4 +105,12 @@ export const ptBR = {
   },
 } as const;
 
-export type Translations = typeof ptBR;
+type DeepStringify<T> = {
+  [K in keyof T]: T[K] extends (...args: infer A) => string
+    ? (...args: A) => string
+    : T[K] extends object
+      ? DeepStringify<T[K]>
+      : string;
+};
+
+export type Translations = DeepStringify<typeof ptBR>;
