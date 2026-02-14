@@ -44,7 +44,7 @@ export function Topbar({
 
       {/* Mobile: centered logo */}
       <div className="flex flex-1 items-center justify-center lg:hidden">
-        <span className="text-xl font-bold text-blue-600">LHFEX</span>
+        <img src="/images/logo-horizontal.png" alt="LHFEX" className="h-8 w-auto" />
       </div>
 
       {/* Desktop: breadcrumb area (left side placeholder) */}

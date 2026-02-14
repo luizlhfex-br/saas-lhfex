@@ -81,9 +81,11 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo and branding */}
         <div className="mb-8 text-center">
-          <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-600 text-2xl font-bold text-white shadow-lg">
-            LH
-          </div>
+          <img
+            src="/images/logo-horizontal.png"
+            alt="LHFEX Consultoria"
+            className="mx-auto mb-4 h-20 w-auto"
+          />
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             {i18n.auth.welcome}
           </h1>

@@ -55,8 +55,12 @@ export function Sidebar({ user, locale, currentPath }: SidebarProps) {
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 lg:flex">
       {/* Logo */}
-      <div className="flex h-16 items-center px-6">
-        <span className="text-xl font-bold text-blue-600">LHFEX</span>
+      <div className="flex h-16 items-center px-4">
+        <img
+          src="/images/logo-horizontal.png"
+          alt="LHFEX"
+          className="h-10 w-auto"
+        />
       </div>
 
       {/* Main navigation */}

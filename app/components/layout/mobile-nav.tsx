@@ -81,7 +81,7 @@ export function MobileNav({
       >
         {/* Header with logo and close button */}
         <div className="flex h-16 items-center justify-between px-6">
-          <span className="text-xl font-bold text-blue-600">LHFEX</span>
+          <img src="/images/logo-horizontal.png" alt="LHFEX" className="h-8 w-auto" />
           <button
             type="button"
             onClick={onClose}
