@@ -3,7 +3,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
-RUN ./node_modules/.bin/react-router build
+RUN node node_modules/@react-router/dev/bin.js build
 
 FROM node:22-alpine
 WORKDIR /app
@@ -11,4 +11,4 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 COPY --from=builder /app/build ./build
 EXPOSE 3000
-CMD ["./node_modules/.bin/react-router-serve", "./build/server/index.js"]
+CMD ["node", "node_modules/@react-router/serve/bin.js", "./build/server/index.js"]
