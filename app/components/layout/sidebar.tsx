@@ -37,15 +37,10 @@ interface NavItem {
 const mainNavItems: NavItem[] = [
   { labelKey: "dashboard", icon: LayoutDashboard, to: "/dashboard" },
   { labelKey: "crm", icon: Users, to: "/crm" },
-  { labelKey: "processes", icon: FileText, to: "/processes", disabled: true },
-  { labelKey: "financial", icon: DollarSign, to: "/financial", disabled: true },
-  {
-    labelKey: "calculator",
-    icon: Calculator,
-    to: "/calculator",
-    disabled: true,
-  },
-  { labelKey: "ncm", icon: Search, to: "/ncm", disabled: true },
+  { labelKey: "processes", icon: FileText, to: "/processes" },
+  { labelKey: "financial", icon: DollarSign, to: "/financial" },
+  { labelKey: "calculator", icon: Calculator, to: "/calculator" },
+  { labelKey: "ncm", icon: Search, to: "/ncm" },
   { labelKey: "agents", icon: Bot, to: "/agents", disabled: true },
 ];
 
