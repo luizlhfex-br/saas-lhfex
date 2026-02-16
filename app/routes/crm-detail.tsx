@@ -1,4 +1,5 @@
-import { Link, Form, redirect, useNavigation } from "react-router";
+import { useState } from "react";
+import { Link, Form, redirect, useNavigation, useSubmit } from "react-router";
 import type { Route } from "./+types/crm-detail";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
@@ -6,6 +7,8 @@ import { clients, contacts, auditLogs } from "../../drizzle/schema";
 import { eq, isNull, and } from "drizzle-orm";
 import { t, type Locale } from "~/i18n";
 import { Button } from "~/components/ui/button";
+import { Breadcrumb } from "~/components/ui/breadcrumb";
+import { ConfirmDialog } from "~/components/ui/confirm-dialog";
 import { formatCNPJ } from "~/lib/utils";
 import { data } from "react-router";
 import {
@@ -76,7 +79,9 @@ export async function action({ request, params }: Route.ActionArgs) {
 export default function CrmDetailPage({ loaderData }: Route.ComponentProps) {
   const { client, contacts: clientContacts, locale } = loaderData;
   const navigation = useNavigation();
+  const submit = useSubmit();
   const i18n = t(locale);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const statusBadge = (status: string) => {
     const styles: Record<string, string> = {
@@ -111,6 +116,13 @@ export default function CrmDetailPage({ loaderData }: Route.ComponentProps) {
 
   return (
     <div className="space-y-6">
+      <Breadcrumb
+        items={[
+          { label: i18n.nav.crm, to: "/crm" },
+          { label: client.razaoSocial },
+        ]}
+      />
+
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
@@ -138,22 +150,29 @@ export default function CrmDetailPage({ loaderData }: Route.ComponentProps) {
               {i18n.common.edit}
             </Button>
           </Link>
-          <Form
-            method="post"
-            onSubmit={(e) => {
-              if (!confirm(i18n.crm.deleteConfirm)) {
-                e.preventDefault();
-              }
-            }}
+          <Button
+            variant="danger"
+            onClick={() => setShowDeleteDialog(true)}
           >
-            <input type="hidden" name="intent" value="delete" />
-            <Button type="submit" variant="danger">
-              <Trash2 className="h-4 w-4" />
-              {i18n.common.delete}
-            </Button>
-          </Form>
+            <Trash2 className="h-4 w-4" />
+            {i18n.common.delete}
+          </Button>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        title={i18n.common.delete}
+        description={i18n.crm.deleteConfirm}
+        confirmLabel={i18n.common.delete}
+        cancelLabel={i18n.common.cancel}
+        onConfirm={() => {
+          const formData = new FormData();
+          formData.set("intent", "delete");
+          submit(formData, { method: "post" });
+        }}
+      />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Client info */}

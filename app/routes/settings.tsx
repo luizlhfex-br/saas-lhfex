@@ -69,6 +69,23 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.5.0",
+    date: "2026-02-16",
+    title: "Milestone 5 — Polish & UX",
+    items: [
+      { type: "feature", text: "Toast notifications (sonner) para feedback visual em todas as ações" },
+      { type: "feature", text: "Componente de Skeleton Loader para estados de carregamento" },
+      { type: "feature", text: "Dialog de confirmação estilizado para ações destrutivas" },
+      { type: "feature", text: "Página 404 com visual LHFEX e botão de voltar" },
+      { type: "feature", text: "Breadcrumbs de navegação nas páginas de detalhe" },
+      { type: "feature", text: "Filtros por status, tipo e busca nos Processos e Financeiro" },
+      { type: "feature", text: "Paginação com 20 itens por página em todas as listagens" },
+      { type: "improvement", text: "ErrorBoundary redesenhado com logo e mensagens amigáveis" },
+      { type: "improvement", text: "Meta tags (title, description, og:tags, favicon)" },
+      { type: "improvement", text: "Componente de paginação reutilizável com navegação por páginas" },
+    ],
+  },
+  {
     version: "0.4.0",
     date: "2026-02-16",
     title: "Milestone 4 — Agentes IA & Chat",
