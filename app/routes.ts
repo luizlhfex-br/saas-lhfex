@@ -27,4 +27,6 @@ export default [
   route("logout", "routes/logout.tsx"),
   route("api/theme", "routes/api.theme.tsx"),
   route("api/locale", "routes/api.locale.tsx"),
+  route("api/exchange-rate", "routes/api.exchange-rate.tsx"),
+  route("api/document/:id/download", "routes/api.document-download.tsx"),
 ] satisfies RouteConfig;

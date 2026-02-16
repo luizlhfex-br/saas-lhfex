@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { Link, Form, useNavigation } from "react-router";
 import type { Route } from "./+types/processes-detail";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
@@ -6,8 +6,11 @@ import { processes, clients, processTimeline, processDocuments } from "../../dri
 import { t, type Locale } from "~/i18n";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { ArrowLeft, Edit, Clock, FileText, Ship, DollarSign } from "lucide-react";
-import { eq, isNull, desc } from "drizzle-orm";
+import { ArrowLeft, Edit, Clock, FileText, Ship, DollarSign, Upload, Download, Trash2, File, Image, FileSpreadsheet } from "lucide-react";
+import { eq, desc } from "drizzle-orm";
+import { uploadFile } from "~/lib/storage.server";
+import { logAudit } from "~/lib/audit.server";
+import { redirect, data } from "react-router";
 
 const statusColors: Record<string, "default" | "info" | "warning" | "success" | "danger"> = {
   draft: "default", in_progress: "info", awaiting_docs: "warning", customs_clearance: "warning",
@@ -27,17 +30,105 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const timeline = await db.select().from(processTimeline).where(eq(processTimeline.processId, params.id)).orderBy(desc(processTimeline.createdAt));
   const docs = await db.select().from(processDocuments).where(eq(processDocuments.processId, params.id)).orderBy(desc(processDocuments.createdAt));
 
-  return { locale, process, client, timeline, documents: docs };
+  return { locale, process, client, timeline, documents: docs, userId: user.id };
 }
 
-export default function ProcessesDetailPage({ loaderData }: Route.ComponentProps) {
+export async function action({ request, params }: Route.ActionArgs) {
+  const { user } = await requireAuth(request);
+  const formData = await request.formData();
+  const intent = formData.get("intent") as string;
+
+  if (intent === "upload") {
+    const file = formData.get("file") as File;
+    const docType = formData.get("docType") as string || "other";
+
+    if (!file || file.size === 0) {
+      return data({ error: "No file selected" }, { status: 400 });
+    }
+
+    try {
+      const { key, url, size } = await uploadFile(file, `processes/${params.id}`);
+
+      await db.insert(processDocuments).values({
+        processId: params.id,
+        name: file.name,
+        type: docType,
+        fileUrl: url,
+        fileSize: size,
+        uploadedBy: user.id,
+      });
+
+      await logAudit({
+        userId: user.id,
+        action: "upload",
+        entity: "document",
+        entityId: params.id,
+        changes: { fileName: file.name, type: docType, size },
+        request,
+      });
+
+      return redirect(`/processes/${params.id}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Upload failed";
+      return data({ error: message }, { status: 400 });
+    }
+  }
+
+  if (intent === "delete-doc") {
+    const docId = formData.get("docId") as string;
+
+    await db.delete(processDocuments).where(eq(processDocuments.id, docId));
+
+    await logAudit({
+      userId: user.id,
+      action: "delete",
+      entity: "document",
+      entityId: docId,
+      changes: { processId: params.id },
+      request,
+    });
+
+    return redirect(`/processes/${params.id}`);
+  }
+
+  return null;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getFileIcon(name: string) {
+  const ext = name.split(".").pop()?.toLowerCase() || "";
+  if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) return <Image className="h-5 w-5 text-purple-500" />;
+  if (["xls", "xlsx", "csv"].includes(ext)) return <FileSpreadsheet className="h-5 w-5 text-green-500" />;
+  if (ext === "pdf") return <FileText className="h-5 w-5 text-red-500" />;
+  return <File className="h-5 w-5 text-gray-500" />;
+}
+
+export default function ProcessesDetailPage({ loaderData, actionData }: Route.ComponentProps) {
   const { locale, process: proc, client, timeline, documents } = loaderData;
   const i18n = t(locale);
+  const navigation = useNavigation();
+  const isUploading = navigation.state === "submitting" && navigation.formData?.get("intent") === "upload";
+  const error = (actionData as { error?: string })?.error;
+
   const statusLabels: Record<string, string> = {
     draft: i18n.processes.draft, in_progress: i18n.processes.inProgress,
     awaiting_docs: i18n.processes.awaitingDocs, customs_clearance: i18n.processes.customsClearance,
     in_transit: i18n.processes.inTransit, delivered: i18n.processes.delivered,
     completed: i18n.processes.completed, cancelled: i18n.processes.cancelled,
+  };
+
+  const docTypeLabels: Record<string, string> = {
+    invoice: i18n.documents.invoice,
+    packing_list: i18n.documents.packingList,
+    bl: i18n.documents.bl,
+    di: i18n.documents.di,
+    certificate: i18n.documents.certificate,
+    other: i18n.documents.other,
   };
 
   return (
@@ -117,6 +208,81 @@ export default function ProcessesDetailPage({ loaderData }: Route.ComponentProps
             </div>
           )}
         </Card>
+      </div>
+
+      {/* Documents Section */}
+      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Upload className="h-5 w-5 text-gray-500" />
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{i18n.processes.documents}</h3>
+            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400">{documents.length}</span>
+          </div>
+        </div>
+
+        {/* Upload Form */}
+        <Form method="post" encType="multipart/form-data" className="mb-4 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
+          <input type="hidden" name="intent" value="upload" />
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="flex-1">
+              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{i18n.documents.upload}</label>
+              <input type="file" name="file" required
+                accept=".pdf,.jpg,.jpeg,.png,.webp,.xlsx,.xls,.docx,.doc,.csv"
+                className="block w-full text-sm text-gray-500 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-blue-700 hover:file:bg-blue-100 dark:text-gray-400 dark:file:bg-blue-900/30 dark:file:text-blue-400" />
+              <p className="mt-1 text-xs text-gray-400">{i18n.documents.maxSize} • {i18n.documents.allowedTypes}</p>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{i18n.documents.type}</label>
+              <select name="docType" className="block rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
+                <option value="invoice">{i18n.documents.invoice}</option>
+                <option value="packing_list">{i18n.documents.packingList}</option>
+                <option value="bl">{i18n.documents.bl}</option>
+                <option value="di">{i18n.documents.di}</option>
+                <option value="certificate">{i18n.documents.certificate}</option>
+                <option value="other">{i18n.documents.other}</option>
+              </select>
+            </div>
+            <Button type="submit" disabled={isUploading}>
+              <Upload className="h-4 w-4" />
+              {isUploading ? i18n.documents.uploading : i18n.documents.upload}
+            </Button>
+          </div>
+          {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+        </Form>
+
+        {/* Document List */}
+        {documents.length === 0 ? (
+          <p className="text-center text-sm text-gray-500 py-4">{i18n.documents.noDocuments}</p>
+        ) : (
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+            {documents.map((doc) => (
+              <div key={doc.id} className="flex items-center justify-between py-3">
+                <div className="flex items-center gap-3">
+                  {getFileIcon(doc.name)}
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{doc.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {docTypeLabels[doc.type || "other"] || doc.type} • {formatFileSize(doc.fileSize || 0)} • {new Date(doc.createdAt).toLocaleDateString("pt-BR")}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <a href={`/api/document/${doc.id}/download`} target="_blank" rel="noopener noreferrer"
+                    className="rounded-lg p-2 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20">
+                    <Download className="h-4 w-4" />
+                  </a>
+                  <Form method="post" onSubmit={(e) => { if (!confirm(i18n.documents.deleteConfirm)) e.preventDefault(); }}>
+                    <input type="hidden" name="intent" value="delete-doc" />
+                    <input type="hidden" name="docId" value={doc.id} />
+                    <button type="submit" className="rounded-lg p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </Form>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {proc.notes && (

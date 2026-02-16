@@ -35,7 +35,7 @@ interface NavItem {
 }
 
 const mainNavItems: NavItem[] = [
-  { labelKey: "dashboard", icon: LayoutDashboard, to: "/dashboard" },
+  { labelKey: "dashboard", icon: LayoutDashboard, to: "/" },
   { labelKey: "crm", icon: Users, to: "/crm" },
   { labelKey: "processes", icon: FileText, to: "/processes" },
   { labelKey: "financial", icon: DollarSign, to: "/financial" },

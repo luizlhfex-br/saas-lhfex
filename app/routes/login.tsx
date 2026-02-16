@@ -5,6 +5,7 @@ import { loginSchema } from "~/lib/validators";
 import { db } from "~/lib/db.server";
 import { users } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { logAudit } from "~/lib/audit.server";
 import { t } from "~/i18n";
 import { Button } from "~/components/ui/button";
 import { data } from "react-router";
@@ -64,6 +65,8 @@ export async function action({ request }: Route.ActionArgs) {
 
   const token = await createSession(user.id, request);
   const cookie = getSessionCookie(token);
+
+  await logAudit({ userId: user.id, action: "login", entity: "session", request });
 
   throw redirect("/", {
     headers: { "Set-Cookie": cookie },

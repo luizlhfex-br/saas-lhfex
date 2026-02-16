@@ -5,7 +5,7 @@ import { db } from "~/lib/db.server";
 import { users } from "../../drizzle/schema";
 import { t, type Locale } from "~/i18n";
 import { Button } from "~/components/ui/button";
-import { Save, User, Globe, Palette } from "lucide-react";
+import { Save, User, Globe, Palette, Sparkles, Bug, Wrench, Rocket, CheckCircle2, Clock } from "lucide-react";
 import { data } from "react-router";
 import { eq } from "drizzle-orm";
 
@@ -56,6 +56,76 @@ export async function action({ request }: Route.ActionArgs) {
 
   return data({ success: true }, { headers });
 }
+
+interface ChangelogEntry {
+  version: string;
+  date: string;
+  title: string;
+  items: {
+    type: "feature" | "improvement" | "fix" | "infra";
+    text: string;
+  }[];
+}
+
+const changelog: ChangelogEntry[] = [
+  {
+    version: "0.3.0",
+    date: "2026-02-16",
+    title: "Milestone 3 — Integrações & Automação",
+    items: [
+      { type: "feature", text: "Upload de documentos nos processos (S3/MinIO) com classificação por tipo" },
+      { type: "feature", text: "Download seguro de documentos via URL assinada (presigned URL)" },
+      { type: "feature", text: "Serviço de email (Nodemailer) com templates visuais LHFEX" },
+      { type: "feature", text: "Notificação por email ao mudar status do processo" },
+      { type: "feature", text: "Cotação USD/BRL em tempo real no dashboard (API AwesomeAPI)" },
+      { type: "feature", text: "Sistema de auditoria completo (login, logout, CRUD)" },
+      { type: "feature", text: "Changelog de atualizações do sistema nas Configurações" },
+      { type: "fix", text: "Link do Painel no sidebar corrigido (apontava para /dashboard em vez de /)" },
+      { type: "improvement", text: "Dashboard agora mostra processos recentes com links" },
+      { type: "improvement", text: "Dashboard com contagem real de processos ativos e receita mensal" },
+    ],
+  },
+  {
+    version: "0.2.0",
+    date: "2026-02-15",
+    title: "Milestone 2 — Funcionalidades Core",
+    items: [
+      { type: "feature", text: "Módulo de Processos completo (CRUD com referência automática IMP/EXP-YYYY-XXXX)" },
+      { type: "feature", text: "Timeline de status dos processos com registro automático" },
+      { type: "feature", text: "Calculadora Comex — Simulação de impostos (II, IPI, PIS, COFINS, ICMS)" },
+      { type: "feature", text: "Classificação Fiscal (NCM) — Busca com 20 códigos mais comuns" },
+      { type: "feature", text: "Módulo Financeiro — Faturas (a receber / a pagar) com dashboard" },
+      { type: "improvement", text: "Sidebar habilitada para todos os módulos" },
+      { type: "improvement", text: "Traduções PT-BR e EN para todos os novos módulos" },
+      { type: "infra", text: "Schemas Drizzle para processes, financial (db:push)" },
+    ],
+  },
+  {
+    version: "0.1.0",
+    date: "2026-02-14",
+    title: "Milestone 1 — MVP Deployável",
+    items: [
+      { type: "feature", text: "Autenticação com cookie sessions + bcrypt" },
+      { type: "feature", text: "Dashboard com cards de KPIs e agentes IA" },
+      { type: "feature", text: "CRM completo — Clientes e Contatos (CRUD com soft delete)" },
+      { type: "feature", text: "Criptografia AES-256-GCM para dados sensíveis" },
+      { type: "feature", text: "Internacionalização PT-BR / EN com tipagem TypeScript" },
+      { type: "feature", text: "Tema claro/escuro com persistência" },
+      { type: "feature", text: "Layout responsivo (desktop sidebar + mobile navigation)" },
+      { type: "infra", text: "Deploy via Coolify + Dockerfile otimizado" },
+      { type: "infra", text: "Logo LHFEX integrada (horizontal + circular)" },
+      { type: "fix", text: "Correção do Dockerfile (NODE_ENV=development para instalar devDeps)" },
+      { type: "fix", text: "Correção de tipo i18n (DeepStringify para multi-locale)" },
+    ],
+  },
+];
+
+const typeConfig = {
+  feature: { icon: Sparkles, label: "Novo", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
+  improvement: { icon: Rocket, label: "Melhoria", color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
+  fix: { icon: Bug, label: "Correção", color: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" },
+  infra: { icon: Wrench, label: "Infra", color: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400" },
+};
 
 export default function SettingsPage({ loaderData }: Route.ComponentProps) {
   const { user, locale } = loaderData;
@@ -157,6 +227,68 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
           </Button>
         </div>
       </Form>
+
+      {/* Changelog / System Updates */}
+      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <div className="mb-6 flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-blue-500" />
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Atualizações do Sistema
+          </h2>
+        </div>
+
+        <div className="space-y-8">
+          {changelog.map((release, idx) => (
+            <div key={release.version}>
+              {/* Version Header */}
+              <div className="mb-3 flex items-center gap-3">
+                <div className={`flex h-8 w-8 items-center justify-center rounded-full ${idx === 0 ? "bg-blue-100 dark:bg-blue-900/30" : "bg-gray-100 dark:bg-gray-800"}`}>
+                  {idx === 0 ? (
+                    <CheckCircle2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  ) : (
+                    <Clock className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-gray-900 dark:text-gray-100">v{release.version}</span>
+                    {idx === 0 && (
+                      <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                        Atual
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {release.date} — {release.title}
+                  </p>
+                </div>
+              </div>
+
+              {/* Items */}
+              <div className="ml-11 space-y-2">
+                {release.items.map((item, i) => {
+                  const config = typeConfig[item.type];
+                  const Icon = config.icon;
+                  return (
+                    <div key={i} className="flex items-start gap-2">
+                      <span className={`mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${config.color}`}>
+                        <Icon className="h-3 w-3" />
+                        {config.label}
+                      </span>
+                      <span className="text-sm text-gray-700 dark:text-gray-300">{item.text}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Divider */}
+              {idx < changelog.length - 1 && (
+                <div className="mt-6 border-t border-gray-100 dark:border-gray-800" />
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

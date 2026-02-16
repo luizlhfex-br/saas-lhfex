@@ -1,40 +1,93 @@
+import { Link } from "react-router";
 import type { Route } from "./+types/dashboard";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
-import { clients } from "../../drizzle/schema";
-import { isNull, eq, sql } from "drizzle-orm";
+import { clients, processes, invoices } from "../../drizzle/schema";
+import { isNull, eq, sql, and, notInArray, desc } from "drizzle-orm";
 import { t, type Locale } from "~/i18n";
 import { DollarSign, FileText, Users, TrendingUp, Bot, Bell, Clock } from "lucide-react";
+import { Badge } from "~/components/ui/badge";
+
+// Exchange rate cache
+let cachedRate: { rate: number; timestamp: number } | null = null;
+const CACHE_TTL = 5 * 60 * 1000;
+
+async function fetchExchangeRate(): Promise<number> {
+  const now = Date.now();
+  if (cachedRate && now - cachedRate.timestamp < CACHE_TTL) return cachedRate.rate;
+
+  try {
+    const res = await fetch("https://economia.awesomeapi.com.br/json/last/USD-BRL", {
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!res.ok) throw new Error("API error");
+    const data = await res.json();
+    const rate = parseFloat(data.USDBRL.bid);
+    cachedRate = { rate, timestamp: now };
+    return rate;
+  } catch {
+    return cachedRate?.rate ?? 5.50;
+  }
+}
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
 
-  // Count active clients
-  const [clientCount] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(clients)
-    .where(isNull(clients.deletedAt));
-
-  // Read locale from cookie or user preference
   const cookieHeader = request.headers.get("cookie") || "";
   const localeMatch = cookieHeader.match(/locale=([^;]+)/);
   const locale = (localeMatch ? localeMatch[1] : user.locale) as Locale;
+
+  // Parallel queries
+  const [clientCountResult, processCountResult, revenueResult, recentProcs, dollarRate] = await Promise.all([
+    db.select({ count: sql<number>`count(*)::int` }).from(clients).where(isNull(clients.deletedAt)),
+    db.select({ count: sql<number>`count(*)::int` }).from(processes).where(
+      and(isNull(processes.deletedAt), notInArray(processes.status, ["completed", "cancelled"]))
+    ),
+    db.select({ total: sql<number>`coalesce(sum(total::numeric), 0)` }).from(invoices).where(
+      and(
+        eq(invoices.type, "receivable"),
+        eq(invoices.status, "paid"),
+        sql`date_trunc('month', ${invoices.paidDate}::date) = date_trunc('month', current_date)`,
+      )
+    ),
+    db.select({
+      id: processes.id,
+      reference: processes.reference,
+      status: processes.status,
+      processType: processes.processType,
+      eta: processes.eta,
+    }).from(processes).where(isNull(processes.deletedAt)).orderBy(desc(processes.createdAt)).limit(5),
+    fetchExchangeRate(),
+  ]);
 
   return {
     user: { id: user.id, name: user.name, locale: user.locale },
     locale,
     stats: {
-      dollarRate: 5.12,
-      activeProcesses: 0,
-      activeClients: clientCount?.count ?? 0,
-      monthlyRevenue: 0,
+      dollarRate,
+      activeProcesses: processCountResult[0]?.count ?? 0,
+      activeClients: clientCountResult[0]?.count ?? 0,
+      monthlyRevenue: Number(revenueResult[0]?.total ?? 0),
     },
+    recentProcesses: recentProcs,
   };
 }
 
+const statusColors: Record<string, "default" | "info" | "warning" | "success" | "danger"> = {
+  draft: "default", in_progress: "info", awaiting_docs: "warning", customs_clearance: "warning",
+  in_transit: "info", delivered: "success", completed: "success", cancelled: "danger",
+};
+
 export default function DashboardPage({ loaderData }: Route.ComponentProps) {
-  const { user, locale, stats } = loaderData;
+  const { user, locale, stats, recentProcesses } = loaderData;
   const i18n = t(locale);
+
+  const statusLabels: Record<string, string> = {
+    draft: i18n.processes.draft, in_progress: i18n.processes.inProgress,
+    awaiting_docs: i18n.processes.awaitingDocs, customs_clearance: i18n.processes.customsClearance,
+    in_transit: i18n.processes.inTransit, delivered: i18n.processes.delivered,
+    completed: i18n.processes.completed, cancelled: i18n.processes.cancelled,
+  };
 
   const statCards = [
     {
@@ -127,12 +180,30 @@ export default function DashboardPage({ loaderData }: Route.ComponentProps) {
               {i18n.dashboard.recentProcesses}
             </h2>
           </div>
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <FileText className="mb-3 h-12 w-12 text-gray-300 dark:text-gray-700" />
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {i18n.dashboard.noProcesses}
-            </p>
-          </div>
+          {recentProcesses.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <FileText className="mb-3 h-12 w-12 text-gray-300 dark:text-gray-700" />
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {i18n.dashboard.noProcesses}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {recentProcesses.map((proc) => (
+                <Link key={proc.id} to={`/processes/${proc.id}`}
+                  className="flex items-center justify-between rounded-lg border border-gray-100 p-3 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800">
+                  <div className="flex items-center gap-3">
+                    <FileText className="h-5 w-5 text-gray-400" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{proc.reference}</p>
+                      {proc.eta && <p className="text-xs text-gray-500">ETA: {new Date(proc.eta).toLocaleDateString("pt-BR")}</p>}
+                    </div>
+                  </div>
+                  <Badge variant={statusColors[proc.status]}>{statusLabels[proc.status] || proc.status}</Badge>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Right column */}

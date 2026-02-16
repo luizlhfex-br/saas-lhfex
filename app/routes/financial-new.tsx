@@ -2,11 +2,11 @@ import { redirect } from "react-router";
 import type { Route } from "./+types/financial-new";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
-import { invoices } from "drizzle/schema";
-import { clients } from "drizzle/schema";
+import { invoices, clients } from "drizzle/schema";
 import { isNull, sql } from "drizzle-orm";
 import { t, type Locale } from "~/i18n";
 import { invoiceSchema } from "~/lib/validators";
+import { logAudit } from "~/lib/audit.server";
 import { Button } from "~/components/ui/button";
 import { Link } from "react-router";
 import { ArrowLeft } from "lucide-react";
@@ -60,6 +60,14 @@ export async function action({ request }: Route.ActionArgs) {
     description: data.description || null,
     notes: data.notes || null,
     createdBy: user.id,
+  });
+
+  await logAudit({
+    userId: user.id,
+    action: "create",
+    entity: "invoice",
+    changes: { number, ...data },
+    request,
   });
 
   return redirect("/financial");

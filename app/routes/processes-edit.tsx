@@ -2,7 +2,8 @@ import { Form, Link, redirect, useActionData, useNavigation } from "react-router
 import type { Route } from "./+types/processes-edit";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
-import { processes, processTimeline, auditLogs, clients } from "../../drizzle/schema";
+import { processes, processTimeline, auditLogs, clients, contacts } from "../../drizzle/schema";
+import { sendProcessStatusUpdate } from "~/lib/email.server";
 import { processSchema } from "~/lib/validators";
 import { t, type Locale } from "~/i18n";
 import { Button } from "~/components/ui/button";
@@ -76,6 +77,27 @@ export async function action({ request, params }: Route.ActionArgs) {
       title: `Status alterado para: ${statusLabels[newStatus] || newStatus}`,
       createdBy: user.id,
     });
+
+    // Send email notification to primary contact
+    try {
+      const [proc] = await db.select({ reference: processes.reference, clientId: processes.clientId }).from(processes).where(eq(processes.id, params.id)).limit(1);
+      if (proc) {
+        const [client] = await db.select({ razaoSocial: clients.razaoSocial }).from(clients).where(eq(clients.id, proc.clientId)).limit(1);
+        const [primaryContact] = await db.select({ email: contacts.email }).from(contacts).where(and(eq(contacts.clientId, proc.clientId), eq(contacts.isPrimary, true))).limit(1);
+        const emailTo = primaryContact?.email || null;
+        if (emailTo) {
+          await sendProcessStatusUpdate({
+            to: emailTo,
+            processRef: proc.reference,
+            oldStatus,
+            newStatus,
+            clientName: client?.razaoSocial || "",
+          });
+        }
+      }
+    } catch (e) {
+      console.error("[EMAIL] Failed to send status update:", e);
+    }
   }
 
   await db.insert(auditLogs).values({ userId: user.id, action: "update", entity: "process", entityId: params.id, changes: values, ipAddress: request.headers.get("x-forwarded-for") || "unknown", userAgent: request.headers.get("user-agent") || "unknown" });
