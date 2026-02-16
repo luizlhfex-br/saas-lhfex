@@ -4,6 +4,7 @@ import type { Locale } from "~/i18n";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 import { MobileNav } from "./mobile-nav";
+import { ChatWidget } from "~/components/chat";
 
 interface User {
   id: string;
@@ -62,6 +63,9 @@ export function AppShell({
         {/* Page content */}
         <main className="p-4 lg:p-6">{children}</main>
       </div>
+
+      {/* Floating chat widget */}
+      {location.pathname !== "/agents" && <ChatWidget />}
     </div>
   );
 }

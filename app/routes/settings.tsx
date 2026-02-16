@@ -69,6 +69,22 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.4.0",
+    date: "2026-02-16",
+    title: "Milestone 4 — Agentes IA & Chat",
+    items: [
+      { type: "feature", text: "Chat com 4 agentes IA especializados (AIrton, IAna, marIA, IAgo)" },
+      { type: "feature", text: "Widget de chat flutuante disponível em todas as páginas" },
+      { type: "feature", text: "Página dedicada de Agentes IA com cards e chat embutido" },
+      { type: "feature", text: "Histórico de conversas com persistência no banco de dados" },
+      { type: "feature", text: "Integração com N8N via webhook para respostas inteligentes" },
+      { type: "feature", text: "Sugestões de perguntas contextuais por agente" },
+      { type: "improvement", text: "Sidebar e navegação mobile com Agentes IA habilitado" },
+      { type: "infra", text: "Schema de chat (chatConversations + chatMessages) no PostgreSQL" },
+      { type: "infra", text: "API /api/chat com fallback para respostas mock" },
+    ],
+  },
+  {
     version: "0.3.0",
     date: "2026-02-16",
     title: "Milestone 3 — Integrações & Automação",

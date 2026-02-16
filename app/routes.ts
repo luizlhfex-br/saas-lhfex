@@ -21,6 +21,7 @@ export default [
     route("financial/new", "routes/financial-new.tsx"),
     route("financial/:id", "routes/financial-detail.tsx"),
     route("settings", "routes/settings.tsx"),
+    route("agents", "routes/agents.tsx"),
   ]),
 
   // API routes
@@ -29,4 +30,5 @@ export default [
   route("api/locale", "routes/api.locale.tsx"),
   route("api/exchange-rate", "routes/api.exchange-rate.tsx"),
   route("api/document/:id/download", "routes/api.document-download.tsx"),
+  route("api/chat", "routes/api.chat.tsx"),
 ] satisfies RouteConfig;

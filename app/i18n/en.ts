@@ -237,4 +237,15 @@ export const en: Translations = {
     offline: "Offline",
     askSomething: "Ask something...",
   },
+  chat: {
+    sendMessage: "Send message",
+    typeMessage: "Type a message...",
+    noMessages: "No messages yet",
+    selectAgent: "Select an agent",
+    conversations: "Conversations",
+    newChat: "New chat",
+    recentConversations: "Recent Conversations",
+    clickToChat: "Click to chat",
+    connectionError: "Connection error. Please try again.",
+  },
 } as const;

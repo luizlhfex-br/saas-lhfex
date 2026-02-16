@@ -41,7 +41,7 @@ const mainNavItems: NavItem[] = [
   { labelKey: "financial", icon: DollarSign, to: "/financial" },
   { labelKey: "calculator", icon: Calculator, to: "/calculator" },
   { labelKey: "ncm", icon: Search, to: "/ncm" },
-  { labelKey: "agents", icon: Bot, to: "/agents", disabled: true },
+  { labelKey: "agents", icon: Bot, to: "/agents" },
 ];
 
 export function Sidebar({ user, locale, currentPath }: SidebarProps) {

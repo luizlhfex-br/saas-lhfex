@@ -235,6 +235,17 @@ export const ptBR = {
     offline: "Offline",
     askSomething: "Pergunte algo...",
   },
+  chat: {
+    sendMessage: "Enviar mensagem",
+    typeMessage: "Digite uma mensagem...",
+    noMessages: "Nenhuma mensagem ainda",
+    selectAgent: "Selecione um agente",
+    conversations: "Conversas",
+    newChat: "Nova conversa",
+    recentConversations: "Conversas Recentes",
+    clickToChat: "Clique para conversar",
+    connectionError: "Erro de conexão. Tente novamente.",
+  },
 } as const;
 
 type DeepStringify<T> = {
