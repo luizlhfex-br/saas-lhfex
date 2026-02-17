@@ -41,8 +41,8 @@ Os modos de raciocínio controlam a profundidade e o tempo de processamento que 
 ## Considerações Técnicas
 
 ### Custos
-- **1x**: ~2.000 tokens máximo por resposta
-- **3x**: ~16.000 tokens máximo por resposta (até 8x mais caro)
+- **1x**: Aproximadamente 2.000 tokens máximo por resposta
+- **3x**: Aproximadamente 16.000 tokens máximo por resposta (até 8x mais caro)
 - **auto**: Ajusta automaticamente entre 1x e 3x
 
 ### Performance

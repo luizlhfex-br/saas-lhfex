@@ -176,7 +176,8 @@ async function callOpenRouter(
       { role: "system", content: `${systemPrompt}\n\n${contextMessage}` },
       { role: "user", content: userMessage },
     ],
-    max_tokens: effort === "3x" ? MAX_TOKENS_3X : MAX_TOKENS_1X, // 3x precisa de mais tokens para raciocínio estendido
+    // 3x usa mais tokens para raciocínio estendido; auto e 1x usam limite padrão
+    max_tokens: effort === "3x" ? MAX_TOKENS_3X : MAX_TOKENS_1X,
     temperature: 0.7,
   };
 

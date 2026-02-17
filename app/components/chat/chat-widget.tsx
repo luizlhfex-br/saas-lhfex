@@ -127,7 +127,7 @@ export function ChatWidget() {
 
   // Memoize current reasoning mode to avoid repeated array lookups
   const currentMode = useMemo(
-    () => reasoningModes.find(m => m.value === reasoningEffort) || reasoningModes[1],
+    () => reasoningModes.find(m => m.value === reasoningEffort) || reasoningModes.find(m => m.value === "auto")!,
     [reasoningEffort]
   );
 
