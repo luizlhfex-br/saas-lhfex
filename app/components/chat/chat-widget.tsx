@@ -201,7 +201,7 @@ export function ChatWidget() {
                 </button>
 
                 {showReasoningSelector && (
-                  <div className="absolute left-0 top-full mt-1 w-64 rounded-lg border border-gray-200 bg-white py-1 shadow-xl dark:border-gray-700 dark:bg-gray-800 z-10">
+                  <div className="absolute left-0 top-full z-10 mt-1 w-64 rounded-lg border border-gray-200 bg-white py-1 shadow-xl dark:border-gray-700 dark:bg-gray-800">
                     {reasoningModes.map((mode) => (
                       <button
                         key={mode.value}

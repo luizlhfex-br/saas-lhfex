@@ -149,6 +149,14 @@ function buildContextMessage(ctx: AgentContext): string {
 
 // --- OpenRouter API ---
 
+interface OpenRouterRequestBody {
+  model: string;
+  messages: Array<{ role: string; content: string }>;
+  max_tokens: number;
+  temperature: number;
+  reasoning_effort?: ReasoningEffort;
+}
+
 async function callOpenRouter(
   systemPrompt: string,
   userMessage: string,
@@ -162,7 +170,7 @@ async function callOpenRouter(
   const effort = reasoningEffort || (process.env.OPENROUTER_REASONING_EFFORT as ReasoningEffort) || "auto";
 
   // Build request body with optional reasoning_effort for DeepSeek models
-  const requestBody: any = {
+  const requestBody: OpenRouterRequestBody = {
     model,
     messages: [
       { role: "system", content: `${systemPrompt}\n\n${contextMessage}` },

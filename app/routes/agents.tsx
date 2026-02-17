@@ -226,13 +226,13 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <span className="text-2xl">{agent.emoji}</span>
-          <div className="flex-1">
+          <div>
             <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">{agent.name}</h2>
             <p className="text-xs text-gray-500 dark:text-gray-400">{agent.role}</p>
           </div>
           
           {/* Seletor de modo de raciocínio */}
-          <div className="relative">
+          <div className="relative ml-auto">
             <button
               onClick={() => setShowReasoningSelector(!showReasoningSelector)}
               className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
