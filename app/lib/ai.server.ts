@@ -24,6 +24,8 @@ interface AIResponse {
   tokensUsed?: number;
 }
 
+type ReasoningEffort = "1x" | "3x" | "auto";
+
 // --- System Prompts ---
 
 const AGENT_PROMPTS: Record<string, string> = {
@@ -143,11 +145,29 @@ async function callOpenRouter(
   systemPrompt: string,
   userMessage: string,
   contextMessage: string,
+  reasoningEffort?: ReasoningEffort,
 ): Promise<AIResponse> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error("OPENROUTER_API_KEY not configured");
 
   const model = process.env.OPENROUTER_MODEL || "deepseek/deepseek-chat";
+  const effort = reasoningEffort || (process.env.OPENROUTER_REASONING_EFFORT as ReasoningEffort) || "auto";
+
+  // Build request body with optional reasoning_effort for DeepSeek models
+  const requestBody: any = {
+    model,
+    messages: [
+      { role: "system", content: `${systemPrompt}\n\n${contextMessage}` },
+      { role: "user", content: userMessage },
+    ],
+    max_tokens: effort === "3x" ? 16000 : 2000, // 3x needs more tokens for extended reasoning
+    temperature: 0.7,
+  };
+
+  // Add reasoning_effort for DeepSeek models (R1, V3, etc.)
+  if (model.includes("deepseek")) {
+    requestBody.reasoning_effort = effort;
+  }
 
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
@@ -157,16 +177,8 @@ async function callOpenRouter(
       "HTTP-Referer": process.env.APP_URL || "https://saas.lhfex.com.br",
       "X-Title": "LHFEX SaaS",
     },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: "system", content: `${systemPrompt}\n\n${contextMessage}` },
-        { role: "user", content: userMessage },
-      ],
-      max_tokens: 2000,
-      temperature: 0.7,
-    }),
-    signal: AbortSignal.timeout(30000),
+    body: JSON.stringify(requestBody),
+    signal: AbortSignal.timeout(60000), // Increased timeout for 3x mode
   });
 
   if (!response.ok) {
@@ -189,9 +201,12 @@ async function callDeepSeek(
   systemPrompt: string,
   userMessage: string,
   contextMessage: string,
+  reasoningEffort?: ReasoningEffort,
 ): Promise<AIResponse> {
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) throw new Error("DEEPSEEK_API_KEY not configured");
+
+  const effort = reasoningEffort || (process.env.DEEPSEEK_REASONING_EFFORT as ReasoningEffort) || "auto";
 
   const response = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST",
@@ -205,10 +220,11 @@ async function callDeepSeek(
         { role: "system", content: `${systemPrompt}\n\n${contextMessage}` },
         { role: "user", content: userMessage },
       ],
-      max_tokens: 2000,
+      max_tokens: effort === "3x" ? 16000 : 2000,
       temperature: 0.7,
+      reasoning_effort: effort,
     }),
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(60000), // Increased timeout for 3x mode
   });
 
   if (!response.ok) {
@@ -231,6 +247,7 @@ export async function askAgent(
   agentId: string,
   message: string,
   _userId: string,
+  reasoningEffort?: ReasoningEffort,
 ): Promise<AIResponse> {
   const systemPrompt = AGENT_PROMPTS[agentId] || AGENT_PROMPTS.airton;
   const context = await loadAgentContext();
@@ -239,7 +256,7 @@ export async function askAgent(
   // Try OpenRouter first, fallback to DeepSeek
   try {
     if (process.env.OPENROUTER_API_KEY) {
-      return await callOpenRouter(systemPrompt, message, contextMessage);
+      return await callOpenRouter(systemPrompt, message, contextMessage, reasoningEffort);
     }
   } catch (error) {
     console.error("[AI] OpenRouter failed, trying DeepSeek fallback:", error);
@@ -247,7 +264,7 @@ export async function askAgent(
 
   try {
     if (process.env.DEEPSEEK_API_KEY) {
-      return await callDeepSeek(systemPrompt, message, contextMessage);
+      return await callDeepSeek(systemPrompt, message, contextMessage, reasoningEffort);
     }
   } catch (error) {
     console.error("[AI] DeepSeek also failed:", error);

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Bot, X, Send, MessageSquare, ChevronDown } from "lucide-react";
+import { Bot, X, Send, MessageSquare, ChevronDown, Zap } from "lucide-react";
 import { ChatMessage, TypingIndicator } from "./chat-message";
 
 interface Message {
@@ -10,6 +10,8 @@ interface Message {
   timestamp?: string;
 }
 
+type ReasoningEffort = "1x" | "3x" | "auto";
+
 const agents = [
   { id: "airton", name: "AIrton", emoji: "🎯", desc: "Maestro LHFEX" },
   { id: "iana", name: "IAna", emoji: "📦", desc: "Comércio Exterior" },
@@ -17,10 +19,18 @@ const agents = [
   { id: "iago", name: "IAgo", emoji: "🔧", desc: "Infraestrutura" },
 ];
 
+const reasoningModes: { value: ReasoningEffort; label: string; desc: string; icon: string }[] = [
+  { value: "1x", label: "Rápido (1x)", desc: "Respostas rápidas com raciocínio básico", icon: "⚡" },
+  { value: "auto", label: "Auto", desc: "Ajusta automaticamente conforme a complexidade", icon: "🎯" },
+  { value: "3x", label: "Profundo (3x)", desc: "Análise detalhada com raciocínio extendido", icon: "🧠" },
+];
+
 export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState(agents[0]);
   const [showAgentSelector, setShowAgentSelector] = useState(false);
+  const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort>("auto");
+  const [showReasoningSelector, setShowReasoningSelector] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -60,6 +70,7 @@ export function ChatWidget() {
           message: userMessage.content,
           agentId: selectedAgent.id,
           conversationId,
+          reasoningEffort,
         }),
       });
 
@@ -136,7 +147,10 @@ export function ChatWidget() {
               {/* Agent selector */}
               <div className="relative">
                 <button
-                  onClick={() => setShowAgentSelector(!showAgentSelector)}
+                  onClick={() => {
+                    setShowAgentSelector(!showAgentSelector);
+                    setShowReasoningSelector(false);
+                  }}
                   className="flex items-center gap-2 rounded-lg bg-white/10 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-white/20"
                 >
                   <span className="text-lg">{selectedAgent.emoji}</span>
@@ -145,7 +159,7 @@ export function ChatWidget() {
                 </button>
 
                 {showAgentSelector && (
-                  <div className="absolute left-0 top-full mt-1 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-xl dark:border-gray-700 dark:bg-gray-800">
+                  <div className="absolute left-0 top-full mt-1 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-xl dark:border-gray-700 dark:bg-gray-800 z-10">
                     {agents.map((agent) => (
                       <button
                         key={agent.id}
@@ -158,6 +172,45 @@ export function ChatWidget() {
                         <div>
                           <p className="font-medium text-gray-900 dark:text-gray-100">{agent.name}</p>
                           <p className="text-xs text-gray-500 dark:text-gray-400">{agent.desc}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Reasoning effort selector */}
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    setShowReasoningSelector(!showReasoningSelector);
+                    setShowAgentSelector(false);
+                  }}
+                  className="flex items-center gap-1.5 rounded-lg bg-white/10 px-2.5 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/20"
+                  title="Modo de raciocínio da IA"
+                >
+                  <Zap className="h-3.5 w-3.5" />
+                  <span>{reasoningModes.find(m => m.value === reasoningEffort)?.icon}</span>
+                  <ChevronDown className="h-3 w-3" />
+                </button>
+
+                {showReasoningSelector && (
+                  <div className="absolute left-0 top-full mt-1 w-64 rounded-lg border border-gray-200 bg-white py-1 shadow-xl dark:border-gray-700 dark:bg-gray-800 z-10">
+                    {reasoningModes.map((mode) => (
+                      <button
+                        key={mode.value}
+                        onClick={() => {
+                          setReasoningEffort(mode.value);
+                          setShowReasoningSelector(false);
+                        }}
+                        className={`flex w-full items-start gap-3 px-3 py-2.5 text-left text-sm transition-colors hover:bg-gray-50 dark:hover:bg-gray-700 ${
+                          reasoningEffort === mode.value ? "bg-blue-50 dark:bg-blue-900/20" : ""
+                        }`}
+                      >
+                        <span className="text-lg mt-0.5">{mode.icon}</span>
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900 dark:text-gray-100">{mode.label}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">{mode.desc}</p>
                         </div>
                       </button>
                     ))}

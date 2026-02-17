@@ -5,8 +5,16 @@ import { db } from "~/lib/db.server";
 import { chatConversations, chatMessages } from "drizzle/schema";
 import { eq, desc } from "drizzle-orm";
 import { t, type Locale } from "~/i18n";
-import { Bot, Send, MessageSquare, Plus, Clock, ArrowLeft } from "lucide-react";
+import { Bot, Send, MessageSquare, Plus, Clock, ArrowLeft, Zap, ChevronDown } from "lucide-react";
 import { ChatMessage, TypingIndicator } from "~/components/chat/chat-message";
+
+type ReasoningEffort = "1x" | "3x" | "auto";
+
+const reasoningModes: { value: ReasoningEffort; label: string; desc: string; icon: string }[] = [
+  { value: "1x", label: "Rápido (1x)", desc: "Respostas rápidas com raciocínio básico", icon: "⚡" },
+  { value: "auto", label: "Auto", desc: "Ajusta automaticamente conforme a complexidade", icon: "🎯" },
+  { value: "3x", label: "Profundo (3x)", desc: "Análise detalhada com raciocínio extendido", icon: "🧠" },
+];
 
 const agents = [
   {
@@ -95,6 +103,8 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort>("auto");
+  const [showReasoningSelector, setShowReasoningSelector] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -159,6 +169,7 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
           message: userMessage.content,
           agentId: activeAgent,
           conversationId,
+          reasoningEffort,
         }),
       });
 
@@ -209,13 +220,51 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <span className="text-2xl">{agent.emoji}</span>
-          <div>
+          <div className="flex-1">
             <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">{agent.name}</h2>
             <p className="text-xs text-gray-500 dark:text-gray-400">{agent.role}</p>
           </div>
+          
+          {/* Reasoning effort selector */}
+          <div className="relative">
+            <button
+              onClick={() => setShowReasoningSelector(!showReasoningSelector)}
+              className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
+              title="Modo de raciocínio da IA"
+            >
+              <Zap className="h-4 w-4" />
+              <span>{reasoningModes.find(m => m.value === reasoningEffort)?.icon}</span>
+              <span className="text-xs">{reasoningModes.find(m => m.value === reasoningEffort)?.label}</span>
+              <ChevronDown className="h-3.5 w-3.5" />
+            </button>
+
+            {showReasoningSelector && (
+              <div className="absolute right-0 top-full mt-2 w-72 rounded-lg border border-gray-200 bg-white py-1 shadow-xl dark:border-gray-700 dark:bg-gray-800 z-10">
+                {reasoningModes.map((mode) => (
+                  <button
+                    key={mode.value}
+                    onClick={() => {
+                      setReasoningEffort(mode.value);
+                      setShowReasoningSelector(false);
+                    }}
+                    className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-700 ${
+                      reasoningEffort === mode.value ? "bg-blue-50 dark:bg-blue-900/20" : ""
+                    }`}
+                  >
+                    <span className="text-xl mt-0.5">{mode.icon}</span>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{mode.label}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mt-0.5">{mode.desc}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           <button
             onClick={() => { setMessages([]); setConversationId(null); }}
-            className="ml-auto flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
+            className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
           >
             <Plus className="h-4 w-4" />
             Nova conversa
