@@ -225,7 +225,7 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
             <p className="text-xs text-gray-500 dark:text-gray-400">{agent.role}</p>
           </div>
           
-          {/* Reasoning effort selector */}
+          {/* Seletor de modo de raciocínio */}
           <div className="relative">
             <button
               onClick={() => setShowReasoningSelector(!showReasoningSelector)}

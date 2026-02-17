@@ -160,11 +160,11 @@ async function callOpenRouter(
       { role: "system", content: `${systemPrompt}\n\n${contextMessage}` },
       { role: "user", content: userMessage },
     ],
-    max_tokens: effort === "3x" ? 16000 : 2000, // 3x needs more tokens for extended reasoning
+    max_tokens: effort === "3x" ? 16000 : 2000, // 3x precisa de mais tokens para raciocínio estendido
     temperature: 0.7,
   };
 
-  // Add reasoning_effort for DeepSeek models (R1, V3, etc.)
+  // Adiciona reasoning_effort para modelos DeepSeek (R1, V3, etc.)
   if (model.includes("deepseek")) {
     requestBody.reasoning_effort = effort;
   }
@@ -178,7 +178,7 @@ async function callOpenRouter(
       "X-Title": "LHFEX SaaS",
     },
     body: JSON.stringify(requestBody),
-    signal: AbortSignal.timeout(60000), // Increased timeout for 3x mode
+    signal: AbortSignal.timeout(60000), // Timeout aumentado para modo 3x
   });
 
   if (!response.ok) {
@@ -224,7 +224,7 @@ async function callDeepSeek(
       temperature: 0.7,
       reasoning_effort: effort,
     }),
-    signal: AbortSignal.timeout(60000), // Increased timeout for 3x mode
+    signal: AbortSignal.timeout(60000), // Timeout aumentado para modo 3x
   });
 
   if (!response.ok) {
