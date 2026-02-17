@@ -46,7 +46,7 @@ export async function action({ request }: Route.ActionArgs) {
 
   const values = result.data;
   const year = new Date().getFullYear();
-  const prefix = values.processType === "import" ? "IMP" : "EXP";
+  const prefix = values.processType === "import" ? "IMP" : values.processType === "export" ? "EXP" : "SRV";
 
   const countResult = await db.execute(
     sql`SELECT COUNT(*) as cnt FROM processes WHERE reference LIKE ${prefix + "-" + year + "-%"}`
@@ -78,6 +78,7 @@ export async function action({ request }: Route.ActionArgs) {
     portOfDestination: values.portOfDestination || null,
     customsBroker: values.customsBroker || null,
     diNumber: values.diNumber || null,
+    googleDriveUrl: values.googleDriveUrl || null,
     notes: values.notes || null,
     createdBy: user.id,
   }).returning({ id: processes.id });
@@ -126,6 +127,7 @@ export default function ProcessesNewPage({ loaderData }: Route.ComponentProps) {
               <select name="processType" defaultValue={fields.processType || "import"} className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
                 <option value="import">{i18n.processes.import}</option>
                 <option value="export">{i18n.processes.export}</option>
+                <option value="services">Outros Serviços</option>
               </select>
             </div>
             <div>
@@ -167,6 +169,22 @@ export default function ProcessesNewPage({ loaderData }: Route.ComponentProps) {
             <InputField label={i18n.processes.etd} name="etd" type="date" defaultValue={fields.etd} />
             <InputField label={i18n.processes.eta} name="eta" type="date" defaultValue={fields.eta} />
           </div>
+        </Section>
+
+        <Section title="Google Drive">
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Link da Pasta no Google Drive</label>
+              <input
+                type="url"
+                name="googleDriveUrl"
+                placeholder="https://drive.google.com/drive/folders/..."
+                defaultValue={fields.googleDriveUrl}
+                className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
+              />
+            </div>
+          </div>
+          <p className="mt-1 text-xs text-gray-400">Cole o link da pasta do Google Drive onde os documentos do processo estão salvos</p>
         </Section>
 
         <Section title="Observações">

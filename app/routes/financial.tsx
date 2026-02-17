@@ -124,9 +124,19 @@ export default function FinancialPage({ loaderData }: Route.ComponentProps) {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{i18n.financial.title}</h1>
-        <Link to="/financial/new">
-          <Button><Plus className="h-4 w-4" />{i18n.financial.newInvoice}</Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <a
+            href="https://app.contabilizei.com.br"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+          >
+            📊 Contabilizei
+          </a>
+          <Link to="/financial/new">
+            <Button><Plus className="h-4 w-4" />{i18n.financial.newInvoice}</Button>
+          </Link>
+        </div>
       </div>
 
       {/* Summary Cards */}

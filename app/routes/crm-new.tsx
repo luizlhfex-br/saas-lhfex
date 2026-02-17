@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Form, Link, redirect, useActionData, useNavigation } from "react-router";
 import type { Route } from "./+types/crm-new";
 import { requireAuth } from "~/lib/auth.server";
@@ -6,7 +7,7 @@ import { clients, auditLogs } from "../../drizzle/schema";
 import { clientSchema } from "~/lib/validators";
 import { t, type Locale } from "~/i18n";
 import { Button } from "~/components/ui/button";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Bot, Loader2 } from "lucide-react";
 import { data } from "react-router";
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -91,6 +92,56 @@ export default function CrmNewPage({ loaderData }: Route.ComponentProps) {
   const errors = actionData?.errors || {};
   const fields = actionData?.fields || {};
 
+  // State for AI enrichment
+  const [enriching, setEnriching] = useState(false);
+  const [enriched, setEnriched] = useState(false);
+
+  const handleEnrichCNPJ = async () => {
+    const cnpjInput = document.querySelector<HTMLInputElement>('input[name="cnpj"]');
+    const cnpj = cnpjInput?.value;
+    if (!cnpj || cnpj.replace(/\D/g, "").length < 14) {
+      alert("Digite um CNPJ válido primeiro");
+      return;
+    }
+
+    setEnriching(true);
+    try {
+      const res = await fetch(`/api/enrich-cnpj?cnpj=${encodeURIComponent(cnpj)}`);
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || "Erro ao consultar CNPJ");
+        return;
+      }
+      const data = await res.json();
+
+      // Fill form fields
+      const fillField = (name: string, value: string) => {
+        const input = document.querySelector<HTMLInputElement>(`input[name="${name}"]`);
+        if (input && value) {
+          const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+          nativeInputValueSetter?.call(input, value);
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      };
+
+      fillField("razaoSocial", data.razaoSocial);
+      fillField("nomeFantasia", data.nomeFantasia);
+      fillField("address", data.address);
+      fillField("city", data.city);
+      fillField("state", data.state);
+      fillField("zipCode", data.zipCode);
+      fillField("ramoAtividade", data.ramoAtividade);
+      fillField("phone", data.phone);
+      fillField("email", data.email);
+
+      setEnriched(true);
+    } catch {
+      alert("Erro de conexão ao consultar CNPJ");
+    } finally {
+      setEnriching(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -115,6 +166,36 @@ export default function CrmNewPage({ loaderData }: Route.ComponentProps) {
           <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">
             Dados da Empresa
           </h2>
+
+          {/* CNPJ + AI Enrich button */}
+          <div className="mb-4 flex items-end gap-2">
+            <div className="flex-1">
+              <InputField
+                label={i18n.crm.cnpj}
+                name="cnpj"
+                required
+                placeholder="00.000.000/0000-00"
+                error={errors.cnpj}
+                defaultValue={fields.cnpj}
+              />
+            </div>
+            <Button
+              type="button"
+              onClick={handleEnrichCNPJ}
+              disabled={enriching}
+              variant={enriched ? "outline" : "default"}
+              className="shrink-0"
+            >
+              {enriching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bot className="h-4 w-4" />}
+              {enriched ? "Preenchido!" : "Preencher com IA"}
+            </Button>
+          </div>
+          {enriched && (
+            <div className="mb-4 rounded-lg bg-green-50 px-3 py-2 text-xs text-green-700 dark:bg-green-900/20 dark:text-green-400">
+              ✅ Dados preenchidos automaticamente via consulta CNPJ. Todos os campos são editáveis.
+            </div>
+          )}
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <InputField
               label={i18n.crm.razaoSocial}
@@ -128,14 +209,6 @@ export default function CrmNewPage({ loaderData }: Route.ComponentProps) {
               name="nomeFantasia"
               error={errors.nomeFantasia}
               defaultValue={fields.nomeFantasia}
-            />
-            <InputField
-              label={i18n.crm.cnpj}
-              name="cnpj"
-              required
-              placeholder="00.000.000/0000-00"
-              error={errors.cnpj}
-              defaultValue={fields.cnpj}
             />
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">

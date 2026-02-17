@@ -70,6 +70,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     portOfDestination: values.portOfDestination || null,
     customsBroker: values.customsBroker || null,
     diNumber: values.diNumber || null,
+    googleDriveUrl: values.googleDriveUrl || null,
     notes: values.notes || null,
     updatedAt: new Date(),
   }).where(eq(processes.id, params.id));
@@ -134,7 +135,7 @@ export default function ProcessesEditPage({ loaderData }: Route.ComponentProps) 
         <input type="hidden" name="_oldStatus" value={proc.status} />
         <Sec title="Dados Gerais">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <Sel label={i18n.processes.type} name="processType" value={val("processType")} options={[["import", i18n.processes.import], ["export", i18n.processes.export]]} />
+            <Sel label={i18n.processes.type} name="processType" value={val("processType")} options={[["import", i18n.processes.import], ["export", i18n.processes.export], ["services", "Outros Serviços"]]} />
             <Sel label={i18n.processes.client} name="clientId" value={val("clientId")} options={clientList.map(c => [c.id, c.nomeFantasia || c.razaoSocial])} required />
             <Sel label={i18n.common.status} name="status" value={val("status")} options={[["draft", i18n.processes.draft], ["in_progress", i18n.processes.inProgress], ["awaiting_docs", i18n.processes.awaitingDocs], ["customs_clearance", i18n.processes.customsClearance], ["in_transit", i18n.processes.inTransit], ["delivered", i18n.processes.delivered], ["completed", i18n.processes.completed], ["cancelled", i18n.processes.cancelled]]} />
             <Inp label={i18n.processes.incoterm} name="incoterm" value={val("incoterm")} />
@@ -167,6 +168,20 @@ export default function ProcessesEditPage({ loaderData }: Route.ComponentProps) 
             <Inp label={i18n.processes.etd} name="etd" type="date" value={fmtDate(proc.etd)} />
             <Inp label={i18n.processes.eta} name="eta" type="date" value={fmtDate(proc.eta)} />
           </div>
+        </Sec>
+        <Sec title="Google Drive">
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Link da Pasta no Google Drive</label>
+              <input type="url" name="googleDriveUrl" placeholder="https://drive.google.com/drive/folders/..." defaultValue={val("googleDriveUrl")} className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500" />
+            </div>
+            {val("googleDriveUrl") && (
+              <a href={String(val("googleDriveUrl"))} target="_blank" rel="noopener noreferrer" className="shrink-0 rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-blue-600 hover:bg-blue-50 dark:border-gray-700 dark:text-blue-400 dark:hover:bg-gray-800">
+                Abrir ↗
+              </a>
+            )}
+          </div>
+          <p className="mt-1 text-xs text-gray-400">Cole o link da pasta do Google Drive onde os documentos do processo estão salvos</p>
         </Sec>
         <Sec title="Observações">
           <textarea name="notes" rows={3} defaultValue={val("notes")} className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />

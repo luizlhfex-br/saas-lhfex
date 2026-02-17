@@ -5,13 +5,7 @@ import { chatConversations, chatMessages } from "drizzle/schema";
 import { eq, desc } from "drizzle-orm";
 import { checkRateLimit, RATE_LIMITS } from "~/lib/rate-limit.server";
 import { chatMessageSchema } from "~/lib/validators";
-
-const MOCK_REPLIES: Record<string, string> = {
-  airton: "Olá! Sou o AIrton, maestro da LHFEX. 🎯 No momento estou em modo de configuração. Em breve estarei totalmente disponível para orquestrar suas operações de comércio exterior. Fique tranquilo que sua equipe está trabalhando nisso!",
-  iana: "Oi! Sou a IAna, especialista em comércio exterior. 📦 Estou sendo configurada e em breve poderei ajudar com classificação NCM, descrições blindadas, análise de processos e muito mais. Aguarde novidades!",
-  maria: "Olá! Sou a marIA, responsável pelas finanças. 💰 Em breve poderei ajudar com controle financeiro, análise de custos, projeções de câmbio e planejamento tributário. Estamos quase lá!",
-  iago: "E aí! Sou o IAgo, cuido da infra. 🔧 Logo estarei monitorando servidores, workflows do N8N e garantindo que tudo funcione perfeitamente. Automação total em breve!",
-};
+import { askAgent } from "~/lib/ai.server";
 
 export async function action({ request }: Route.ActionArgs) {
   const { user } = await requireAuth(request);
@@ -48,36 +42,19 @@ export async function action({ request }: Route.ActionArgs) {
     agentId: null,
   });
 
-  // Try N8N webhook
-  let reply = MOCK_REPLIES[agentId] || MOCK_REPLIES.airton;
-  let fromN8N = false;
+  // Call AI agent (OpenRouter → DeepSeek fallback)
+  let reply: string;
+  let aiModel = "unknown";
+  let aiProvider = "none";
 
-  const webhookUrl = process.env.N8N_CHAT_WEBHOOK_URL;
-  if (webhookUrl) {
-    try {
-      const res = await fetch(webhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: message.trim(),
-          agentId,
-          userId: user.id,
-          userName: user.name,
-          conversationId: convId,
-        }),
-        signal: AbortSignal.timeout(30000),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data.reply || data.output || data.message || data.text) {
-          reply = data.reply || data.output || data.message || data.text;
-          fromN8N = true;
-        }
-      }
-    } catch (error) {
-      console.error("[CHAT] N8N webhook error:", error);
-    }
+  try {
+    const aiResponse = await askAgent(agentId, message.trim(), user.id);
+    reply = aiResponse.content;
+    aiModel = aiResponse.model;
+    aiProvider = aiResponse.provider;
+  } catch (error) {
+    console.error("[CHAT] AI error:", error);
+    reply = "Desculpe, ocorreu um erro ao processar sua mensagem. Tente novamente em alguns instantes.";
   }
 
   // Save assistant reply
@@ -86,7 +63,7 @@ export async function action({ request }: Route.ActionArgs) {
     role: "assistant",
     content: reply,
     agentId,
-    metadata: { fromN8N },
+    metadata: { aiModel, aiProvider },
   });
 
   // Update conversation title if first message
@@ -96,7 +73,7 @@ export async function action({ request }: Route.ActionArgs) {
       .where(eq(chatConversations.id, convId));
   }
 
-  return Response.json({ conversationId: convId, reply, agentId, fromN8N });
+  return Response.json({ conversationId: convId, reply, agentId, aiModel, aiProvider });
 }
 
 // GET: list conversations or messages

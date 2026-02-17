@@ -50,6 +50,7 @@ export async function action({ request }: Route.ActionArgs) {
     clientId: data.clientId,
     processId: data.processId || null,
     type: data.type,
+    category: data.category || null,
     status: data.status || "draft",
     currency: data.currency || "BRL",
     exchangeRate: data.exchangeRate || null,
@@ -108,6 +109,23 @@ export default function FinancialNewPage({ loaderData, actionData }: Route.Compo
               <select name="type" required className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
                 <option value="receivable">{i18n.financial.receivable}</option>
                 <option value="payable">{i18n.financial.payable}</option>
+              </select>
+            </div>
+
+            {/* Category */}
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Categoria</label>
+              <select name="category" className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
+                <option value="">Sem categoria</option>
+                <option value="frete_aereo">Frete Aéreo</option>
+                <option value="frete_maritimo_lcl">Frete Marítimo (LCL)</option>
+                <option value="frete_maritimo_fcl">Frete Marítimo (FCL)</option>
+                <option value="despachante">Despachante</option>
+                <option value="impostos">Impostos</option>
+                <option value="armazenagem">Armazenagem</option>
+                <option value="seguro">Seguro</option>
+                <option value="honorarios">Honorários</option>
+                <option value="outros">Outros</option>
               </select>
             </div>
 

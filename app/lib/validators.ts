@@ -41,7 +41,7 @@ export const contactSchema = z.object({
 });
 
 export const processSchema = z.object({
-  processType: z.enum(["import", "export"]),
+  processType: z.enum(["import", "export", "services"]),
   clientId: z.string().min(1, "Cliente é obrigatório"),
   description: z.string().max(2000).optional(),
   hsCode: z.string().max(20).optional(),
@@ -62,6 +62,7 @@ export const processSchema = z.object({
   portOfDestination: z.string().max(255).optional(),
   customsBroker: z.string().max(255).optional(),
   diNumber: z.string().max(50).optional(),
+  googleDriveUrl: z.string().url().optional().or(z.literal("")),
   notes: z.string().max(5000).optional(),
   status: z.enum(["draft", "in_progress", "awaiting_docs", "customs_clearance", "in_transit", "delivered", "completed", "cancelled"]).optional(),
 });
@@ -70,6 +71,7 @@ export const invoiceSchema = z.object({
   clientId: z.string().min(1, "Cliente é obrigatório"),
   processId: z.string().optional(),
   type: z.enum(["receivable", "payable"]),
+  category: z.string().max(50).optional(),
   currency: z.string().max(3).optional(),
   exchangeRate: z.string().optional(),
   subtotal: z.string().min(1, "Subtotal é obrigatório"),

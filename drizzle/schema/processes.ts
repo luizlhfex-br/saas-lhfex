@@ -2,7 +2,7 @@ import { pgTable, uuid, varchar, text, timestamp, integer, numeric, pgEnum, inde
 import { users } from "./auth";
 import { clients } from "./crm";
 
-export const processTypeEnum = pgEnum("process_type", ["import", "export"]);
+export const processTypeEnum = pgEnum("process_type", ["import", "export", "services"]);
 export const processStatusEnum = pgEnum("process_status", [
   "draft", "in_progress", "awaiting_docs", "customs_clearance",
   "in_transit", "delivered", "completed", "cancelled",
@@ -36,6 +36,7 @@ export const processes = pgTable("processes", {
   customsBroker: varchar("customs_broker", { length: 255 }),
   diNumber: varchar("di_number", { length: 50 }),
   diDate: timestamp("di_date", { withTimezone: true }),
+  googleDriveUrl: text("google_drive_url"),
   notes: text("notes"),
   createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

@@ -21,6 +21,7 @@ export const invoices = pgTable("invoices", {
   dueDate: date("due_date").notNull(),
   paidDate: date("paid_date"),
   paidAmount: numeric("paid_amount", { precision: 15, scale: 2 }),
+  category: varchar("category", { length: 50 }),
   description: text("description"),
   notes: text("notes"),
   createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
