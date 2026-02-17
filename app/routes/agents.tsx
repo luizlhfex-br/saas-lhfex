@@ -13,7 +13,7 @@ type ReasoningEffort = "1x" | "3x" | "auto";
 const reasoningModes: { value: ReasoningEffort; label: string; desc: string; icon: string }[] = [
   { value: "1x", label: "Rápido (1x)", desc: "Respostas rápidas com raciocínio básico", icon: "⚡" },
   { value: "auto", label: "Auto", desc: "Ajusta automaticamente conforme a complexidade", icon: "🎯" },
-  { value: "3x", label: "Profundo (3x)", desc: "Análise detalhada com raciocínio extendido", icon: "🧠" },
+  { value: "3x", label: "Profundo (3x)", desc: "Análise detalhada com raciocínio estendido", icon: "🧠" },
 ];
 
 const agents = [
