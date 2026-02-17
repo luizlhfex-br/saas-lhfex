@@ -157,7 +157,24 @@ async function sendTelegram(token: string, chatId: number, text: string, parseMo
   }
 }
 
-// GET — health check
-export async function loader() {
-  return data({ status: "ok", bot: !!process.env.TELEGRAM_BOT_TOKEN });
+// GET — health check + setup webhook
+export async function loader({ request }: Route.LoaderArgs) {
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  const url = new URL(request.url);
+  const setup = url.searchParams.get("setup");
+
+  // GET /api/telegram-webhook?setup=1 → configures the webhook
+  if (setup === "1" && botToken) {
+    const appUrl = process.env.APP_URL || "https://saas.lhfex.com.br";
+    const webhookUrl = `${appUrl}/api/telegram-webhook`;
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook?url=${encodeURIComponent(webhookUrl)}`);
+      const result = await res.json();
+      return data({ status: "ok", webhook: webhookUrl, telegram: result });
+    } catch (error) {
+      return data({ status: "error", message: String(error) }, { status: 500 });
+    }
+  }
+
+  return data({ status: "ok", bot: !!botToken });
 }
