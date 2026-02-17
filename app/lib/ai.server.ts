@@ -26,6 +26,14 @@ interface AIResponse {
 
 type ReasoningEffort = "1x" | "3x" | "auto";
 
+// Token limits for reasoning modes
+const MAX_TOKENS_1X = 2000;
+const MAX_TOKENS_3X = 16000;
+
+// Timeouts for reasoning modes (ms)
+const TIMEOUT_1X = 30000;
+const TIMEOUT_3X = 60000;
+
 // --- System Prompts ---
 
 const AGENT_PROMPTS: Record<string, string> = {
@@ -160,7 +168,7 @@ async function callOpenRouter(
       { role: "system", content: `${systemPrompt}\n\n${contextMessage}` },
       { role: "user", content: userMessage },
     ],
-    max_tokens: effort === "3x" ? 16000 : 2000, // 3x precisa de mais tokens para raciocínio estendido
+    max_tokens: effort === "3x" ? MAX_TOKENS_3X : MAX_TOKENS_1X, // 3x precisa de mais tokens para raciocínio estendido
     temperature: 0.7,
   };
 
@@ -178,7 +186,7 @@ async function callOpenRouter(
       "X-Title": "LHFEX SaaS",
     },
     body: JSON.stringify(requestBody),
-    signal: AbortSignal.timeout(60000), // Timeout aumentado para modo 3x
+    signal: AbortSignal.timeout(effort === "3x" ? TIMEOUT_3X : TIMEOUT_1X), // Timeout aumentado para modo 3x
   });
 
   if (!response.ok) {
@@ -220,11 +228,11 @@ async function callDeepSeek(
         { role: "system", content: `${systemPrompt}\n\n${contextMessage}` },
         { role: "user", content: userMessage },
       ],
-      max_tokens: effort === "3x" ? 16000 : 2000,
+      max_tokens: effort === "3x" ? MAX_TOKENS_3X : MAX_TOKENS_1X,
       temperature: 0.7,
       reasoning_effort: effort,
     }),
-    signal: AbortSignal.timeout(60000), // Timeout aumentado para modo 3x
+    signal: AbortSignal.timeout(effort === "3x" ? TIMEOUT_3X : TIMEOUT_1X), // Timeout aumentado para modo 3x
   });
 
   if (!response.ok) {

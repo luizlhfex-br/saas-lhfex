@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import type { Route } from "./+types/agents";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
@@ -207,6 +207,12 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
   const agentEmojis: Record<string, string> = { airton: "🎯", iana: "📦", maria: "💰", iago: "🔧" };
   const agentNames: Record<string, string> = { airton: "AIrton", iana: "IAna", maria: "marIA", iago: "IAgo" };
 
+  // Memoize current reasoning mode to avoid repeated array lookups
+  const currentMode = useMemo(
+    () => reasoningModes.find(m => m.value === reasoningEffort) || reasoningModes[1],
+    [reasoningEffort]
+  );
+
   // Chat view
   if (activeAgent && agent) {
     return (
@@ -233,8 +239,8 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
               title="Modo de raciocínio da IA"
             >
               <Zap className="h-4 w-4" />
-              <span>{reasoningModes.find(m => m.value === reasoningEffort)?.icon}</span>
-              <span className="text-xs">{reasoningModes.find(m => m.value === reasoningEffort)?.label}</span>
+              <span>{currentMode.icon}</span>
+              <span className="text-xs">{currentMode.label}</span>
               <ChevronDown className="h-3.5 w-3.5" />
             </button>
 

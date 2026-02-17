@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Bot, X, Send, MessageSquare, ChevronDown, Zap } from "lucide-react";
 import { ChatMessage, TypingIndicator } from "./chat-message";
 
@@ -125,6 +125,12 @@ export function ChatWidget() {
     handleNewChat();
   };
 
+  // Memoize current reasoning mode to avoid repeated array lookups
+  const currentMode = useMemo(
+    () => reasoningModes.find(m => m.value === reasoningEffort) || reasoningModes[1],
+    [reasoningEffort]
+  );
+
   return (
     <>
       {/* Floating button */}
@@ -190,7 +196,7 @@ export function ChatWidget() {
                   title="Modo de raciocínio da IA"
                 >
                   <Zap className="h-3.5 w-3.5" />
-                  <span>{reasoningModes.find(m => m.value === reasoningEffort)?.icon}</span>
+                  <span>{currentMode.icon}</span>
                   <ChevronDown className="h-3 w-3" />
                 </button>
 
