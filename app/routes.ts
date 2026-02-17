@@ -31,6 +31,7 @@ export default [
   route("api/exchange-rate", "routes/api.exchange-rate.tsx"),
   route("api/document/:id/download", "routes/api.document-download.tsx"),
   route("api/chat", "routes/api.chat.tsx"),
+  route("api/health", "routes/api.health.tsx"),
 
   // Catch-all 404
   route("*", "routes/$.tsx"),

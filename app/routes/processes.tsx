@@ -12,6 +12,14 @@ import { eq, isNull, desc, and, like, sql } from "drizzle-orm";
 
 const ITEMS_PER_PAGE = 20;
 
+const validStatuses = ["draft", "in_progress", "awaiting_docs", "customs_clearance", "in_transit", "delivered", "completed", "cancelled"] as const;
+type ProcessStatus = typeof validStatuses[number];
+const isValidStatus = (v: string): v is ProcessStatus => (validStatuses as readonly string[]).includes(v);
+
+const validTypes = ["import", "export"] as const;
+type ProcessType = typeof validTypes[number];
+const isValidType = (v: string): v is ProcessType => (validTypes as readonly string[]).includes(v);
+
 const statusColors: Record<string, "default" | "info" | "warning" | "success" | "danger"> = {
   draft: "default",
   in_progress: "info",
@@ -39,11 +47,11 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (search) {
     conditions.push(like(processes.reference, `%${search}%`));
   }
-  if (statusFilter) {
-    conditions.push(eq(processes.status, statusFilter as any));
+  if (statusFilter && isValidStatus(statusFilter)) {
+    conditions.push(eq(processes.status, statusFilter));
   }
-  if (typeFilter) {
-    conditions.push(eq(processes.processType, typeFilter as any));
+  if (typeFilter && isValidType(typeFilter)) {
+    conditions.push(eq(processes.processType, typeFilter));
   }
 
   const whereClause = and(...conditions);

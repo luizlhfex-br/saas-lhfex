@@ -6,7 +6,9 @@ export async function loader() {
   const now = Date.now();
 
   if (cachedRate && now - cachedRate.timestamp < CACHE_TTL) {
-    return Response.json(cachedRate);
+    return Response.json(cachedRate, {
+      headers: { "Cache-Control": "public, max-age=300" },
+    });
   }
 
   try {
@@ -26,7 +28,9 @@ export async function loader() {
       timestamp: now,
     };
 
-    return Response.json(cachedRate);
+    return Response.json(cachedRate, {
+      headers: { "Cache-Control": "public, max-age=300" },
+    });
   } catch (error) {
     console.error("[EXCHANGE] Failed to fetch rate:", error);
 

@@ -11,6 +11,10 @@ import { ArrowLeft, Save } from "lucide-react";
 import { data } from "react-router";
 import { eq, isNull, and } from "drizzle-orm";
 
+const validStatuses = ["draft", "in_progress", "awaiting_docs", "customs_clearance", "in_transit", "delivered", "completed", "cancelled"] as const;
+type ProcessStatus = typeof validStatuses[number];
+const isValidStatus = (v: string): v is ProcessStatus => (validStatuses as readonly string[]).includes(v);
+
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
   const cookieHeader = request.headers.get("cookie") || "";
@@ -46,7 +50,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   await db.update(processes).set({
     processType: values.processType,
-    status: newStatus as any,
+    status: isValidStatus(newStatus) ? newStatus : "draft",
     clientId: values.clientId,
     description: values.description || null,
     hsCode: values.hsCode || null,
@@ -73,7 +77,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (newStatus !== oldStatus) {
     const statusLabels: Record<string, string> = { draft: "Rascunho", in_progress: "Em Andamento", awaiting_docs: "Aguardando Docs", customs_clearance: "Desembaraço", in_transit: "Em Trânsito", delivered: "Entregue", completed: "Concluído", cancelled: "Cancelado" };
     await db.insert(processTimeline).values({
-      processId: params.id, status: newStatus as any,
+      processId: params.id, status: isValidStatus(newStatus) ? newStatus : "draft",
       title: `Status alterado para: ${statusLabels[newStatus] || newStatus}`,
       createdBy: user.id,
     });
@@ -113,7 +117,7 @@ export default function ProcessesEditPage({ loaderData }: Route.ComponentProps) 
   const i18n = t(locale);
   const errors = actionData?.errors || {};
   const fields = actionData?.fields || {};
-  const val = (name: string) => fields[name] ?? (proc as any)[name] ?? "";
+  const val = (name: string) => fields[name] ?? (proc as Record<string, unknown>)[name] ?? "";
   const fmtDate = (d: any) => d ? new Date(d).toISOString().split("T")[0] : "";
 
   return (

@@ -11,6 +11,14 @@ import { Pagination } from "~/components/ui/pagination";
 
 const ITEMS_PER_PAGE = 20;
 
+const validStatuses = ["draft", "sent", "paid", "overdue", "cancelled"] as const;
+type InvoiceStatus = typeof validStatuses[number];
+const isValidStatus = (v: string): v is InvoiceStatus => (validStatuses as readonly string[]).includes(v);
+
+const validTypes = ["receivable", "payable"] as const;
+type InvoiceType = typeof validTypes[number];
+const isValidType = (v: string): v is InvoiceType => (validTypes as readonly string[]).includes(v);
+
 export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
   const cookieHeader = request.headers.get("cookie") || "";
@@ -40,8 +48,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   // Filtered list
   const conditions = [isNull(invoices.deletedAt)];
   if (search) conditions.push(like(invoices.number, `%${search}%`));
-  if (statusFilter) conditions.push(eq(invoices.status, statusFilter as any));
-  if (typeFilter) conditions.push(eq(invoices.type, typeFilter as any));
+  if (statusFilter && isValidStatus(statusFilter)) conditions.push(eq(invoices.status, statusFilter));
+  if (typeFilter && isValidType(typeFilter)) conditions.push(eq(invoices.type, typeFilter));
 
   const whereClause = and(...conditions);
 
