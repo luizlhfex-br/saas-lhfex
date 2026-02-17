@@ -21,7 +21,7 @@ export async function action({ request }: Route.ActionArgs) {
   if (!parsed.success) {
     return Response.json({ error: "Invalid input", details: parsed.error.flatten() }, { status: 400 });
   }
-  const { message, agentId, conversationId } = parsed.data;
+  const { message, agentId, conversationId, reasoningEffort } = parsed.data;
 
   // Get or create conversation
   let convId = conversationId;
@@ -48,7 +48,7 @@ export async function action({ request }: Route.ActionArgs) {
   let aiProvider = "none";
 
   try {
-    const aiResponse = await askAgent(agentId, message.trim(), user.id);
+    const aiResponse = await askAgent(agentId, message.trim(), user.id, reasoningEffort);
     reply = aiResponse.content;
     aiModel = aiResponse.model;
     aiProvider = aiResponse.provider;

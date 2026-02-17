@@ -9,6 +9,7 @@ export const chatMessageSchema = z.object({
   message: z.string().min(1, "Mensagem é obrigatória").max(5000, "Mensagem muito longa"),
   agentId: z.enum(["airton", "iana", "maria", "iago"]),
   conversationId: z.string().uuid().optional(),
+  reasoningEffort: z.enum(["1x", "3x", "auto"]).optional(),
 });
 
 export const clientSchema = z.object({
