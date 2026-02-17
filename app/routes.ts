@@ -22,6 +22,8 @@ export default [
     route("financial/:id", "routes/financial-detail.tsx"),
     route("settings", "routes/settings.tsx"),
     route("agents", "routes/agents.tsx"),
+    route("automations", "routes/automations.tsx"),
+    route("crm/pipeline", "routes/crm-pipeline.tsx"),
   ]),
 
   // API routes
@@ -34,6 +36,8 @@ export default [
   route("api/enrich-cnpj", "routes/api.enrich-cnpj.tsx"),
   route("api/ncm-taxes", "routes/api.ncm-taxes.tsx"),
   route("api/health", "routes/api.health.tsx"),
+  route("api/notifications", "routes/api.notifications.tsx"),
+  route("api/telegram-webhook", "routes/api.telegram-webhook.tsx"),
 
   // Catch-all 404
   route("*", "routes/$.tsx"),

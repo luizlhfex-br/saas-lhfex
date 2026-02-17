@@ -4,3 +4,6 @@ export * from "./audit";
 export * from "./processes";
 export * from "./financial";
 export * from "./chat";
+export * from "./notifications";
+export * from "./automations";
+export * from "./pipeline";

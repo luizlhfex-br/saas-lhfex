@@ -41,6 +41,8 @@ export const ptBR = {
     partners: "Parceiros",
     calendar: "Calendário",
     agents: "Agentes IA",
+    automations: "Automações",
+    pipeline: "Funil de Vendas",
     settings: "Configurações",
     personal: "Pessoal",
     system: "Sistema",

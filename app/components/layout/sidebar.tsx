@@ -9,6 +9,8 @@ import {
   Bot,
   Settings,
   LogOut,
+  Zap,
+  Kanban,
 } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { t, type Locale } from "~/i18n";
@@ -37,10 +39,12 @@ interface NavItem {
 const mainNavItems: NavItem[] = [
   { labelKey: "dashboard", icon: LayoutDashboard, to: "/" },
   { labelKey: "crm", icon: Users, to: "/crm" },
+  { labelKey: "pipeline", icon: Kanban, to: "/crm/pipeline" },
   { labelKey: "processes", icon: FileText, to: "/processes" },
   { labelKey: "financial", icon: DollarSign, to: "/financial" },
   { labelKey: "calculator", icon: Calculator, to: "/calculator" },
   { labelKey: "ncm", icon: Search, to: "/ncm" },
+  { labelKey: "automations", icon: Zap, to: "/automations" },
   { labelKey: "agents", icon: Bot, to: "/agents" },
 ];
 

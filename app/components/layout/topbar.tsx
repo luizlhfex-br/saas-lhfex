@@ -1,6 +1,7 @@
 import { Menu, Sun, Moon } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { t, getLocales, type Locale } from "~/i18n";
+import { NotificationBell } from "~/components/notifications/bell";
 
 interface User {
   id: string;
@@ -62,6 +63,9 @@ export function Topbar({
             {currentLocaleLabel}
           </button>
         )}
+
+        {/* Notifications */}
+        <NotificationBell />
 
         {/* Theme toggle */}
         {onThemeToggle && (

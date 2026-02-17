@@ -43,6 +43,8 @@ export const en: Translations = {
     partners: "Partners",
     calendar: "Calendar",
     agents: "AI Agents",
+    automations: "Automations",
+    pipeline: "Sales Pipeline",
     settings: "Settings",
     personal: "Personal",
     system: "System",
