@@ -69,6 +69,26 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.6.0",
+    date: "2026-02-16",
+    title: "Milestone 6 — Hardening & Performance (Auditoria)",
+    items: [
+      { type: "feature", text: "Rate limiting no login (5 tentativas/15min) e API de chat (20 req/min)" },
+      { type: "improvement", text: "Validação Zod estrita no chat API — substituiu type casts inseguros" },
+      { type: "improvement", text: "maxLength em todos os campos de texto livre (notes, description, etc.)" },
+      { type: "infra", text: "Indexes de banco adicionados em colunas de busca (cnpj, status, clientId, etc.)" },
+      { type: "infra", text: "Constraints onDelete (restrict/set null/cascade) em todas as foreign keys" },
+      { type: "fix", text: "Soft delete corrigido no detalhe financeiro — impedia acesso a faturas deletadas" },
+      { type: "improvement", text: "Queries paralelizadas com Promise.all() nos loaders de detalhe" },
+      { type: "feature", text: "Security headers (X-Frame-Options, X-Content-Type-Options, Referrer-Policy)" },
+      { type: "improvement", text: "Flag Secure nos cookies de tema e idioma em produção" },
+      { type: "improvement", text: "Summary financeiro via SQL aggregation (não carrega todas as faturas)" },
+      { type: "improvement", text: "Lista financeira mostra nome do cliente ao invés de UUID" },
+      { type: "improvement", text: "Busca de clientes no CRM movida para SQL (antes era em JavaScript)" },
+      { type: "feature", text: "Paginação adicionada ao CRM (20 clientes por página)" },
+    ],
+  },
+  {
     version: "0.5.0",
     date: "2026-02-16",
     title: "Milestone 5 — Polish & UX",

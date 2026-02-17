@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp, integer, numeric, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, text, timestamp, integer, numeric, pgEnum, index } from "drizzle-orm/pg-core";
 import { users } from "./auth";
 import { clients } from "./crm";
 
@@ -13,7 +13,7 @@ export const processes = pgTable("processes", {
   reference: varchar("reference", { length: 50 }).notNull().unique(),
   processType: processTypeEnum("process_type").notNull(),
   status: processStatusEnum("status").notNull().default("draft"),
-  clientId: uuid("client_id").notNull().references(() => clients.id),
+  clientId: uuid("client_id").notNull().references(() => clients.id, { onDelete: "restrict" }),
   description: text("description"),
   hsCode: varchar("hs_code", { length: 20 }),
   hsDescription: text("hs_description"),
@@ -37,11 +37,15 @@ export const processes = pgTable("processes", {
   diNumber: varchar("di_number", { length: 50 }),
   diDate: timestamp("di_date", { withTimezone: true }),
   notes: text("notes"),
-  createdBy: uuid("created_by").references(() => users.id),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
-});
+}, (table) => [
+  index("processes_client_id_idx").on(table.clientId),
+  index("processes_status_idx").on(table.status),
+  index("processes_created_by_idx").on(table.createdBy),
+]);
 
 export const processDocuments = pgTable("process_documents", {
   id: uuid("id").defaultRandom().primaryKey(),

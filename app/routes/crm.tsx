@@ -1,13 +1,16 @@
-import { Link, useLoaderData, useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import type { Route } from "./+types/crm";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
 import { clients, contacts } from "../../drizzle/schema";
-import { eq, isNull, like, or, sql } from "drizzle-orm";
+import { eq, isNull, and, or, sql, desc } from "drizzle-orm";
 import { t, type Locale } from "~/i18n";
 import { Button } from "~/components/ui/button";
-import { Plus, Search, Users, MoreHorizontal, Eye, Edit, Building2 } from "lucide-react";
+import { Plus, Search, Users, Eye, Edit, Building2, X } from "lucide-react";
 import { formatCNPJ } from "~/lib/utils";
+import { Pagination } from "~/components/ui/pagination";
+
+const ITEMS_PER_PAGE = 20;
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
@@ -15,6 +18,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const search = url.searchParams.get("q") || "";
   const statusFilter = url.searchParams.get("status") || "all";
+  const page = Math.max(1, parseInt(url.searchParams.get("page") || "1"));
 
   const cookieHeader = request.headers.get("cookie") || "";
   const localeMatch = cookieHeader.match(/locale=([^;]+)/);
@@ -27,8 +31,30 @@ export async function loader({ request }: Route.LoaderArgs) {
     conditions.push(eq(clients.status, statusFilter as "active" | "inactive" | "prospect"));
   }
 
+  // Server-side search (moved from JS to SQL)
+  if (search) {
+    const searchPattern = `%${search}%`;
+    const searchDigits = search.replace(/\D/g, "");
+    const searchConditions = [
+      sql`LOWER(${clients.razaoSocial}) LIKE LOWER(${searchPattern})`,
+      sql`LOWER(COALESCE(${clients.nomeFantasia}, '')) LIKE LOWER(${searchPattern})`,
+    ];
+    if (searchDigits) {
+      searchConditions.push(sql`${clients.cnpj} LIKE ${`%${searchDigits}%`}`);
+    }
+    conditions.push(or(...searchConditions)!);
+  }
+
+  const whereClause = and(...conditions);
+
+  // Count query
+  const [{ count: totalCount }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(clients)
+    .where(whereClause);
+
   // Query clients with contact count
-  let clientList = await db
+  const clientList = await db
     .select({
       id: clients.id,
       cnpj: clients.cnpj,
@@ -48,31 +74,20 @@ export async function loader({ request }: Route.LoaderArgs) {
       )`,
     })
     .from(clients)
-    .where(
-      conditions.length === 1
-        ? conditions[0]
-        : sql`${conditions.map((c) => sql`(${c})`).reduce((a, b) => sql`${a} AND ${b}`)}`
-    )
-    .orderBy(clients.razaoSocial);
+    .where(whereClause)
+    .orderBy(clients.razaoSocial)
+    .limit(ITEMS_PER_PAGE)
+    .offset((page - 1) * ITEMS_PER_PAGE);
 
-  // Filter by search in application layer for simplicity
-  if (search) {
-    const searchLower = search.toLowerCase();
-    clientList = clientList.filter(
-      (c) =>
-        c.razaoSocial.toLowerCase().includes(searchLower) ||
-        (c.nomeFantasia && c.nomeFantasia.toLowerCase().includes(searchLower)) ||
-        c.cnpj.includes(search.replace(/\D/g, ""))
-    );
-  }
-
-  return { clients: clientList, locale, search, statusFilter };
+  return { clients: clientList, locale, search, statusFilter, totalCount, page };
 }
 
 export default function CrmPage({ loaderData }: Route.ComponentProps) {
-  const { clients: clientList, locale, search, statusFilter } = loaderData;
+  const { clients: clientList, locale, search, statusFilter, totalCount, page } = loaderData;
   const i18n = t(locale);
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const hasFilters = search || statusFilter !== "all";
 
   const statusBadge = (status: string) => {
     const styles: Record<string, string> = {
@@ -105,6 +120,15 @@ export default function CrmPage({ loaderData }: Route.ComponentProps) {
     );
   };
 
+  const updateFilter = (key: string, value: string) => {
+    const params = new URLSearchParams(searchParams);
+    if (value && value !== "all") { params.set(key, value); } else { params.delete(key); }
+    params.delete("page");
+    setSearchParams(params);
+  };
+
+  const clearFilters = () => setSearchParams({});
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -114,7 +138,7 @@ export default function CrmPage({ loaderData }: Route.ComponentProps) {
             {i18n.crm.clients}
           </h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {clientList.length} {clientList.length === 1 ? "cliente" : "clientes"}
+            {totalCount} {totalCount === 1 ? "cliente" : "clientes"}
           </p>
         </div>
         <Link to="/crm/new">
@@ -126,36 +150,20 @@ export default function CrmPage({ loaderData }: Route.ComponentProps) {
       </div>
 
       {/* Search and filters */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative min-w-[200px] max-w-sm flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
             placeholder={i18n.common.search}
             defaultValue={search}
-            onChange={(e) => {
-              const params = new URLSearchParams(searchParams);
-              if (e.target.value) {
-                params.set("q", e.target.value);
-              } else {
-                params.delete("q");
-              }
-              setSearchParams(params);
-            }}
+            onChange={(e) => updateFilter("q", e.target.value)}
             className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
           />
         </div>
         <select
           value={statusFilter}
-          onChange={(e) => {
-            const params = new URLSearchParams(searchParams);
-            if (e.target.value === "all") {
-              params.delete("status");
-            } else {
-              params.set("status", e.target.value);
-            }
-            setSearchParams(params);
-          }}
+          onChange={(e) => updateFilter("status", e.target.value)}
           className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
         >
           <option value="all">{i18n.common.all}</option>
@@ -163,6 +171,15 @@ export default function CrmPage({ loaderData }: Route.ComponentProps) {
           <option value="inactive">{i18n.common.inactive}</option>
           <option value="prospect">{i18n.crm.prospect}</option>
         </select>
+        {hasFilters && (
+          <button
+            onClick={clearFilters}
+            className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+          >
+            <X className="h-3.5 w-3.5" />
+            Limpar
+          </button>
+        )}
       </div>
 
       {/* Table */}
@@ -173,14 +190,20 @@ export default function CrmPage({ loaderData }: Route.ComponentProps) {
             {i18n.common.noResults}
           </p>
           <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">
-            Cadastre seu primeiro cliente para comecar.
+            {hasFilters ? "Nenhum cliente encontrado com esses filtros." : "Cadastre seu primeiro cliente para comecar."}
           </p>
-          <Link to="/crm/new">
-            <Button>
-              <Plus className="h-4 w-4" />
-              {i18n.crm.newClient}
-            </Button>
-          </Link>
+          {hasFilters ? (
+            <button onClick={clearFilters} className="text-sm text-blue-600 hover:underline dark:text-blue-400">
+              Limpar filtros
+            </button>
+          ) : (
+            <Link to="/crm/new">
+              <Button>
+                <Plus className="h-4 w-4" />
+                {i18n.crm.newClient}
+              </Button>
+            </Link>
+          )}
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
@@ -267,6 +290,7 @@ export default function CrmPage({ loaderData }: Route.ComponentProps) {
               </tbody>
             </table>
           </div>
+          <Pagination totalItems={totalCount} itemsPerPage={ITEMS_PER_PAGE} currentPage={page} />
         </div>
       )}
     </div>

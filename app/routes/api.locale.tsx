@@ -3,17 +3,18 @@ import type { Route } from "./+types/api.locale";
 
 export async function action({ request }: Route.ActionArgs) {
   const formData = await request.formData();
-  const locale = formData.get("locale") as string;
+  const locale = String(formData.get("locale") ?? "");
 
-  if (!locale || !["pt-BR", "en"].includes(locale)) {
+  if (!["pt-BR", "en"].includes(locale)) {
     return data({ error: "Invalid locale" }, { status: 400 });
   }
 
+  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
   return data(
     { ok: true },
     {
       headers: {
-        "Set-Cookie": `locale=${locale}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 365}`,
+        "Set-Cookie": `locale=${locale}; Path=/; HttpOnly; SameSite=Lax${secure}; Max-Age=${60 * 60 * 24 * 365}`,
       },
     }
   );

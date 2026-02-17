@@ -3,6 +3,8 @@ import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
 import { chatConversations, chatMessages } from "drizzle/schema";
 import { eq, desc } from "drizzle-orm";
+import { checkRateLimit, RATE_LIMITS } from "~/lib/rate-limit.server";
+import { chatMessageSchema } from "~/lib/validators";
 
 const MOCK_REPLIES: Record<string, string> = {
   airton: "Olá! Sou o AIrton, maestro da LHFEX. 🎯 No momento estou em modo de configuração. Em breve estarei totalmente disponível para orquestrar suas operações de comércio exterior. Fique tranquilo que sua equipe está trabalhando nisso!",
@@ -14,16 +16,18 @@ const MOCK_REPLIES: Record<string, string> = {
 export async function action({ request }: Route.ActionArgs) {
   const { user } = await requireAuth(request);
 
-  const body = await request.json();
-  const { message, agentId, conversationId } = body as {
-    message: string;
-    agentId: string;
-    conversationId?: string;
-  };
-
-  if (!message?.trim() || !agentId) {
-    return Response.json({ error: "Missing message or agentId" }, { status: 400 });
+  // Rate limiting — 20 messages per minute per user
+  const rateCheck = checkRateLimit(`chat:${user.id}`, RATE_LIMITS.chatApi.maxAttempts, RATE_LIMITS.chatApi.windowMs);
+  if (!rateCheck.allowed) {
+    return Response.json({ error: "Rate limit exceeded. Try again later." }, { status: 429 });
   }
+
+  const body = await request.json();
+  const parsed = chatMessageSchema.safeParse(body);
+  if (!parsed.success) {
+    return Response.json({ error: "Invalid input", details: parsed.error.flatten() }, { status: 400 });
+  }
+  const { message, agentId, conversationId } = parsed.data;
 
   // Get or create conversation
   let convId = conversationId;

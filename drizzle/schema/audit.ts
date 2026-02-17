@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, text, timestamp, jsonb, index } from "drizzle-orm/pg-core";
 import { users } from "./auth";
 
 export const auditLogs = pgTable("audit_logs", {
@@ -11,4 +11,7 @@ export const auditLogs = pgTable("audit_logs", {
   ipAddress: varchar("ip_address", { length: 45 }),
   userAgent: text("user_agent"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [
+  index("audit_logs_user_id_idx").on(table.userId),
+  index("audit_logs_created_at_idx").on(table.createdAt),
+]);

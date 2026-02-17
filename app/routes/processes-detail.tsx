@@ -7,7 +7,7 @@ import { t, type Locale } from "~/i18n";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { ArrowLeft, Edit, Clock, FileText, Ship, DollarSign, Upload, Download, Trash2, File, Image, FileSpreadsheet } from "lucide-react";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, isNull } from "drizzle-orm";
 import { uploadFile } from "~/lib/storage.server";
 import { logAudit } from "~/lib/audit.server";
 import { redirect, data } from "react-router";
@@ -23,12 +23,16 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const localeMatch = cookieHeader.match(/locale=([^;]+)/);
   const locale = (localeMatch ? localeMatch[1] : user.locale) as Locale;
 
-  const [process] = await db.select().from(processes).where(eq(processes.id, params.id)).limit(1);
-  if (!process || process.deletedAt) throw new Response("Not found", { status: 404 });
+  const [process] = await db.select().from(processes)
+    .where(and(eq(processes.id, params.id), isNull(processes.deletedAt)))
+    .limit(1);
+  if (!process) throw new Response("Not found", { status: 404 });
 
-  const [client] = await db.select().from(clients).where(eq(clients.id, process.clientId)).limit(1);
-  const timeline = await db.select().from(processTimeline).where(eq(processTimeline.processId, params.id)).orderBy(desc(processTimeline.createdAt));
-  const docs = await db.select().from(processDocuments).where(eq(processDocuments.processId, params.id)).orderBy(desc(processDocuments.createdAt));
+  const [[client], timeline, docs] = await Promise.all([
+    db.select().from(clients).where(eq(clients.id, process.clientId)).limit(1),
+    db.select().from(processTimeline).where(eq(processTimeline.processId, params.id)).orderBy(desc(processTimeline.createdAt)),
+    db.select().from(processDocuments).where(eq(processDocuments.processId, params.id)).orderBy(desc(processDocuments.createdAt)),
+  ]);
 
   return { locale, process, client, timeline, documents: docs, userId: user.id };
 }

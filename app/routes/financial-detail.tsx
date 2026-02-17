@@ -3,7 +3,7 @@ import type { Route } from "./+types/financial-detail";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
 import { invoices, clients, invoiceItems } from "drizzle/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { t, type Locale } from "~/i18n";
 import { ArrowLeft, FileText, DollarSign } from "lucide-react";
 import { Button } from "~/components/ui/button";
@@ -17,7 +17,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const invoiceResult = await db
     .select()
     .from(invoices)
-    .where(eq(invoices.id, params.id))
+    .where(and(eq(invoices.id, params.id), isNull(invoices.deletedAt)))
     .limit(1);
 
   if (invoiceResult.length === 0) {
@@ -26,16 +26,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
   const invoice = invoiceResult[0];
 
-  const clientResult = await db
-    .select({ razaoSocial: clients.razaoSocial })
-    .from(clients)
-    .where(eq(clients.id, invoice.clientId))
-    .limit(1);
-
-  const items = await db
-    .select()
-    .from(invoiceItems)
-    .where(eq(invoiceItems.invoiceId, invoice.id));
+  const [clientResult, items] = await Promise.all([
+    db.select({ razaoSocial: clients.razaoSocial }).from(clients).where(eq(clients.id, invoice.clientId)).limit(1),
+    db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, invoice.id)),
+  ]);
 
   return {
     invoice,

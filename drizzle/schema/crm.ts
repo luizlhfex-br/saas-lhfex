@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp, boolean, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, text, timestamp, boolean, pgEnum, index } from "drizzle-orm/pg-core";
 import { users } from "./auth";
 
 export const clientTypeEnum = pgEnum("client_type", ["importer", "exporter", "both"]);
@@ -22,11 +22,14 @@ export const clients = pgTable("clients", {
   preferredCurrency: varchar("preferred_currency", { length: 3 }).default("USD"),
   preferredIncoterm: varchar("preferred_incoterm", { length: 10 }),
   notes: text("notes"),
-  createdBy: uuid("created_by").references(() => users.id),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
-});
+}, (table) => [
+  index("clients_cnpj_idx").on(table.cnpj),
+  index("clients_status_idx").on(table.status),
+]);
 
 export const contacts = pgTable("contacts", {
   id: uuid("id").defaultRandom().primaryKey(),

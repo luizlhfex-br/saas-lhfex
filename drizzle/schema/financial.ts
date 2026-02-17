@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp, numeric, date, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, text, timestamp, numeric, date, pgEnum, index } from "drizzle-orm/pg-core";
 import { users } from "./auth";
 import { clients } from "./crm";
 import { processes } from "./processes";
@@ -9,8 +9,8 @@ export const transactionTypeEnum = pgEnum("transaction_type", ["receivable", "pa
 export const invoices = pgTable("invoices", {
   id: uuid("id").defaultRandom().primaryKey(),
   number: varchar("number", { length: 50 }).notNull().unique(),
-  clientId: uuid("client_id").notNull().references(() => clients.id),
-  processId: uuid("process_id").references(() => processes.id),
+  clientId: uuid("client_id").notNull().references(() => clients.id, { onDelete: "restrict" }),
+  processId: uuid("process_id").references(() => processes.id, { onDelete: "set null" }),
   type: transactionTypeEnum("type").notNull().default("receivable"),
   status: invoiceStatusEnum("status").notNull().default("draft"),
   currency: varchar("currency", { length: 3 }).default("BRL"),
@@ -23,11 +23,15 @@ export const invoices = pgTable("invoices", {
   paidAmount: numeric("paid_amount", { precision: 15, scale: 2 }),
   description: text("description"),
   notes: text("notes"),
-  createdBy: uuid("created_by").references(() => users.id),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
-});
+}, (table) => [
+  index("invoices_client_id_idx").on(table.clientId),
+  index("invoices_process_id_idx").on(table.processId),
+  index("invoices_status_idx").on(table.status),
+]);
 
 export const invoiceItems = pgTable("invoice_items", {
   id: uuid("id").defaultRandom().primaryKey(),

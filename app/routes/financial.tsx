@@ -2,7 +2,7 @@ import { Link, useSearchParams } from "react-router";
 import type { Route } from "./+types/financial";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
-import { invoices } from "drizzle/schema";
+import { invoices, clients } from "drizzle/schema";
 import { eq, isNull, sql, desc, and, like } from "drizzle-orm";
 import { t, type Locale } from "~/i18n";
 import { Plus, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Search, X } from "lucide-react";
@@ -23,18 +23,19 @@ export async function loader({ request }: Route.LoaderArgs) {
   const statusFilter = url.searchParams.get("status") || "";
   const typeFilter = url.searchParams.get("type") || "";
 
-  // Summary (always unfiltered)
-  const allInvoices = await db.select().from(invoices).where(isNull(invoices.deletedAt));
+  // Summary via SQL aggregation (not loading all rows into memory)
+  const [summary] = await db
+    .select({
+      totalReceivable: sql<number>`COALESCE(SUM(CASE WHEN type = 'receivable' AND status NOT IN ('cancelled', 'paid') THEN total::numeric ELSE 0 END), 0)`,
+      totalPayable: sql<number>`COALESCE(SUM(CASE WHEN type = 'payable' AND status NOT IN ('cancelled', 'paid') THEN total::numeric ELSE 0 END), 0)`,
+      overdueCount: sql<number>`COALESCE(SUM(CASE WHEN status = 'overdue' THEN 1 ELSE 0 END)::int, 0)`,
+    })
+    .from(invoices)
+    .where(isNull(invoices.deletedAt));
 
-  const totalReceivable = allInvoices
-    .filter((i) => i.type === "receivable" && i.status !== "cancelled" && i.status !== "paid")
-    .reduce((sum, i) => sum + parseFloat(i.total), 0);
-
-  const totalPayable = allInvoices
-    .filter((i) => i.type === "payable" && i.status !== "cancelled" && i.status !== "paid")
-    .reduce((sum, i) => sum + parseFloat(i.total), 0);
-
-  const overdueCount = allInvoices.filter((i) => i.status === "overdue").length;
+  const totalReceivable = Number(summary.totalReceivable);
+  const totalPayable = Number(summary.totalPayable);
+  const overdueCount = Number(summary.overdueCount);
 
   // Filtered list
   const conditions = [isNull(invoices.deletedAt)];
@@ -50,8 +51,20 @@ export async function loader({ request }: Route.LoaderArgs) {
     .where(whereClause);
 
   const invoiceList = await db
-    .select()
+    .select({
+      id: invoices.id,
+      number: invoices.number,
+      clientId: invoices.clientId,
+      clientName: clients.razaoSocial,
+      type: invoices.type,
+      status: invoices.status,
+      currency: invoices.currency,
+      total: invoices.total,
+      dueDate: invoices.dueDate,
+      createdAt: invoices.createdAt,
+    })
     .from(invoices)
+    .leftJoin(clients, eq(invoices.clientId, clients.id))
     .where(whereClause)
     .orderBy(desc(invoices.createdAt))
     .limit(ITEMS_PER_PAGE)
@@ -219,7 +232,7 @@ export default function FinancialPage({ loaderData }: Route.ComponentProps) {
                       <td className="whitespace-nowrap px-4 py-3">
                         <Link to={`/financial/${inv.id}`} className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400">{inv.number}</Link>
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{inv.clientId.slice(0, 8)}...</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{inv.clientName || "—"}</td>
                       <td className="whitespace-nowrap px-4 py-3">
                         <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${inv.type === "receivable" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"}`}>
                           {typeLabel[inv.type] || inv.type}
