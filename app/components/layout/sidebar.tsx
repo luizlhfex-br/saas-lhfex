@@ -56,7 +56,7 @@ export function Sidebar({ user, locale, currentPath }: SidebarProps) {
   const i18n = t(locale);
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 lg:flex">
+    <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-gray-800 bg-gray-950 dark:border-gray-800 dark:bg-gray-950 lg:flex">
       {/* Logo */}
       <div className="flex h-16 items-center px-4">
         <img
@@ -76,12 +76,12 @@ export function Sidebar({ user, locale, currentPath }: SidebarProps) {
             return (
               <div
                 key={item.to}
-                className="group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-400 dark:text-gray-600"
+                className="group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-600"
                 title="Em breve"
               >
                 <Icon className="h-5 w-5" />
                 <span>{label}</span>
-                <span className="ml-auto rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-400 dark:bg-gray-800 dark:text-gray-600">
+                <span className="ml-auto rounded-full bg-gray-900 px-2 py-0.5 text-xs text-gray-600">
                   Em breve
                 </span>
               </div>
@@ -96,8 +96,8 @@ export function Sidebar({ user, locale, currentPath }: SidebarProps) {
                 cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                   isActive
-                    ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400"
-                    : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
+                    ? "bg-violet-600 text-white dark:bg-violet-600 dark:text-white"
+                    : "text-gray-400 hover:text-white dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-900"
                 )
               }
             >
@@ -109,17 +109,17 @@ export function Sidebar({ user, locale, currentPath }: SidebarProps) {
       </nav>
 
       {/* Bottom section */}
-      <div className="border-t border-gray-200 px-3 py-4 dark:border-gray-800">
+      <div className="border-t border-gray-800 px-3 py-4">
         {/* User info */}
         <div className="mb-3 flex items-center gap-3 px-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-sm font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-violet-600 text-sm font-medium text-white">
             {user.name.charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+            <p className="truncate text-sm font-medium text-gray-100">
               {user.name}
             </p>
-            <p className="truncate text-xs text-gray-500 dark:text-gray-400">
+            <p className="truncate text-xs text-gray-500">
               {user.email}
             </p>
           </div>
@@ -132,8 +132,8 @@ export function Sidebar({ user, locale, currentPath }: SidebarProps) {
             cn(
               "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
               isActive
-                ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400"
-                : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
+                ? "bg-violet-600 text-white dark:bg-violet-600 dark:text-white"
+                : "text-gray-400 hover:text-white dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-900"
             )
           }
         >
@@ -145,7 +145,7 @@ export function Sidebar({ user, locale, currentPath }: SidebarProps) {
         <Form method="post" action="/logout">
           <button
             type="submit"
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-400 transition-colors hover:text-white dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-900"
           >
             <LogOut className="h-5 w-5" />
             <span>{i18n.auth.logout}</span>

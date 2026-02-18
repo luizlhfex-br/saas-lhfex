@@ -3,6 +3,15 @@
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-mono: "Monaco", "Courier New", monospace;
+
+  /* Linear/Vercel Dark Palette */
+  --color-primary: #8b5cf6; /* Violeta */
+  --color-primary-dark: #7c3aed;
+  --color-primary-light: #a78bfa;
+
+  --color-sidebar-bg: #0f172a; /* Darker sidebar */
+  --color-sidebar-hover: #1e293b;
 }
 
 html,
@@ -12,4 +21,14 @@ body {
   @media (prefers-color-scheme: dark) {
     color-scheme: dark;
   }
+}
+
+/* Violeta como cor primária */
+:is(.dark) {
+  --color-blue-600: #8b5cf6;
+  --color-blue-700: #7c3aed;
+  --color-blue-50: #f5f3ff;
+  --color-blue-100: #ede9fe;
+  --color-blue-900: #4c1d95;
+  --color-blue-900-20: rgb(77 29 149 / 0.2);
 }

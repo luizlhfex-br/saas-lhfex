@@ -114,7 +114,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
         <div className="flex items-center justify-center gap-3">
           <Link
             to="/"
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+            className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-violet-700"
           >
             Voltar ao início
           </Link>
