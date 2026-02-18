@@ -6,7 +6,7 @@ import { processes, processTimeline, auditLogs, clients } from "../../drizzle/sc
 import { processSchema } from "~/lib/validators";
 import { t, type Locale } from "~/i18n";
 import { Button } from "~/components/ui/button";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, ShieldCheck } from "lucide-react";
 import { data } from "react-router";
 import { isNull, eq, sql } from "drizzle-orm";
 
@@ -45,6 +45,7 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   const values = result.data;
+  const requiresApproval = formData.get("requiresApproval") === "true";
   const year = new Date().getFullYear();
   const prefix = values.processType === "import" ? "IMP" : values.processType === "export" ? "EXP" : "SRV";
 
@@ -54,10 +55,13 @@ export async function action({ request }: Route.ActionArgs) {
   const count = Number(countResult[0]?.cnt || 0) + 1;
   const reference = `${prefix}-${year}-${String(count).padStart(4, "0")}`;
 
+  const initialStatus = requiresApproval ? "pending_approval" : "draft";
+
   const [newProcess] = await db.insert(processes).values({
     reference,
     processType: values.processType,
-    status: "draft",
+    status: initialStatus,
+    requiresApproval,
     clientId: values.clientId,
     description: values.description || null,
     hsCode: values.hsCode || null,
@@ -85,8 +89,8 @@ export async function action({ request }: Route.ActionArgs) {
 
   await db.insert(processTimeline).values({
     processId: newProcess.id,
-    status: "draft",
-    title: "Processo criado",
+    status: initialStatus,
+    title: requiresApproval ? "Processo criado — aguardando aprovação" : "Processo criado",
     description: `Referência: ${reference}`,
     createdBy: user.id,
   });
@@ -127,7 +131,7 @@ export default function ProcessesNewPage({ loaderData }: Route.ComponentProps) {
               <select name="processType" defaultValue={fields.processType || "import"} className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
                 <option value="import">{i18n.processes.import}</option>
                 <option value="export">{i18n.processes.export}</option>
-                <option value="services">Outros Serviços</option>
+                <option value="services">{i18n.processes.services}</option>
               </select>
             </div>
             <div>
@@ -185,6 +189,27 @@ export default function ProcessesNewPage({ loaderData }: Route.ComponentProps) {
             </div>
           </div>
           <p className="mt-1 text-xs text-gray-400">Cole o link da pasta do Google Drive onde os documentos do processo estão salvos</p>
+        </Section>
+
+        <Section title="Aprovação">
+          <label className="flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              name="requiresApproval"
+              value="true"
+              defaultChecked={fields.requiresApproval === "true"}
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <div>
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-amber-500" />
+                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Requer aprovação antes de iniciar</span>
+              </div>
+              <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                O processo ficará em "Aguardando Aprovação" até ser aprovado manualmente.
+              </p>
+            </div>
+          </label>
         </Section>
 
         <Section title="Observações">

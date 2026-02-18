@@ -109,6 +109,7 @@ export const en: Translations = {
     type: "Type",
     import: "Import",
     export: "Export",
+    services: "Consulting / Services",
     draft: "Draft",
     inProgress: "In Progress",
     awaitingDocs: "Awaiting Docs",

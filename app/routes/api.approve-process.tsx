@@ -2,7 +2,7 @@ import { data } from "react-router";
 import type { Route } from "./+types/api.approve-process";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
-import { processes, processTimeline } from "drizzle/schema";
+import { processes, processTimeline } from "../../drizzle/schema";
 import { logAudit } from "~/lib/audit.server";
 import { eq } from "drizzle-orm";
 

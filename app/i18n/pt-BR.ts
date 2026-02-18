@@ -107,6 +107,7 @@ export const ptBR = {
     type: "Tipo",
     import: "Importação",
     export: "Exportação",
+    services: "Consultoria / Serviços",
     draft: "Rascunho",
     inProgress: "Em Andamento",
     awaitingDocs: "Aguardando Docs",

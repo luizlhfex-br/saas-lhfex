@@ -1,4 +1,4 @@
-import { Link, Form, useNavigation } from "react-router";
+import { Link, Form, useNavigation, useFetcher } from "react-router";
 import type { Route } from "./+types/processes-detail";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
@@ -6,15 +6,18 @@ import { processes, clients, processTimeline, processDocuments } from "../../dri
 import { t, type Locale } from "~/i18n";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { ArrowLeft, Edit, Clock, FileText, Ship, DollarSign, Upload, Download, Trash2, File, Image, FileSpreadsheet } from "lucide-react";
+import { ArrowLeft, Edit, Clock, FileText, Ship, DollarSign, Upload, Download, Trash2, File, Image, FileSpreadsheet, Sparkles, CheckCircle, XCircle, ShieldAlert, LoaderCircle } from "lucide-react";
 import { eq, desc, and, isNull } from "drizzle-orm";
 import { uploadFile } from "~/lib/storage.server";
 import { logAudit } from "~/lib/audit.server";
 import { redirect, data } from "react-router";
+import { toast } from "sonner";
+import { useState, useRef } from "react";
 
 const statusColors: Record<string, "default" | "info" | "warning" | "success" | "danger"> = {
   draft: "default", in_progress: "info", awaiting_docs: "warning", customs_clearance: "warning",
   in_transit: "info", delivered: "success", completed: "success", cancelled: "danger",
+  pending_approval: "warning",
 };
 
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -118,13 +121,48 @@ export default function ProcessesDetailPage({ loaderData, actionData }: Route.Co
   const navigation = useNavigation();
   const isUploading = navigation.state === "submitting" && navigation.formData?.get("intent") === "upload";
   const error = (actionData as { error?: string })?.error;
+  const approvalFetcher = useFetcher();
+  const ocrFetcher = useFetcher<{ fields?: Record<string, string>; preview?: string; error?: string }>();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  const isApproving = approvalFetcher.state === "submitting";
+  const isExtracting = ocrFetcher.state === "submitting";
+
+  // Show OCR result as toast when done
+  const ocrData = ocrFetcher.data;
+  if (ocrData?.fields && Object.keys(ocrData.fields).length > 0) {
+    const fieldNames = Object.keys(ocrData.fields).join(", ");
+    toast.success(`IA extraiu: ${fieldNames}`);
+  }
+  if (ocrData?.error) {
+    toast.error(`Erro OCR: ${ocrData.error}`);
+  }
+
+  const handleOCR = () => {
+    if (!selectedFile) return;
+    const fd = new FormData();
+    fd.append("file", selectedFile);
+    ocrFetcher.submit(fd, { method: "post", action: "/api/ocr-extract", encType: "multipart/form-data" });
+  };
 
   const statusLabels: Record<string, string> = {
     draft: i18n.processes.draft, in_progress: i18n.processes.inProgress,
     awaiting_docs: i18n.processes.awaitingDocs, customs_clearance: i18n.processes.customsClearance,
     in_transit: i18n.processes.inTransit, delivered: i18n.processes.delivered,
     completed: i18n.processes.completed, cancelled: i18n.processes.cancelled,
+    pending_approval: "Aguardando Aprovação",
   };
+
+  const processTypeLabel =
+    proc.processType === "import" ? i18n.processes.import
+    : proc.processType === "export" ? i18n.processes.export
+    : i18n.processes.services;
+
+  const processTypeBadgeVariant =
+    proc.processType === "import" ? "info"
+    : proc.processType === "export" ? "success"
+    : ("default" as const);
 
   const docTypeLabels: Record<string, string> = {
     invoice: i18n.documents.invoice,
@@ -146,9 +184,7 @@ export default function ProcessesDetailPage({ loaderData, actionData }: Route.Co
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{proc.reference}</h1>
               <Badge variant={statusColors[proc.status]}>{statusLabels[proc.status]}</Badge>
-              <Badge variant={proc.processType === "import" ? "info" : "success"}>
-                {proc.processType === "import" ? i18n.processes.import : i18n.processes.export}
-              </Badge>
+              <Badge variant={processTypeBadgeVariant}>{processTypeLabel}</Badge>
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400">{client?.razaoSocial}</p>
           </div>
@@ -157,6 +193,47 @@ export default function ProcessesDetailPage({ loaderData, actionData }: Route.Co
           <Button variant="outline"><Edit className="h-4 w-4" />{i18n.common.edit}</Button>
         </Link>
       </div>
+
+      {/* Banner de Aprovação */}
+      {proc.status === "pending_approval" && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800/50 dark:bg-amber-900/20">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <ShieldAlert className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+              <div>
+                <p className="font-medium text-amber-900 dark:text-amber-200">Processo aguardando aprovação</p>
+                <p className="text-sm text-amber-700 dark:text-amber-400">Aprove ou rejeite para que o processo prossiga.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <approvalFetcher.Form method="post" action="/api/approve-process">
+                <input type="hidden" name="processId" value={proc.id} />
+                <input type="hidden" name="action" value="approve" />
+                <button
+                  type="submit"
+                  disabled={isApproving}
+                  className="flex items-center gap-1.5 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-60"
+                >
+                  {isApproving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                  Aprovar
+                </button>
+              </approvalFetcher.Form>
+              <approvalFetcher.Form method="post" action="/api/approve-process">
+                <input type="hidden" name="processId" value={proc.id} />
+                <input type="hidden" name="action" value="reject" />
+                <button
+                  type="submit"
+                  disabled={isApproving}
+                  className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-60 dark:border-red-800 dark:bg-transparent dark:text-red-400"
+                >
+                  {isApproving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+                  Rejeitar
+                </button>
+              </approvalFetcher.Form>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* General Info */}
@@ -230,9 +307,15 @@ export default function ProcessesDetailPage({ loaderData, actionData }: Route.Co
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="flex-1">
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{i18n.documents.upload}</label>
-              <input type="file" name="file" required
+              <input
+                ref={fileInputRef}
+                type="file"
+                name="file"
+                required
                 accept=".pdf,.jpg,.jpeg,.png,.webp,.xlsx,.xls,.docx,.doc,.csv"
-                className="block w-full text-sm text-gray-500 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-blue-700 hover:file:bg-blue-100 dark:text-gray-400 dark:file:bg-blue-900/30 dark:file:text-blue-400" />
+                onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
+                className="block w-full text-sm text-gray-500 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-blue-700 hover:file:bg-blue-100 dark:text-gray-400 dark:file:bg-blue-900/30 dark:file:text-blue-400"
+              />
               <p className="mt-1 text-xs text-gray-400">{i18n.documents.maxSize} • {i18n.documents.allowedTypes}</p>
             </div>
             <div>
@@ -246,6 +329,17 @@ export default function ProcessesDetailPage({ loaderData, actionData }: Route.Co
                 <option value="other">{i18n.documents.other}</option>
               </select>
             </div>
+            {/* Botão OCR — só habilitado para PDF */}
+            <button
+              type="button"
+              onClick={handleOCR}
+              disabled={!selectedFile || !selectedFile.name.endsWith(".pdf") || isExtracting}
+              title={selectedFile?.name.endsWith(".pdf") ? "Extrair dados do PDF com IA" : "Selecione um arquivo PDF para extrair"}
+              className="flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-4 py-2 text-sm font-medium text-purple-700 transition-colors hover:bg-purple-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-purple-800 dark:bg-purple-900/20 dark:text-purple-400"
+            >
+              {isExtracting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              {isExtracting ? "Extraindo..." : "Extrair com IA"}
+            </button>
             <Button type="submit" disabled={isUploading}>
               <Upload className="h-4 w-4" />
               {isUploading ? i18n.documents.uploading : i18n.documents.upload}

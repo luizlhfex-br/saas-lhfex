@@ -21,6 +21,7 @@ import {
   MapPin,
   User,
   Star,
+  Plus,
 } from "lucide-react";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -259,9 +260,18 @@ export default function CrmDetailPage({ loaderData }: Route.ComponentProps) {
                 <User className="h-5 w-5 text-gray-400" />
                 {i18n.crm.contacts}
               </h2>
-              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-                {clientContacts.length}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                  {clientContacts.length}
+                </span>
+                <Link
+                  to={`/crm/${client.id}/contacts/new`}
+                  className="flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  {i18n.crm.newContact}
+                </Link>
+              </div>
             </div>
 
             {clientContacts.length === 0 ? (
