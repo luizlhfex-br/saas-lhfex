@@ -357,10 +357,10 @@ export default function DashboardPage({ loaderData }: Route.ComponentProps) {
                 </span>
                 <ExternalLink className="h-4 w-4 text-gray-400" />
               </a>
-              <a href="https://n8n.lhfex.com.br" target="_blank" rel="noopener noreferrer"
+              <a href="https://app.lhfex.com.br" target="_blank" rel="noopener noreferrer"
                 className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2.5 text-sm transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800">
                 <span className="flex items-center gap-2 font-medium text-gray-700 dark:text-gray-300">
-                  <span className="text-lg">⚙️</span> N8N Workflows
+                  <span className="text-lg">⚙️</span> Coolify (Deploy)
                 </span>
                 <ExternalLink className="h-4 w-4 text-gray-400" />
               </a>

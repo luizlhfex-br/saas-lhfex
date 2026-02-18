@@ -44,7 +44,7 @@ const agents = [
     name: "IAgo",
     emoji: "🔧",
     role: "Engenheiro de Infra",
-    description: "Monitoramento de servidores, automação de workflows N8N, integrações e manutenção do sistema.",
+    description: "Monitoramento de servidores, automações backend, integrações e manutenção do sistema.",
     color: "from-purple-500 to-violet-500",
     bg: "bg-purple-50 dark:bg-purple-900/20",
     border: "border-purple-200 dark:border-purple-800",
@@ -251,7 +251,7 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
                 {activeAgent === "iago" && (
                   <>
                     <SuggestionChip text="Status dos servidores" onClick={(t) => setInput(t)} />
-                    <SuggestionChip text="Verificar workflows do N8N" onClick={(t) => setInput(t)} />
+                    <SuggestionChip text="Status das automações backend" onClick={(t) => setInput(t)} />
                   </>
                 )}
               </div>
