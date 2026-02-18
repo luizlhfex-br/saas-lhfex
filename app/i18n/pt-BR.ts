@@ -48,6 +48,7 @@ export const ptBR = {
     personal: "Pessoal",
     system: "Sistema",
     audit: "Auditoria",
+    aiUsage: "Uso de IA",
   },
   dashboard: {
     greeting: (name: string) => `Bom dia, ${name}`,

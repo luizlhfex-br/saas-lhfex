@@ -28,6 +28,7 @@ export default [
     route("automations", "routes/automations.tsx"),
     route("crm/pipeline", "routes/crm-pipeline.tsx"),
     route("audit", "routes/audit.tsx"),
+    route("ai-usage", "routes/ai-usage.tsx"),
   ]),
 
   // API routes

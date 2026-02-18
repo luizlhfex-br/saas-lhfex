@@ -13,6 +13,7 @@ import {
   Kanban,
   Shield,
   BarChart3,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { t, type Locale } from "~/i18n";
@@ -50,6 +51,7 @@ const mainNavItems: NavItem[] = [
   { labelKey: "automations", icon: Zap, to: "/automations" },
   { labelKey: "agents", icon: Bot, to: "/agents" },
   { labelKey: "audit", icon: Shield, to: "/audit" },
+  { labelKey: "aiUsage", icon: Sparkles, to: "/ai-usage" },
 ];
 
 export function Sidebar({ user, locale, currentPath }: SidebarProps) {

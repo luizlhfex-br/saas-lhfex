@@ -50,6 +50,7 @@ export const en: Translations = {
     personal: "Personal",
     system: "System",
     audit: "Audit Logs",
+    aiUsage: "AI Usage",
   },
   dashboard: {
     greeting: (name: string) => `Good morning, ${name}`,
