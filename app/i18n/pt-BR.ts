@@ -34,6 +34,7 @@ export const ptBR = {
     crm: "CRM",
     processes: "Processos",
     financial: "Financeiro",
+    financialReport: "Relatório",
     calculator: "Calculadora",
     ncm: "Classificação Fiscal",
     description: "Descrição Blindada",
@@ -46,6 +47,7 @@ export const ptBR = {
     settings: "Configurações",
     personal: "Pessoal",
     system: "Sistema",
+    audit: "Auditoria",
   },
   dashboard: {
     greeting: (name: string) => `Bom dia, ${name}`,

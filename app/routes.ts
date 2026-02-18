@@ -20,10 +20,13 @@ export default [
     route("financial", "routes/financial.tsx"),
     route("financial/new", "routes/financial-new.tsx"),
     route("financial/:id", "routes/financial-detail.tsx"),
+    route("financial/report", "routes/financial-report.tsx"),
+    route("financial/receipt", "routes/financial-receipt.tsx"),
     route("settings", "routes/settings.tsx"),
     route("agents", "routes/agents.tsx"),
     route("automations", "routes/automations.tsx"),
     route("crm/pipeline", "routes/crm-pipeline.tsx"),
+    route("audit", "routes/audit.tsx"),
   ]),
 
   // API routes
@@ -38,6 +41,8 @@ export default [
   route("api/health", "routes/api.health.tsx"),
   route("api/notifications", "routes/api.notifications.tsx"),
   route("api/telegram-webhook", "routes/api.telegram-webhook.tsx"),
+  route("api/ocr-extract", "routes/api.ocr-extract.tsx"),
+  route("api/approve-process", "routes/api.approve-process.tsx"),
 
   // Catch-all 404
   route("*", "routes/$.tsx"),

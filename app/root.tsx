@@ -6,10 +6,18 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useRouteLoaderData,
 } from "react-router";
 import { Toaster } from "sonner";
 import type { Route } from "./+types/root";
 import "./app.css";
+
+export async function loader({ request }: Route.LoaderArgs) {
+  const cookieHeader = request.headers.get("cookie") || "";
+  const themeMatch = cookieHeader.match(/theme=([^;]+)/);
+  const theme = themeMatch ? themeMatch[1] : "dark";
+  return { theme };
+}
 
 export const meta: Route.MetaFunction = () => [
   { title: "LHFEX — Comércio Exterior" },
@@ -33,8 +41,13 @@ export const links: Route.LinksFunction = () => [
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  // Read theme from root loader to apply to <html> element
+  // This allows Tailwind dark: variants to work globally
+  const rootData = useRouteLoaderData<typeof loader>("root");
+  const theme = rootData?.theme ?? "dark";
+
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" className={theme === "dark" ? "dark" : ""}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />

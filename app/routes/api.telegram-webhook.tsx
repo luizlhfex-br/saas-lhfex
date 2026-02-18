@@ -1,17 +1,16 @@
 /**
- * Telegram Bot Webhook — Receives messages from Telegram and responds via AI agents
+ * Telegram Bot Webhook — AI agents with admin/restricted access control
  *
- * Setup:
- * 1. Create bot via @BotFather on Telegram → get TELEGRAM_BOT_TOKEN
- * 2. Set webhook: curl "https://api.telegram.org/bot{TOKEN}/setWebhook?url=https://saas.lhfex.com.br/api/telegram-webhook"
- * 3. Add TELEGRAM_BOT_TOKEN to .env
+ * Admin users (TELEGRAM_ADMIN_USERS): full access to everything including financial data
+ * Regular users (TELEGRAM_ALLOWED_USERS): restricted access — no financial values, no sensitive details
+ * Unauthorized users: denied
  *
  * Commands:
+ * /start — Welcome + available agents
  * /airton — Talk to AIrton (Maestro)
  * /iana — Talk to IAna (Comex)
  * /maria — Talk to marIA (Finance)
  * /iago — Talk to IAgo (Infra)
- * /start — Welcome message
  */
 
 import { data } from "react-router";
@@ -32,11 +31,28 @@ interface TelegramUpdate {
 // Map chatId → current agent
 const chatAgentMap = new Map<number, string>();
 
-// Authorized Telegram user IDs (set via env var TELEGRAM_ALLOWED_USERS=123,456)
-function isAuthorized(userId: number): boolean {
+// Access control levels
+type AccessLevel = "admin" | "restricted" | "denied";
+
+function getAccessLevel(userId: number): AccessLevel {
+  // Admin users — full access (financial data, sensitive info, everything)
+  const admins = process.env.TELEGRAM_ADMIN_USERS;
+  if (admins && admins.split(",").map(Number).includes(userId)) {
+    return "admin";
+  }
+
+  // Allowed users — restricted access (no financial values, no sensitive details)
   const allowed = process.env.TELEGRAM_ALLOWED_USERS;
-  if (!allowed) return true; // If not set, allow all (you should set this!)
-  return allowed.split(",").map(Number).includes(userId);
+  if (allowed && allowed.split(",").map(Number).includes(userId)) {
+    return "restricted";
+  }
+
+  // If neither list is configured, deny all for security
+  if (!admins && !allowed) {
+    return "denied";
+  }
+
+  return "denied";
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -58,24 +74,32 @@ export async function action({ request }: Route.ActionArgs) {
   const chatId = message.chat.id;
   const userId = message.from.id;
   const text = message.text.trim();
+  const firstName = message.from.first_name;
 
-  // Auth check
-  if (!isAuthorized(userId)) {
-    await sendTelegram(botToken, chatId, "⛔ Acesso negado. Seu ID de Telegram não está autorizado. Peça ao administrador para adicionar seu ID.");
+  // Access control
+  const accessLevel = getAccessLevel(userId);
+  if (accessLevel === "denied") {
+    await sendTelegram(botToken, chatId,
+      `⛔ Acesso negado.\n\nSeu ID (${userId}) não está autorizado.\nPeça ao administrador para adicionar seu acesso.`
+    );
     return data({ ok: true });
   }
 
-  // Command handling
+  // Command: /start
   if (text === "/start") {
+    const accessInfo = accessLevel === "admin"
+      ? "🔓 *Acesso completo* — você tem acesso a todas as informações."
+      : "🔒 *Acesso restrito* — informações sensíveis e financeiras não serão exibidas.";
+
     await sendTelegram(botToken, chatId,
-      "🎯 *Bem-vindo ao LHFEX Bot!*\n\n" +
-      "Você pode conversar diretamente com nossos agentes IA:\n\n" +
+      `🎯 *Bem-vindo ao LHFEX Bot, ${firstName}!*\n\n` +
+      `${accessInfo}\n\n` +
+      "Converse com nossos agentes IA:\n\n" +
       "🎯 /airton — Maestro (visão geral)\n" +
       "📦 /iana — Especialista Comex\n" +
       "💰 /maria — Gestora Financeira\n" +
       "🔧 /iago — Engenheiro de Infra\n\n" +
-      `Agente atual: *AIrton* 🎯\n` +
-      "Basta digitar sua pergunta!",
+      `Agente atual: *AIrton* 🎯\nBasta digitar sua pergunta!`,
       "Markdown"
     );
     return data({ ok: true });
@@ -104,6 +128,7 @@ export async function action({ request }: Route.ActionArgs) {
 
   // Regular message — send to agent
   const agentId = chatAgentMap.get(chatId) || "airton";
+  const isRestricted = accessLevel === "restricted";
 
   try {
     // Send "typing" indicator
@@ -113,12 +138,22 @@ export async function action({ request }: Route.ActionArgs) {
       body: JSON.stringify({ chat_id: chatId, action: "typing" }),
     });
 
-    const response = await askAgent(agentId, text, `telegram-${userId}`);
+    const response = await askAgent(agentId, text, `telegram-${userId}`, {
+      restricted: isRestricted,
+      feature: "telegram",
+    });
+
+    // Add provider badge to response
+    const providerBadge = response.provider === "gemini" ? "🟢"
+      : response.provider === "openrouter_free" ? "🔵"
+      : response.provider === "deepseek" || response.provider === "openrouter_paid" ? "🟡" : "⚪";
 
     // Limit to Telegram max (4096 chars)
-    const responseText = response.content.length > 4000
-      ? response.content.slice(0, 3990) + "...\n\n_(resposta truncada)_"
-      : response.content;
+    let responseText = response.content;
+    if (responseText.length > 3950) {
+      responseText = responseText.slice(0, 3940) + "...\n\n_(resposta truncada)_";
+    }
+    responseText += `\n\n${providerBadge} _${response.model}_`;
 
     await sendTelegram(botToken, chatId, responseText, "Markdown");
   } catch (error) {
@@ -131,7 +166,7 @@ export async function action({ request }: Route.ActionArgs) {
 
 async function sendTelegram(token: string, chatId: number, text: string, parseMode?: string) {
   try {
-    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -141,15 +176,23 @@ async function sendTelegram(token: string, chatId: number, text: string, parseMo
       }),
       signal: AbortSignal.timeout(10000),
     });
+    // If Markdown fails, retry without parse mode
+    if (!res.ok && parseMode) {
+      await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text: text.replace(/[*_`\[]/g, "") }),
+        signal: AbortSignal.timeout(10000),
+      });
+    }
   } catch (error) {
     console.error("[TELEGRAM] Send failed:", error);
-    // If Markdown parsing fails, try without it
     if (parseMode) {
       try {
         await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: chatId, text }),
+          body: JSON.stringify({ chat_id: chatId, text: text.replace(/[*_`\[]/g, "") }),
           signal: AbortSignal.timeout(10000),
         });
       } catch { /* silent */ }
@@ -163,7 +206,6 @@ export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const setup = url.searchParams.get("setup");
 
-  // GET /api/telegram-webhook?setup=1 → configures the webhook
   if (setup === "1" && botToken) {
     const appUrl = process.env.APP_URL || "https://saas.lhfex.com.br";
     const webhookUrl = `${appUrl}/api/telegram-webhook`;

@@ -69,6 +69,23 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.7.0",
+    date: "2026-02-17",
+    title: "Milestone 7 — IA Multi-Provider, Auditoria & Recibo",
+    items: [
+      { type: "feature", text: "IA Multi-Provider: Gemini Free → OpenRouter Free → DeepSeek Pago (fallback automático)" },
+      { type: "feature", text: "NCM com Prompt Blindado 2.0 — 5 seções obrigatórias de classificação fiscal" },
+      { type: "feature", text: "Página de Auditoria (/audit) com tabela filtrável por ação e entidade" },
+      { type: "feature", text: "Relatório Financeiro (/financial/report) com gráfico de fluxo de caixa e exportação CSV" },
+      { type: "feature", text: "Recibo de Pagamento (/financial/receipt) — template imprimível com valor por extenso" },
+      { type: "feature", text: "Telegram Bot reescrito: admin exclusivo (Luiz + LHFEX Consultoria), demais usuários negados" },
+      { type: "fix", text: "Bug de tema claro/escuro corrigido — dark class agora aplicada no <html> via root.tsx" },
+      { type: "improvement", text: "Sidebar atualizada com links para Auditoria e Relatório Financeiro" },
+      { type: "infra", text: "Schemas novos: ncm_classifications e ai_usage_logs no PostgreSQL" },
+      { type: "infra", text: "Schema processes atualizado: pending_approval, requiresApproval, approvedBy, approvedAt" },
+    ],
+  },
+  {
     version: "0.6.0",
     date: "2026-02-16",
     title: "Milestone 6 — Hardening & Performance (Auditoria)",

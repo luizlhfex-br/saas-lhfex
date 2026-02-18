@@ -1,11 +1,11 @@
-import { pgTable, uuid, varchar, text, timestamp, integer, numeric, pgEnum, index } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, text, timestamp, integer, numeric, boolean, pgEnum, index } from "drizzle-orm/pg-core";
 import { users } from "./auth";
 import { clients } from "./crm";
 
 export const processTypeEnum = pgEnum("process_type", ["import", "export", "services"]);
 export const processStatusEnum = pgEnum("process_status", [
   "draft", "in_progress", "awaiting_docs", "customs_clearance",
-  "in_transit", "delivered", "completed", "cancelled",
+  "in_transit", "delivered", "completed", "cancelled", "pending_approval",
 ]);
 
 export const processes = pgTable("processes", {
@@ -37,6 +37,9 @@ export const processes = pgTable("processes", {
   diNumber: varchar("di_number", { length: 50 }),
   diDate: timestamp("di_date", { withTimezone: true }),
   googleDriveUrl: text("google_drive_url"),
+  requiresApproval: boolean("requires_approval").notNull().default(false),
+  approvedBy: uuid("approved_by").references(() => users.id, { onDelete: "set null" }),
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
   notes: text("notes"),
   createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

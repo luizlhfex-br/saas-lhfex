@@ -170,9 +170,14 @@ export default function LoginPage() {
         </div>
 
         {/* Footer */}
-        <p className="mt-6 text-center text-xs text-gray-400 dark:text-gray-600">
-          LHFEX &copy; {new Date().getFullYear()} &mdash; Sistema de Gestao de Comercio Exterior
-        </p>
+        <div className="mt-6 text-center text-xs text-gray-400 dark:text-gray-600">
+          <p>LHFEX &copy; {new Date().getFullYear()} &mdash; Sistema de Gestao de Comercio Exterior</p>
+          <p className="mt-1">
+            <a href="mailto:contato@lhfex.com.br" className="hover:text-blue-500 transition-colors">
+              contato@lhfex.com.br
+            </a>
+          </p>
+        </div>
       </div>
     </div>
   );

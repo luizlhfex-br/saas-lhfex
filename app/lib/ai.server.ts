@@ -1,10 +1,10 @@
 /**
- * AI Service — Central hub for all AI operations (OpenRouter + DeepSeek fallback)
- * Replaces N8N webhooks with direct API calls from the backend.
+ * AI Service — Multi-provider hub (Gemini Free → OpenRouter Free → DeepSeek Paid)
+ * Tracks usage per provider to monitor free vs paid consumption.
  */
 
 import { db } from "~/lib/db.server";
-import { processes, invoices, clients } from "drizzle/schema";
+import { processes, invoices, clients, aiUsageLogs } from "drizzle/schema";
 import { isNull, and, notInArray, sql, eq, desc } from "drizzle-orm";
 
 // --- Types ---
@@ -17,12 +17,30 @@ interface AgentContext {
   dollarRate: number;
 }
 
-interface AIResponse {
+export interface AIResponse {
   content: string;
   model: string;
-  provider: "openrouter" | "deepseek";
+  provider: "gemini" | "openrouter_free" | "openrouter_paid" | "deepseek";
   tokensUsed?: number;
 }
+
+type AIFeature = "chat" | "ncm_classification" | "ocr" | "enrichment" | "telegram";
+
+// --- AI Guidelines (applied to ALL agents) ---
+
+const AI_GUIDELINES = `
+DIRETRIZES GERAIS DE COMUNICAÇÃO (aplica a todas as respostas):
+1. NUNCA apague arquivos ou dados sem pedir autorização explícita ao usuário. Sempre use soft delete (lixeira).
+2. Use linguagem natural e empática — evite respostas robóticas ou excessivamente formais.
+3. Seja transparente sobre suas limitações — diga honestamente quando não souber algo.
+4. Seja proativo — antecipe problemas e sugira ações antes de ser perguntado.
+5. Personalize — use o nome do usuário quando souber, referencie interações anteriores.
+6. Valide emoções — reconheça frustração/urgência do interlocutor.
+7. Pratique escuta ativa — parafraseie para confirmar entendimento antes de agir.
+8. Resolva com ownership — não "passe a bola", resolva end-to-end.
+9. Pergunte se a resposta ajudou e se precisa de mais algo.
+10. Responda sempre em português brasileiro.
+`;
 
 // --- System Prompts ---
 
@@ -30,22 +48,24 @@ const AGENT_PROMPTS: Record<string, string> = {
   airton: `Você é o AIrton, o Maestro da LHFEX — plataforma de comércio exterior.
 Seu papel é orquestrar todas as operações e oferecer visão estratégica.
 Você tem acesso ao contexto do sistema (processos ativos, dados financeiros, clientes).
-Responda sempre em português brasileiro. Seja direto, profissional e proativo.
-Use os dados de contexto para dar respostas precisas sobre o estado dos processos.
+Seja direto, profissional e proativo. Use os dados de contexto para dar respostas precisas.
 Se não souber algo específico, sugira ações que o usuário pode tomar.
-Assine como AIrton 🎯`,
+Linguagem executiva e estratégica. Coordene os outros agentes quando relevante.
+Assine como AIrton 🎯
+${AI_GUIDELINES}`,
 
   iana: `Você é a IAna, especialista em Comércio Exterior da LHFEX.
 Seu domínio inclui:
 - Classificação NCM e código SH (Harmonized System)
-- Descrições blindadas para DI/DUIMP
+- Descrições blindadas para DI/DUIMP (formato Prompt Blindado 2.0)
 - Análise de documentos de importação/exportação
 - Compliance aduaneiro e regulamentação
 - Cálculo de impostos (II, IPI, PIS, COFINS, ICMS)
 - INCOTERMS e suas aplicações
-Responda sempre em português brasileiro com precisão técnica.
-Quando sugerir NCMs, explique o raciocínio da classificação.
-Assine como IAna 📦`,
+Quando sugerir NCMs, explique o raciocínio da classificação usando RGI 1 e 6.
+Técnica mas acessível — cite legislação quando relevante.
+Assine como IAna 📦
+${AI_GUIDELINES}`,
 
   maria: `Você é a marIA, Gestora Financeira da LHFEX.
 Seu domínio inclui:
@@ -56,8 +76,9 @@ Seu domínio inclui:
 - Fluxo de caixa e contas a pagar/receber
 - DRE e relatórios financeiros
 Você tem acesso aos dados financeiros do sistema.
-Responda em português brasileiro com foco em números e análises práticas.
-Assine como marIA 💰`,
+Seja precisa com números, sempre confirme valores, alerte sobre prazos.
+Assine como marIA 💰
+${AI_GUIDELINES}`,
 
   iago: `Você é o IAgo, Engenheiro de Infraestrutura da LHFEX.
 Seu domínio inclui:
@@ -66,9 +87,9 @@ Seu domínio inclui:
 - Integrações com APIs externas
 - Monitoramento de performance
 - Troubleshooting técnico
-Responda em português brasileiro com foco técnico e prático.
-Quando diagnosticar problemas, sugira soluções concretas.
-Assine como IAgo 🔧`,
+Técnico, direto, sempre sugira o próximo passo.
+Assine como IAgo 🔧
+${AI_GUIDELINES}`,
 };
 
 // --- Context Loader ---
@@ -96,7 +117,6 @@ async function loadAgentContext(): Promise<AgentContext> {
         .limit(5),
     ]);
 
-    // Fetch dollar rate
     let dollarRate = 5.50;
     try {
       const res = await fetch("https://economia.awesomeapi.com.br/json/last/USD-BRL", {
@@ -117,18 +137,22 @@ async function loadAgentContext(): Promise<AgentContext> {
     };
   } catch (error) {
     console.error("[AI] Failed to load context:", error);
-    return {
-      activeProcesses: 0,
-      totalClients: 0,
-      monthlyRevenue: 0,
-      recentProcesses: [],
-      dollarRate: 5.50,
-    };
+    return { activeProcesses: 0, totalClients: 0, monthlyRevenue: 0, recentProcesses: [], dollarRate: 5.50 };
   }
 }
 
-function buildContextMessage(ctx: AgentContext): string {
+function buildContextMessage(ctx: AgentContext, restricted = false): string {
   const fmtBRL = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+
+  if (restricted) {
+    // Restricted mode: no financial values, no sensitive details
+    return `[CONTEXTO DO SISTEMA LHFEX - ACESSO RESTRITO]
+- Processos ativos: ${ctx.activeProcesses}
+- Clientes cadastrados: ${ctx.totalClients}
+- Últimos processos: ${ctx.recentProcesses.map((p) => `${p.reference} (${p.status})`).join(", ") || "nenhum"}
+IMPORTANTE: Este usuário tem acesso restrito. NÃO revele valores financeiros, receitas, custos, dados sensíveis de clientes ou informações internas. Responda apenas sobre status, ETAs e informações gerais.`;
+  }
+
   return `[CONTEXTO DO SISTEMA LHFEX]
 - Processos ativos: ${ctx.activeProcesses}
 - Clientes cadastrados: ${ctx.totalClients}
@@ -137,9 +161,94 @@ function buildContextMessage(ctx: AgentContext): string {
 - Últimos processos: ${ctx.recentProcesses.map((p) => `${p.reference} (${p.status})`).join(", ") || "nenhum"}`;
 }
 
-// --- OpenRouter API ---
+// --- Usage Logging ---
 
-async function callOpenRouter(
+async function logUsage(
+  provider: "gemini" | "openrouter_free" | "openrouter_paid" | "deepseek",
+  model: string,
+  feature: AIFeature,
+  tokensIn: number,
+  tokensOut: number,
+  success: boolean,
+  errorMessage?: string,
+  userId?: string,
+) {
+  try {
+    // Estimate cost (approximate)
+    let costEstimate = "0";
+    if (provider === "deepseek") {
+      costEstimate = String(((tokensIn * 0.14 + tokensOut * 0.28) / 1_000_000).toFixed(6));
+    } else if (provider === "openrouter_paid") {
+      costEstimate = String(((tokensIn * 0.14 + tokensOut * 0.28) / 1_000_000).toFixed(6));
+    }
+    // gemini and openrouter_free = $0
+
+    await db.insert(aiUsageLogs).values({
+      userId: userId || null,
+      provider,
+      model,
+      feature,
+      tokensIn: tokensIn || 0,
+      tokensOut: tokensOut || 0,
+      costEstimate,
+      success,
+      errorMessage: errorMessage || null,
+    });
+  } catch (e) {
+    console.error("[AI] Failed to log usage:", e);
+  }
+}
+
+// --- Provider 1: Gemini Free ---
+
+async function callGemini(
+  systemPrompt: string,
+  userMessage: string,
+  contextMessage: string,
+): Promise<AIResponse> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: `${systemPrompt}\n\n${contextMessage}` }] },
+        contents: [{ parts: [{ text: userMessage }] }],
+        generationConfig: {
+          maxOutputTokens: 2000,
+          temperature: 0.7,
+        },
+      }),
+      signal: AbortSignal.timeout(30000),
+    }
+  );
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Gemini API error ${response.status}: ${err}`);
+  }
+
+  const data = await response.json();
+  const content = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  const tokensIn = data.usageMetadata?.promptTokenCount || 0;
+  const tokensOut = data.usageMetadata?.candidatesTokenCount || 0;
+
+  if (!content) throw new Error("Gemini returned empty response");
+
+  return {
+    content,
+    model: "gemini-2.0-flash",
+    provider: "gemini",
+    tokensUsed: tokensIn + tokensOut,
+  };
+}
+
+// --- Provider 2: OpenRouter (free models) ---
+
+async function callOpenRouterFree(
   systemPrompt: string,
   userMessage: string,
   contextMessage: string,
@@ -147,7 +256,8 @@ async function callOpenRouter(
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error("OPENROUTER_API_KEY not configured");
 
-  const model = process.env.OPENROUTER_MODEL || "deepseek/deepseek-chat";
+  // Use a free model on OpenRouter
+  const model = "google/gemini-2.0-flash-exp:free";
 
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
@@ -171,32 +281,73 @@ async function callOpenRouter(
 
   if (!response.ok) {
     const err = await response.text();
-    throw new Error(`OpenRouter API error ${response.status}: ${err}`);
+    throw new Error(`OpenRouter Free error ${response.status}: ${err}`);
   }
 
   const data = await response.json();
+  const content = data.choices?.[0]?.message?.content || "";
+  if (!content) throw new Error("OpenRouter Free returned empty response");
+
   return {
-    content: data.choices?.[0]?.message?.content || "Desculpe, não consegui gerar uma resposta.",
+    content,
     model: data.model || model,
-    provider: "openrouter",
+    provider: "openrouter_free",
     tokensUsed: data.usage?.total_tokens,
   };
 }
 
-// --- DeepSeek Direct API (fallback) ---
+// --- Provider 3: DeepSeek Paid (via OpenRouter or Direct) ---
 
 async function callDeepSeek(
   systemPrompt: string,
   userMessage: string,
   contextMessage: string,
 ): Promise<AIResponse> {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) throw new Error("DEEPSEEK_API_KEY not configured");
+  // Try via OpenRouter first (paid model)
+  const orKey = process.env.OPENROUTER_API_KEY;
+  if (orKey) {
+    try {
+      const model = process.env.OPENROUTER_MODEL || "deepseek/deepseek-chat";
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${orKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": process.env.APP_URL || "https://saas.lhfex.com.br",
+          "X-Title": "LHFEX SaaS",
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: `${systemPrompt}\n\n${contextMessage}` },
+            { role: "user", content: userMessage },
+          ],
+          max_tokens: 2000,
+          temperature: 0.7,
+        }),
+        signal: AbortSignal.timeout(30000),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return {
+          content: data.choices?.[0]?.message?.content || "Sem resposta.",
+          model: data.model || model,
+          provider: "openrouter_paid",
+          tokensUsed: data.usage?.total_tokens,
+        };
+      }
+    } catch { /* fall through to direct DeepSeek */ }
+  }
+
+  // Direct DeepSeek API
+  const dsKey = process.env.DEEPSEEK_API_KEY;
+  if (!dsKey) throw new Error("DEEPSEEK_API_KEY not configured");
 
   const response = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${apiKey}`,
+      "Authorization": `Bearer ${dsKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -218,46 +369,169 @@ async function callDeepSeek(
 
   const data = await response.json();
   return {
-    content: data.choices?.[0]?.message?.content || "Desculpe, não consegui gerar uma resposta.",
+    content: data.choices?.[0]?.message?.content || "Sem resposta.",
     model: "deepseek-chat",
     provider: "deepseek",
     tokensUsed: data.usage?.total_tokens,
   };
 }
 
-// --- Main Function ---
+// --- Main Function: askAgent ---
 
 export async function askAgent(
   agentId: string,
   message: string,
   _userId: string,
+  options?: { restricted?: boolean; feature?: AIFeature; forceProvider?: "deepseek" },
 ): Promise<AIResponse> {
   const systemPrompt = AGENT_PROMPTS[agentId] || AGENT_PROMPTS.airton;
   const context = await loadAgentContext();
-  const contextMessage = buildContextMessage(context);
+  const contextMessage = buildContextMessage(context, options?.restricted);
+  const feature = options?.feature || "chat";
 
-  // Try OpenRouter first, fallback to DeepSeek
-  try {
-    if (process.env.OPENROUTER_API_KEY) {
-      return await callOpenRouter(systemPrompt, message, contextMessage);
+  // Force DeepSeek for complex tasks
+  if (options?.forceProvider === "deepseek") {
+    try {
+      const result = await callDeepSeek(systemPrompt, message, contextMessage);
+      await logUsage(result.provider, result.model, feature, 0, 0, true, undefined, _userId);
+      return result;
+    } catch (error) {
+      await logUsage("deepseek", "deepseek-chat", feature, 0, 0, false, String(error), _userId);
+      throw error;
     }
-  } catch (error) {
-    console.error("[AI] OpenRouter failed, trying DeepSeek fallback:", error);
   }
 
-  try {
-    if (process.env.DEEPSEEK_API_KEY) {
-      return await callDeepSeek(systemPrompt, message, contextMessage);
+  // Strategy: Gemini Free → OpenRouter Free → DeepSeek Paid
+  // 1. Try Gemini Free
+  if (process.env.GEMINI_API_KEY) {
+    try {
+      const result = await callGemini(systemPrompt, message, contextMessage);
+      await logUsage("gemini", result.model, feature, 0, result.tokensUsed || 0, true, undefined, _userId);
+      return result;
+    } catch (error) {
+      console.error("[AI] Gemini failed:", (error as Error).message);
+      await logUsage("gemini", "gemini-2.0-flash", feature, 0, 0, false, String(error), _userId);
     }
+  }
+
+  // 2. Try OpenRouter Free
+  if (process.env.OPENROUTER_API_KEY) {
+    try {
+      const result = await callOpenRouterFree(systemPrompt, message, contextMessage);
+      await logUsage("openrouter_free", result.model, feature, 0, result.tokensUsed || 0, true, undefined, _userId);
+      return result;
+    } catch (error) {
+      console.error("[AI] OpenRouter Free failed:", (error as Error).message);
+      await logUsage("openrouter_free", "gemini-2.0-flash-exp:free", feature, 0, 0, false, String(error), _userId);
+    }
+  }
+
+  // 3. Try DeepSeek Paid (fallback)
+  try {
+    const result = await callDeepSeek(systemPrompt, message, contextMessage);
+    await logUsage(result.provider, result.model, feature, 0, result.tokensUsed || 0, true, undefined, _userId);
+    return result;
   } catch (error) {
     console.error("[AI] DeepSeek also failed:", error);
+    await logUsage("deepseek", "deepseek-chat", feature, 0, 0, false, String(error), _userId);
   }
 
-  // Ultimate fallback — no API keys configured or both failed
+  // Ultimate fallback — all providers failed
   return {
-    content: `Olá! Sou o ${agentId === "airton" ? "AIrton 🎯" : agentId === "iana" ? "IAna 📦" : agentId === "maria" ? "marIA 💰" : "IAgo 🔧"}. Estou temporariamente indisponível. Por favor, verifique se as chaves de API (OPENROUTER_API_KEY ou DEEPSEEK_API_KEY) estão configuradas no servidor.`,
+    content: `Olá! Sou o ${agentId === "airton" ? "AIrton 🎯" : agentId === "iana" ? "IAna 📦" : agentId === "maria" ? "marIA 💰" : "IAgo 🔧"}. Estou temporariamente indisponível. Os provedores de IA não estão respondendo no momento. Tente novamente em alguns minutos.`,
     model: "fallback",
-    provider: "openrouter",
+    provider: "gemini",
+  };
+}
+
+// --- Specialized: Parse Invoice/Document Text (OCR) ---
+
+export async function parseInvoiceText(text: string): Promise<Record<string, string | null>> {
+  const systemPrompt = `You are a document parser for international trade. Extract the following fields from this invoice/packing list text and return them as JSON:
+- supplier (string)
+- description (string)
+- hsCode (string)
+- incoterm (string)
+- totalValue (string, numeric)
+- currency (string, 3 chars)
+- totalWeight (string, numeric in kg)
+- originCountry (string)
+- vessel (string, if found)
+- bl (string, bill of lading number if found)
+- containerCount (string, if found)
+- containerType (string, if found)
+Return ONLY valid JSON. If a field is not found, use null.`;
+
+  // Use DeepSeek for OCR parsing (needs better reasoning)
+  const result = await askAgent("iana", text, "system", {
+    feature: "ocr",
+    forceProvider: "deepseek",
+  });
+
+  try {
+    // Try to extract JSON from the response
+    const jsonMatch = result.content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+  } catch {
+    console.error("[OCR] Failed to parse AI response as JSON");
+  }
+
+  return {};
+}
+
+// --- Specialized: NCM Classification (Prompt Blindado 2.0) ---
+
+export async function classifyNCM(
+  productDescription: string,
+  userId: string,
+): Promise<{ ncm: string; description: string; justification: string }> {
+  const systemPrompt = `Você é um Especialista em Classificação Fiscal e Engenharia Aduaneira.
+Sua tarefa é analisar a descrição do produto e:
+
+1. SUGERIR a NCM (Nomenclatura Comum do Mercosul) mais adequada com 8 dígitos
+2. GERAR uma descrição completa em PT-BR no formato abaixo (Prompt Blindado 2.0):
+
+FORMATO OBRIGATÓRIO:
+[NOME DO PRODUTO EM MAIÚSCULAS]
+
+FUNÇÃO: [descrever ação física principal com verbos no infinitivo];
+APLICAÇÃO: [ambiente operacional e finalidade logística];
+CARACTERÍSTICAS TÉCNICAS E COMPOSIÇÃO: [motorização, capacidade nominal, fonte de energia, componentes essenciais. Incluir OBRIGATORIAMENTE: "Acompanha carregador e bateria essenciais para seu pleno funcionamento" quando aplicável];
+MODELO: [Descrição em inglês + código do modelo];
+ENQUADRAMENTO TÉCNICO-LEGAL: [Justificativa NCM usando RGI 1 e 6 + atributos de risco].
+
+3. JUSTIFICAR a classificação NCM usando as Regras Gerais Interpretativas (RGI) 1 e 6
+
+Use termos NESH quando aplicável (autopropulsado, contrabalançada, etc).
+Evite termos genéricos. Seja preciso e técnico.
+
+Responda em JSON com as chaves: "ncm", "description", "justification"`;
+
+  const result = await askAgent("iana", productDescription, userId, {
+    feature: "ncm_classification",
+    forceProvider: "deepseek", // Use DeepSeek for complex classification
+  });
+
+  try {
+    const jsonMatch = result.content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      return {
+        ncm: parsed.ncm || "",
+        description: parsed.description || "",
+        justification: parsed.justification || "",
+      };
+    }
+  } catch {
+    console.error("[NCM] Failed to parse classification response");
+  }
+
+  return {
+    ncm: "",
+    description: result.content,
+    justification: "",
   };
 }
 
@@ -278,7 +552,6 @@ interface CNPJData {
 }
 
 export async function enrichCNPJ(cnpj: string): Promise<CNPJData | null> {
-  // Clean CNPJ — remove dots, slashes, dashes
   const cleanCnpj = cnpj.replace(/[^\d]/g, "");
   if (cleanCnpj.length !== 14) return null;
 

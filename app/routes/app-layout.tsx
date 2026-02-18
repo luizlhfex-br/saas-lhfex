@@ -31,10 +31,8 @@ export default function AppLayout({ loaderData }: Route.ComponentProps) {
   const { user, locale, theme } = loaderData;
 
   return (
-    <div className={theme === "dark" ? "dark" : ""}>
-      <AppShell user={user} locale={locale} theme={theme}>
-        <Outlet />
-      </AppShell>
-    </div>
+    <AppShell user={user} locale={locale} theme={theme}>
+      <Outlet />
+    </AppShell>
   );
 }

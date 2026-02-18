@@ -7,6 +7,7 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "eta_approaching",
   "system",
   "automation",
+  "approval_request",
 ]);
 
 export const notifications = pgTable("notifications", {

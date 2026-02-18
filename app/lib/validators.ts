@@ -64,8 +64,15 @@ export const processSchema = z.object({
   diNumber: z.string().max(50).optional(),
   googleDriveUrl: z.string().url().optional().or(z.literal("")),
   notes: z.string().max(5000).optional(),
-  status: z.enum(["draft", "in_progress", "awaiting_docs", "customs_clearance", "in_transit", "delivered", "completed", "cancelled"]).optional(),
+  status: z.enum(["draft", "in_progress", "awaiting_docs", "customs_clearance", "in_transit", "delivered", "completed", "cancelled", "pending_approval"]).optional(),
+  requiresApproval: z.boolean().optional(),
 });
+
+export const ncmClassificationSchema = z.object({
+  inputDescription: z.string().min(5, "Descrição deve ter pelo menos 5 caracteres").max(5000),
+});
+
+export type NcmClassificationInput = z.infer<typeof ncmClassificationSchema>;
 
 export const invoiceSchema = z.object({
   clientId: z.string().min(1, "Cliente é obrigatório"),

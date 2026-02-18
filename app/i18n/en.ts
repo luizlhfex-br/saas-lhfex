@@ -36,6 +36,7 @@ export const en: Translations = {
     crm: "CRM",
     processes: "Processes",
     financial: "Financial",
+    financialReport: "Report",
     calculator: "Calculator",
     ncm: "Fiscal Classification",
     description: "Armored Description",
@@ -48,6 +49,7 @@ export const en: Translations = {
     settings: "Settings",
     personal: "Personal",
     system: "System",
+    audit: "Audit Logs",
   },
   dashboard: {
     greeting: (name: string) => `Good morning, ${name}`,

@@ -11,6 +11,8 @@ import {
   LogOut,
   Zap,
   Kanban,
+  Shield,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { t, type Locale } from "~/i18n";
@@ -42,10 +44,12 @@ const mainNavItems: NavItem[] = [
   { labelKey: "pipeline", icon: Kanban, to: "/crm/pipeline" },
   { labelKey: "processes", icon: FileText, to: "/processes" },
   { labelKey: "financial", icon: DollarSign, to: "/financial" },
+  { labelKey: "financialReport", icon: BarChart3, to: "/financial/report" },
   { labelKey: "calculator", icon: Calculator, to: "/calculator" },
   { labelKey: "ncm", icon: Search, to: "/ncm" },
   { labelKey: "automations", icon: Zap, to: "/automations" },
   { labelKey: "agents", icon: Bot, to: "/agents" },
+  { labelKey: "audit", icon: Shield, to: "/audit" },
 ];
 
 export function Sidebar({ user, locale, currentPath }: SidebarProps) {
