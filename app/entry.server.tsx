@@ -6,8 +6,22 @@ import { ServerRouter } from "react-router";
 import { isbot } from "isbot";
 import type { RenderToPipeableStreamOptions } from "react-dom/server";
 import { renderToPipeableStream } from "react-dom/server";
+import { initializeCronScheduler } from "./lib/cron.server";
 
 export const streamTimeout = 5_000;
+
+// Initialize cron jobs once on server startup
+let cronsInitialized = false;
+function ensureCronsInitialized() {
+  if (!cronsInitialized) {
+    try {
+      initializeCronScheduler();
+      cronsInitialized = true;
+    } catch (error) {
+      console.error("[ENTRY] Failed to initialize cron scheduler:", error);
+    }
+  }
+}
 
 export default function handleRequest(
   request: Request,
@@ -16,6 +30,9 @@ export default function handleRequest(
   routerContext: EntryContext,
   loadContext: AppLoadContext,
 ) {
+  // Ensure crons are initialized
+  ensureCronsInitialized();
+
   // Security headers
   responseHeaders.set("X-Frame-Options", "DENY");
   responseHeaders.set("X-Content-Type-Options", "nosniff");
@@ -82,3 +99,4 @@ export default function handleRequest(
     );
   });
 }
+
