@@ -10,9 +10,14 @@ import {
 } from "react-router";
 import { Toaster } from "sonner";
 import type { Route } from "./+types/root";
+import { logErrorToSentry } from "~/lib/sentry.client";
 import "./app.css";
 
 export async function loader({ request }: Route.LoaderArgs) {
+  // Initialize Sentry on server side
+  const { initSentryServer } = await import("~/lib/sentry.server");
+  initSentryServer();
+  
   const cookieHeader = request.headers.get("cookie") || "";
   const themeMatch = cookieHeader.match(/theme=([^;]+)/);
   const theme = themeMatch ? themeMatch[1] : "dark";
@@ -76,6 +81,13 @@ export default function App() {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  // Log error to Sentry
+  if (error instanceof Error) {
+    logErrorToSentry(error, {
+      tags: { boundary: "root" },
+    });
+  }
+
   let status = 500;
   let title = "Erro Inesperado";
   let message = "Algo deu errado. Tente novamente mais tarde.";
