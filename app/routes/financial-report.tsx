@@ -5,7 +5,7 @@ import { db } from "~/lib/db.server";
 import { invoices, clients } from "drizzle/schema";
 import { eq, desc, sql, and, isNull, gte } from "drizzle-orm";
 import { t, type Locale } from "~/i18n";
-import { BarChart3, Download, TrendingUp, TrendingDown, AlertCircle } from "lucide-react";
+import { BarChart3, Download, TrendingUp, TrendingDown, AlertCircle, Zap } from "lucide-react";
 import { Button } from "~/components/ui/button";
 
 function generateCSV(
@@ -205,6 +205,12 @@ export default function FinancialReportPage({ loaderData }: Route.ComponentProps
               {i18n.common.back}
             </Button>
           </Link>
+          <Form method="post" action="/api/export-financial-sheets">
+            <Button type="submit" variant="secondary" size="sm">
+              <Zap className="h-4 w-4" />
+              {locale === "pt-BR" ? "Exportar Sheets" : "Export Sheets"}
+            </Button>
+          </Form>
           <Form method="post">
             <input type="hidden" name="intent" value="export-csv" />
             <Button type="submit" variant="secondary" size="sm">
