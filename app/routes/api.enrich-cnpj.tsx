@@ -1,17 +1,29 @@
 import type { Route } from "./+types/api.enrich-cnpj";
 import { requireAuth } from "~/lib/auth.server";
 import { enrichCNPJ } from "~/lib/ai.server";
-import { checkRateLimit } from "~/lib/rate-limit.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
+  const { checkRateLimit, RATE_LIMITS } = await import("~/lib/rate-limit.server");
   const { user } = await requireAuth(request);
 
-  // Rate limit: 5 requests per minute (BrasilAPI has limits)
-  const rateCheck = checkRateLimit(`cnpj:${user.id}`, 5, 60_000);
+  // Rate limit: 30 requests per minute per user (BrasilAPI tolerance)
+  const rateCheck = await checkRateLimit(
+    `enrich-cnpj:${user.id}`,
+    RATE_LIMITS.enrichCnpj.maxAttempts,
+    RATE_LIMITS.enrichCnpj.windowMs
+  
+  );
+  
   if (!rateCheck.allowed) {
     return Response.json(
-      { error: "Rate limit exceeded. Aguarde um minuto." },
-      { status: 429 }
+      { 
+        error: "Muitas consultas. Aguarde um momento antes de tentar novamente.",
+        retryAfter: rateCheck.retryAfterSeconds 
+      },
+      { 
+        status: 429,
+        headers: { "Retry-After": String(rateCheck.retryAfterSeconds || 60) }
+      }
     );
   }
 

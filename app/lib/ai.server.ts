@@ -6,6 +6,7 @@
 import { db } from "~/lib/db.server";
 import { processes, invoices, clients, aiUsageLogs } from "drizzle/schema";
 import { isNull, and, notInArray, sql, eq, desc } from "drizzle-orm";
+import { getCache, setCache, CACHE_TTL } from "~/lib/cache.server";
 
 // --- Types ---
 
@@ -583,6 +584,14 @@ export async function enrichCNPJ(cnpj: string): Promise<CNPJData | null> {
   const cleanCnpj = cnpj.replace(/[^\d]/g, "");
   if (cleanCnpj.length !== 14) return null;
 
+  // Check Redis cache first (24h TTL - dados cadastrais mudam raramente)
+  const cacheKey = `cnpj:${cleanCnpj}`;
+  const cached = await getCache<CNPJData>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  // Try BrasilAPI first
   try {
     const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cleanCnpj}`, {
       signal: AbortSignal.timeout(10000),
@@ -590,32 +599,38 @@ export async function enrichCNPJ(cnpj: string): Promise<CNPJData | null> {
 
     if (!response.ok) {
       console.error(`[CNPJ] BrasilAPI returned ${response.status}`);
-      return null;
+      // Don't return yet - try fallback
+    } else {
+      const data = await response.json();
+
+      const result = normalizeCnpjData({
+        razaoSocial: data.razao_social,
+        nomeFantasia: data.nome_fantasia,
+        address: [data.logradouro, data.numero, data.complemento, data.bairro]
+          .filter(Boolean)
+          .join(", "),
+        city: data.municipio,
+        state: data.uf,
+        zipCode: data.cep ? data.cep.replace(/(\d{5})(\d{3})/, "$1-$2") : "",
+        cnaeCode: data.cnae_fiscal || "",
+        cnaeDescription: data.cnae_fiscal_descricao,
+        phone: data.ddd_telefone_1
+          ? `(${data.ddd_telefone_1.slice(0, 2)}) ${data.ddd_telefone_1.slice(2)}`
+          : "",
+        email: data.email,
+        situacao: data.descricao_situacao_cadastral,
+      });
+
+      // Cache successful result (24 hours)
+      await setCache(cacheKey, result, CACHE_TTL.cnpjData);
+      return result;
     }
-
-    const data = await response.json();
-
-    return normalizeCnpjData({
-      razaoSocial: data.razao_social,
-      nomeFantasia: data.nome_fantasia,
-      address: [data.logradouro, data.numero, data.complemento, data.bairro]
-        .filter(Boolean)
-        .join(", "),
-      city: data.municipio,
-      state: data.uf,
-      zipCode: data.cep ? data.cep.replace(/(\d{5})(\d{3})/, "$1-$2") : "",
-      cnaeCode: data.cnae_fiscal || "",
-      cnaeDescription: data.cnae_fiscal_descricao,
-      phone: data.ddd_telefone_1
-        ? `(${data.ddd_telefone_1.slice(0, 2)}) ${data.ddd_telefone_1.slice(2)}`
-        : "",
-      email: data.email,
-      situacao: data.descricao_situacao_cadastral,
-    });
   } catch (error) {
     console.error("[CNPJ] BrasilAPI enrichment failed:", error);
+    // Continue to fallback
   }
 
+  // Fallback: ReceitaWS
   try {
     const fallbackResponse = await fetch(`https://www.receitaws.com.br/v1/cnpj/${cleanCnpj}`, {
       signal: AbortSignal.timeout(12000),
@@ -641,7 +656,7 @@ export async function enrichCNPJ(cnpj: string): Promise<CNPJData | null> {
       : undefined;
     const atividadeCode = atividadePrincipal?.code ? String(atividadePrincipal.code).replace(/\D/g, "") : "";
 
-    return normalizeCnpjData({
+    const result = normalizeCnpjData({
       razaoSocial: fallbackData.nome,
       nomeFantasia: fallbackData.fantasia,
       address: [fallbackData.logradouro, fallbackData.numero, fallbackData.complemento, fallbackData.bairro]
@@ -658,6 +673,10 @@ export async function enrichCNPJ(cnpj: string): Promise<CNPJData | null> {
       email: fallbackData.email,
       situacao: fallbackData.situacao,
     });
+
+    // Cache successful result (24 hours)
+    await setCache(cacheKey, result, CACHE_TTL.cnpjData);
+    return result;
   } catch (fallbackError) {
     console.error("[CNPJ] ReceitaWS enrichment failed:", fallbackError);
     return null;

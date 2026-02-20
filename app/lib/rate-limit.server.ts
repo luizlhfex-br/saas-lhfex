@@ -152,6 +152,12 @@ export const RATE_LIMITS = {
   chatApi: { maxAttempts: 20, windowMs: 60 * 1000 },        // 20 requests / min
   generalApi: { maxAttempts: 60, windowMs: 60 * 1000 },     // 60 requests / min
   export: { maxAttempts: 10, windowMs: 60 * 60 * 1000 },    // 10 exports / hour
+  
+  // Feature-specific rate limits (Auditoria - Segurança)
+  enrichCnpj: { maxAttempts: 30, windowMs: 60 * 1000 },     // 30 requests / min (BrasilAPI)
+  ncmTaxes: { maxAttempts: 15, windowMs: 60 * 1000 },       // 15 requests / min (AI-powered)
+  ocrExtract: { maxAttempts: 10, windowMs: 60 * 1000 },     // 10 requests / min (AI + heavy)
+  exchangeRate: { maxAttempts: 30, windowMs: 60 * 1000 },   // 30 requests / min (external API)
 } as const;
 
 /**

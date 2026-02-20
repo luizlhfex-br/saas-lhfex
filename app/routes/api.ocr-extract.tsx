@@ -4,7 +4,28 @@ import { requireAuth } from "~/lib/auth.server";
 import { parseInvoiceText } from "~/lib/ai.server";
 
 export async function action({ request }: Route.ActionArgs) {
-  await requireAuth(request);
+  const { checkRateLimit, RATE_LIMITS } = await import("~/lib/rate-limit.server");
+  const { user } = await requireAuth(request);
+
+  // Rate limit: 10 requests per minute per user (AI + heavy processing)
+  const rateCheck = await checkRateLimit(
+    `ocr-extract:${user.id}`,
+    RATE_LIMITS.ocrExtract.maxAttempts,
+    RATE_LIMITS.ocrExtract.windowMs
+  );
+  
+  if (!rateCheck.allowed) {
+    return data(
+      { 
+        error: "Muitas extrações. Aguarde um momento antes de tentar novamente.",
+        retryAfter: rateCheck.retryAfterSeconds 
+      },
+      { 
+        status: 429,
+        headers: { "Retry-After": String(rateCheck.retryAfterSeconds || 60) }
+      }
+    );
+  }
 
   const formData = await request.formData();
   const file = formData.get("file") as File;

@@ -1,6 +1,13 @@
 import { Form, redirect, useActionData, useNavigation } from "react-router";
 import type { Route } from "./+types/login";
-import { getSession, verifyPassword, createSession, getSessionCookie } from "~/lib/auth.server";
+import { 
+  getSession, 
+  verifyPassword, 
+  createSession, 
+  getSessionCookie,
+  checkLoginAttempts,
+  recordFailedLogin
+} from "~/lib/auth.server";
 import { loginSchema } from "~/lib/validators";
 import { db } from "~/lib/db.server";
 import { users } from "../../drizzle/schema";
@@ -20,7 +27,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  // Rate limiting — 5 attempts per 15 minutes per IP
+  // Rate limiting — 5 attempts per 15 minutes per IP (basic flood protection)
   const ip = getClientIP(request);
   const rateCheck = await checkRateLimit(`login:${ip}`, RATE_LIMITS.login.maxAttempts, RATE_LIMITS.login.windowMs);
   if (!rateCheck.allowed) {
@@ -46,6 +53,19 @@ export async function action({ request }: Route.ActionArgs) {
 
   const { email, password } = result.data;
 
+  // Progressive lockout: Check if account/IP is temporarily blocked
+  const lockoutCheck = await checkLoginAttempts(email, ip);
+  if (!lockoutCheck.allowed && lockoutCheck.lockedUntil) {
+    const minutesLeft = Math.ceil((lockoutCheck.lockedUntil.getTime() - Date.now()) / 60000);
+    return data(
+      { 
+        error: `Conta temporariamente bloqueada devido a múltiplas tentativas incorretas. Tente novamente em ${minutesLeft} minutos.`,
+        fields: raw 
+      },
+      { status: 429 }
+    );
+  }
+
   const [user] = await db
     .select()
     .from(users)
@@ -53,6 +73,14 @@ export async function action({ request }: Route.ActionArgs) {
     .limit(1);
 
   if (!user) {
+    recordFailedLogin(email, ip);
+    await logAudit({ 
+      userId: null, 
+      action: "login_failed", 
+      entity: "session", 
+      details: { reason: "user_not_found", email, ip },
+      request 
+    });
     return data(
       { error: "Email ou senha incorretos", fields: raw },
       { status: 400 }
@@ -61,6 +89,14 @@ export async function action({ request }: Route.ActionArgs) {
 
   const valid = await verifyPassword(password, user.passwordHash);
   if (!valid) {
+    recordFailedLogin(email, ip);
+    await logAudit({ 
+      userId: user.id, 
+      action: "login_failed", 
+      entity: "session",
+      details: { reason: "invalid_password", ip },
+      request 
+    });
     return data(
       { error: "Email ou senha incorretos", fields: raw },
       { status: 400 }
@@ -68,6 +104,13 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   if (!user.isActive) {
+    await logAudit({ 
+      userId: user.id, 
+      action: "login_blocked", 
+      entity: "session",
+      details: { reason: "account_inactive", ip },
+      request 
+    });
     return data(
       { error: "Conta desativada. Entre em contato com o administrador.", fields: raw },
       { status: 403 }
@@ -77,7 +120,7 @@ export async function action({ request }: Route.ActionArgs) {
   const token = await createSession(user.id, request);
   const cookie = getSessionCookie(token);
 
-  await logAudit({ userId: user.id, action: "login", entity: "session", request });
+  await logAudit({ userId: user.id, action: "login", entity: "session", details: { ip }, request });
 
   throw redirect("/", {
     headers: { "Set-Cookie": cookie },

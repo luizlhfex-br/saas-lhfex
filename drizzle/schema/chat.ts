@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp, jsonb, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, text, timestamp, jsonb, pgEnum, index } from "drizzle-orm/pg-core";
 import { users } from "./auth";
 
 export const chatRoleEnum = pgEnum("chat_role", ["user", "assistant"]);
@@ -20,4 +20,6 @@ export const chatMessages = pgTable("chat_messages", {
   agentId: varchar("agent_id", { length: 50 }),
   metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("chat_messages_conversation_idx").on(table.conversationId, table.createdAt),
+]);

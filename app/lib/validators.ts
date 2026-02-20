@@ -86,9 +86,20 @@ export const invoiceSchema = z.object({
   status: z.enum(["draft", "sent", "paid", "overdue", "cancelled"]).optional(),
 });
 
+export const cashMovementSchema = z.object({
+  date: z.string().min(1, "Data é obrigatória"),
+  type: z.enum(["income", "expense"], { message: "Tipo deve ser Receita ou Despesa" }),
+  category: z.string().min(1, "Categoria é obrigatória").max(100, "Categoria deve ter no máximo 100 caracteres"),
+  description: z.string().max(2000, "Descrição deve ter no máximo 2000 caracteres").optional(),
+  amount: z.string().min(1, "Valor é obrigatório"),
+  paymentMethod: z.string().max(50, "Forma de pagamento deve ter no máximo 50 caracteres").optional(),
+  costCenter: z.string().max(50, "Centro de custo deve ter no máximo 50 caracteres").optional(),
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type ChatMessageInput = z.infer<typeof chatMessageSchema>;
 export type ClientInput = z.infer<typeof clientSchema>;
 export type ContactInput = z.infer<typeof contactSchema>;
 export type ProcessInput = z.infer<typeof processSchema>;
 export type InvoiceInput = z.infer<typeof invoiceSchema>;
+export type CashMovementInput = z.infer<typeof cashMovementSchema>;

@@ -75,7 +75,28 @@ async function fetchNCMDescription(code: string): Promise<string | null> {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  await requireAuth(request);
+  const { checkRateLimit, RATE_LIMITS } = await import("~/lib/rate-limit.server");
+  const { user } = await requireAuth(request);
+
+  // Rate limit: 15 requests per minute per user
+  const rateCheck = await checkRateLimit(
+    `ncm-taxes:${user.id}`,
+    RATE_LIMITS.ncmTaxes.maxAttempts,
+    RATE_LIMITS.ncmTaxes.windowMs
+  );
+  
+  if (!rateCheck.allowed) {
+    return Response.json(
+      { 
+        error: "Muitas consultas. Aguarde um momento antes de tentar novamente.",
+        retryAfter: rateCheck.retryAfterSeconds 
+      },
+      { 
+        status: 429,
+        headers: { "Retry-After": String(rateCheck.retryAfterSeconds || 60) }
+      }
+    );
+  }
 
   const url = new URL(request.url);
   const code = url.searchParams.get("code")?.replace(/[.\s-]/g, "") || "";
