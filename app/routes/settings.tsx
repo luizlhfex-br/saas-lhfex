@@ -89,6 +89,21 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.9.0",
+    date: "2026-02-20",
+    title: "Ondas 7.3, 8.2, 8.3 — Testes, Logging & Backup",
+    items: [
+      { type: "feature", text: "Vitest: Framework de testes unitários com cobertura de código (validators, auth, utils)" },
+      { type: "feature", text: "Playwright: Testes E2E automatizados para fluxos críticos (login, CRM, processos)" },
+      { type: "infra", text: "GitHub Actions: Pipeline CI/CD completo (lint, typecheck, tests unitários, tests E2E, build, deploy)" },
+      { type: "feature", text: "Winston Logger: Logging estruturado com rotação de arquivos, níveis configuráveis e suporte a JSON" },
+      { type: "feature", text: "Backup PostgreSQL: Script automatizado pg_dump → S3/MinIO com compressão gzip e limpeza de backups antigos (30 dias)" },
+      { type: "improvement", text: "Scripts NPM: test:unit, test:e2e, backup para execução local e CI/CD" },
+      { type: "infra", text: "Logs organizados: app.log (all), error.log (errors only), exceptions.log, rejections.log" },
+      { type: "infra", text: "Coverage reporting: Cobertura de código com V8 provider e relatórios HTML/JSON" },
+    ],
+  },
+  {
     version: "0.8.0",
     date: "2026-02-19",
     title: "Ondas 7 & 8 — Segurança + Monitoramento",

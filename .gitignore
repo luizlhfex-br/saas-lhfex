@@ -27,6 +27,13 @@ desktop.ini
 # Logs
 *.log
 npm-debug.log*
+logs/
+
+# Tests
+coverage/
+playwright-report/
+test-results/
+.playwright/
 
 # TypeScript
 *.tsbuildinfo
