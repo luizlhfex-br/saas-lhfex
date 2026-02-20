@@ -199,14 +199,72 @@ export default function FinancialReportPage({ loaderData }: Route.ComponentProps
             {locale === "pt-BR" ? "Relatorio Financeiro" : "Financial Report"}
           </h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-2">
+          <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                {locale === "pt-BR" ? "Data Inicial" : "Start Date"}
+              </label>
+              <input
+                type="date"
+                id="filter-start-date"
+                className="rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-800"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                {locale === "pt-BR" ? "Data Final" : "End Date"}
+              </label>
+              <input
+                type="date"
+                id="filter-end-date"
+                className="rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-800"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                {locale === "pt-BR" ? "Tipo" : "Type"}
+              </label>
+              <select
+                id="filter-type"
+                className="rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-800"
+              >
+                <option value="receivable,payable">{locale === "pt-BR" ? "Todos" : "All"}</option>
+                <option value="receivable">{locale === "pt-BR" ? "A Receber" : "Receivable"}</option>
+                <option value="payable">{locale === "pt-BR" ? "A Pagar" : "Payable"}</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                {locale === "pt-BR" ? "Status" : "Status"}
+              </label>
+              <select
+                id="filter-status"
+                className="rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-800"
+              >
+                <option value="sent,paid,draft">{locale === "pt-BR" ? "Todos" : "All"}</option>
+                <option value="sent">{locale === "pt-BR" ? "Enviado" : "Sent"}</option>
+                <option value="paid">{locale === "pt-BR" ? "Pago" : "Paid"}</option>
+                <option value="draft">{locale === "pt-BR" ? "Rascunho" : "Draft"}</option>
+              </select>
+            </div>
+          </div>
           <Link to="/financial">
             <Button variant="outline" size="sm">
               {i18n.common.back}
             </Button>
           </Link>
           <Form method="post" action="/api/export-financial-sheets">
-            <Button type="submit" variant="secondary" size="sm">
+            <input type="hidden" name="startDate" id="export-start-date" value="" />
+            <input type="hidden" name="endDate" id="export-end-date" value="" />
+            <input type="hidden" name="type" id="export-type" value="receivable,payable" />
+            <input type="hidden" name="status" id="export-status" value="sent,paid,draft" />
+            <Button type="submit" variant="secondary" size="sm" onClick={(e) => {
+              document.getElementById("export-start-date")!.value = (document.getElementById("filter-start-date") as HTMLInputElement)?.value || "";
+              document.getElementById("export-end-date")!.value = (document.getElementById("filter-end-date") as HTMLInputElement)?.value || "";
+              document.getElementById("export-type")!.value = (document.getElementById("filter-type") as HTMLSelectElement)?.value || "receivable,payable";
+              document.getElementById("export-status")!.value = (document.getElementById("filter-status") as HTMLSelectElement)?.value || "sent,paid,draft";
+            }}>
               <Zap className="h-4 w-4" />
               {locale === "pt-BR" ? "Exportar Sheets" : "Export Sheets"}
             </Button>
