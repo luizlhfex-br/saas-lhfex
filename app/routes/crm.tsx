@@ -62,8 +62,6 @@ export async function loader({ request }: Route.LoaderArgs) {
       nomeFantasia: clients.nomeFantasia,
       clientType: clients.clientType,
       status: clients.status,
-      email: clients.email,
-      phone: clients.phone,
       city: clients.city,
       state: clients.state,
       createdAt: clients.createdAt,

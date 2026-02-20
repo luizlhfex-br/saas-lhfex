@@ -40,7 +40,6 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
   if (!raw.clientType) raw.clientType = "importer";
   if (!raw.status) raw.status = "active";
-  if (!raw.preferredCurrency) raw.preferredCurrency = "USD";
 
   const result = clientSchema.safeParse(raw);
   if (!result.success) {
@@ -60,18 +59,14 @@ export async function action({ request, params }: Route.ActionArgs) {
       cnpj: values.cnpj,
       razaoSocial: values.razaoSocial,
       nomeFantasia: values.nomeFantasia || null,
-      ramoAtividade: values.ramoAtividade || null,
-      phone: values.phone || null,
-      email: values.email || null,
+      cnaeCode: values.cnaeCode || null,
+      cnaeDescription: values.cnaeDescription || null,
       address: values.address || null,
       city: values.city || null,
       state: values.state || null,
       zipCode: values.zipCode || null,
       clientType: values.clientType,
       status: values.status,
-      monthlyVolume: values.monthlyVolume || null,
-      preferredCurrency: values.preferredCurrency,
-      preferredIncoterm: values.preferredIncoterm || null,
       notes: values.notes || null,
       updatedAt: new Date(),
     })
@@ -156,17 +151,16 @@ export default function CrmEditPage({ loaderData }: Route.ComponentProps) {
                 <option value="prospect">{i18n.crm.prospect}</option>
               </select>
             </div>
-            <InputField label={i18n.crm.ramoAtividade} name="ramoAtividade" error={errors.ramoAtividade} defaultValue={val("ramoAtividade") as string} />
+            <InputField label={i18n.crm.cnaeCode} name="cnaeCode" placeholder="Ex: 4713100" error={errors.cnaeCode} defaultValue={val("cnaeCode") as string} />
+            <InputField label={i18n.crm.cnaeDescription} name="cnaeDescription" error={errors.cnaeDescription} defaultValue={val("cnaeDescription") as string} />
           </div>
         </div>
 
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
           <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Contato e Endereco
+            Endereco
           </h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <InputField label={i18n.crm.email} name="email" type="email" error={errors.email} defaultValue={val("email") as string} />
-            <InputField label={i18n.crm.phone} name="phone" type="tel" error={errors.phone} defaultValue={val("phone") as string} />
             <InputField label={i18n.crm.address} name="address" error={errors.address} defaultValue={val("address") as string} />
             <InputField label={i18n.crm.city} name="city" error={errors.city} defaultValue={val("city") as string} />
             <InputField label={i18n.crm.state} name="state" maxLength={2} placeholder="SP" error={errors.state} defaultValue={val("state") as string} />
@@ -176,13 +170,8 @@ export default function CrmEditPage({ loaderData }: Route.ComponentProps) {
 
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
           <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Informacoes Comerciais
+            Observacoes
           </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <InputField label={i18n.crm.monthlyVolume} name="monthlyVolume" placeholder="Ex: USD 50.000" error={errors.monthlyVolume} defaultValue={val("monthlyVolume") as string} />
-            <InputField label={i18n.crm.preferredCurrency} name="preferredCurrency" maxLength={3} placeholder="USD" error={errors.preferredCurrency} defaultValue={val("preferredCurrency") as string} />
-            <InputField label={i18n.crm.preferredIncoterm} name="preferredIncoterm" placeholder="FOB, CIF, etc." error={errors.preferredIncoterm} defaultValue={val("preferredIncoterm") as string} />
-          </div>
           <div className="mt-4">
             <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
               {i18n.crm.notes}

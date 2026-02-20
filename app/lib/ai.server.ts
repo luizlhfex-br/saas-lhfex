@@ -544,10 +544,10 @@ interface CNPJData {
   city: string;
   state: string;
   zipCode: string;
-  ramoAtividade: string;
+  cnaeCode: string;
+  cnaeDescription: string;
   phone: string;
   email: string;
-  cnaeDescricao: string;
   situacao: string;
 }
 
@@ -558,10 +558,10 @@ function normalizeCnpjData(data: {
   city?: string;
   state?: string;
   zipCode?: string;
-  ramoAtividade?: string;
+  cnaeCode?: string;
+  cnaeDescription?: string;
   phone?: string;
   email?: string;
-  cnaeDescricao?: string;
   situacao?: string;
 }): CNPJData {
   return {
@@ -571,10 +571,10 @@ function normalizeCnpjData(data: {
     city: data.city || "",
     state: data.state || "",
     zipCode: data.zipCode || "",
-    ramoAtividade: data.ramoAtividade || "",
+    cnaeCode: data.cnaeCode || "",
+    cnaeDescription: data.cnaeDescription || "",
     phone: data.phone || "",
     email: data.email || "",
-    cnaeDescricao: data.cnaeDescricao || data.ramoAtividade || "",
     situacao: data.situacao || "",
   };
 }
@@ -604,12 +604,12 @@ export async function enrichCNPJ(cnpj: string): Promise<CNPJData | null> {
       city: data.municipio,
       state: data.uf,
       zipCode: data.cep ? data.cep.replace(/(\d{5})(\d{3})/, "$1-$2") : "",
-      ramoAtividade: data.cnae_fiscal_descricao,
+      cnaeCode: data.cnae_fiscal || "",
+      cnaeDescription: data.cnae_fiscal_descricao,
       phone: data.ddd_telefone_1
         ? `(${data.ddd_telefone_1.slice(0, 2)}) ${data.ddd_telefone_1.slice(2)}`
         : "",
       email: data.email,
-      cnaeDescricao: data.cnae_fiscal_descricao,
       situacao: data.descricao_situacao_cadastral,
     });
   } catch (error) {
@@ -639,6 +639,7 @@ export async function enrichCNPJ(cnpj: string): Promise<CNPJData | null> {
     const atividadePrincipal = Array.isArray(fallbackData.atividade_principal)
       ? fallbackData.atividade_principal[0]
       : undefined;
+    const atividadeCode = atividadePrincipal?.code ? String(atividadePrincipal.code).replace(/\D/g, "") : "";
 
     return normalizeCnpjData({
       razaoSocial: fallbackData.nome,
@@ -651,10 +652,10 @@ export async function enrichCNPJ(cnpj: string): Promise<CNPJData | null> {
       zipCode: fallbackData.cep
         ? String(fallbackData.cep).replace(/(\d{5})(\d{3})/, "$1-$2")
         : "",
-      ramoAtividade: atividadePrincipal?.text,
+      cnaeCode: atividadeCode,
+      cnaeDescription: atividadePrincipal?.text,
       phone: fallbackData.telefone,
       email: fallbackData.email,
-      cnaeDescricao: atividadePrincipal?.text,
       situacao: fallbackData.situacao,
     });
   } catch (fallbackError) {

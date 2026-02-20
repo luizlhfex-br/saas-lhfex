@@ -187,17 +187,11 @@ export default function CrmDetailPage({ loaderData }: Route.ComponentProps) {
               <InfoItem label={i18n.crm.cnpj} value={formatCNPJ(client.cnpj)} />
               <InfoItem label={i18n.crm.clientType} value={typeBadge(client.clientType)} isNode />
               <InfoItem label={i18n.common.status} value={statusBadge(client.status)} isNode />
-              {client.ramoAtividade && (
-                <InfoItem label={i18n.crm.ramoAtividade} value={client.ramoAtividade} />
+              {client.cnaeCode && (
+                <InfoItem label={i18n.crm.cnaeCode} value={client.cnaeCode} />
               )}
-              {client.monthlyVolume && (
-                <InfoItem label={i18n.crm.monthlyVolume} value={client.monthlyVolume} />
-              )}
-              {client.preferredCurrency && (
-                <InfoItem label={i18n.crm.preferredCurrency} value={client.preferredCurrency} />
-              )}
-              {client.preferredIncoterm && (
-                <InfoItem label={i18n.crm.preferredIncoterm} value={client.preferredIncoterm} />
+              {client.cnaeDescription && (
+                <InfoItem label={i18n.crm.cnaeDescription} value={client.cnaeDescription} />
               )}
             </dl>
           </div>
@@ -208,23 +202,6 @@ export default function CrmDetailPage({ loaderData }: Route.ComponentProps) {
               Contato e Endereco
             </h2>
             <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {client.email && (
-                <InfoItem
-                  label={i18n.crm.email}
-                  value={
-                    <a
-                      href={`mailto:${client.email}`}
-                      className="text-blue-600 hover:underline dark:text-blue-400"
-                    >
-                      {client.email}
-                    </a>
-                  }
-                  isNode
-                />
-              )}
-              {client.phone && (
-                <InfoItem label={i18n.crm.phone} value={client.phone} />
-              )}
               {client.address && (
                 <InfoItem label={i18n.crm.address} value={client.address} />
               )}
