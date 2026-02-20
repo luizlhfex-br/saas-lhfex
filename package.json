@@ -18,7 +18,9 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx drizzle/seed.ts",
-    "ops:health-watchdog": "node scripts/health-watchdog.mjs"
+    "ops:health-watchdog": "node scripts/health-watchdog.mjs",
+    "ops:smoke-prod": "node scripts/smoke-prod.mjs",
+    "ops:env-audit": "node scripts/coolify-env-audit.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.988.0",
