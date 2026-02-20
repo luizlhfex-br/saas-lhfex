@@ -239,6 +239,17 @@ export const en: Translations = {
     offline: "Offline",
     askSomething: "Ask something...",
   },
+  integrations: {
+    googleTitle: "Google Integrations",
+    connectGoogle: "Connect Google",
+    disconnectGoogle: "Disconnect",
+    googleConnected: "✓ Google Connected",
+    googleDescription: "Connect your Google account to access Google Drive and Sheets",
+    googleConnectedDescription: "You can generate reports in Google Sheets",
+    connectionFailed: "Failed to connect Google. Please try again.",
+    authCancelled: "Authentication cancelled",
+    authError: "Authentication error. Please try again.",
+  },
   chat: {
     sendMessage: "Send message",
     typeMessage: "Type a message...",

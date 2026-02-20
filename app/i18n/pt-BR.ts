@@ -237,6 +237,17 @@ export const ptBR = {
     offline: "Offline",
     askSomething: "Pergunte algo...",
   },
+  integrations: {
+    googleTitle: "Integrações com Google",
+    connectGoogle: "Conectar Google",
+    disconnectGoogle: "Desconectar",
+    googleConnected: "✓ Google Conectado",
+    googleDescription: "Conecte sua conta Google para acessar Google Drive e Sheets",
+    googleConnectedDescription: "Você pode gerar relatórios em Google Sheets",
+    connectionFailed: "Falha ao conectar Google. Tente novamente.",
+    authCancelled: "Autenticação cancelada",
+    authError: "Erro na autenticação. Tente novamente.",
+  },
   chat: {
     sendMessage: "Enviar mensagem",
     typeMessage: "Digite uma mensagem...",

@@ -2,12 +2,13 @@ import { Form, useNavigation } from "react-router";
 import type { Route } from "./+types/settings";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
-import { users } from "../../drizzle/schema";
+import { users, googleTokens } from "../../drizzle/schema";
 import { t, type Locale } from "~/i18n";
 import { Button } from "~/components/ui/button";
-import { Save, User, Globe, Palette, Sparkles, Bug, Wrench, Rocket, CheckCircle2, Clock } from "lucide-react";
+import { Save, User, Globe, Palette, Sparkles, Bug, Wrench, Rocket, CheckCircle2, Clock, Zap, LogOut } from "lucide-react";
 import { data } from "react-router";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
+import { disconnectGoogle } from "~/lib/google.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
@@ -15,6 +16,11 @@ export async function loader({ request }: Route.LoaderArgs) {
   const cookieHeader = request.headers.get("cookie") || "";
   const localeMatch = cookieHeader.match(/locale=([^;]+)/);
   const locale = (localeMatch ? localeMatch[1] : user.locale) as Locale;
+
+  // Check if user has Google OAuth connected
+  const googleToken = await db.query.googleTokens.findFirst({
+    where: and(eq(googleTokens.userId, user.id), isNull(googleTokens.disconnectedAt)),
+  });
 
   return {
     user: {
@@ -25,6 +31,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       theme: user.theme,
     },
     locale,
+    googleConnected: !!googleToken,
   };
 }
 
@@ -32,6 +39,19 @@ export async function action({ request }: Route.ActionArgs) {
   const { user } = await requireAuth(request);
   const formData = await request.formData();
 
+  // Handle Google disconnect
+  const action = formData.get("action") as string;
+  if (action === "disconnect_google") {
+    try {
+      await disconnectGoogle(user.id);
+      return data({ success: "Google desconectado com sucesso" });
+    } catch (error) {
+      console.error("Error disconnecting Google:", error);
+      return data({ error: "Erro ao desconectar Google" }, { status: 500 });
+    }
+  }
+
+  // Handle profile update
   const name = formData.get("name") as string;
   const locale = formData.get("locale") as string;
   const theme = formData.get("theme") as string;
@@ -316,6 +336,49 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
               <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Escuro</span>
             </label>
           </div>
+        </div>
+
+        {/* Google Integrations */}
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+          <div className="mb-4 flex items-center gap-2">
+            <Zap className="h-5 w-5 text-gray-500" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              Integrações com Google
+            </h2>
+          </div>
+          <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+            Conecte sua conta Google para acessar Google Drive e Sheets.
+          </p>
+
+          {loaderData.googleConnected ? (
+            <div className="flex items-center justify-between rounded-lg bg-green-50 p-3 dark:bg-green-900/20">
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                <div>
+                  <p className="text-sm font-medium text-green-900 dark:text-green-300">
+                    ✓ Google Conectado
+                  </p>
+                  <p className="text-xs text-green-700 dark:text-green-400">
+                    Você pode gerar relatórios em Google Sheets
+                  </p>
+                </div>
+              </div>
+              <Form method="post">
+                <input type="hidden" name="action" value="disconnect_google" />
+                <Button type="submit" variant="destructive" size="sm">
+                  <LogOut className="h-4 w-4" />
+                  Desconectar
+                </Button>
+              </Form>
+            </div>
+          ) : (
+            <Form action="/api/google-auth" method="post">
+              <Button type="submit" variant="primary">
+                <Zap className="h-4 w-4" />
+                Conectar Google
+              </Button>
+            </Form>
+          )}
         </div>
 
         <div className="flex justify-end">
