@@ -7,8 +7,22 @@ import { isbot } from "isbot";
 import type { RenderToPipeableStreamOptions } from "react-dom/server";
 import { renderToPipeableStream } from "react-dom/server";
 import { initializeCronScheduler } from "./lib/cron.server";
+import { initSentryServer } from "./lib/sentry.server";
 
 export const streamTimeout = 5_000;
+
+// Initialize Sentry once on server startup
+let sentryInitialized = false;
+function ensureSentryInitialized() {
+  if (!sentryInitialized) {
+    try {
+      initSentryServer();
+      sentryInitialized = true;
+    } catch (error) {
+      console.error("[ENTRY] Failed to initialize Sentry:", error);
+    }
+  }
+}
 
 // Initialize cron jobs once on server startup
 let cronsInitialized = false;
@@ -30,7 +44,8 @@ export default function handleRequest(
   routerContext: EntryContext,
   loadContext: AppLoadContext,
 ) {
-  // Ensure crons are initialized
+  // Ensure Sentry and crons are initialized
+  ensureSentryInitialized();
   ensureCronsInitialized();
 
   // Security headers

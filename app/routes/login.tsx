@@ -22,7 +22,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 export async function action({ request }: Route.ActionArgs) {
   // Rate limiting — 5 attempts per 15 minutes per IP
   const ip = getClientIP(request);
-  const rateCheck = checkRateLimit(`login:${ip}`, RATE_LIMITS.login.maxAttempts, RATE_LIMITS.login.windowMs);
+  const rateCheck = await checkRateLimit(`login:${ip}`, RATE_LIMITS.login.maxAttempts, RATE_LIMITS.login.windowMs);
   if (!rateCheck.allowed) {
     return data(
       { error: `Muitas tentativas de login. Tente novamente em ${rateCheck.retryAfterSeconds} segundos.`, fields: { email: "", password: "" } },

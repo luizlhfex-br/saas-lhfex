@@ -89,11 +89,24 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.8.0",
+    date: "2026-02-19",
+    title: "Ondas 7 & 8 — Segurança + Monitoramento",
+    items: [
+      { type: "feature", text: "CSRF Protection: Tokens de segurança em todos os formulários POST/PUT/DELETE" },
+      { type: "improvement", text: "Redis Rate Limiting: Proteção contra abuso agora persiste entre deploys e escala horizontalmente" },
+      { type: "feature", text: "Sentry Integration: Rastreamento de erros e performance em produção com filtragem de dados sensíveis" },
+      { type: "infra", text: "Rate Limit Login: 5 tentativas a cada 15 min por IP (previne força bruta)" },
+      { type: "infra", text: "Rate Limit Chat: 20 mensagens por minuto por usuário" },
+      { type: "infra", text: "Fail-open: Sistema continua funcionando se Redis ou Sentry ficarem indisponíveis" },
+    ],
+  },
+  {
     version: "0.7.2",
     date: "2026-02-20",
     title: "Onda 5.1 — Modernização CRM com Classificação CNAE",
     items: [
-      { type: "refactor", text: "Replace campos de atividade em texto (ramoAtividade) com código CNAE padronizado (ex: 4713100)" },
+      { type: "improvement", text: "Replace campos de atividade em texto (ramoAtividade) com código CNAE padronizado (ex: 4713100)" },
       { type: "improvement", text: "Remover phone/email da tabela clients — agora gerenciados na tabela contacts com 1:N relationship" },
       { type: "improvement", text: "Remover campos comerciais obsoletos (monthlyVolume, preferredCurrency, preferredIncoterm)" },
       { type: "feature", text: "Gerenciamento dinâmico de contatos em crm-new com add/remove/mark-primary" },
