@@ -69,6 +69,22 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.7.2",
+    date: "2026-02-20",
+    title: "Onda 5.1 — Modernização CRM com Classificação CNAE",
+    items: [
+      { type: "refactor", text: "Replace campos de atividade em texto (ramoAtividade) com código CNAE padronizado (ex: 4713100)" },
+      { type: "improvement", text: "Remover phone/email da tabela clients — agora gerenciados na tabela contacts com 1:N relationship" },
+      { type: "improvement", text: "Remover campos comerciais obsoletos (monthlyVolume, preferredCurrency, preferredIncoterm)" },
+      { type: "feature", text: "Gerenciamento dinâmico de contatos em crm-new com add/remove/mark-primary" },
+      { type: "feature", text: "Batch insert de contatos ao criar cliente com validação: min 1 contato, cada um com nome + (email OR phone)" },
+      { type: "improvement", text: "crm-edit e crm-detail refatorados para exibir CNAE fields ao invés dos campos antigos" },
+      { type: "infra", text: "Schema CRM versão 2: clients.cnaeCode + clients.cnaeDescription; remove 5 colunas obsoletas" },
+      { type: "improvement", text: "i18n atualizado: adicionar cnaeCode/cnaeDescription; remover ramoAtividade/phone/email/monthlyVolume/preferredCurrency/preferredIncoterm" },
+      { type: "infra", text: "seed.ts atualizado com CNAE codes reais de empresas brasileiras (4713100, 0161000, 4741500)" },
+    ],
+  },
+  {
     version: "0.7.1",
     date: "2026-02-19",
     title: "Onda 5.0 — Estabilidade de CNPJ + Chat + Navegação Financeira",
