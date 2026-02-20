@@ -12,7 +12,6 @@ import {
   Zap,
   Kanban,
   Shield,
-  BarChart3,
   Sparkles,
 } from "lucide-react";
 import { cn } from "~/lib/utils";
@@ -45,7 +44,6 @@ const mainNavItems: NavItem[] = [
   { labelKey: "pipeline", icon: Kanban, to: "/crm/pipeline" },
   { labelKey: "processes", icon: FileText, to: "/processes" },
   { labelKey: "financial", icon: DollarSign, to: "/financial" },
-  { labelKey: "financialReport", icon: BarChart3, to: "/financial/report" },
   { labelKey: "calculator", icon: Calculator, to: "/calculator" },
   { labelKey: "ncm", icon: Search, to: "/ncm" },
   { labelKey: "automations", icon: Zap, to: "/automations" },

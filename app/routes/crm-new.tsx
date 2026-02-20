@@ -95,24 +95,64 @@ export default function CrmNewPage({ loaderData }: Route.ComponentProps) {
   // State for AI enrichment
   const [enriching, setEnriching] = useState(false);
   const [enriched, setEnriched] = useState(false);
+  const [enrichError, setEnrichError] = useState<string | null>(null);
+
+  const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const fetchCnpjWithRetry = async (cnpj: string, attempts = 2) => {
+    let lastError = "Erro ao consultar CNPJ.";
+
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+      try {
+        const response = await fetch(`/api/enrich-cnpj?cnpj=${encodeURIComponent(cnpj)}`);
+
+        if (!response.ok) {
+          let message = "Erro ao consultar CNPJ";
+          try {
+            const payload = await response.json();
+            message = payload.error || message;
+          } catch {
+            // ignore parse error
+          }
+
+          const shouldRetry =
+            attempt < attempts && (response.status === 429 || response.status >= 500);
+          if (shouldRetry) {
+            await wait(500 * attempt);
+            continue;
+          }
+
+          throw new Error(message);
+        }
+
+        return await response.json();
+      } catch (error) {
+        lastError = error instanceof Error ? error.message : "Erro ao consultar CNPJ";
+
+        if (attempt < attempts) {
+          await wait(500 * attempt);
+          continue;
+        }
+
+        throw new Error(lastError);
+      }
+    }
+
+    throw new Error(lastError);
+  };
 
   const handleEnrichCNPJ = async () => {
     const cnpjInput = document.querySelector<HTMLInputElement>('input[name="cnpj"]');
     const cnpj = cnpjInput?.value;
     if (!cnpj || cnpj.replace(/\D/g, "").length < 14) {
-      alert("Digite um CNPJ válido primeiro");
+      setEnrichError("Digite um CNPJ válido com 14 dígitos para consultar.");
       return;
     }
 
+    setEnrichError(null);
     setEnriching(true);
     try {
-      const res = await fetch(`/api/enrich-cnpj?cnpj=${encodeURIComponent(cnpj)}`);
-      if (!res.ok) {
-        const err = await res.json();
-        alert(err.error || "Erro ao consultar CNPJ");
-        return;
-      }
-      const data = await res.json();
+      const data = await fetchCnpjWithRetry(cnpj, 2);
 
       // Fill form fields
       const fillField = (name: string, value: string) => {
@@ -135,8 +175,13 @@ export default function CrmNewPage({ loaderData }: Route.ComponentProps) {
       fillField("email", data.email);
 
       setEnriched(true);
-    } catch {
-      alert("Erro de conexão ao consultar CNPJ");
+    } catch (error) {
+      setEnriched(false);
+      setEnrichError(
+        error instanceof Error
+          ? error.message
+          : "Erro de conexão ao consultar CNPJ. Tente novamente."
+      );
     } finally {
       setEnriching(false);
     }
@@ -193,6 +238,11 @@ export default function CrmNewPage({ loaderData }: Route.ComponentProps) {
           {enriched && (
             <div className="mb-4 rounded-lg bg-green-50 px-3 py-2 text-xs text-green-700 dark:bg-green-900/20 dark:text-green-400">
               ✅ Dados preenchidos automaticamente via consulta CNPJ. Todos os campos são editáveis.
+            </div>
+          )}
+          {enrichError && (
+            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-300">
+              {enrichError}
             </div>
           )}
 

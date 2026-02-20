@@ -139,6 +139,21 @@ export default function FinancialPage({ loaderData }: Route.ComponentProps) {
         </div>
       </div>
 
+      <div className="flex items-center gap-2 border-b border-gray-200 pb-2 dark:border-gray-800">
+        <Link
+          to="/financial"
+          className="rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-medium text-white"
+        >
+          {i18n.financial.invoices}
+        </Link>
+        <Link
+          to="/financial/report"
+          className="rounded-lg px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+        >
+          {i18n.nav.financialReport}
+        </Link>
+      </div>
+
       {/* Summary Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">

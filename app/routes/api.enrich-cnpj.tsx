@@ -16,18 +16,29 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
 
   const url = new URL(request.url);
-  const cnpj = url.searchParams.get("cnpj");
+  const cnpj = url.searchParams.get("cnpj") || "";
+  const cleanCnpj = cnpj.replace(/\D/g, "");
 
-  if (!cnpj) {
+  if (!cleanCnpj) {
     return Response.json({ error: "CNPJ é obrigatório" }, { status: 400 });
   }
 
-  const data = await enrichCNPJ(cnpj);
+  if (cleanCnpj.length !== 14) {
+    return Response.json(
+      { error: "CNPJ inválido. Informe 14 dígitos." },
+      { status: 400 }
+    );
+  }
+
+  const data = await enrichCNPJ(cleanCnpj);
 
   if (!data) {
     return Response.json(
-      { error: "CNPJ não encontrado ou API indisponível" },
-      { status: 404 }
+      {
+        error:
+          "Não foi possível consultar este CNPJ agora. Verifique o número e tente novamente em instantes.",
+      },
+      { status: 503 }
     );
   }
 
