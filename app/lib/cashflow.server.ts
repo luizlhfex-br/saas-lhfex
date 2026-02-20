@@ -8,7 +8,7 @@
  */
 
 import { db } from "~/lib/db.server";
-import { cashMovements } from "~/drizzle/schema";
+import { cashMovements } from "../../drizzle/schema";
 import { gte, lte, eq, sql } from "drizzle-orm";
 
 // --- Types ---

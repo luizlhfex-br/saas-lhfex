@@ -2,7 +2,7 @@ import { redirect } from "react-router";
 import type { Route } from "./+types/api.export-financial-sheets";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
-import { invoices, clients } from "~/drizzle/schema";
+import { invoices, clients } from "../../drizzle/schema";
 import { eq, desc, sql, and, isNull, gte, lte, inArray } from "drizzle-orm";
 import { getValidGoogleToken, createGoogleSheet, getAuthenticatedSheetsClient } from "~/lib/google.server";
 import { toast } from "sonner";

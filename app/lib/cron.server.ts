@@ -4,7 +4,7 @@
  */
 
 import { db } from "./db.server";
-import { invoices, processes, clients } from "~/drizzle/schema";
+import { invoices, processes, clients } from "../../drizzle/schema";
 import { eq, lt, isNull, and, sql } from "drizzle-orm";
 import { fireTrigger } from "./automation-engine.server";
 import { enrichCNPJ } from "./ai.server";

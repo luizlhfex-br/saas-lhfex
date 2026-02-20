@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [tailwindcss(), reactRouter(), tsconfigPaths()],
   build: {
     rollupOptions: {
-      external: ["googleapis", "~/drizzle/schema", "ioredis", "@sentry/remix"],
+      external: ["googleapis", "ioredis", "@sentry/remix"],
     },
   },
 });

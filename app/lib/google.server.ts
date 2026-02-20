@@ -1,6 +1,6 @@
 import { google } from "googleapis";
 import { db } from "./db.server";
-import { googleTokens } from "~/drizzle/schema";
+import { googleTokens } from "../../drizzle/schema";
 import { eq, isNull } from "drizzle-orm";
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;

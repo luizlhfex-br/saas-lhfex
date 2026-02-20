@@ -4,7 +4,7 @@ import { requireAuth } from "~/lib/auth.server";
 import { getUserLocale } from "~/lib/i18n.server";
 import { t } from "~/i18n";
 import { db } from "~/lib/db.server";
-import { cashMovements } from "~/drizzle/schema";
+import { cashMovements } from "../../drizzle/schema";
 import { parseBrazilianCurrency } from "~/lib/cashflow.server";
 import { data } from "react-router";
 import { ChevronLeft, Upload, AlertCircle } from "lucide-react";
