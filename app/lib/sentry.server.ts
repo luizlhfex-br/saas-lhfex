@@ -8,6 +8,7 @@
  */
 
 import * as Sentry from "@sentry/remix";
+import { notifySentryError } from "./telegram-notifier.server";
 
 let sentryInitialized = false;
 
@@ -84,6 +85,8 @@ export function captureError(error: Error, context?: Record<string, unknown>) {
   Sentry.captureException(error, {
     extra: context,
   });
+
+  void notifySentryError(error);
 }
 
 /**

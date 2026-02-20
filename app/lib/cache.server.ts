@@ -10,9 +10,11 @@
  */
 
 import Redis from "ioredis";
+import { notifyRedisFailure, notifyRedisReconnect } from "./telegram-notifier.server";
 
 let redis: Redis | null = null;
 let redisAvailable = false;
+let redisDownNotified = false;
 
 /**
  * Get or create Redis client (reuses connection from rate-limit.server.ts)
@@ -42,11 +44,21 @@ function getRedisClient(): Redis | null {
     redis.on("error", (err) => {
       console.error("❌ [Cache] Redis error:", err.message);
       redisAvailable = false;
+
+      if (!redisDownNotified) {
+        redisDownNotified = true;
+        void notifyRedisFailure(err instanceof Error ? err : new Error(String(err)));
+      }
     });
 
     redis.on("connect", () => {
       console.log("✅ [Cache] Redis connected");
       redisAvailable = true;
+
+      if (redisDownNotified) {
+        redisDownNotified = false;
+        void notifyRedisReconnect();
+      }
     });
 
     redis.on("close", () => {
