@@ -69,6 +69,18 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.7.1",
+    date: "2026-02-19",
+    title: "Onda 5.0 — Estabilidade de CNPJ + Chat + Navegação Financeira",
+    items: [
+      { type: "fix", text: "Enriquecimento de CNPJ com validação melhor e fallback de provedor para reduzir falhas de consulta" },
+      { type: "improvement", text: "Formulário de Novo Cliente agora mostra erro inline no CNPJ e retry automático de consulta" },
+      { type: "fix", text: "Chat de Agentes agora exibe mensagens de erro do backend de forma mais clara (sem fallback genérico sempre)" },
+      { type: "improvement", text: "Financeiro com navegação por abas (Faturas/Relatório) e remoção do item duplicado na sidebar" },
+      { type: "infra", text: "Marcador de deploy adicionado no changelog para validação visual de atualização em produção" },
+    ],
+  },
+  {
     version: "0.7.0",
     date: "2026-02-17",
     title: "Milestone 7 — IA Multi-Provider, Auditoria & Recibo",

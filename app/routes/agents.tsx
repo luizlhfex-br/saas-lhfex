@@ -162,20 +162,43 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
         }),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        setConversationId(data.conversationId);
+      if (!res.ok) {
+        let errorMessage = "Não foi possível processar sua mensagem agora. Tente novamente.";
+
+        try {
+          const errorPayload = await res.json();
+          if (typeof errorPayload?.error === "string" && errorPayload.error.trim()) {
+            errorMessage = errorPayload.error;
+          }
+        } catch {
+          // ignore json parse failure
+        }
+
         setMessages((prev) => [
           ...prev,
           {
-            id: `assistant-${Date.now()}`,
+            id: `assistant-error-${Date.now()}`,
             role: "assistant",
-            content: data.reply,
-            agentId: data.agentId,
+            content: errorMessage,
+            agentId: activeAgent,
             timestamp: new Date().toISOString(),
           },
         ]);
+        return;
       }
+
+      const data = await res.json();
+      setConversationId(data.conversationId);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `assistant-${Date.now()}`,
+          role: "assistant",
+          content: data.reply,
+          agentId: data.agentId,
+          timestamp: new Date().toISOString(),
+        },
+      ]);
     } catch {
       setMessages((prev) => [
         ...prev,

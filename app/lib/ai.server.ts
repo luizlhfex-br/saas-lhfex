@@ -551,6 +551,34 @@ interface CNPJData {
   situacao: string;
 }
 
+function normalizeCnpjData(data: {
+  razaoSocial?: string;
+  nomeFantasia?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  ramoAtividade?: string;
+  phone?: string;
+  email?: string;
+  cnaeDescricao?: string;
+  situacao?: string;
+}): CNPJData {
+  return {
+    razaoSocial: data.razaoSocial || "",
+    nomeFantasia: data.nomeFantasia || "",
+    address: data.address || "",
+    city: data.city || "",
+    state: data.state || "",
+    zipCode: data.zipCode || "",
+    ramoAtividade: data.ramoAtividade || "",
+    phone: data.phone || "",
+    email: data.email || "",
+    cnaeDescricao: data.cnaeDescricao || data.ramoAtividade || "",
+    situacao: data.situacao || "",
+  };
+}
+
 export async function enrichCNPJ(cnpj: string): Promise<CNPJData | null> {
   const cleanCnpj = cnpj.replace(/[^\d]/g, "");
   if (cleanCnpj.length !== 14) return null;
@@ -567,25 +595,70 @@ export async function enrichCNPJ(cnpj: string): Promise<CNPJData | null> {
 
     const data = await response.json();
 
-    return {
-      razaoSocial: data.razao_social || "",
-      nomeFantasia: data.nome_fantasia || "",
+    return normalizeCnpjData({
+      razaoSocial: data.razao_social,
+      nomeFantasia: data.nome_fantasia,
       address: [data.logradouro, data.numero, data.complemento, data.bairro]
         .filter(Boolean)
         .join(", "),
-      city: data.municipio || "",
-      state: data.uf || "",
+      city: data.municipio,
+      state: data.uf,
       zipCode: data.cep ? data.cep.replace(/(\d{5})(\d{3})/, "$1-$2") : "",
-      ramoAtividade: data.cnae_fiscal_descricao || "",
+      ramoAtividade: data.cnae_fiscal_descricao,
       phone: data.ddd_telefone_1
         ? `(${data.ddd_telefone_1.slice(0, 2)}) ${data.ddd_telefone_1.slice(2)}`
         : "",
-      email: data.email || "",
-      cnaeDescricao: data.cnae_fiscal_descricao || "",
-      situacao: data.descricao_situacao_cadastral || "",
-    };
+      email: data.email,
+      cnaeDescricao: data.cnae_fiscal_descricao,
+      situacao: data.descricao_situacao_cadastral,
+    });
   } catch (error) {
-    console.error("[CNPJ] Enrichment failed:", error);
+    console.error("[CNPJ] BrasilAPI enrichment failed:", error);
+  }
+
+  try {
+    const fallbackResponse = await fetch(`https://www.receitaws.com.br/v1/cnpj/${cleanCnpj}`, {
+      signal: AbortSignal.timeout(12000),
+      headers: {
+        "Accept": "application/json",
+      },
+    });
+
+    if (!fallbackResponse.ok) {
+      console.error(`[CNPJ] ReceitaWS returned ${fallbackResponse.status}`);
+      return null;
+    }
+
+    const fallbackData = await fallbackResponse.json();
+
+    if (fallbackData.status === "ERROR") {
+      console.error("[CNPJ] ReceitaWS error:", fallbackData.message);
+      return null;
+    }
+
+    const atividadePrincipal = Array.isArray(fallbackData.atividade_principal)
+      ? fallbackData.atividade_principal[0]
+      : undefined;
+
+    return normalizeCnpjData({
+      razaoSocial: fallbackData.nome,
+      nomeFantasia: fallbackData.fantasia,
+      address: [fallbackData.logradouro, fallbackData.numero, fallbackData.complemento, fallbackData.bairro]
+        .filter(Boolean)
+        .join(", "),
+      city: fallbackData.municipio,
+      state: fallbackData.uf,
+      zipCode: fallbackData.cep
+        ? String(fallbackData.cep).replace(/(\d{5})(\d{3})/, "$1-$2")
+        : "",
+      ramoAtividade: atividadePrincipal?.text,
+      phone: fallbackData.telefone,
+      email: fallbackData.email,
+      cnaeDescricao: atividadePrincipal?.text,
+      situacao: fallbackData.situacao,
+    });
+  } catch (fallbackError) {
+    console.error("[CNPJ] ReceitaWS enrichment failed:", fallbackError);
     return null;
   }
 }

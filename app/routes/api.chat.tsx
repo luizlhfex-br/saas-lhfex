@@ -8,7 +8,8 @@ import { chatMessageSchema } from "~/lib/validators";
 import { askAgent } from "~/lib/ai.server";
 
 export async function action({ request }: Route.ActionArgs) {
-  const { user } = await requireAuth(request);
+  try {
+    const { user } = await requireAuth(request);
 
   // Rate limiting — 20 messages per minute per user
   const rateCheck = checkRateLimit(`chat:${user.id}`, RATE_LIMITS.chatApi.maxAttempts, RATE_LIMITS.chatApi.windowMs);
@@ -16,64 +17,74 @@ export async function action({ request }: Route.ActionArgs) {
     return Response.json({ error: "Rate limit exceeded. Try again later." }, { status: 429 });
   }
 
-  const body = await request.json();
-  const parsed = chatMessageSchema.safeParse(body);
-  if (!parsed.success) {
-    return Response.json({ error: "Invalid input", details: parsed.error.flatten() }, { status: 400 });
-  }
-  const { message, agentId, conversationId } = parsed.data;
+    const body = await request.json();
+    const parsed = chatMessageSchema.safeParse(body);
+    if (!parsed.success) {
+      return Response.json({ error: "Invalid input", details: parsed.error.flatten() }, { status: 400 });
+    }
+    const { message, agentId, conversationId } = parsed.data;
 
-  // Get or create conversation
-  let convId = conversationId;
-  if (!convId) {
-    const [conv] = await db.insert(chatConversations).values({
-      userId: user.id,
+    // Get or create conversation
+    let convId = conversationId;
+    if (!convId) {
+      const [conv] = await db.insert(chatConversations).values({
+        userId: user.id,
+        agentId,
+        title: message.slice(0, 100),
+      }).returning({ id: chatConversations.id });
+      convId = conv.id;
+    }
+
+    // Save user message
+    await db.insert(chatMessages).values({
+      conversationId: convId,
+      role: "user",
+      content: message.trim(),
+      agentId: null,
+    });
+
+    // Call AI agent (OpenRouter → DeepSeek fallback)
+    let reply: string;
+    let aiModel = "unknown";
+    let aiProvider = "none";
+
+    try {
+      const aiResponse = await askAgent(agentId, message.trim(), user.id);
+      reply = aiResponse.content;
+      aiModel = aiResponse.model;
+      aiProvider = aiResponse.provider;
+    } catch (error) {
+      console.error("[CHAT] AI error:", error);
+      reply = "Desculpe, ocorreu um erro ao processar sua mensagem. Tente novamente em alguns instantes.";
+    }
+
+    // Save assistant reply
+    await db.insert(chatMessages).values({
+      conversationId: convId,
+      role: "assistant",
+      content: reply,
       agentId,
-      title: message.slice(0, 100),
-    }).returning({ id: chatConversations.id });
-    convId = conv.id;
-  }
+      metadata: { aiModel, aiProvider },
+    });
 
-  // Save user message
-  await db.insert(chatMessages).values({
-    conversationId: convId,
-    role: "user",
-    content: message.trim(),
-    agentId: null,
-  });
+    // Update conversation title if first message
+    if (!conversationId) {
+      await db.update(chatConversations)
+        .set({ title: message.slice(0, 100), updatedAt: new Date() })
+        .where(eq(chatConversations.id, convId));
+    }
 
-  // Call AI agent (OpenRouter → DeepSeek fallback)
-  let reply: string;
-  let aiModel = "unknown";
-  let aiProvider = "none";
-
-  try {
-    const aiResponse = await askAgent(agentId, message.trim(), user.id);
-    reply = aiResponse.content;
-    aiModel = aiResponse.model;
-    aiProvider = aiResponse.provider;
+    return Response.json({ conversationId: convId, reply, agentId, aiModel, aiProvider });
   } catch (error) {
-    console.error("[CHAT] AI error:", error);
-    reply = "Desculpe, ocorreu um erro ao processar sua mensagem. Tente novamente em alguns instantes.";
+    console.error("[CHAT] Unhandled error:", error);
+    return Response.json(
+      {
+        error:
+          "Não foi possível processar sua mensagem no momento. Verifique sua sessão e tente novamente.",
+      },
+      { status: 500 }
+    );
   }
-
-  // Save assistant reply
-  await db.insert(chatMessages).values({
-    conversationId: convId,
-    role: "assistant",
-    content: reply,
-    agentId,
-    metadata: { aiModel, aiProvider },
-  });
-
-  // Update conversation title if first message
-  if (!conversationId) {
-    await db.update(chatConversations)
-      .set({ title: message.slice(0, 100), updatedAt: new Date() })
-      .where(eq(chatConversations.id, convId));
-  }
-
-  return Response.json({ conversationId: convId, reply, agentId, aiModel, aiProvider });
 }
 
 // GET: list conversations or messages
