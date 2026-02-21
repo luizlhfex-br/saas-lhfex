@@ -3,7 +3,6 @@
  * GET /api/personal-finance?month=2026-02&type=all
  */
 
-import { json } from "react-router";
 import type { Route } from "./+types/api.personal-finance";
 import { requireAuth } from "~/lib/auth.server";
 import { requireRole, ROLES } from "~/lib/rbac.server";
@@ -54,7 +53,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     .filter((r) => r.type === "expense")
     .reduce((sum, r) => sum + parseFloat(String(r.amount)), 0);
 
-  return json({
+  return Response.json({
     records,
     summary: { totalIncome, totalExpense, balance: totalIncome - totalExpense },
   });
@@ -89,7 +88,7 @@ export async function action({ request }: Route.ActionArgs) {
         })
         .returning();
 
-      return json({ success: true, record: record[0] }, { status: 201 });
+      return Response.json({ success: true, record: record[0] }, { status: 201 });
     }
 
     if (intent === "update") {
@@ -107,7 +106,7 @@ export async function action({ request }: Route.ActionArgs) {
         .where(and(eq(personalFinance.id, String(id)), eq(personalFinance.userId, user.id)))
         .returning();
 
-      return json({ success: true, record: updated[0] });
+      return Response.json({ success: true, record: updated[0] });
     }
 
     if (intent === "delete") {
@@ -117,9 +116,9 @@ export async function action({ request }: Route.ActionArgs) {
         .set({ deletedAt: new Date() })
         .where(and(eq(personalFinance.id, String(id)), eq(personalFinance.userId, user.id)));
 
-      return json({ success: true });
+      return Response.json({ success: true });
     }
   }
 
-  return json({ error: "Method not allowed" }, { status: 405 });
+  return Response.json({ error: "Method not allowed" }, { status: 405 });
 }

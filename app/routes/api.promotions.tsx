@@ -3,7 +3,6 @@
  * GET /api/promotions?status=pending&sort=endDate
  */
 
-import { json } from "react-router";
 import type { Route } from "./+types/api.promotions";
 import { requireAuth } from "~/lib/auth.server";
 import { requireRole, ROLES } from "~/lib/rbac.server";
@@ -44,7 +43,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     lost: promos.filter((p) => p.participationStatus === "lost").length,
   };
 
-  return json({ promotions: promos, countByStatus });
+  return Response.json({ promotions: promos, countByStatus });
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -87,7 +86,7 @@ export async function action({ request }: Route.ActionArgs) {
         endDate: String(endDate),
       });
 
-      return json({ success: true, promotion: promo[0] }, { status: 201 });
+      return Response.json({ success: true, promotion: promo[0] }, { status: 201 });
     }
 
     if (intent === "update-status") {
@@ -113,7 +112,7 @@ export async function action({ request }: Route.ActionArgs) {
         });
       }
 
-      return json({ success: true, promotion: updated[0] });
+      return Response.json({ success: true, promotion: updated[0] });
     }
 
     if (intent === "delete") {
@@ -124,9 +123,9 @@ export async function action({ request }: Route.ActionArgs) {
         .set({ deletedAt: new Date() })
         .where(and(eq(promotions.id, String(promotionId)), eq(promotions.userId, user.id)));
 
-      return json({ success: true });
+      return Response.json({ success: true });
     }
   }
 
-  return json({ error: "Method not allowed" }, { status: 405 });
+  return Response.json({ error: "Method not allowed" }, { status: 405 });
 }

@@ -3,7 +3,6 @@
  * GET /api/public-procurement-notices?page=1&status=published
  */
 
-import { json } from "react-router";
 import type { Route } from "./+types/api.public-procurement-notices";
 import { requireAuth } from "~/lib/auth.server";
 import { requireRole, ROLES } from "~/lib/rbac.server";
@@ -37,7 +36,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     .offset(offset)
     .then((rows) => rows);
 
-  return json({
+  return Response.json({
     notices,
     pagination: { page, pageSize, total: allNotices.length, pages: Math.ceil(allNotices.length / pageSize) },
   });
@@ -96,7 +95,7 @@ export async function action({ request }: Route.ActionArgs) {
         closureDate: String(closureDate),
       });
 
-      return json({ success: true, notice: newNotice[0] }, { status: 201 });
+      return Response.json({ success: true, notice: newNotice[0] }, { status: 201 });
     }
 
     if (intent === "update") {
@@ -116,7 +115,7 @@ export async function action({ request }: Route.ActionArgs) {
         .where(and(eq(publicProcurementNotices.id, String(id)), eq(publicProcurementNotices.userId, user.id)))
         .returning();
 
-      return json({ success: true, notice: updated[0] });
+      return Response.json({ success: true, notice: updated[0] });
     }
 
     if (intent === "delete") {
@@ -136,9 +135,9 @@ export async function action({ request }: Route.ActionArgs) {
         reason,
       });
 
-      return json({ success: true });
+      return Response.json({ success: true });
     }
   }
 
-  return json({ error: "Method not allowed" }, { status: 405 });
+  return Response.json({ error: "Method not allowed" }, { status: 405 });
 }
