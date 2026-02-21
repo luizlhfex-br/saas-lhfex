@@ -3,8 +3,8 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.1.0";
-export const APP_RELEASE_DATE = "2026-02-21";
+export const APP_VERSION = "2.2.0";
+export const APP_RELEASE_DATE = "2026-02-22";
 export const APP_NAME = "LHFEX SaaS";
 
 export type ChangelogItemType = "feature" | "improvement" | "fix" | "infra";
@@ -23,6 +23,18 @@ export const VERSION_HISTORY: ChangelogEntry[] = [
   {
     version: APP_VERSION,
     date: APP_RELEASE_DATE,
+    title: "Cadastros Empresariais + Banco Central Oficial",
+    items: [
+      { type: "fix",         text: "Taxa do dolar agora usa Banco Central (serie 10813 - USD Importacao)" },
+      { type: "feature",     text: "Auto-enriquecimento CNPJ via ReceitaWS no carregamento de Settings" },
+      { type: "improvement", text: "Perfil da Empresa com UI compacta e modal expansivel (18 campos)" },
+      { type: "feature",     text: "Suporte a multiplas contas bancarias (schema company_bank_accounts)" },
+      { type: "feature",     text: "Schema de promocoes empresariais para integracao OpenCLAW/Telegram" },
+    ],
+  },
+  {
+    version: "2.1.0",
+    date: "2026-02-21",
     title: "Infraestrutura, IA e Segurança",
     items: [
       { type: "infra",       text: "Redis (Upstash) integrado para cache e sessoes distribuidas" },
