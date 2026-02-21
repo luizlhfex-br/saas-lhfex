@@ -24,8 +24,46 @@ export async function loader({ request }: Route.LoaderArgs) {
   });
 
   // Load company profile
-  const profiles = await db.select().from(companyProfile).limit(1);
-  const company = profiles[0] || null;
+  let profiles = await db.select().from(companyProfile).limit(1);
+  let company = profiles[0] || null;
+
+  // Auto-enrich CNPJ if it's LHFEX and not yet filled
+  if (
+    company &&
+    company.cnpj === "62.180.992/0001-33" &&
+    !company.razaoSocial
+  ) {
+    try {
+      const enrichRes = await fetch(
+        `${new URL(request.url).origin}/api/enrich-cnpj?cnpj=62.180.992/0001-33`,
+        { headers: { Authorization: request.headers.get("cookie") || "" } }
+      );
+      if (enrichRes.ok) {
+        const enrichData = await enrichRes.json();
+        if (enrichData.cnpj) {
+          // Update company with enriched data
+          await db
+            .update(companyProfile)
+            .set({
+              razaoSocial: enrichData.razaoSocial || company.razaoSocial,
+              nomeFantasia: enrichData.nomeFantasia || company.nomeFantasia,
+              city: enrichData.city || company.city,
+              state: enrichData.state || company.state,
+              zipCode: enrichData.zipCode || company.zipCode,
+              cnae: enrichData.cnae || company.cnae,
+              cnaeDescription: enrichData.cnaeDescription || company.cnaeDescription,
+              updatedAt: new Date(),
+            });
+          // Reload from DB
+          profiles = await db.select().from(companyProfile).limit(1);
+          company = profiles[0] || null;
+        }
+      }
+    } catch (err) {
+      console.warn("Auto-enrich CNPJ failed:", err);
+      // Continue with existing company data
+    }
+  }
 
   return {
     user: {
