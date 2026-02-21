@@ -16,3 +16,4 @@ export * from "./public-procurement";
 export * from "./personal-life";
 export * from "./company-profile";
 export * from "./company-bank-accounts";
+export * from "./promotions";

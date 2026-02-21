@@ -7,7 +7,7 @@ import type { Route } from "./+types/api.promotions";
 import { requireAuth } from "~/lib/auth.server";
 import { requireRole, ROLES } from "~/lib/rbac.server";
 import { db } from "~/lib/db.server";
-import { promotions } from "drizzle/schema";
+import { promotions } from "../../drizzle/schema";
 import { eq, and, desc, isNull, lte, gte } from "drizzle-orm";
 import { fireTrigger } from "~/lib/automation-engine.server";
 import { jsonApiError } from "~/lib/api-error";
