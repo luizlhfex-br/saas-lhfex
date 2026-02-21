@@ -3,7 +3,7 @@ import type { Route } from "./+types/financial-cashflow";
 import { requireAuth } from "~/lib/auth.server";
 import { getUserLocale } from "~/lib/i18n.server";
 import { t } from "~/i18n";
-import { ChevronLeft, ChevronRight, Plus, Upload, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Upload, TrendingUp, TrendingDown, DollarSign, ArrowDownCircle, ArrowUpCircle, LayoutDashboard } from "lucide-react";
 import { Button } from "~/components/ui/button";
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -55,48 +55,58 @@ export default function FinancialCashflowPage({ loaderData }: Route.ComponentPro
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
           {i18n.financial.cashflowTitle || "Controle de Caixa"}
         </h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {/* Quick add buttons */}
+          <Link
+            to="/financial/cashflow/new?type=income"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm font-medium text-green-700 transition-colors hover:bg-green-100 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/40"
+          >
+            <ArrowDownCircle className="h-4 w-4" />
+            + Receita
+          </Link>
+          <Link
+            to="/financial/cashflow/new?type=expense"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-100 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40"
+          >
+            <ArrowUpCircle className="h-4 w-4" />
+            + Despesa
+          </Link>
           <Button asChild variant="outline">
             <Link to="/financial/categories">Categorias</Link>
           </Button>
           <Button asChild variant="outline">
             <Link to="/financial/cashflow/import">
               <Upload className="h-4 w-4 mr-2" />
-              Importar CSV
-            </Link>
-          </Button>
-          <Button asChild>
-            <Link to="/financial/cashflow/new">
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Lançamento
+              CSV
             </Link>
           </Button>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 dark:border-gray-800">
-        <nav className="-mb-px flex gap-6">
-          <Link
-            to="/financial"
-            className="border-b-2 border-transparent px-1 py-4 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-          >
-            Faturas
-          </Link>
-          <Link
-            to="/financial/report"
-            className="border-b-2 border-transparent px-1 py-4 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-          >
-            Relatório Financeiro
-          </Link>
-          <span className="border-b-2 border-blue-600 px-1 py-4 text-sm font-medium text-blue-600 dark:border-blue-500 dark:text-blue-500">
-            Controle de Caixa
-          </span>
-        </nav>
+      <div className="flex items-center gap-1 border-b border-gray-200 pb-0 dark:border-gray-800">
+        <Link
+          to="/financial"
+          className="flex items-center gap-1.5 rounded-t-lg border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+        >
+          <DollarSign className="h-4 w-4" />
+          Faturas
+        </Link>
+        <span className="flex items-center gap-1.5 rounded-t-lg border-b-2 border-violet-600 px-4 py-2.5 text-sm font-medium text-violet-600 dark:border-violet-500 dark:text-violet-400">
+          <LayoutDashboard className="h-4 w-4" />
+          Controle de Caixa
+        </span>
+        <Link
+          to="/financial/report"
+          className="flex items-center gap-1.5 rounded-t-lg border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+        >
+          <TrendingUp className="h-4 w-4" />
+          Relatório
+        </Link>
       </div>
 
       {/* Month Navigation */}

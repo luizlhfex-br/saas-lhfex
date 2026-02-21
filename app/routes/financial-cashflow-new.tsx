@@ -1,4 +1,4 @@
-import { Form, Link, redirect, useActionData, useLoaderData, useNavigation } from "react-router";
+import { Form, Link, redirect, useActionData, useLoaderData, useNavigation, useSearchParams } from "react-router";
 import type { Route } from "./+types/financial-cashflow-new";
 import { requireAuth } from "~/lib/auth.server";
 import { cashMovementSchema } from "~/lib/validators";
@@ -18,12 +18,16 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
 
+  // Read ?type= param to pre-select income/expense
+  const url = new URL(request.url);
+  const preType = url.searchParams.get("type") || "income";
+
   const categories = await db
     .select({ id: financialCategories.id, type: financialCategories.type, name: financialCategories.name, parentId: financialCategories.parentId })
     .from(financialCategories)
     .where(eq(financialCategories.createdBy, user.id));
 
-  return { locale, today, categories };
+  return { locale, today, categories, preType };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -108,7 +112,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function FinancialCashflowNewPage({ loaderData }: Route.ComponentProps) {
-  const { locale, today, categories } = loaderData;
+  const { locale, today, categories, preType } = loaderData;
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
@@ -122,7 +126,8 @@ export default function FinancialCashflowNewPage({ loaderData }: Route.Component
   const errors: Record<string, string[]> = actionPayload.errors || {};
   const fields: Record<string, string> = actionPayload.fields || {};
 
-  const selectedType = fields.type || "income";
+  // Pre-select type from URL param or action errors
+  const selectedType = fields.type || preType || "income";
   const categoryOptions = categories.filter((c) => c.type === selectedType && !c.parentId);
   const subcategoryOptions = categories.filter((c) => c.type === selectedType && !!c.parentId);
 
@@ -167,7 +172,7 @@ export default function FinancialCashflowNewPage({ loaderData }: Route.Component
               <select
                 name="type"
                 required
-                defaultValue={fields.type || "income"}
+                defaultValue={fields.type || preType || "income"}
                 onChange={(e) => {
                   const form = e.currentTarget.form;
                   if (form) {

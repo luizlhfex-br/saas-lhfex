@@ -2,10 +2,10 @@ import { Form, useNavigation, Link } from "react-router";
 import type { Route } from "./+types/settings";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
-import { users, googleTokens } from "../../drizzle/schema";
+import { users, googleTokens, companyProfile } from "../../drizzle/schema";
 import { t, type Locale } from "~/i18n";
 import { Button } from "~/components/ui/button";
-import { Save, User, Globe, Palette, Sparkles, Bug, Wrench, Rocket, CheckCircle2, Clock, Zap, LogOut } from "lucide-react";
+import { Save, User, Globe, Palette, Sparkles, Bug, Wrench, Rocket, CheckCircle2, Clock, Zap, LogOut, Building2, CreditCard } from "lucide-react";
 import { data } from "react-router";
 import { eq, and, isNull } from "drizzle-orm";
 import { disconnectGoogle } from "~/lib/google.server";
@@ -23,6 +23,10 @@ export async function loader({ request }: Route.LoaderArgs) {
     where: and(eq(googleTokens.userId, user.id), isNull(googleTokens.disconnectedAt)),
   });
 
+  // Load company profile
+  const profiles = await db.select().from(companyProfile).limit(1);
+  const company = profiles[0] || null;
+
   return {
     user: {
       id: user.id,
@@ -33,6 +37,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     },
     locale,
     googleConnected: !!googleToken,
+    company,
   };
 }
 
@@ -41,8 +46,8 @@ export async function action({ request }: Route.ActionArgs) {
   const formData = await request.formData();
 
   // Handle Google disconnect
-  const action = formData.get("action") as string;
-  if (action === "disconnect_google") {
+  const actionIntent = formData.get("action") as string;
+  if (actionIntent === "disconnect_google") {
     try {
       await disconnectGoogle(user.id);
       return data({ success: "Google desconectado com sucesso" });
@@ -50,6 +55,41 @@ export async function action({ request }: Route.ActionArgs) {
       console.error("Error disconnecting Google:", error);
       return data({ error: "Erro ao desconectar Google" }, { status: 500 });
     }
+  }
+
+  // Handle company profile update
+  if (actionIntent === "save_company") {
+    const companyValues = {
+      cnpj: String(formData.get("cnpj") || "").trim() || null,
+      razaoSocial: String(formData.get("razaoSocial") || "").trim() || null,
+      nomeFantasia: String(formData.get("nomeFantasia") || "").trim() || null,
+      address: String(formData.get("address") || "").trim() || null,
+      city: String(formData.get("city") || "").trim() || null,
+      state: String(formData.get("state") || "").trim() || null,
+      zipCode: String(formData.get("zipCode") || "").trim() || null,
+      country: String(formData.get("country") || "Brasil").trim() || "Brasil",
+      phone: String(formData.get("phone") || "").trim() || null,
+      email: String(formData.get("email") || "").trim() || null,
+      website: String(formData.get("website") || "").trim() || null,
+      ie: String(formData.get("ie") || "").trim() || null,
+      im: String(formData.get("im") || "").trim() || null,
+      cnae: String(formData.get("cnae") || "").trim() || null,
+      cnaeDescription: String(formData.get("cnaeDescription") || "").trim() || null,
+      bankName: String(formData.get("bankName") || "").trim() || null,
+      bankAgency: String(formData.get("bankAgency") || "").trim() || null,
+      bankAccount: String(formData.get("bankAccount") || "").trim() || null,
+      bankPix: String(formData.get("bankPix") || "").trim() || null,
+      updatedAt: new Date(),
+    };
+
+    const existing = await db.select({ id: companyProfile.id }).from(companyProfile).limit(1);
+    if (existing.length > 0) {
+      await db.update(companyProfile).set(companyValues);
+    } else {
+      await db.insert(companyProfile).values(companyValues);
+    }
+
+    return data({ success: true, section: "company" });
   }
 
   // Handle profile update
@@ -88,7 +128,7 @@ const typeConfig = {
 };
 
 export default function SettingsPage({ loaderData }: Route.ComponentProps) {
-  const { user, locale } = loaderData;
+  const { user, locale, company } = loaderData;
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
   const i18n = t(locale);
@@ -228,6 +268,149 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
             <Save className="h-4 w-4" />
             {i18n.common.save}
           </Button>
+        </div>
+      </Form>
+
+      {/* Company Profile */}
+      <Form method="post">
+        <input type="hidden" name="action" value="save_company" />
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+          <div className="mb-5 flex items-center gap-2">
+            <Building2 className="h-5 w-5 text-gray-500" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Dados Cadastrais da Empresa</h2>
+          </div>
+
+          {/* Identification */}
+          <div className="mb-5">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Identificação</p>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">CNPJ</label>
+                <input type="text" name="cnpj" defaultValue={company?.cnpj || ""} placeholder="00.000.000/0001-00"
+                  className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Razão Social</label>
+                <input type="text" name="razaoSocial" defaultValue={company?.razaoSocial || ""} placeholder="Nome completo da empresa"
+                  className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Nome Fantasia</label>
+                <input type="text" name="nomeFantasia" defaultValue={company?.nomeFantasia || ""} placeholder="Nome comercial"
+                  className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">E-mail Comercial</label>
+                <input type="email" name="email" defaultValue={company?.email || ""} placeholder="contato@empresa.com.br"
+                  className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Telefone</label>
+                <input type="text" name="phone" defaultValue={company?.phone || ""} placeholder="(31) 99999-9999"
+                  className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Site</label>
+                <input type="url" name="website" defaultValue={company?.website || ""} placeholder="https://www.empresa.com.br"
+                  className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
+              </div>
+            </div>
+          </div>
+
+          {/* Address */}
+          <div className="mb-5">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Endereço</p>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Logradouro</label>
+                <input type="text" name="address" defaultValue={company?.address || ""} placeholder="Rua, número, complemento"
+                  className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Cidade</label>
+                <input type="text" name="city" defaultValue={company?.city || ""} placeholder="Belo Horizonte"
+                  className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Estado</label>
+                <select name="state" defaultValue={company?.state || "MG"}
+                  className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
+                  {["AC","AL","AM","AP","BA","CE","DF","ES","GO","MA","MG","MS","MT","PA","PB","PE","PI","PR","RJ","RN","RO","RR","RS","SC","SE","SP","TO"].map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">CEP</label>
+                <input type="text" name="zipCode" defaultValue={company?.zipCode || ""} placeholder="30000-000"
+                  className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
+              </div>
+            </div>
+          </div>
+
+          {/* Fiscal */}
+          <div className="mb-5">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Dados Fiscais</p>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Inscrição Estadual (IE)</label>
+                <input type="text" name="ie" defaultValue={company?.ie || ""} placeholder="Isento ou número"
+                  className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Inscrição Municipal (IM)</label>
+                <input type="text" name="im" defaultValue={company?.im || ""} placeholder="Número da IM"
+                  className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">CNAE</label>
+                <input type="text" name="cnae" defaultValue={company?.cnae || ""} placeholder="0000000"
+                  className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Descrição do CNAE</label>
+                <input type="text" name="cnaeDescription" defaultValue={company?.cnaeDescription || ""} placeholder="Atividade principal"
+                  className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
+              </div>
+            </div>
+          </div>
+
+          {/* Banking */}
+          <div className="mb-5">
+            <div className="mb-3 flex items-center gap-2">
+              <CreditCard className="h-4 w-4 text-gray-400" />
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Dados Bancários</p>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Banco</label>
+                <input type="text" name="bankName" defaultValue={company?.bankName || ""} placeholder="Banco Inter / Itaú..."
+                  className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Agência</label>
+                <input type="text" name="bankAgency" defaultValue={company?.bankAgency || ""} placeholder="0001"
+                  className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Conta Corrente</label>
+                <input type="text" name="bankAccount" defaultValue={company?.bankAccount || ""} placeholder="123456-7"
+                  className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Chave PIX</label>
+                <input type="text" name="bankPix" defaultValue={company?.bankPix || ""} placeholder="CNPJ, e-mail ou telefone"
+                  className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Button type="submit" loading={isSubmitting}>
+              <Save className="h-4 w-4" />
+              Salvar Dados da Empresa
+            </Button>
+          </div>
         </div>
       </Form>
 

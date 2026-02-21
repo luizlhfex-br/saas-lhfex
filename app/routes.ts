@@ -16,6 +16,7 @@ export default [
     route("crm/:id/edit", "routes/crm-edit.tsx"),
     route("crm/:id/contacts/new", "routes/crm-contacts-new.tsx"),
     route("processes", "routes/processes.tsx"),
+    route("processes/kanban", "routes/processes-kanban.tsx"),
     route("processes/new", "routes/processes-new.tsx"),
     route("processes/:id", "routes/processes-detail.tsx"),
     route("processes/:id/edit", "routes/processes-edit.tsx"),
@@ -87,6 +88,7 @@ export default [
   route("api/personal-goals", "routes/api.personal-goals.tsx"),
   route("api/life-run", "routes/api.life-run.tsx"),
   route("api/financial-categories", "routes/api.financial-categories.tsx"),
+  route("api/company-profile", "routes/api.company-profile.tsx"),
 
   // Catch-all 404
   route("*", "routes/$.tsx"),

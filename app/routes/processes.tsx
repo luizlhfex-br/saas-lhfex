@@ -7,7 +7,7 @@ import { t, type Locale } from "~/i18n";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { Pagination } from "~/components/ui/pagination";
-import { Plus, Eye, Edit, FileText, Search, X } from "lucide-react";
+import { Plus, Eye, Edit, FileText, Search, X, LayoutGrid } from "lucide-react";
 import { eq, isNull, desc, and, like, sql } from "drizzle-orm";
 
 const ITEMS_PER_PAGE = 20;
@@ -117,9 +117,17 @@ export default function ProcessesPage({ loaderData }: Route.ComponentProps) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{i18n.processes.title}</h1>
-        <Link to="/processes/new">
-          <Button><Plus className="h-4 w-4" />{i18n.processes.newProcess}</Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link to="/processes/kanban">
+            <Button variant="outline">
+              <LayoutGrid className="h-4 w-4" />
+              Kanban
+            </Button>
+          </Link>
+          <Link to="/processes/new">
+            <Button><Plus className="h-4 w-4" />{i18n.processes.newProcess}</Button>
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
