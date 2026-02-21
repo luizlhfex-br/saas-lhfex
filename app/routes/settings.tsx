@@ -2,7 +2,7 @@ import { Form, useNavigation, Link } from "react-router";
 import type { Route } from "./+types/settings";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
-import { users, googleTokens, companyProfile } from "../../drizzle/schema";
+import { users, googleTokens, companyProfile, companyBankAccounts } from "../../drizzle/schema";
 import { t, type Locale } from "~/i18n";
 import { Button } from "~/components/ui/button";
 import { Save, User, Globe, Palette, Sparkles, Bug, Wrench, Rocket, CheckCircle2, Clock, Zap, LogOut, Building2, CreditCard, ChevronDown } from "lucide-react";
@@ -27,6 +27,15 @@ export async function loader({ request }: Route.LoaderArgs) {
   // Load company profile
   let profiles = await db.select().from(companyProfile).limit(1);
   let company = profiles[0] || null;
+
+  // Load bank accounts
+  let bankAccounts = [];
+  if (company?.id) {
+    bankAccounts = await db
+      .select()
+      .from(companyBankAccounts)
+      .where(eq(companyBankAccounts.companyId, company.id));
+  }
 
   // Auto-enrich CNPJ if it's LHFEX and not yet filled
   if (
@@ -77,6 +86,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     locale,
     googleConnected: !!googleToken,
     company,
+    bankAccounts,
   };
 }
 
@@ -170,10 +180,13 @@ const typeConfig = {
 interface CompanyProfileProps {
   company: any;
   isSubmitting: boolean;
+  bankAccounts?: any[];
 }
 
-function CompanyProfileSection({ company, isSubmitting }: CompanyProfileProps) {
+function CompanyProfileSection({ company, isSubmitting, bankAccounts = [] }: CompanyProfileProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showAddBank, setShowAddBank] = useState(false);
+  const [banks, setBanks] = useState(bankAccounts || []);
 
   if (!company) return null;
 
@@ -409,12 +422,12 @@ function CompanyProfileSection({ company, isSubmitting }: CompanyProfileProps) {
                 </div>
               </div>
 
-              {/* Banking */}
+              {/* Banking - Default Account */}
               <div className="mb-5">
                 <div className="mb-3 flex items-center gap-2">
                   <CreditCard className="h-4 w-4 text-gray-400" />
                   <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                    Dados Bancários
+                    Conta Bancária Principal
                   </p>
                 </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -469,6 +482,56 @@ function CompanyProfileSection({ company, isSubmitting }: CompanyProfileProps) {
                 </div>
               </div>
 
+              {/* Banking - Multiple Accounts */}
+              {banks && banks.length > 0 && (
+                <div className="mb-5 rounded-lg bg-gray-50 p-4 dark:bg-gray-800/50">
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      Contas Adicionais ({banks.length})
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddBank(!showAddBank)}
+                      className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                    >
+                      {showAddBank ? "Cancelar" : "+ Adicionar Conta"}
+                    </button>
+                  </div>
+
+                  {showAddBank && (
+                    <div className="mb-4 rounded border border-blue-200 bg-blue-50 p-3 dark:border-blue-900 dark:bg-blue-900/20">
+                      <p className="mb-2 text-xs text-gray-600 dark:text-gray-400">
+                        Novos bancos serão adicionados em breve
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    {banks.map((bank, idx) => (
+                      <div
+                        key={bank.id || idx}
+                        className="flex items-center justify-between rounded border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900"
+                      >
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900 dark:text-gray-100">
+                            {bank.bankName}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {bank.bankAgency} • {bank.bankAccount}
+                            {bank.bankPix && ` • PIX: ${bank.bankPix.substring(0, 10)}...`}
+                          </p>
+                        </div>
+                        {bank.isDefault && (
+                          <div className="ml-2 rounded bg-green-100 px-2 py-1 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                            Padrão
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-end">
                 <Button type="submit" loading={isSubmitting}>
                   <Save className="h-4 w-4" />
@@ -484,7 +547,7 @@ function CompanyProfileSection({ company, isSubmitting }: CompanyProfileProps) {
 }
 
 export default function SettingsPage({ loaderData }: Route.ComponentProps) {
-  const { user, locale, company } = loaderData;
+  const { user, locale, company, bankAccounts } = loaderData;
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
   const i18n = t(locale);
@@ -628,7 +691,7 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
       </Form>
 
       {/* Company Profile - Compact + Expandable */}
-      <CompanyProfileSection company={company} isSubmitting={isSubmitting} />
+      <CompanyProfileSection company={company} isSubmitting={isSubmitting} bankAccounts={bankAccounts} />
 
 
         {/* Prompting Best Practices */}
