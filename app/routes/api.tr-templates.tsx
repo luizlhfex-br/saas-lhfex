@@ -3,7 +3,6 @@
  * GET /api/tr-templates?category=TI
  */
 
-import { json } from "react-router";
 import type { Route } from "./+types/api.tr-templates";
 import { requireAuth } from "~/lib/auth.server";
 import { requireRole, ROLES } from "~/lib/rbac.server";
@@ -28,7 +27,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (search) query = query.where(ilike(trTemplates.name, `%${search}%`));
 
   const templates = await query.orderBy(desc(trTemplates.createdAt));
-  return json({ templates });
+  return Response.json({ templates });
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -60,7 +59,7 @@ export async function action({ request }: Route.ActionArgs) {
         })
         .returning();
 
-      return json({ success: true, template: newTemplate[0] }, { status: 201 });
+      return Response.json({ success: true, template: newTemplate[0] }, { status: 201 });
     }
 
     if (intent === "update") {
@@ -78,7 +77,7 @@ export async function action({ request }: Route.ActionArgs) {
         .where(and(eq(trTemplates.id, String(templateId)), eq(trTemplates.userId, user.id)))
         .returning();
 
-      return json({ success: true, template: updated[0] });
+      return Response.json({ success: true, template: updated[0] });
     }
 
     if (intent === "delete") {
@@ -89,9 +88,9 @@ export async function action({ request }: Route.ActionArgs) {
         .set({ isActive: false })
         .where(and(eq(trTemplates.id, String(templateId)), eq(trTemplates.userId, user.id)));
 
-      return json({ success: true });
+      return Response.json({ success: true });
     }
   }
 
-  return json({ error: "Method not allowed" }, { status: 405 });
+  return Response.json({ error: "Method not allowed" }, { status: 405 });
 }

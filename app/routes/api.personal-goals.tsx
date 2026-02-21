@@ -3,7 +3,6 @@
  * GET /api/personal-goals?category=health&status=in_progress
  */
 
-import { json } from "react-router";
 import type { Route } from "./+types/api.personal-goals";
 import { requireAuth } from "~/lib/auth.server";
 import { requireRole, ROLES } from "~/lib/rbac.server";
@@ -44,7 +43,7 @@ export async function loader({ request }: Route.LoaderArgs) {
         : 0,
   }));
 
-  return json({ goals: goalsWithProgress });
+  return Response.json({ goals: goalsWithProgress });
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -81,7 +80,7 @@ export async function action({ request }: Route.ActionArgs) {
         })
         .returning();
 
-      return json({ success: true, goal: goal[0] }, { status: 201 });
+      return Response.json({ success: true, goal: goal[0] }, { status: 201 });
     }
 
     if (intent === "update-progress") {
@@ -97,7 +96,7 @@ export async function action({ request }: Route.ActionArgs) {
         .where(and(eq(personalGoals.id, String(goalId)), eq(personalGoals.userId, user.id)))
         .returning();
 
-      return json({ success: true, goal: updated[0] });
+      return Response.json({ success: true, goal: updated[0] });
     }
 
     if (intent === "complete") {
@@ -112,9 +111,9 @@ export async function action({ request }: Route.ActionArgs) {
         .where(and(eq(personalGoals.id, String(goalId)), eq(personalGoals.userId, user.id)))
         .returning();
 
-      return json({ success: true, goal: updated[0] });
+      return Response.json({ success: true, goal: updated[0] });
     }
   }
 
-  return json({ error: "Method not allowed" }, { status: 405 });
+  return Response.json({ error: "Method not allowed" }, { status: 405 });
 }

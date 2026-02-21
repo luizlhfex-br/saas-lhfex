@@ -4,7 +4,6 @@
  * POST /api/personal-routines (tracking)
  */
 
-import { json } from "react-router";
 import type { Route } from "./+types/api.personal-routines";
 import { requireAuth } from "~/lib/auth.server";
 import { requireRole, ROLES } from "~/lib/rbac.server";
@@ -51,7 +50,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       .orderBy(desc(routineTracking.date));
   }
 
-  return json({ routines, tracking });
+  return Response.json({ routines, tracking });
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -85,7 +84,7 @@ export async function action({ request }: Route.ActionArgs) {
         })
         .returning();
 
-      return json({ success: true, routine: routine[0] }, { status: 201 });
+      return Response.json({ success: true, routine: routine[0] }, { status: 201 });
     }
 
     if (intent === "log-tracking") {
@@ -105,7 +104,7 @@ export async function action({ request }: Route.ActionArgs) {
         })
         .returning();
 
-      return json({ success: true, tracking: track[0] }, { status: 201 });
+      return Response.json({ success: true, tracking: track[0] }, { status: 201 });
     }
 
     if (intent === "deactivate") {
@@ -116,9 +115,9 @@ export async function action({ request }: Route.ActionArgs) {
         .set({ isActive: false })
         .where(and(eq(personalRoutines.id, String(routineId)), eq(personalRoutines.userId, user.id)));
 
-      return json({ success: true });
+      return Response.json({ success: true });
     }
   }
 
-  return json({ error: "Method not allowed" }, { status: 405 });
+  return Response.json({ error: "Method not allowed" }, { status: 405 });
 }

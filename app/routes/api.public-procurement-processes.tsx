@@ -3,7 +3,6 @@
  * GET /api/public-procurement-processes?noticeId=xxx&status=pending
  */
 
-import { json } from "react-router";
 import type { Route } from "./+types/api.public-procurement-processes";
 import { requireAuth } from "~/lib/auth.server";
 import { requireRole, ROLES } from "~/lib/rbac.server";
@@ -19,7 +18,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const noticeId = url.searchParams.get("noticeId");
   const status = url.searchParams.get("status");
 
-  if (!noticeId) return json({ error: "noticeId required" }, { status: 400 });
+  if (!noticeId) return Response.json({ error: "noticeId required" }, { status: 400 });
 
   // Verify user owns this notice
   const notice = await db
@@ -28,7 +27,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     .where(and(eq(publicProcurementNotices.id, noticeId), eq(publicProcurementNotices.userId, user.id)))
     .limit(1);
 
-  if (!notice.length) return json({ error: "Notice not found" }, { status: 404 });
+  if (!notice.length) return Response.json({ error: "Notice not found" }, { status: 404 });
 
   let query = db
     .select()
@@ -39,7 +38,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (status) query = query.where(eq(publicProcurementProcesses.status, status));
 
   const processes = await query;
-  return json({ processes });
+  return Response.json({ processes });
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -66,7 +65,7 @@ export async function action({ request }: Route.ActionArgs) {
         .where(and(eq(publicProcurementNotices.id, String(noticeId)), eq(publicProcurementNotices.userId, user.id)))
         .limit(1);
 
-      if (!notice.length) return json({ error: "Notice not found" }, { status: 404 });
+      if (!notice.length) return Response.json({ error: "Notice not found" }, { status: 404 });
 
       const newProcess = await db
         .insert(publicProcurementProcesses)
@@ -89,7 +88,7 @@ export async function action({ request }: Route.ActionArgs) {
         description: String(description),
       });
 
-      return json({ success: true, process: newProcess[0] }, { status: 201 });
+      return Response.json({ success: true, process: newProcess[0] }, { status: 201 });
     }
 
     if (intent === "update-status") {
@@ -111,9 +110,9 @@ export async function action({ request }: Route.ActionArgs) {
         .where(eq(publicProcurementProcesses.id, String(processId)))
         .returning();
 
-      return json({ success: true, process: updated[0] });
+      return Response.json({ success: true, process: updated[0] });
     }
   }
 
-  return json({ error: "Method not allowed" }, { status: 405 });
+  return Response.json({ error: "Method not allowed" }, { status: 405 });
 }

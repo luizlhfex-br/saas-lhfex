@@ -3,7 +3,6 @@
  * GET /api/personal-investments?assetType=stock
  */
 
-import { json } from "react-router";
 import type { Route } from "./+types/api.personal-investments";
 import { requireAuth } from "~/lib/auth.server";
 import { requireRole, ROLES } from "~/lib/rbac.server";
@@ -41,7 +40,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   );
   const totalGainLoss = investments.reduce((sum, inv) => sum + parseFloat(String(inv.gainLoss || 0)), 0);
 
-  return json({
+  return Response.json({
     investments,
     portfolio: { totalInvested, totalValue, totalGainLoss, gainLossPercent: totalInvested > 0 ? (totalGainLoss / totalInvested) * 100 : 0 },
   });
@@ -84,7 +83,7 @@ export async function action({ request }: Route.ActionArgs) {
         })
         .returning();
 
-      return json({ success: true, investment: investment[0] }, { status: 201 });
+      return Response.json({ success: true, investment: investment[0] }, { status: 201 });
     }
 
     if (intent === "update-price") {
@@ -97,7 +96,7 @@ export async function action({ request }: Route.ActionArgs) {
         .where(eq(personalInvestments.id, String(id)))
         .limit(1);
 
-      if (!inv.length) return json({ error: "Investment not found" }, { status: 404 });
+      if (!inv.length) return Response.json({ error: "Investment not found" }, { status: 404 });
 
       const currentValue = parseFloat(String(inv[0].quantity)) * parseFloat(String(currentPrice));
       const investedAmount = parseFloat(String(inv[0].quantity)) * parseFloat(String(inv[0].purchasePrice));
@@ -116,9 +115,9 @@ export async function action({ request }: Route.ActionArgs) {
         .where(and(eq(personalInvestments.id, String(id)), eq(personalInvestments.userId, user.id)))
         .returning();
 
-      return json({ success: true, investment: updated[0] });
+      return Response.json({ success: true, investment: updated[0] });
     }
   }
 
-  return json({ error: "Method not allowed" }, { status: 405 });
+  return Response.json({ error: "Method not allowed" }, { status: 405 });
 }

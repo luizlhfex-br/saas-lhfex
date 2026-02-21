@@ -3,7 +3,6 @@
  * GET /api/public-procurement-alerts?noticeId=xxx&severity=critical
  */
 
-import { json } from "react-router";
 import type { Route } from "./+types/api.public-procurement-alerts";
 import { requireAuth } from "~/lib/auth.server";
 import { requireRole, ROLES } from "~/lib/rbac.server";
@@ -29,7 +28,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   let query = db.select().from(procurementAlerts).$dynamic();
 
   if (noticeId) {
-    if (!noticeIds.includes(noticeId)) return json({ error: "Not authorized" }, { status: 403 });
+    if (!noticeIds.includes(noticeId)) return Response.json({ error: "Not authorized" }, { status: 403 });
     query = query.where(eq(procurementAlerts.noticeId, noticeId));
   } else {
     query = query.where(noticeIds.length > 0 ? sql`${procurementAlerts.noticeId} in (${noticeIds})` : undefined);
@@ -41,7 +40,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     .where(eq(procurementAlerts.status, "pending"))
     .orderBy(desc(procurementAlerts.dueDate));
 
-  return json({ alerts });
+  return Response.json({ alerts });
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -67,7 +66,7 @@ export async function action({ request }: Route.ActionArgs) {
         .where(and(eq(publicProcurementNotices.id, String(noticeId)), eq(publicProcurementNotices.userId, user.id)))
         .limit(1);
 
-      if (!notice.length) return json({ error: "Notice not found" }, { status: 404 });
+      if (!notice.length) return Response.json({ error: "Notice not found" }, { status: 404 });
 
       const newAlert = await db
         .insert(procurementAlerts)
@@ -82,7 +81,7 @@ export async function action({ request }: Route.ActionArgs) {
         })
         .returning();
 
-      return json({ success: true, alert: newAlert[0] }, { status: 201 });
+      return Response.json({ success: true, alert: newAlert[0] }, { status: 201 });
     }
 
     if (intent === "acknowledge") {
@@ -94,7 +93,7 @@ export async function action({ request }: Route.ActionArgs) {
         .where(eq(procurementAlerts.id, String(alertId)))
         .returning();
 
-      return json({ success: true, alert: updated[0] });
+      return Response.json({ success: true, alert: updated[0] });
     }
 
     if (intent === "resolve") {
@@ -106,9 +105,9 @@ export async function action({ request }: Route.ActionArgs) {
         .where(eq(procurementAlerts.id, String(alertId)))
         .returning();
 
-      return json({ success: true, alert: updated[0] });
+      return Response.json({ success: true, alert: updated[0] });
     }
   }
 
-  return json({ error: "Method not allowed" }, { status: 405 });
+  return Response.json({ error: "Method not allowed" }, { status: 405 });
 }
