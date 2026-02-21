@@ -44,6 +44,8 @@ export const ptBR = {
     agents: "Agentes IA",
     automations: "Automações",
     pipeline: "Funil de Vendas",
+    publicProcurement: "Compras Públicas",
+    personalLife: "Vida Pessoal",
     settings: "Configurações",
     personal: "Pessoal",
     system: "Sistema",

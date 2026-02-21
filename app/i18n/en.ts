@@ -46,6 +46,8 @@ export const en: Translations = {
     agents: "AI Agents",
     automations: "Automations",
     pipeline: "Sales Pipeline",
+    publicProcurement: "Public Procurement",
+    personalLife: "Personal Life",
     settings: "Settings",
     personal: "Personal",
     system: "System",

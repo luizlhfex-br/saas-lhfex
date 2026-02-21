@@ -27,6 +27,22 @@ export interface AIResponse {
 
 type AIFeature = "chat" | "ncm_classification" | "ocr" | "enrichment" | "telegram";
 
+const LIFE_AGENT_SYSTEM_PROMPT = `Você é o Life Agent da LHFEX para automação de vida pessoal.
+Seu papel é executar tarefas práticas com objetividade, baixo custo e segurança.
+
+Regras obrigatórias:
+- Responda sempre em português brasileiro.
+- Produza respostas curtas, estruturadas e acionáveis.
+- Foque em planejamento prático (checklists, passos, cronograma, prioridades).
+- Não invente dados pessoais/financeiros ausentes.
+- Não solicite nem exponha credenciais/senhas/chaves.
+- Não execute loops, automações autônomas ou comandos no sistema.
+
+Formato preferencial:
+1) Objetivo
+2) Plano em passos
+3) Próxima ação imediata`;
+
 // --- AI Guidelines (applied to ALL agents) ---
 
 const AI_GUIDELINES = `
@@ -206,6 +222,7 @@ async function callGemini(
   systemPrompt: string,
   userMessage: string,
   contextMessage: string,
+  maxOutputTokens = 2000,
 ): Promise<AIResponse> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
@@ -219,7 +236,7 @@ async function callGemini(
         system_instruction: { parts: [{ text: `${systemPrompt}\n\n${contextMessage}` }] },
         contents: [{ parts: [{ text: userMessage }] }],
         generationConfig: {
-          maxOutputTokens: 2000,
+          maxOutputTokens,
           temperature: 0.7,
         },
       }),
@@ -253,6 +270,7 @@ async function callOpenRouterFree(
   systemPrompt: string,
   userMessage: string,
   contextMessage: string,
+  maxOutputTokens = 2000,
 ): Promise<AIResponse> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error("OPENROUTER_API_KEY not configured");
@@ -274,7 +292,7 @@ async function callOpenRouterFree(
         { role: "system", content: `${systemPrompt}\n\n${contextMessage}` },
         { role: "user", content: userMessage },
       ],
-      max_tokens: 2000,
+      max_tokens: maxOutputTokens,
       temperature: 0.7,
     }),
     signal: AbortSignal.timeout(30000),
@@ -303,6 +321,7 @@ async function callDeepSeek(
   systemPrompt: string,
   userMessage: string,
   contextMessage: string,
+  maxOutputTokens = 2000,
 ): Promise<AIResponse> {
   // Try via OpenRouter first (paid model)
   const orKey = process.env.OPENROUTER_API_KEY;
@@ -323,7 +342,7 @@ async function callDeepSeek(
             { role: "system", content: `${systemPrompt}\n\n${contextMessage}` },
             { role: "user", content: userMessage },
           ],
-          max_tokens: 2000,
+          max_tokens: maxOutputTokens,
           temperature: 0.7,
         }),
         signal: AbortSignal.timeout(30000),
@@ -357,7 +376,7 @@ async function callDeepSeek(
         { role: "system", content: `${systemPrompt}\n\n${contextMessage}` },
         { role: "user", content: userMessage },
       ],
-      max_tokens: 2000,
+      max_tokens: maxOutputTokens,
       temperature: 0.7,
     }),
     signal: AbortSignal.timeout(30000),
@@ -443,6 +462,34 @@ export async function askAgent(
     model: "fallback",
     provider: "gemini",
   };
+}
+
+export async function askLifeAgentLite(task: string, userId: string): Promise<AIResponse> {
+  const maxOutputTokens = Number(process.env.LIFE_AGENT_MAX_OUTPUT_TOKENS || 1200);
+
+  if (process.env.GEMINI_API_KEY) {
+    try {
+      const result = await callGemini(LIFE_AGENT_SYSTEM_PROMPT, task, "", maxOutputTokens);
+      await logUsage("gemini", result.model, "chat", 0, result.tokensUsed || 0, true, undefined, userId);
+      return result;
+    } catch (error) {
+      await logUsage("gemini", "gemini-2.0-flash", "chat", 0, 0, false, String(error), userId);
+      console.error("[LIFE_AGENT] Gemini failed:", error);
+    }
+  }
+
+  if (process.env.OPENROUTER_API_KEY) {
+    try {
+      const result = await callOpenRouterFree(LIFE_AGENT_SYSTEM_PROMPT, task, "", maxOutputTokens);
+      await logUsage("openrouter_free", result.model, "chat", 0, result.tokensUsed || 0, true, undefined, userId);
+      return result;
+    } catch (error) {
+      await logUsage("openrouter_free", "gemini-2.0-flash-exp:free", "chat", 0, 0, false, String(error), userId);
+      console.error("[LIFE_AGENT] OpenRouter free failed:", error);
+    }
+  }
+
+  throw new Error("Nenhum provedor free disponível para o Life Agent. Configure GEMINI_API_KEY ou OPENROUTER_API_KEY.");
 }
 
 // --- Specialized: Parse Invoice/Document Text (OCR) ---

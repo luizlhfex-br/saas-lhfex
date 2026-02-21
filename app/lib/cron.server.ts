@@ -4,10 +4,22 @@
  */
 
 import { db } from "./db.server";
-import { invoices, processes, clients } from "../../drizzle/schema";
+import { invoices, processes, clients, automationLogs, auditLogs } from "../../drizzle/schema";
 import { eq, lt, isNull, and, sql } from "drizzle-orm";
 import { fireTrigger } from "./automation-engine.server";
 import { enrichCNPJ } from "./ai.server";
+
+function parseEnvInt(name: string, fallback: number, min: number, max: number): number {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const parsed = parseInt(raw, 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(Math.max(parsed, min), max);
+}
+
+const AUTOMATION_LOG_RETENTION_ENABLED = process.env.AUTOMATION_LOG_RETENTION_ENABLED !== "false";
+const AUTOMATION_LOG_RETENTION_DAYS = parseEnvInt("AUTOMATION_LOG_RETENTION_DAYS", 90, 1, 3650);
+const AUTOMATION_LOG_RETENTION_INTERVAL_HOURS = parseEnvInt("AUTOMATION_LOG_RETENTION_INTERVAL_HOURS", 24, 1, 168);
 
 interface CronJob {
   name: string;
@@ -32,6 +44,13 @@ const jobs: CronJob[] = [
     cronExpression: "0 2 * * 0", // Weekly at 2am on Sunday
     handler: enrichNewClientsBackground,
   },
+  ...(AUTOMATION_LOG_RETENTION_ENABLED
+    ? [{
+        name: "automation_logs_retention",
+        cronExpression: `0 */${AUTOMATION_LOG_RETENTION_INTERVAL_HOURS} * * *`,
+        handler: cleanupOldAutomationLogs,
+      }]
+    : []),
 ];
 
 /**
@@ -99,6 +118,7 @@ async function checkInvoicesDueSoon() {
     const daysBeforeDue = 3;
     const thresholdDate = new Date();
     thresholdDate.setDate(thresholdDate.getDate() + daysBeforeDue);
+    const thresholdDateStr = thresholdDate.toISOString().slice(0, 10);
     
     const upcomingInvoices = await db
       .select({ id: invoices.id, number: invoices.number, dueDate: invoices.dueDate, clientId: invoices.clientId })
@@ -107,7 +127,7 @@ async function checkInvoicesDueSoon() {
         and(
           eq(invoices.status, "sent"),
           isNull(invoices.paidDate),
-          lt(invoices.dueDate, thresholdDate),
+          lt(invoices.dueDate, thresholdDateStr),
         )
       )
       .limit(100);
@@ -124,7 +144,7 @@ async function checkInvoicesDueSoon() {
         data: {
           invoiceId: invoice.id,
           invoiceNumber: invoice.number,
-          dueDate: invoice.dueDate.toISOString(),
+          dueDate: invoice.dueDate,
           daysUntilDue,
           clientId: invoice.clientId,
         },
@@ -221,6 +241,44 @@ async function enrichNewClientsBackground() {
     console.log(`[CRON] Successfully enriched ${successCount}/${newClients.length} clients`);
   } catch (error) {
     console.error("[CRON] Error enriching clients:", error);
+  }
+}
+
+/**
+ * Cleanup old automation logs by retention policy
+ */
+async function cleanupOldAutomationLogs() {
+  try {
+    const cutoffDate = new Date(Date.now() - AUTOMATION_LOG_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+
+    const [{ count: totalToDelete }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(automationLogs)
+      .where(lt(automationLogs.executedAt, cutoffDate));
+
+    if (totalToDelete > 0) {
+      await db
+        .delete(automationLogs)
+        .where(lt(automationLogs.executedAt, cutoffDate));
+    }
+
+    await db.insert(auditLogs).values({
+      userId: null,
+      action: "cleanup",
+      entity: "automation_log",
+      changes: {
+        deletedCount: totalToDelete,
+        retentionDays: AUTOMATION_LOG_RETENTION_DAYS,
+        cutoffDate: cutoffDate.toISOString(),
+        mode: "automatic_cron",
+      },
+      ipAddress: "internal-cron",
+      userAgent: "cron.server",
+    });
+
+    console.log(`[CRON] Automation logs retention done. Deleted ${totalToDelete} logs older than ${AUTOMATION_LOG_RETENTION_DAYS} days`);
+  } catch (error) {
+    console.error("[CRON] Error cleaning old automation logs:", error);
   }
 }
 

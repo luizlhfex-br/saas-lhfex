@@ -10,6 +10,8 @@ import {
   Settings,
   LogOut,
   X,
+  Heart,
+  Briefcase,
 } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { t, type Locale } from "~/i18n";
@@ -35,6 +37,7 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   to: string;
   disabled?: boolean;
+  requiredEmail?: string; // Only show if user email matches
 }
 
 const mainNavItems: NavItem[] = [
@@ -45,6 +48,8 @@ const mainNavItems: NavItem[] = [
   { labelKey: "calculator", icon: Calculator, to: "/calculator" },
   { labelKey: "ncm", icon: Search, to: "/ncm" },
   { labelKey: "agents", icon: Bot, to: "/agents" },
+  { labelKey: "publicProcurement", icon: Briefcase, to: "/public-procurement", requiredEmail: "luiz@lhfex.com.br" },
+  { labelKey: "personalLife", icon: Heart, to: "/personal-life", requiredEmail: "luiz@lhfex.com.br" },
 ];
 
 export function MobileNav({
@@ -90,6 +95,11 @@ export function MobileNav({
         {/* Navigation */}
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
           {mainNavItems.map((item) => {
+            // Filter items by required email
+            if (item.requiredEmail && user.email !== item.requiredEmail) {
+              return null;
+            }
+
             const Icon = item.icon;
             const label = i18n.nav[item.labelKey] as string;
 
@@ -117,7 +127,7 @@ export function MobileNav({
                   cn(
                     "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                     isActive
-                      ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400"
+                      ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400"
                       : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
                   )
                 }
@@ -133,7 +143,7 @@ export function MobileNav({
         <div className="border-t border-gray-200 px-3 py-4 dark:border-gray-800">
           {/* User info */}
           <div className="mb-3 flex items-center gap-3 px-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-sm font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-sm font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
               {user.name.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
@@ -154,7 +164,7 @@ export function MobileNav({
               cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 isActive
-                  ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400"
+                  ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400"
                   : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
               )
             }

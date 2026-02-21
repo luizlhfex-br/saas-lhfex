@@ -9,6 +9,7 @@ import { Save, User, Globe, Palette, Sparkles, Bug, Wrench, Rocket, CheckCircle2
 import { data } from "react-router";
 import { eq, and, isNull } from "drizzle-orm";
 import { disconnectGoogle } from "~/lib/google.server";
+import { APP_VERSION, APP_RELEASE_DATE } from "~/config/version";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
@@ -88,6 +89,22 @@ interface ChangelogEntry {
 }
 
 const changelog: ChangelogEntry[] = [
+  {
+    version: APP_VERSION,
+    date: APP_RELEASE_DATE,
+    title: "Ondas 7.0 & 8.0 — Compras Públicas + Vida Pessoal + Tema Indigo + Documentação",
+    items: [
+      { type: "feature", text: "Onda 7.0 — Compras Públicas: Sistema Lei 14.133/21 com gerenciamento de editais e processos licitatórios" },
+      { type: "feature", text: "Onda 8.0 — Vida Pessoal: Módulo de finanças pessoais, investimentos e rotinas diárias" },
+      { type: "feature", text: "RBAC por email: Módulos restritos por usuário (luiz@lhfex.com.br vs financeiro@lhfex.com.br)" },
+      { type: "improvement", text: "Tema Visual Indigo + Teal: Redesign de interfaces com paleta Data-First/Brutalist (GitHub-like)" },
+      { type: "improvement", text: "Navegação atualizada: Sidebar e mobile-nav com novos módulos e ícones" },
+      { type: "feature", text: "Página de Atualizações do Sistema: Dashboard visual com links aos novos módulos" },
+      { type: "infra", text: "I18N expandido: Labels em pt-BR e en para Compras Públicas e Vida Pessoal" },
+      { type: "infra", text: "Documentação de Sistema: CHANGELOG, UPDATE-LOG.json e THEME-APPLIED.md" },
+      { type: "infra", text: "Config centralizada: app/config/version.ts para rastreamento de versão" },
+    ],
+  },
   {
     version: "0.9.0",
     date: "2026-02-20",

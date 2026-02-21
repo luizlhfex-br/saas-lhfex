@@ -8,12 +8,23 @@ import { automations, automationLogs, notifications } from "drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { sendProcessStatusUpdate } from "~/lib/email.server";
 
-type TriggerType = "process_status_change" | "invoice_due_soon" | "new_client" | "eta_approaching" | "scheduled";
+type TriggerType = "process_status_change" | "invoice_due_soon" | "new_client" | "eta_approaching" | "scheduled" | "public_procurement_created" | "public_procurement_cancelled" | "procurement_process_created" | "promotion_created" | "promotion_won";
 
 interface TriggerEvent {
   type: TriggerType;
   data: Record<string, unknown>;
   userId?: string;
+}
+
+interface ManualRunActor {
+  userId: string;
+  email?: string;
+  name?: string;
+}
+
+interface ManualRunResult {
+  ok: boolean;
+  logId: string;
 }
 
 /**
@@ -59,6 +70,67 @@ export async function fireTrigger(event: TriggerEvent): Promise<void> {
     }
   } catch (error) {
     console.error("[AUTOMATION] Failed to process trigger:", error);
+  }
+}
+
+/**
+ * Execute a specific automation manually (test run)
+ * Creates a dedicated automation log entry tagged as manual run
+ */
+export async function runAutomationManually(
+  automationId: string,
+  actor: ManualRunActor,
+  data: Record<string, unknown> = {},
+): Promise<ManualRunResult> {
+  const [automation] = await db
+    .select()
+    .from(automations)
+    .where(eq(automations.id, automationId))
+    .limit(1);
+
+  if (!automation) {
+    throw new Error("Automation not found");
+  }
+
+  const input = {
+    _manualRun: true,
+    _manualAt: new Date().toISOString(),
+    _manualByUserId: actor.userId,
+    _manualByEmail: actor.email || "",
+    _manualByName: actor.name || "",
+    ...data,
+  };
+
+  try {
+    await executeAction(automation, {
+      type: automation.triggerType as TriggerType,
+      data: input,
+      userId: actor.userId,
+    });
+
+    const [log] = await db.insert(automationLogs).values({
+      automationId: automation.id,
+      status: "success",
+      input,
+      output: {
+        action: automation.actionType,
+        mode: "manual",
+      },
+    }).returning({ id: automationLogs.id });
+
+    return { ok: true, logId: log.id };
+  } catch (error) {
+    const [log] = await db.insert(automationLogs).values({
+      automationId: automation.id,
+      status: "error",
+      input,
+      output: {
+        mode: "manual",
+      },
+      errorMessage: error instanceof Error ? error.message : "Unknown error",
+    }).returning({ id: automationLogs.id });
+
+    throw new Error(`Manual run failed (log: ${log.id})`);
   }
 }
 

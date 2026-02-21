@@ -13,6 +13,8 @@ import {
   Kanban,
   Shield,
   Sparkles,
+  Heart,
+  Briefcase,
 } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { t, type Locale } from "~/i18n";
@@ -36,6 +38,7 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   to: string;
   disabled?: boolean;
+  requiredEmail?: string; // Only show if user email matches
 }
 
 const mainNavItems: NavItem[] = [
@@ -48,6 +51,8 @@ const mainNavItems: NavItem[] = [
   { labelKey: "ncm", icon: Search, to: "/ncm" },
   { labelKey: "automations", icon: Zap, to: "/automations" },
   { labelKey: "agents", icon: Bot, to: "/agents" },
+  { labelKey: "publicProcurement", icon: Briefcase, to: "/public-procurement", requiredEmail: "luiz@lhfex.com.br" },
+  { labelKey: "personalLife", icon: Heart, to: "/personal-life", requiredEmail: "luiz@lhfex.com.br" },
   { labelKey: "audit", icon: Shield, to: "/audit" },
   { labelKey: "aiUsage", icon: Sparkles, to: "/ai-usage" },
 ];
@@ -69,6 +74,11 @@ export function Sidebar({ user, locale, currentPath }: SidebarProps) {
       {/* Main navigation */}
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
         {mainNavItems.map((item) => {
+          // Filter items by required email
+          if (item.requiredEmail && user.email !== item.requiredEmail) {
+            return null;
+          }
+
           const Icon = item.icon;
           const label = i18n.nav[item.labelKey] as string;
 
@@ -96,7 +106,7 @@ export function Sidebar({ user, locale, currentPath }: SidebarProps) {
                 cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                   isActive
-                    ? "bg-violet-600 text-white dark:bg-violet-600 dark:text-white"
+                    ? "bg-indigo-600 text-white dark:bg-indigo-600 dark:text-white"
                     : "text-gray-400 hover:text-white dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-900"
                 )
               }
@@ -132,7 +142,7 @@ export function Sidebar({ user, locale, currentPath }: SidebarProps) {
             cn(
               "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
               isActive
-                ? "bg-violet-600 text-white dark:bg-violet-600 dark:text-white"
+                ? "bg-indigo-600 text-white dark:bg-indigo-600 dark:text-white"
                 : "text-gray-400 hover:text-white dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-900"
             )
           }

@@ -3,8 +3,8 @@ import { auditLogs } from "drizzle/schema";
 
 interface AuditParams {
   userId: string;
-  action: "create" | "update" | "delete" | "upload" | "download" | "login" | "logout";
-  entity: "client" | "contact" | "process" | "invoice" | "document" | "user" | "session";
+  action: "create" | "update" | "delete" | "upload" | "download" | "login" | "logout" | "cleanup";
+  entity: "client" | "contact" | "process" | "invoice" | "document" | "user" | "session" | "automation_log";
   entityId?: string;
   changes?: Record<string, unknown>;
   request?: Request;

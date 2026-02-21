@@ -10,6 +10,7 @@ import { Button } from "~/components/ui/button";
 import { ArrowLeft, Save } from "lucide-react";
 import { data } from "react-router";
 import { eq, isNull, and } from "drizzle-orm";
+import { fireTrigger } from "~/lib/automation-engine.server";
 
 const validStatuses = ["draft", "in_progress", "awaiting_docs", "customs_clearance", "in_transit", "delivered", "completed", "cancelled"] as const;
 type ProcessStatus = typeof validStatuses[number];
@@ -90,6 +91,24 @@ export async function action({ request, params }: Route.ActionArgs) {
         const [client] = await db.select({ razaoSocial: clients.razaoSocial }).from(clients).where(eq(clients.id, proc.clientId)).limit(1);
         const [primaryContact] = await db.select({ email: contacts.email }).from(contacts).where(and(eq(contacts.clientId, proc.clientId), eq(contacts.isPrimary, true))).limit(1);
         const emailTo = primaryContact?.email || null;
+
+        try {
+          await fireTrigger({
+            type: "process_status_change",
+            userId: user.id,
+            data: {
+              processId: params.id,
+              processRef: proc.reference,
+              oldStatus,
+              newStatus,
+              clientName: client?.razaoSocial || "",
+              contactEmail: emailTo || "",
+            },
+          });
+        } catch (automationError) {
+          console.error("[AUTOMATION] Failed to fire process_status_change trigger:", automationError);
+        }
+
         if (emailTo) {
           await sendProcessStatusUpdate({
             to: emailTo,

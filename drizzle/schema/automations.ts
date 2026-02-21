@@ -45,3 +45,16 @@ export const automationLogs = pgTable("automation_logs", {
 }, (table) => [
   index("automation_logs_automation_id_idx").on(table.automationId),
 ]);
+
+export const automationVersionHistory = pgTable("automation_version_history", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  automationId: uuid("automation_id").notNull().references(() => automations.id, { onDelete: "cascade" }),
+  version: varchar("version", { length: 20 }).notNull(),
+  previousConfig: jsonb("previous_config"),
+  newConfig: jsonb("new_config"),
+  changes: jsonb("changes").notNull(),
+  changedBy: uuid("changed_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("automation_version_history_automation_id_idx").on(table.automationId),
+]);

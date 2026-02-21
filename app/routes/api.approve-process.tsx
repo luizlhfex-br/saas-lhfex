@@ -5,6 +5,7 @@ import { db } from "~/lib/db.server";
 import { processes, processTimeline } from "../../drizzle/schema";
 import { logAudit } from "~/lib/audit.server";
 import { eq } from "drizzle-orm";
+import { fireTrigger } from "~/lib/automation-engine.server";
 
 export async function action({ request }: Route.ActionArgs) {
   const { user } = await requireAuth(request);
@@ -41,6 +42,21 @@ export async function action({ request }: Route.ActionArgs) {
       description: notes || `Aprovado por ${user.name}`,
       createdBy: user.id,
     });
+
+    try {
+      await fireTrigger({
+        type: "process_status_change",
+        userId: user.id,
+        data: {
+          processId,
+          processRef: proc.reference,
+          oldStatus: "pending_approval",
+          newStatus: "in_progress",
+        },
+      });
+    } catch (error) {
+      console.error("[AUTOMATION] Failed to fire process_status_change trigger:", error);
+    }
   } else {
     await db.update(processes).set({
       status: "draft",
@@ -54,6 +70,21 @@ export async function action({ request }: Route.ActionArgs) {
       description: notes || `Rejeitado por ${user.name}`,
       createdBy: user.id,
     });
+
+    try {
+      await fireTrigger({
+        type: "process_status_change",
+        userId: user.id,
+        data: {
+          processId,
+          processRef: proc.reference,
+          oldStatus: "pending_approval",
+          newStatus: "draft",
+        },
+      });
+    } catch (error) {
+      console.error("[AUTOMATION] Failed to fire process_status_change trigger:", error);
+    }
   }
 
   await logAudit({

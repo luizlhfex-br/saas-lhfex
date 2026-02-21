@@ -10,6 +10,7 @@ import { Button } from "~/components/ui/button";
 import { ArrowLeft, Bot, Loader2, Plus, Save, Star, Trash2 } from "lucide-react";
 import { and, eq, isNull } from "drizzle-orm";
 import { data } from "react-router";
+import { fireTrigger } from "~/lib/automation-engine.server";
 
 type ContactDraft = {
   id: string;
@@ -183,6 +184,23 @@ export async function action({ request }: Route.ActionArgs) {
   }));
 
   await db.insert(contacts).values(contactsToInsert);
+
+  try {
+    await fireTrigger({
+      type: "new_client",
+      userId: user.id,
+      data: {
+        clientId: newClient.id,
+        razaoSocial: values.razaoSocial,
+        nomeFantasia: values.nomeFantasia || "",
+        cnpj: cleanCnpj,
+        primaryContactName: contactsToInsert[0]?.name || "",
+        primaryContactEmail: contactsToInsert[0]?.email || "",
+      },
+    });
+  } catch (error) {
+    console.error("[AUTOMATION] Failed to fire new_client trigger:", error);
+  }
 
   await db.insert(auditLogs).values({
     userId: user.id,

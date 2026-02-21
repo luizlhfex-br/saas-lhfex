@@ -1,0 +1,201 @@
+{
+  "release": {
+    "version": "v2.0.0",
+    "date": "2026-02-20T14:30:00Z",
+    "type": "feature",
+    "title": "Vida Pessoal + Compras Públicas + Tema Indigo"
+  },
+  "summary": {
+    "newModules": 2,
+    "filesCreated": 19,
+    "filesModified": 18,
+    "routesAdded": 17,
+    "typescriptErrors": 0
+  },
+  "modules": {
+    "compras_publicas": {
+      "wave": "7.0",
+      "route": "/public-procurement",
+      "icon": "Briefcase",
+      "access": "luiz@lhfex.com.br",
+      "description": "Sistema de gestão de processos licitários (Lei 14.133/21)",
+      "tables": 7,
+      "apis": {
+        "notices": "app/routes/api.public-procurement-notices.tsx",
+        "processes": "app/routes/api.public-procurement-processes.tsx",
+        "alerts": "app/routes/api.public-procurement-alerts.tsx",
+        "templates": "app/routes/api.tr-templates.tsx"
+      },
+      "ui": {
+        "dashboard": "app/routes/public-procurement.tsx",
+        "new": "app/routes/public-procurement-new.tsx",
+        "detail": "app/routes/public-procurement.$noticeId.tsx"
+      },
+      "schema": "drizzle/schema/public-procurement.ts"
+    },
+    "vida_pessoal": {
+      "wave": "8.0",
+      "route": "/personal-life",
+      "icon": "Heart",
+      "access": "luiz@lhfex.com.br",
+      "description": "Módulo privado para finanças pessoais, investimentos, rotinas e objetivos",
+      "tables": 7,
+      "apis": {
+        "finance": "app/routes/api.personal-finance.tsx",
+        "investments": "app/routes/api.personal-investments.tsx",
+        "routines": "app/routes/api.personal-routines.tsx",
+        "promotions": "app/routes/api.promotions.tsx",
+        "goals": "app/routes/api.personal-goals.tsx"
+      },
+      "ui": {
+        "dashboard": "app/routes/personal-life.tsx"
+      },
+      "schema": "drizzle/schema/personal-life.ts"
+    }
+  },
+  "theme": {
+    "name": "Option 4 + Option 5",
+    "primary": "indigo-600",
+    "accent": "teal-500",
+    "design": "Data-First / Brutalist",
+    "filesModified": [
+      {
+        "file": "app/components/ui/button.tsx",
+        "changes": [
+          "primary: blue-600 → indigo-600",
+          "focus:ring-blue-500 → focus:ring-indigo-500"
+        ]
+      },
+      {
+        "file": "app/components/layout/sidebar.tsx",
+        "changes": [
+          "bg-violet-600 → bg-indigo-600",
+          "Added Heart and Briefcase icons"
+        ]
+      },
+      {
+        "file": "app/components/layout/mobile-nav.tsx",
+        "changes": [
+          "bg-blue-50/700 → bg-indigo-50/700",
+          "Added mobile module items"
+        ]
+      },
+      {
+        "file": "app/routes/automations-dashboard.tsx",
+        "changes": "blue-600 → indigo-600 (5 ocorrências)"
+      },
+      {
+        "file": "app/routes/public-procurement.tsx",
+        "changes": "blue-100/800 → indigo-100/800"
+      },
+      {
+        "file": "app/routes/public-procurement-new.tsx",
+        "changes": "focus:blue-500 → focus:indigo-500 (4 ocorrências)"
+      },
+      {
+        "file": "app/routes/public-procurement.$noticeId.tsx",
+        "changes": "text-blue-600 → text-indigo-600"
+      },
+      {
+        "file": "app/routes/personal-life.tsx",
+        "changes": "bg-blue-100 → bg-indigo-100"
+      }
+    ]
+  },
+  "rbac": {
+    "system": "Email-based Role Control",
+    "roles": {
+      "LUIZ": {
+        "email": "luiz@lhfex.com.br",
+        "access": ["dashboard", "crm", "processes", "financial", "public-procurement", "personal-life", "automations", "agents", "audit"]
+      },
+      "FINANCEIRO": {
+        "email": "financeiro@lhfex.com.br",
+        "access": ["dashboard", "crm", "processes", "financial", "automations", "agents", "audit"]
+      },
+      "DEFAULT": {
+        "email": "outros@*.com.br",
+        "access": ["dashboard"]
+      }
+    },
+    "protectedRoutes": 11,
+    "implementation": "app/lib/rbac.server.ts"
+  },
+  "i18n": {
+    "languages": ["pt-BR", "en"],
+    "newTranslations": {
+      "publicProcurement": "Compras Públicas",
+      "personalLife": "Vida Pessoal"
+    }
+  },
+  "navigation": {
+    "sidebar": [
+      "Painel",
+      "CRM",
+      "Funil de Vendas",
+      "Processos",
+      "Financeiro",
+      "Calculadora",
+      "Classificação Fiscal",
+      "Automações",
+      "Agentes IA",
+      "🆕 Compras Públicas (luiz@lhfex.com.br)",
+      "🆕 Vida Pessoal (luiz@lhfex.com.br)",
+      "Auditoria",
+      "Uso de IA",
+      "Configurações"
+    ],
+    "mobile": [
+      "Painel",
+      "CRM",
+      "Processos",
+      "Financeiro",
+      "Calculadora",
+      "Classificação Fiscal",
+      "Agentes IA",
+      "🆕 Compras Públicas (luiz@lhfex.com.br)",
+      "🆕 Vida Pessoal (luiz@lhfex.com.br)",
+      "Configurações"
+    ]
+  },
+  "validation": {
+    "typescript": {
+      "total_errors": 0,
+      "files_checked": 11,
+      "status": "✅ PASS"
+    },
+    "routes": {
+      "total": 40,
+      "new": 17,
+      "status": "✅ REGISTERED"
+    },
+    "schema": {
+      "tables_added": 14,
+      "status": "✅ EXPORTED"
+    }
+  },
+  "required_actions": {
+    "user": [
+      "Hard refresh (Ctrl+Shift+R) para limpar cache",
+      "Clear Application → Cookies/Cache no DevTools",
+      "Logout e login com luiz@lhfex.com.br para ver novos módulos",
+      "Testar com financeiro@lhfex.com.br para validar RBAC"
+    ],
+    "deployment": [
+      "npm run build (validar build sem erros)",
+      "Restart servidor/container",
+      "Teste smoke: login, sidebar, tema"
+    ]
+  },
+  "checklist": {
+    "visual": {
+      "sidebar_shows_compras_publicas": false,
+      "sidebar_shows_vida_pessoal": false,
+      "buttons_are_indigo": false,
+      "links_active_are_indigo": false,
+      "theme_looks_correct": false,
+      "mobile_responsive": false,
+      "dark_mode_works": false
+    }
+  }
+}

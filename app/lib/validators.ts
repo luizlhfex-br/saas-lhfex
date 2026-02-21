@@ -11,6 +11,10 @@ export const chatMessageSchema = z.object({
   conversationId: z.string().uuid().optional(),
 });
 
+export const lifeTaskSchema = z.object({
+  task: z.string().min(5, "Tarefa deve ter pelo menos 5 caracteres").max(3000, "Tarefa muito longa"),
+});
+
 export const clientSchema = z.object({
   cnpj: z.string().min(14, "CNPJ inválido").max(18),
   razaoSocial: z.string().min(1, "Razão social é obrigatória").max(500),
@@ -98,6 +102,7 @@ export const cashMovementSchema = z.object({
 
 export type LoginInput = z.infer<typeof loginSchema>;
 export type ChatMessageInput = z.infer<typeof chatMessageSchema>;
+export type LifeTaskInput = z.infer<typeof lifeTaskSchema>;
 export type ClientInput = z.infer<typeof clientSchema>;
 export type ContactInput = z.infer<typeof contactSchema>;
 export type ProcessInput = z.infer<typeof processSchema>;

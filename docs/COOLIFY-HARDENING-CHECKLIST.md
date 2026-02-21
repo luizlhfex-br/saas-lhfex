@@ -46,6 +46,14 @@ O watchdog envia:
 - [ ] `TELEGRAM_CHAT_ID`
 - [ ] `TELEGRAM_ADMIN_USERS`
 - [ ] `TELEGRAM_ALLOWED_USERS`
+- [ ] `LIFE_AGENT_ALLOWED_EMAIL`
+- [ ] `LIFE_AGENT_MAX_OUTPUT_TOKENS`
+
+### Life Agent (MVP interno)
+
+- [ ] Garantir pelo menos uma chave free configurada: `GEMINI_API_KEY` ou `OPENROUTER_API_KEY`.
+- [ ] Endpoint ativo: `POST /api/life-run` (autenticado e restrito ao email permitido).
+- [ ] Validar no ambiente: acesso negado para usuários não autorizados (HTTP 403).
 
 ### Build-time
 
