@@ -75,7 +75,7 @@ export function MobileNav({
       {/* Slide-over panel */}
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-64 transform flex-col border-r border-gray-200 bg-white transition-transform duration-300 dark:border-gray-800 dark:bg-gray-900 lg:hidden",
+          "fixed inset-y-0 left-0 z-50 flex w-72 transform flex-col border-r border-[var(--app-border-strong)] bg-[var(--app-sidebar-bg)] text-[var(--app-sidebar-text)] transition-transform duration-300 lg:hidden",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -85,7 +85,7 @@ export function MobileNav({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-2 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+            className="rounded-xl p-2 text-[var(--app-sidebar-muted)] hover:bg-white/10"
             aria-label="Close menu"
           >
             <X className="h-5 w-5" />
@@ -93,7 +93,7 @@ export function MobileNav({
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+        <nav className="flex-1 space-y-2 overflow-y-auto px-4 py-4">
           {mainNavItems.map((item) => {
             // Filter items by required email
             if (item.requiredEmail && user.email !== item.requiredEmail) {
@@ -107,11 +107,11 @@ export function MobileNav({
               return (
                 <div
                   key={item.to}
-                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-400 dark:text-gray-600"
+                  className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-[var(--app-sidebar-muted)]"
                 >
                   <Icon className="h-5 w-5" />
                   <span>{label}</span>
-                  <span className="ml-auto rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-400 dark:bg-gray-800 dark:text-gray-600">
+                  <span className="ml-auto rounded-full bg-white/10 px-2 py-0.5 text-xs text-[var(--app-sidebar-muted)]">
                     Em breve
                   </span>
                 </div>
@@ -125,10 +125,10 @@ export function MobileNav({
                 onClick={onClose}
                 className={({ isActive }) =>
                   cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                    "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors",
                     isActive
-                      ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400"
-                      : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
+                      ? "bg-[var(--app-accent)]/20 text-white"
+                      : "text-[var(--app-sidebar-muted)] hover:bg-white/5 hover:text-white"
                   )
                 }
               >
@@ -140,17 +140,17 @@ export function MobileNav({
         </nav>
 
         {/* Bottom section */}
-        <div className="border-t border-gray-200 px-3 py-4 dark:border-gray-800">
+        <div className="border-t border-white/10 px-4 py-4">
           {/* User info */}
           <div className="mb-3 flex items-center gap-3 px-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-sm font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--app-accent)] text-sm font-medium text-[var(--app-on-accent)]">
               {user.name.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+              <p className="truncate text-sm font-medium text-white">
                 {user.name}
               </p>
-              <p className="truncate text-xs text-gray-500 dark:text-gray-400">
+              <p className="truncate text-xs text-[var(--app-sidebar-muted)]">
                 {user.email}
               </p>
             </div>
@@ -162,10 +162,10 @@ export function MobileNav({
             onClick={onClose}
             className={({ isActive }) =>
               cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors",
                 isActive
-                  ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400"
-                  : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
+                  ? "bg-[var(--app-accent)]/20 text-white"
+                  : "text-[var(--app-sidebar-muted)] hover:bg-white/5 hover:text-white"
               )
             }
           >
@@ -177,7 +177,7 @@ export function MobileNav({
           <Form method="post" action="/logout">
             <button
               type="submit"
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
+              className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-[var(--app-sidebar-muted)] transition-colors hover:bg-white/5 hover:text-white"
             >
               <LogOut className="h-5 w-5" />
               <span>{i18n.auth.logout}</span>

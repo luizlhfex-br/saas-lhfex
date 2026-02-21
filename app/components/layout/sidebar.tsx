@@ -61,18 +61,21 @@ export function Sidebar({ user, locale, currentPath }: SidebarProps) {
   const i18n = t(locale);
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-gray-800 bg-gray-950 dark:border-gray-800 dark:bg-gray-950 lg:flex">
+    <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 flex-col border-r border-[var(--app-border-strong)] bg-[var(--app-sidebar-bg)] text-[var(--app-sidebar-text)] lg:flex">
       {/* Logo */}
-      <div className="flex h-16 items-center px-4">
-        <img
-          src="/images/logo-horizontal.png"
-          alt="LHFEX"
-          className="h-10 w-auto"
-        />
+      <div className="flex h-20 items-center px-6">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.4em] text-emerald-300">LHFEX</p>
+          <img
+            src="/images/logo-horizontal.png"
+            alt="LHFEX"
+            className="mt-2 h-8 w-auto"
+          />
+        </div>
       </div>
 
       {/* Main navigation */}
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+      <nav className="flex-1 space-y-2 overflow-y-auto px-4 py-2">
         {mainNavItems.map((item) => {
           // Filter items by required email
           if (item.requiredEmail && user.email !== item.requiredEmail) {
@@ -86,12 +89,12 @@ export function Sidebar({ user, locale, currentPath }: SidebarProps) {
             return (
               <div
                 key={item.to}
-                className="group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-600"
+                className="group relative flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-[var(--app-sidebar-muted)]"
                 title="Em breve"
               >
                 <Icon className="h-5 w-5" />
                 <span>{label}</span>
-                <span className="ml-auto rounded-full bg-gray-900 px-2 py-0.5 text-xs text-gray-600">
+                <span className="ml-auto rounded-full bg-white/10 px-2 py-0.5 text-xs text-[var(--app-sidebar-muted)]">
                   Em breve
                 </span>
               </div>
@@ -104,10 +107,10 @@ export function Sidebar({ user, locale, currentPath }: SidebarProps) {
               to={item.to}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors",
                   isActive
-                    ? "bg-indigo-600 text-white dark:bg-indigo-600 dark:text-white"
-                    : "text-gray-400 hover:text-white dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-900"
+                    ? "bg-[var(--app-accent)]/20 text-white shadow-[var(--app-glow)]"
+                    : "text-[var(--app-sidebar-muted)] hover:bg-white/5 hover:text-white"
                 )
               }
             >
@@ -119,17 +122,17 @@ export function Sidebar({ user, locale, currentPath }: SidebarProps) {
       </nav>
 
       {/* Bottom section */}
-      <div className="border-t border-gray-800 px-3 py-4">
+      <div className="border-t border-white/10 px-4 py-5">
         {/* User info */}
-        <div className="mb-3 flex items-center gap-3 px-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-violet-600 text-sm font-medium text-white">
+        <div className="mb-4 flex items-center gap-3 px-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--app-accent)] text-sm font-medium text-[var(--app-on-accent)]">
             {user.name.charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-gray-100">
+            <p className="truncate text-sm font-medium text-white">
               {user.name}
             </p>
-            <p className="truncate text-xs text-gray-500">
+            <p className="truncate text-xs text-[var(--app-sidebar-muted)]">
               {user.email}
             </p>
           </div>
@@ -140,10 +143,10 @@ export function Sidebar({ user, locale, currentPath }: SidebarProps) {
           to="/settings"
           className={({ isActive }) =>
             cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors",
               isActive
-                ? "bg-indigo-600 text-white dark:bg-indigo-600 dark:text-white"
-                : "text-gray-400 hover:text-white dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-900"
+                ? "bg-[var(--app-accent)]/20 text-white"
+                : "text-[var(--app-sidebar-muted)] hover:bg-white/5 hover:text-white"
             )
           }
         >
@@ -155,7 +158,7 @@ export function Sidebar({ user, locale, currentPath }: SidebarProps) {
         <Form method="post" action="/logout">
           <button
             type="submit"
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-400 transition-colors hover:text-white dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-900"
+            className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-[var(--app-sidebar-muted)] transition-colors hover:bg-white/5 hover:text-white"
           >
             <LogOut className="h-5 w-5" />
             <span>{i18n.auth.logout}</span>

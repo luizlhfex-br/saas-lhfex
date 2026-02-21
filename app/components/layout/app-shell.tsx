@@ -35,7 +35,13 @@ export function AppShell({
   const location = useLocation();
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="relative min-h-screen overflow-hidden bg-[var(--app-bg)] text-[var(--app-text)]">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-40 right-[-10%] h-72 w-72 rounded-full bg-[var(--app-accent)]/10 blur-3xl" />
+        <div className="absolute -bottom-40 left-[-10%] h-72 w-72 rounded-full bg-[var(--app-accent-2)]/10 blur-3xl" />
+      </div>
+
+      <div className="relative z-10">
       {/* Desktop sidebar */}
       <Sidebar user={user} locale={locale} currentPath={location.pathname} />
 
@@ -49,7 +55,7 @@ export function AppShell({
       />
 
       {/* Main content area */}
-      <div className="lg:ml-64">
+      <div className="lg:ml-72">
         {/* Top bar */}
         <Topbar
           user={user}
@@ -61,11 +67,12 @@ export function AppShell({
         />
 
         {/* Page content */}
-        <main className="p-4 lg:p-6">{children}</main>
+        <main className="p-4 lg:p-8">{children}</main>
       </div>
 
       {/* Floating chat widget */}
       {location.pathname !== "/agents" && <ChatWidget />}
+      </div>
     </div>
   );
 }

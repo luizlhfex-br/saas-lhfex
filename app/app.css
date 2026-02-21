@@ -1,22 +1,23 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif,
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-mono: "Monaco", "Courier New", monospace;
 
-  /* Linear/Vercel Dark Palette */
-  --color-primary: #8b5cf6; /* Violeta */
-  --color-primary-dark: #7c3aed;
-  --color-primary-light: #a78bfa;
+  /* Aurora Palette */
+  --color-primary: #0e7490;
+  --color-primary-dark: #0f766e;
+  --color-primary-light: #22c55e;
 
-  --color-sidebar-bg: #0f172a; /* Darker sidebar */
-  --color-sidebar-hover: #1e293b;
+  --color-sidebar-bg: #0b1324;
+  --color-sidebar-hover: #14213b;
 }
 
 html,
 body {
-  @apply bg-white dark:bg-gray-950;
+  background-color: var(--app-bg);
+  color: var(--app-text);
 
   @media (prefers-color-scheme: dark) {
     color-scheme: dark;
@@ -166,12 +167,48 @@ body {
   --preview-glow: 0 18px 35px rgba(15, 118, 110, 0.32);
 }
 
+:root {
+  --app-bg: #f5f6f2;
+  --app-surface: #ffffff;
+  --app-surface-2: #f8fafc;
+  --app-border: rgba(15, 23, 42, 0.08);
+  --app-border-strong: rgba(15, 23, 42, 0.2);
+  --app-text: #0f172a;
+  --app-muted: #475569;
+  --app-accent: #0e7490;
+  --app-accent-2: #16a34a;
+  --app-on-accent: #ffffff;
+  --app-sidebar-bg: #0b1324;
+  --app-sidebar-text: #e2e8f0;
+  --app-sidebar-muted: #94a3b8;
+  --app-topbar: rgba(255, 255, 255, 0.9);
+  --app-card-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
+  --app-glow: 0 16px 30px rgba(14, 116, 144, 0.24);
+}
+
 /* Violeta como cor primária */
 :is(.dark) {
-  --color-blue-600: #8b5cf6;
-  --color-blue-700: #7c3aed;
-  --color-blue-50: #f5f3ff;
-  --color-blue-100: #ede9fe;
-  --color-blue-900: #4c1d95;
-  --color-blue-900-20: rgb(77 29 149 / 0.2);
+  --app-bg: #0b1020;
+  --app-surface: #0f172a;
+  --app-surface-2: #111827;
+  --app-border: rgba(148, 163, 184, 0.12);
+  --app-border-strong: rgba(148, 163, 184, 0.3);
+  --app-text: #e2e8f0;
+  --app-muted: #94a3b8;
+  --app-accent: #2dd4bf;
+  --app-accent-2: #22c55e;
+  --app-on-accent: #0b1020;
+  --app-sidebar-bg: #060b17;
+  --app-sidebar-text: #e2e8f0;
+  --app-sidebar-muted: #94a3b8;
+  --app-topbar: rgba(11, 16, 32, 0.88);
+  --app-card-shadow: 0 24px 60px rgba(8, 13, 26, 0.45);
+  --app-glow: 0 18px 34px rgba(45, 212, 191, 0.2);
+
+  --color-blue-600: #0e7490;
+  --color-blue-700: #0f766e;
+  --color-blue-50: #f0fdfa;
+  --color-blue-100: #ccfbf1;
+  --color-blue-900: #134e4a;
+  --color-blue-900-20: rgb(20 83 45 / 0.2);
 }

@@ -20,7 +20,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   
   const cookieHeader = request.headers.get("cookie") || "";
   const themeMatch = cookieHeader.match(/theme=([^;]+)/);
-  const theme = themeMatch ? themeMatch[1] : "dark";
+  const theme = themeMatch ? themeMatch[1] : "light";
   return { theme };
 }
 

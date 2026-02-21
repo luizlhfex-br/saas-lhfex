@@ -32,12 +32,12 @@ export function Topbar({
   const currentLocaleLabel = locales.find((l) => l.value === locale)?.label ?? "PT";
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center border-b border-gray-200 bg-white px-4 dark:border-gray-800 dark:bg-gray-900 lg:px-6">
+    <header className="sticky top-0 z-20 flex h-18 items-center border-b border-[var(--app-border)] bg-[var(--app-topbar)] px-4 backdrop-blur lg:px-8">
       {/* Mobile: hamburger */}
       <button
         type="button"
         onClick={onMobileMenuToggle}
-        className="rounded-lg p-2 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 lg:hidden"
+        className="rounded-xl p-2 text-[var(--app-muted)] hover:bg-black/5 lg:hidden"
         aria-label="Open menu"
       >
         <Menu className="h-6 w-6" />
@@ -58,7 +58,7 @@ export function Topbar({
           <button
             type="button"
             onClick={onLocaleToggle}
-            className="rounded-lg px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+            className="rounded-full border border-[var(--app-border-strong)] px-3 py-1.5 text-sm font-medium text-[var(--app-muted)] hover:bg-black/5"
           >
             {currentLocaleLabel}
           </button>
@@ -72,7 +72,7 @@ export function Topbar({
           <button
             type="button"
             onClick={onThemeToggle}
-            className="rounded-lg p-2 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+            className="rounded-full border border-[var(--app-border-strong)] p-2 text-[var(--app-muted)] hover:bg-black/5"
             aria-label="Toggle theme"
           >
             {theme === "dark" ? (
@@ -85,10 +85,10 @@ export function Topbar({
 
         {/* Desktop: user info */}
         <div className="hidden items-center gap-3 pl-2 lg:flex">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-sm font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--app-accent)] text-sm font-medium text-[var(--app-on-accent)]">
             {user.name.charAt(0).toUpperCase()}
           </div>
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          <span className="text-sm font-medium text-[var(--app-text)]">
             {user.name}
           </span>
         </div>
