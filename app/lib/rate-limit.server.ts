@@ -149,7 +149,7 @@ export function getClientIP(request: Request): string {
  */
 export const RATE_LIMITS = {
   login: { maxAttempts: 5, windowMs: 15 * 60 * 1000 },      // 5 attempts / 15 min
-  chatApi: { maxAttempts: 20, windowMs: 60 * 1000 },        // 20 requests / min
+  chatApi: { maxAttempts: 20, windowMs: 60 * 1000 },        // 20 requests / min (legacy)
   generalApi: { maxAttempts: 60, windowMs: 60 * 1000 },     // 60 requests / min
   export: { maxAttempts: 10, windowMs: 60 * 60 * 1000 },    // 10 exports / hour
   
@@ -158,6 +158,13 @@ export const RATE_LIMITS = {
   ncmTaxes: { maxAttempts: 15, windowMs: 60 * 1000 },       // 15 requests / min (AI-powered)
   ocrExtract: { maxAttempts: 10, windowMs: 60 * 1000 },     // 10 requests / min (AI + heavy)
   exchangeRate: { maxAttempts: 30, windowMs: 60 * 1000 },   // 30 requests / min (external API)
+
+  // P2: AI Feature-Specific Rate Limits
+  aiChat: { maxAttempts: 20, windowMs: 60 * 1000 },         // 20 messages / min (conversational)
+  aiNcmClassify: { maxAttempts: 10, windowMs: 60 * 1000 },  // 10 classifications / min (complex AI)
+  aiLifeAgent: { maxAttempts: 5, windowMs: 60 * 1000 },     // 5 tasks / min (personal, restricted)
+  aiOcr: { maxAttempts: 8, windowMs: 60 * 1000 },           // 8 OCR requests / min (heavy processing)
+  aiEnrichment: { maxAttempts: 15, windowMs: 60 * 1000 },   // 15 enrichments / min (data augmentation)
 } as const;
 
 /**

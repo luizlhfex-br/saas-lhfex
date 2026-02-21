@@ -21,8 +21,8 @@ export async function action({ request }: { request: Request }) {
 
     const rateCheck = await checkRateLimit(
       `life-agent:${user.id}`,
-      RATE_LIMITS.chatApi.maxAttempts,
-      RATE_LIMITS.chatApi.windowMs,
+      RATE_LIMITS.aiLifeAgent.maxAttempts,
+      RATE_LIMITS.aiLifeAgent.windowMs,
     );
 
     if (!rateCheck.allowed) {

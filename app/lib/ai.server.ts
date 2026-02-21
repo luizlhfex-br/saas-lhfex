@@ -7,6 +7,7 @@ import { db } from "~/lib/db.server";
 import { processes, invoices, clients, aiUsageLogs } from "drizzle/schema";
 import { isNull, and, notInArray, sql, eq, desc } from "drizzle-orm";
 import { getCache, setCache, CACHE_TTL } from "~/lib/cache.server";
+import { recordFailure, recordSuccess, checkAndAlert } from "~/lib/ai-metrics.server";
 
 // --- Types ---
 
@@ -189,6 +190,7 @@ async function logUsage(
   success: boolean,
   errorMessage?: string,
   userId?: string,
+  latencyMs?: number,
 ) {
   try {
     // Estimate cost (approximate)
@@ -210,7 +212,22 @@ async function logUsage(
       costEstimate,
       success,
       errorMessage: errorMessage || null,
+      latencyMs: latencyMs || null,
     });
+
+    // Update metrics tracking
+    if (success) {
+      recordSuccess(provider, feature);
+    } else {
+      const consecutiveFailures = recordFailure(provider, feature);
+      
+      // Trigger alert check if we have multiple failures
+      if (consecutiveFailures >= 3) {
+        checkAndAlert(provider, feature).catch((err) => {
+          console.error("[AI_METRICS] Alert check failed:", err);
+        });
+      }
+    }
   } catch (e) {
     console.error("[AI] Failed to log usage:", e);
   }
@@ -404,6 +421,7 @@ export async function askAgent(
   _userId: string,
   options?: { restricted?: boolean; feature?: AIFeature; forceProvider?: "deepseek" },
 ): Promise<AIResponse> {
+  const startTime = Date.now();
   const systemPrompt = AGENT_PROMPTS[agentId] || AGENT_PROMPTS.airton;
   const context = await loadAgentContext();
   const contextMessage = buildContextMessage(context, options?.restricted);
@@ -413,10 +431,12 @@ export async function askAgent(
   if (options?.forceProvider === "deepseek") {
     try {
       const result = await callDeepSeek(systemPrompt, message, contextMessage);
-      await logUsage(result.provider, result.model, feature, 0, 0, true, undefined, _userId);
+      const latencyMs = Date.now() - startTime;
+      await logUsage(result.provider, result.model, feature, 0, 0, true, undefined, _userId, latencyMs);
       return result;
     } catch (error) {
-      await logUsage("deepseek", "deepseek-chat", feature, 0, 0, false, String(error), _userId);
+      const latencyMs = Date.now() - startTime;
+      await logUsage("deepseek", "deepseek-chat", feature, 0, 0, false, String(error), _userId, latencyMs);
       throw error;
     }
   }
@@ -426,11 +446,13 @@ export async function askAgent(
   if (process.env.GEMINI_API_KEY) {
     try {
       const result = await callGemini(systemPrompt, message, contextMessage);
-      await logUsage("gemini", result.model, feature, 0, result.tokensUsed || 0, true, undefined, _userId);
+      const latencyMs = Date.now() - startTime;
+      await logUsage("gemini", result.model, feature, 0, result.tokensUsed || 0, true, undefined, _userId, latencyMs);
       return result;
     } catch (error) {
       console.error("[AI] Gemini failed:", (error as Error).message);
-      await logUsage("gemini", "gemini-2.0-flash", feature, 0, 0, false, String(error), _userId);
+      const latencyMs = Date.now() - startTime;
+      await logUsage("gemini", "gemini-2.0-flash", feature, 0, 0, false, String(error), _userId, latencyMs);
     }
   }
 
@@ -438,22 +460,26 @@ export async function askAgent(
   if (process.env.OPENROUTER_API_KEY) {
     try {
       const result = await callOpenRouterFree(systemPrompt, message, contextMessage);
-      await logUsage("openrouter_free", result.model, feature, 0, result.tokensUsed || 0, true, undefined, _userId);
+      const latencyMs = Date.now() - startTime;
+      await logUsage("openrouter_free", result.model, feature, 0, result.tokensUsed || 0, true, undefined, _userId, latencyMs);
       return result;
     } catch (error) {
       console.error("[AI] OpenRouter Free failed:", (error as Error).message);
-      await logUsage("openrouter_free", "gemini-2.0-flash-exp:free", feature, 0, 0, false, String(error), _userId);
+      const latencyMs = Date.now() - startTime;
+      await logUsage("openrouter_free", "gemini-2.0-flash-exp:free", feature, 0, 0, false, String(error), _userId, latencyMs);
     }
   }
 
   // 3. Try DeepSeek Paid (fallback)
   try {
     const result = await callDeepSeek(systemPrompt, message, contextMessage);
-    await logUsage(result.provider, result.model, feature, 0, result.tokensUsed || 0, true, undefined, _userId);
+    const latencyMs = Date.now() - startTime;
+    await logUsage(result.provider, result.model, feature, 0, result.tokensUsed || 0, true, undefined, _userId, latencyMs);
     return result;
   } catch (error) {
     console.error("[AI] DeepSeek also failed:", error);
-    await logUsage("deepseek", "deepseek-chat", feature, 0, 0, false, String(error), _userId);
+    const latencyMs = Date.now() - startTime;
+    await logUsage("deepseek", "deepseek-chat", feature, 0, 0, false, String(error), _userId, latencyMs);
   }
 
   // Ultimate fallback — all providers failed
@@ -465,15 +491,18 @@ export async function askAgent(
 }
 
 export async function askLifeAgentLite(task: string, userId: string): Promise<AIResponse> {
-  const maxOutputTokens = Number(process.env.LIFE_AGENT_MAX_OUTPUT_TOKENS || 1200);
+  const startTime = Date.now();
+  const maxOutputTokens = Number(process.env.LIFE_AGENT_MAX_OUTPUT_TOKENS ||1200);
 
   if (process.env.GEMINI_API_KEY) {
     try {
       const result = await callGemini(LIFE_AGENT_SYSTEM_PROMPT, task, "", maxOutputTokens);
-      await logUsage("gemini", result.model, "chat", 0, result.tokensUsed || 0, true, undefined, userId);
+      const latencyMs = Date.now() - startTime;
+      await logUsage("gemini", result.model, "chat", 0, result.tokensUsed || 0, true, undefined, userId, latencyMs);
       return result;
     } catch (error) {
-      await logUsage("gemini", "gemini-2.0-flash", "chat", 0, 0, false, String(error), userId);
+      const latencyMs = Date.now() - startTime;
+      await logUsage("gemini", "gemini-2.0-flash", "chat", 0, 0, false, String(error), userId, latencyMs);
       console.error("[LIFE_AGENT] Gemini failed:", error);
     }
   }
@@ -481,10 +510,12 @@ export async function askLifeAgentLite(task: string, userId: string): Promise<AI
   if (process.env.OPENROUTER_API_KEY) {
     try {
       const result = await callOpenRouterFree(LIFE_AGENT_SYSTEM_PROMPT, task, "", maxOutputTokens);
-      await logUsage("openrouter_free", result.model, "chat", 0, result.tokensUsed || 0, true, undefined, userId);
+      const latencyMs = Date.now() - startTime;
+      await logUsage("openrouter_free", result.model, "chat", 0, result.tokensUsed || 0, true, undefined, userId, latencyMs);
       return result;
     } catch (error) {
-      await logUsage("openrouter_free", "gemini-2.0-flash-exp:free", "chat", 0, 0, false, String(error), userId);
+      const latencyMs = Date.now() - startTime;
+      await logUsage("openrouter_free", "gemini-2.0-flash-exp:free", "chat", 0, 0, false, String(error), userId, latencyMs);
       console.error("[LIFE_AGENT] OpenRouter free failed:", error);
     }
   }

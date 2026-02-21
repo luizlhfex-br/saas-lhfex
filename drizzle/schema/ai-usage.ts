@@ -20,6 +20,7 @@ export const aiUsageLogs = pgTable("ai_usage_logs", {
   costEstimate: numeric("cost_estimate", { precision: 10, scale: 6 }).default("0"),
   success: boolean("success").notNull().default(true),
   errorMessage: text("error_message"),
+  latencyMs: integer("latency_ms"), // P2: Track request latency for monitoring
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
   index("ai_usage_provider_idx").on(table.provider),

@@ -7,13 +7,14 @@ import { ncmClassifications } from "drizzle/schema";
 import { classifyNCM } from "~/lib/ai.server";
 import { ncmClassificationSchema } from "~/lib/validators";
 import { NCM_PRESETS } from "~/lib/ai-types";
+import { checkRateLimit, RATE_LIMITS } from "~/lib/rate-limit.server";
 import { t, type Locale } from "~/i18n";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Search, Sparkles, Check, Edit, Clock, ChevronDown, ChevronUp, Zap } from "lucide-react";
 import { data } from "react-router";
 import { eq, desc } from "drizzle-orm";
-import { buildApiError } from "~/lib/api-error";
+import { buildApiError, jsonApiError } from "~/lib/api-error";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
@@ -37,6 +38,23 @@ export async function action({ request }: Route.ActionArgs) {
   const intent = formData.get("intent") as string;
 
   if (intent === "classify") {
+    // Feature-specific rate limiting for NCM classification
+    const rateCheck = await checkRateLimit(
+      `ncm-classify:${user.id}`,
+      RATE_LIMITS.aiNcmClassify.maxAttempts,
+      RATE_LIMITS.aiNcmClassify.windowMs
+    );
+    
+    if (!rateCheck.allowed) {
+      return data(
+        buildApiError(
+          "RATE_LIMITED",
+          `Limite de classificações excedido. Tente novamente em ${rateCheck.retryAfterSeconds} segundos.`
+        ),
+        { status: 429 }
+      );
+    }
+
     const inputDescription = formData.get("inputDescription") as string;
     const result = ncmClassificationSchema.safeParse({ inputDescription });
 

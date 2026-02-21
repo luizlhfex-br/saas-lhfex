@@ -12,8 +12,8 @@ export async function action({ request }: Route.ActionArgs) {
   try {
     const { user } = await requireAuth(request);
 
-    // Rate limiting — 20 messages per minute per user
-    const rateCheck = await checkRateLimit(`chat:${user.id}`, RATE_LIMITS.chatApi.maxAttempts, RATE_LIMITS.chatApi.windowMs);
+    // Rate limiting — feature-specific for AI chat
+    const rateCheck = await checkRateLimit(`chat:${user.id}`, RATE_LIMITS.aiChat.maxAttempts, RATE_LIMITS.aiChat.windowMs);
     if (!rateCheck.allowed) {
       return jsonApiError(
         "RATE_LIMITED",
