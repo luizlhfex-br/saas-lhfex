@@ -16,6 +16,7 @@ import {
   Sparkles,
   Heart,
   Briefcase,
+  Globe,
   ChevronDown,
 } from "lucide-react";
 import { cn } from "~/lib/utils";
@@ -49,9 +50,13 @@ const mainNavItems: NavItem[] = [
   { labelKey: "pipeline", icon: Kanban, to: "/crm/pipeline" },
   { labelKey: "processes", icon: FileText, to: "/processes" },
   { labelKey: "financial", icon: DollarSign, to: "/financial" },
-  { labelKey: "publicProcurement", icon: Briefcase, to: "/public-procurement", requiredEmail: "luiz@lhfex.com.br" },
   { labelKey: "personalLife", icon: Heart, to: "/personal-life", requiredEmail: "luiz@lhfex.com.br" },
   { labelKey: "audit", icon: Shield, to: "/audit" },
+];
+
+const otherBusinessNavItems: NavItem[] = [
+  { labelKey: "publicProcurement", icon: Briefcase, to: "/public-procurement", requiredEmail: "luiz@lhfex.com.br" },
+  { labelKey: "internetBusiness", icon: Globe, to: "/other-business/internet", requiredEmail: "luiz@lhfex.com.br" },
 ];
 
 const comexNavItems: NavItem[] = [
@@ -73,9 +78,12 @@ export function Sidebar({ user, locale, currentPath }: SidebarProps) {
       currentPath.startsWith("/automations") ||
       currentPath.startsWith("/agents") ||
       currentPath.startsWith("/ai-usage"),
+    otherBusiness:
+      currentPath.startsWith("/public-procurement") ||
+      currentPath.startsWith("/other-business"),
   });
 
-  const toggleGroup = (group: "comex" | "aiAutomation") => {
+  const toggleGroup = (group: "comex" | "aiAutomation" | "otherBusiness") => {
     setOpenGroups((prev) => ({ ...prev, [group]: !prev[group] }));
   };
 
@@ -169,6 +177,25 @@ export function Sidebar({ user, locale, currentPath }: SidebarProps) {
             <div className="mt-1 space-y-1">{aiAutomationNavItems.map(renderNavItem)}</div>
           )}
         </div>
+
+        {/* Outros Negócios — only shown if user has at least one item visible */}
+        {user.email === "luiz@lhfex.com.br" && (
+          <div>
+            <button
+              type="button"
+              onClick={() => toggleGroup("otherBusiness")}
+              className="flex w-full items-center justify-between rounded-xl px-4 py-2.5 text-sm font-semibold text-[var(--app-sidebar-muted)] transition-colors hover:bg-white/5 hover:text-white"
+            >
+              <span>Outros Negócios</span>
+              <ChevronDown
+                className={cn("h-4 w-4 transition-transform", openGroups.otherBusiness ? "rotate-180" : "rotate-0")}
+              />
+            </button>
+            {openGroups.otherBusiness && (
+              <div className="mt-1 space-y-1">{otherBusinessNavItems.map(renderNavItem)}</div>
+            )}
+          </div>
+        )}
       </nav>
 
       {/* Bottom section */}

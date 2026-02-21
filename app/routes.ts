@@ -50,6 +50,8 @@ export default [
     route("personal-life/promotions", "routes/personal-life.promotions.tsx"),
     route("personal-life/timeoff", "routes/personal-life.timeoff.tsx"),
     route("knowledge/prompting", "routes/knowledge.prompting.tsx"),
+    route("other-business", "routes/other-business.tsx"),
+    route("other-business/internet", "routes/other-business.internet.tsx"),
   ]),
 
   // API routes

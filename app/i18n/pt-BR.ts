@@ -45,6 +45,7 @@ export const ptBR = {
     automations: "Automações",
     pipeline: "Funil de Vendas",
     publicProcurement: "Compras Públicas",
+    internetBusiness: "Negócios na Internet",
     personalLife: "Vida Pessoal",
     settings: "Configurações",
     personal: "Pessoal",

@@ -47,6 +47,7 @@ export const en: Translations = {
     automations: "Automations",
     pipeline: "Sales Pipeline",
     publicProcurement: "Public Procurement",
+    internetBusiness: "Internet Business",
     personalLife: "Personal Life",
     settings: "Settings",
     personal: "Personal",
