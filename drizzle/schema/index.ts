@@ -17,3 +17,5 @@ export * from "./personal-life";
 export * from "./company-profile";
 export * from "./company-bank-accounts";
 export * from "./promotions";
+export * from "./radio-monitor";
+export * from "./firefly-accounting";

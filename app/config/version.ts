@@ -23,13 +23,15 @@ export const VERSION_HISTORY: ChangelogEntry[] = [
   {
     version: APP_VERSION,
     date: APP_RELEASE_DATE,
-    title: "Cadastros Empresariais + Banco Central Oficial",
+    title: "Expansão Completa: Cadastros, IA Marketing e Contabilidade",
     items: [
       { type: "fix",         text: "Taxa do dolar agora usa Banco Central (serie 10813 - USD Importacao)" },
       { type: "feature",     text: "Auto-enriquecimento CNPJ via ReceitaWS no carregamento de Settings" },
       { type: "improvement", text: "Perfil da Empresa com UI compacta e modal expansivel (18 campos)" },
       { type: "feature",     text: "Suporte a multiplas contas bancarias (schema company_bank_accounts)" },
-      { type: "feature",     text: "Schema de promocoes empresariais para integracao OpenCLAW/Telegram" },
+      { type: "feature",     text: "OpenCLAW: orquestrador de bot Telegram para promocoes e sorteios" },
+      { type: "feature",     text: "Radio Monitor: sistema de monitoramento de promocoes em radios com transcricao" },
+      { type: "feature",     text: "Firefly Phase 1: contabilidade triple-entry (contas, transacoes, orcamentos)" },
     ],
   },
   {
