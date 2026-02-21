@@ -134,29 +134,29 @@ export default function LoginPage() {
   const i18n = t("pt-BR");
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 dark:bg-gray-950">
+    <div className="flex min-h-screen items-center justify-center bg-[var(--app-bg)] px-4">
       <div className="w-full max-w-md">
         {/* Logo and branding */}
         <div className="mb-8 text-center">
           <img
             src="/images/logo-horizontal.png"
             alt="LHFEX Consultoria"
-            className="mx-auto mb-4 h-20 w-auto"
+            className="mx-auto mb-4 h-28 w-auto sm:h-32"
           />
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          <h1 className="text-2xl font-bold text-[var(--app-text)]">
             {i18n.auth.welcome}
           </h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <p className="mt-1 text-sm text-[var(--app-muted)]">
             {i18n.auth.subtitle}
           </p>
         </div>
 
         {/* Login card */}
-        <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <div className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] p-8 shadow-[var(--app-card-shadow)]">
           <Form method="post" className="space-y-5">
             {/* Error message */}
             {actionData?.error && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                 {actionData.error}
               </div>
             )}
@@ -165,7 +165,7 @@ export default function LoginPage() {
             <div>
               <label
                 htmlFor="email"
-                className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                className="mb-1.5 block text-sm font-medium text-[var(--app-text)]"
               >
                 {i18n.auth.email}
               </label>
@@ -176,7 +176,7 @@ export default function LoginPage() {
                 autoComplete="email"
                 required
                 defaultValue={actionData?.fields?.email ?? ""}
-                className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
+                className="block w-full rounded-lg border border-[var(--app-border-strong)] bg-white px-3 py-2.5 text-sm text-[var(--app-text)] placeholder:text-[var(--app-muted)] focus:border-[var(--app-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--app-accent)]/20"
                 placeholder="seu@email.com"
               />
             </div>
@@ -185,7 +185,7 @@ export default function LoginPage() {
             <div>
               <label
                 htmlFor="password"
-                className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                className="mb-1.5 block text-sm font-medium text-[var(--app-text)]"
               >
                 {i18n.auth.password}
               </label>
@@ -195,7 +195,7 @@ export default function LoginPage() {
                 type="password"
                 autoComplete="current-password"
                 required
-                className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
+                className="block w-full rounded-lg border border-[var(--app-border-strong)] bg-white px-3 py-2.5 text-sm text-[var(--app-text)] placeholder:text-[var(--app-muted)] focus:border-[var(--app-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--app-accent)]/20"
                 placeholder="********"
               />
             </div>
@@ -213,10 +213,10 @@ export default function LoginPage() {
         </div>
 
         {/* Footer */}
-        <div className="mt-6 text-center text-xs text-gray-400 dark:text-gray-600">
+        <div className="mt-6 text-center text-xs text-[var(--app-muted)]">
           <p>LHFEX &copy; {new Date().getFullYear()} &mdash; Sistema de Gestao de Comercio Exterior</p>
           <p className="mt-1">
-            <a href="mailto:contato@lhfex.com.br" className="hover:text-blue-500 transition-colors">
+            <a href="mailto:contato@lhfex.com.br" className="transition-colors hover:text-[var(--app-accent)]">
               contato@lhfex.com.br
             </a>
           </p>
