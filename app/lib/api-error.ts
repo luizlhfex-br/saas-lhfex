@@ -4,7 +4,10 @@ export type ApiErrorCode =
   | "FORBIDDEN_MODULE"
   | "METHOD_NOT_ALLOWED"
   | "AI_PROVIDER_ERROR"
+  | "AI_PROVIDER_UNAVAILABLE"
   | "UNAUTHORIZED"
+  | "DB_SCHEMA_MISSING"
+  | "DB_CONNECTION_FAILED"
   | "INTERNAL_ERROR";
 
 export interface ApiErrorPayload {

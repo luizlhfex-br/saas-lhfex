@@ -53,10 +53,11 @@ export async function action({ request }: Route.ActionArgs) {
       agentId: null,
     });
 
-    // Call AI agent (OpenRouter → DeepSeek fallback)
+    // Call AI agent (Gemini Free → OpenRouter Free → DeepSeek Paid fallback)
     let reply: string;
     let aiModel = "unknown";
     let aiProvider = "none";
+    let aiError: string | null = null;
 
     try {
       const aiResponse = await askAgent(agentId, message.trim(), user.id);
@@ -64,17 +65,38 @@ export async function action({ request }: Route.ActionArgs) {
       aiModel = aiResponse.model;
       aiProvider = aiResponse.provider;
     } catch (error) {
-      console.error("[CHAT] AI error:", error);
-      reply = "Desculpe, ocorreu um erro ao processar sua mensagem. Tente novamente em alguns instantes.";
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      aiError = errorMessage;
+      console.error(`[CHAT:AI_FAILURE] userId=${user.id} agentId=${agentId} error="${errorMessage}"`);
+      
+      // Check if it's provider configuration issue
+      if (errorMessage.includes("not configured") || errorMessage.includes("API_KEY")) {
+        return jsonApiError(
+          "AI_PROVIDER_UNAVAILABLE",
+          "Os provedores de IA estão temporariamente indisponíveis. Entre em contato com o suporte.",
+          { status: 503 },
+          { details: { provider: aiProvider, model: aiModel } }
+        );
+      }
+      
+      // Fallback graceful reply
+      reply = "Desculpe, não consegui processar sua mensagem no momento. Nossa equipe de IA está temporariamente indisponível. Tente novamente em alguns minutos.";
+      aiProvider = "fallback";
+      aiModel = "none";
     }
 
-    // Save assistant reply
+    // Save assistant reply with extended metadata
     await db.insert(chatMessages).values({
       conversationId: convId,
       role: "assistant",
       content: reply,
       agentId,
-      metadata: { aiModel, aiProvider },
+      metadata: { 
+        aiModel, 
+        aiProvider, 
+        aiError: aiError || null,
+        timestamp: new Date().toISOString()
+      },
     });
 
     // Update conversation title if first message
@@ -84,17 +106,46 @@ export async function action({ request }: Route.ActionArgs) {
         .where(eq(chatConversations.id, convId));
     }
 
-    return Response.json({ conversationId: convId, reply, agentId, aiModel, aiProvider });
+    return Response.json({ 
+      conversationId: convId, 
+      reply, 
+      agentId, 
+      aiModel, 
+      aiProvider,
+      success: !aiError,
+      aiError: aiError || null
+    });
   } catch (error) {
     if (error instanceof Response) {
       throw error;
     }
 
-    console.error("[CHAT] Unhandled error:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[CHAT:UNHANDLED_ERROR] error="${errorMessage}" stack="${error instanceof Error ? error.stack : 'N/A'}"}`);
+    
+    // Check for specific DB errors
+    if (errorMessage.includes("relation") && errorMessage.includes("does not exist")) {
+      return jsonApiError(
+        "DB_SCHEMA_MISSING",
+        "As tabelas de chat não estão disponíveis. Execute as migrações do banco de dados.",
+        { status: 500 },
+        { details: { hint: "Run: npm run db:push" } }
+      );
+    }
+    
+    if (errorMessage.includes("connect") || errorMessage.includes("ECONNREFUSED")) {
+      return jsonApiError(
+        "DB_CONNECTION_FAILED",
+        "Não foi possível conectar ao banco de dados. Tente novamente em instantes.",
+        { status: 503 }
+      );
+    }
+    
     return jsonApiError(
       "INTERNAL_ERROR",
       "Não foi possível processar sua mensagem no momento. Verifique sua sessão e tente novamente.",
-      { status: 500 }
+      { status: 500 },
+      { details: { errorMessage } }
     );
   }
 }
