@@ -231,15 +231,20 @@ export default function CrmNewPage({ loaderData }: Route.ComponentProps) {
   const isSubmitting = navigation.state === "submitting";
   const i18n = t(locale);
 
-  const errors = actionData?.errors || {};
-  const fields = actionData?.fields || {};
+  const actionPayload = (actionData ?? {}) as {
+    errors?: Record<string, string>;
+    fields?: Record<string, string>;
+    contacts?: ContactDraft[];
+  };
+  const errors: Record<string, string> = actionPayload.errors || {};
+  const fields: Record<string, string> = actionPayload.fields || {};
 
   const [enriching, setEnriching] = useState(false);
   const [enriched, setEnriched] = useState(false);
   const [enrichError, setEnrichError] = useState<string | null>(null);
   const [contactsDraft, setContactsDraft] = useState<ContactDraft[]>(
-    actionData?.contacts && actionData.contacts.length > 0
-      ? actionData.contacts
+    actionPayload.contacts && actionPayload.contacts.length > 0
+      ? actionPayload.contacts
       : [{ ...emptyContact(), isPrimary: true }]
   );
 

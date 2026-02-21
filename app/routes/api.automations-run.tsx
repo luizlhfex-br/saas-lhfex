@@ -6,6 +6,7 @@ import { checkRateLimit } from "~/lib/rate-limit.server";
 import { db } from "~/lib/db.server";
 import { automationLogs } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { buildApiError } from "~/lib/api-error";
 
 export async function action({ request }: Route.ActionArgs) {
   const { user } = await requireAuth(request);
@@ -15,7 +16,9 @@ export async function action({ request }: Route.ActionArgs) {
 
   const globalRate = await checkRateLimit(`automations-run:user:${user.id}`, 12, 60 * 1000);
   if (!globalRate.allowed) {
-    return data({ error: "Limite de execuções manuais atingido. Tente novamente em instantes." }, { status: 429 });
+    return data(buildApiError("RATE_LIMITED", "Limite de execuções manuais atingido. Tente novamente em instantes."), {
+      status: 429,
+    });
   }
 
   let inputData: Record<string, unknown> = {};
@@ -31,7 +34,7 @@ export async function action({ request }: Route.ActionArgs) {
       .limit(1);
 
     if (!sourceLog) {
-      return data({ error: "Log de origem não encontrado" }, { status: 404 });
+      return data(buildApiError("INVALID_INPUT", "Log de origem não encontrado"), { status: 404 });
     }
 
     automationId = automationId || sourceLog.automationId;
@@ -44,12 +47,14 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   if (!automationId) {
-    return data({ error: "automationId is required" }, { status: 400 });
+    return data(buildApiError("INVALID_INPUT", "automationId is required"), { status: 400 });
   }
 
   const automationRate = await checkRateLimit(`automations-run:user:${user.id}:automation:${automationId}`, 5, 60 * 1000);
   if (!automationRate.allowed) {
-    return data({ error: "Muitas execuções para esta automação. Aguarde 1 minuto." }, { status: 429 });
+    return data(buildApiError("RATE_LIMITED", "Muitas execuções para esta automação. Aguarde 1 minuto."), {
+      status: 429,
+    });
   }
 
   try {
@@ -70,7 +75,7 @@ export async function action({ request }: Route.ActionArgs) {
     });
   } catch (error) {
     return data(
-      { error: error instanceof Error ? error.message : "Manual run failed" },
+      buildApiError("INTERNAL_ERROR", error instanceof Error ? error.message : "Manual run failed"),
       { status: 400 },
     );
   }

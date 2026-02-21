@@ -8,10 +8,11 @@ import { requireAuth } from "~/lib/auth.server";
 import { requireRole, ROLES } from "~/lib/rbac.server";
 import { db } from "~/lib/db.server";
 import { procurementAlerts, publicProcurementNotices } from "drizzle/schema";
-import { eq, and, gte, lte, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
+import { jsonApiError } from "~/lib/api-error";
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const user = await requireAuth(request);
+  const { user } = await requireAuth(request);
   await requireRole(user, [ROLES.LUIZ]);
   const url = new URL(request.url);
   const noticeId = url.searchParams.get("noticeId");
@@ -28,10 +29,12 @@ export async function loader({ request }: Route.LoaderArgs) {
   let query = db.select().from(procurementAlerts).$dynamic();
 
   if (noticeId) {
-    if (!noticeIds.includes(noticeId)) return Response.json({ error: "Not authorized" }, { status: 403 });
+    if (!noticeIds.includes(noticeId)) return jsonApiError("FORBIDDEN_MODULE", "Not authorized", { status: 403 });
     query = query.where(eq(procurementAlerts.noticeId, noticeId));
+  } else if (noticeIds.length > 0) {
+    query = query.where(inArray(procurementAlerts.noticeId, noticeIds));
   } else {
-    query = query.where(noticeIds.length > 0 ? sql`${procurementAlerts.noticeId} in (${noticeIds})` : undefined);
+    return Response.json({ alerts: [] });
   }
 
   if (severity) query = query.where(eq(procurementAlerts.severity, severity));
@@ -44,7 +47,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const user = await requireAuth(request);
+  const { user } = await requireAuth(request);
   await requireRole(user, [ROLES.LUIZ]);
 
   if (request.method === "POST") {
@@ -66,7 +69,7 @@ export async function action({ request }: Route.ActionArgs) {
         .where(and(eq(publicProcurementNotices.id, String(noticeId)), eq(publicProcurementNotices.userId, user.id)))
         .limit(1);
 
-      if (!notice.length) return Response.json({ error: "Notice not found" }, { status: 404 });
+      if (!notice.length) return jsonApiError("INVALID_INPUT", "Notice not found", { status: 404 });
 
       const newAlert = await db
         .insert(procurementAlerts)
@@ -74,7 +77,7 @@ export async function action({ request }: Route.ActionArgs) {
           noticeId: String(noticeId),
           alertType: String(alertType),
           title: String(title),
-          dueDate: new Date(String(dueDate)),
+          dueDate: String(dueDate),
           severity: String(severity),
           description: description ? String(description) : undefined,
           status: "pending",
@@ -109,5 +112,5 @@ export async function action({ request }: Route.ActionArgs) {
     }
   }
 
-  return Response.json({ error: "Method not allowed" }, { status: 405 });
+  return jsonApiError("METHOD_NOT_ALLOWED", "Method not allowed", { status: 405 });
 }

@@ -35,7 +35,7 @@ export async function fireTrigger(event: TriggerEvent): Promise<void> {
     const activeAutomations = await db
       .select()
       .from(automations)
-      .where(and(eq(automations.enabled, true), eq(automations.triggerType, event.type)));
+      .where(and(eq(automations.enabled, true), eq(automations.triggerType, event.type as any)));
 
     for (const automation of activeAutomations) {
       try {

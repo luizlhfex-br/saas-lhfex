@@ -2,15 +2,26 @@ import { db } from "./db.server";
 import { auditLogs } from "drizzle/schema";
 
 interface AuditParams {
-  userId: string;
-  action: "create" | "update" | "delete" | "upload" | "download" | "login" | "logout" | "cleanup";
+  userId: string | null;
+  action:
+    | "create"
+    | "update"
+    | "delete"
+    | "upload"
+    | "download"
+    | "login"
+    | "logout"
+    | "cleanup"
+    | "login_failed"
+    | "login_blocked";
   entity: "client" | "contact" | "process" | "invoice" | "document" | "user" | "session" | "automation_log";
   entityId?: string;
   changes?: Record<string, unknown>;
+  details?: Record<string, unknown>;
   request?: Request;
 }
 
-export async function logAudit({ userId, action, entity, entityId, changes, request }: AuditParams): Promise<void> {
+export async function logAudit({ userId, action, entity, entityId, changes, details, request }: AuditParams): Promise<void> {
   try {
     let ipAddress: string | null = null;
     let userAgent: string | null = null;
@@ -23,11 +34,11 @@ export async function logAudit({ userId, action, entity, entityId, changes, requ
     }
 
     await db.insert(auditLogs).values({
-      userId,
+      userId: userId || "system",
       action,
       entity,
       entityId: entityId || null,
-      changes: changes || null,
+      changes: (changes || details) || null,
       ipAddress,
       userAgent,
     });

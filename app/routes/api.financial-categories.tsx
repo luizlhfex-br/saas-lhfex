@@ -8,7 +8,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { financialCategorySchema } from "~/lib/validators";
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const user = await requireAuth(request);
+  const { user } = await requireAuth(request);
   await requireRole(user, [ROLES.LUIZ]);
 
   const url = new URL(request.url);
@@ -25,7 +25,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const user = await requireAuth(request);
+  const { user } = await requireAuth(request);
   await requireRole(user, [ROLES.LUIZ]);
 
   const formData = await request.formData();

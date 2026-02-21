@@ -4,6 +4,7 @@ import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
 import { automations } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { buildApiError } from "~/lib/api-error";
 
 export async function action({ request }: Route.ActionArgs) {
   const { user } = await requireAuth(request);
@@ -11,7 +12,7 @@ export async function action({ request }: Route.ActionArgs) {
   const automationId = formData.get("automationId") as string;
 
   if (!automationId) {
-    return data({ error: "automationId is required" }, { status: 400 });
+    return data(buildApiError("INVALID_INPUT", "automationId is required"), { status: 400 });
   }
 
   const [automation] = await db
@@ -21,19 +22,19 @@ export async function action({ request }: Route.ActionArgs) {
     .limit(1);
 
   if (!automation) {
-    return data({ error: "Automation not found" }, { status: 404 });
+    return data(buildApiError("INVALID_INPUT", "Automation not found"), { status: 404 });
   }
 
   if (automation.actionType !== "webhook") {
     return data(
-      { error: "This automation is not a webhook action" },
+      buildApiError("INVALID_INPUT", "This automation is not a webhook action"),
       { status: 400 },
     );
   }
 
   const webhookUrl = (automation.actionConfig as any)?.url;
   if (!webhookUrl) {
-    return data({ error: "Webhook URL not configured" }, { status: 400 });
+    return data(buildApiError("INVALID_INPUT", "Webhook URL not configured"), { status: 400 });
   }
 
   const testPayload = {

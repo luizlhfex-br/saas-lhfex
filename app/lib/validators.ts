@@ -8,7 +8,10 @@ export const loginSchema = z.object({
 export const chatMessageSchema = z.object({
   message: z.string().min(1, "Mensagem é obrigatória").max(5000, "Mensagem muito longa"),
   agentId: z.enum(["airton", "iana", "maria", "iago"]),
-  conversationId: z.string().uuid().optional(),
+  conversationId: z.preprocess(
+    (value) => (value === null || value === "" ? undefined : value),
+    z.string().uuid().optional()
+  ),
 });
 
 export const lifeTaskSchema = z.object({

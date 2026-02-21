@@ -1,4 +1,3 @@
-import type { Route } from "./+types/api.cron";
 import { requireAuth } from "~/lib/auth.server";
 import { triggerCronJob, listCronJobs } from "~/lib/cron.server";
 import { data } from "react-router";
@@ -8,7 +7,7 @@ import { data } from "react-router";
  * GET /api/cron?job=job_name — list or trigger a specific job
  */
 
-export async function loader({ request }: Route.LoaderArgs) {
+export async function loader({ request }: { request: Request }) {
   // Protect with auth
   const { user } = await requireAuth(request);
   

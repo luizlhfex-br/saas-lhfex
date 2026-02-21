@@ -225,7 +225,7 @@ export default function DashboardPage({ loaderData }: Route.ComponentProps) {
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis dataKey="period" tick={{ fontSize: 12 }} stroke="#9ca3af" />
                 <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12 }} stroke="#9ca3af" />
-                <Tooltip formatter={(v: number) => fmtBRL(v)} labelStyle={{ color: "#374151" }} contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb" }} />
+                <Tooltip formatter={(v) => fmtBRL(Number(v ?? 0))} labelStyle={{ color: "#374151" }} contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb" }} />
                 <Legend />
                 <Bar dataKey="receber" name="A Receber" fill="#22c55e" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="pagar" name="A Pagar" fill="#ef4444" radius={[4, 4, 0, 0]} />
@@ -247,7 +247,7 @@ export default function DashboardPage({ loaderData }: Route.ComponentProps) {
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis dataKey="week" tick={{ fontSize: 12 }} stroke="#9ca3af" />
                   <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12 }} stroke="#9ca3af" />
-                  <Tooltip formatter={(v: number) => fmtBRL(v)} contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb" }} />
+                  <Tooltip formatter={(v) => fmtBRL(Number(v ?? 0))} contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb" }} />
                   <Legend />
                   <Line type="monotone" dataKey="entrada" name="Entradas" stroke="#22c55e" strokeWidth={2} dot={{ r: 4 }} />
                   <Line type="monotone" dataKey="saida" name="Saídas" stroke="#ef4444" strokeWidth={2} dot={{ r: 4 }} />

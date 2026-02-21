@@ -12,6 +12,7 @@ import { Button } from "~/components/ui/button";
 import { Search, Sparkles, Check, Edit, Clock, ChevronDown, ChevronUp } from "lucide-react";
 import { data } from "react-router";
 import { eq, desc } from "drizzle-orm";
+import { buildApiError } from "~/lib/api-error";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
@@ -39,7 +40,7 @@ export async function action({ request }: Route.ActionArgs) {
     const result = ncmClassificationSchema.safeParse({ inputDescription });
 
     if (!result.success) {
-      return data({ error: result.error.issues[0]?.message || "Dados invalidos" }, { status: 400 });
+      return data(buildApiError("INVALID_INPUT", result.error.issues[0]?.message || "Dados inválidos."), { status: 400 });
     }
 
     try {
@@ -62,7 +63,9 @@ export async function action({ request }: Route.ActionArgs) {
       });
     } catch (error) {
       console.error("[NCM] Classification error:", error);
-      return data({ error: "Erro ao classificar. Tente novamente." }, { status: 500 });
+      return data(buildApiError("AI_PROVIDER_ERROR", "Não foi possível classificar agora. Tente novamente em instantes."), {
+        status: 500,
+      });
     }
   }
 
@@ -102,11 +105,28 @@ export default function NcmPage({ loaderData, actionData }: Route.ComponentProps
   const ad = actionData as {
     success?: boolean;
     error?: string;
+    code?: string;
     classification?: typeof history[0];
     result?: { ncm: string; description: string; justification: string };
     approved?: boolean;
     revised?: boolean;
   } | undefined;
+
+  const ncmErrorMessage = (() => {
+    if (!ad?.error) {
+      return "";
+    }
+
+    if (ad.code === "INVALID_INPUT") {
+      return "Descrição inválida. Inclua mais detalhes técnicos do produto para classificar.";
+    }
+
+    if (ad.code === "AI_PROVIDER_ERROR") {
+      return "A IA de classificação está indisponível no momento. Tente novamente em instantes.";
+    }
+
+    return ad.error;
+  })();
 
   const statusVariant: Record<string, "default" | "info" | "success" | "warning"> = {
     draft: "default",
@@ -168,9 +188,9 @@ export default function NcmPage({ loaderData, actionData }: Route.ComponentProps
           </div>
         </Form>
 
-        {ad?.error && (
+        {ncmErrorMessage && (
           <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-900/20">
-            <p className="text-sm text-red-700 dark:text-red-400">{ad.error}</p>
+            <p className="text-sm text-red-700 dark:text-red-400">{ncmErrorMessage}</p>
           </div>
         )}
       </div>

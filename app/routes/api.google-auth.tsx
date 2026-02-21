@@ -1,5 +1,4 @@
 import { redirect } from "react-router";
-import type { Route } from "./+types/api.google-auth";
 import { requireAuth } from "~/lib/auth.server";
 import { getAuthorizationUrl } from "~/lib/google.server";
 
@@ -7,7 +6,7 @@ import { getAuthorizationUrl } from "~/lib/google.server";
  * POST /api/google/auth
  * Inicia fluxo de autenticação Google
  */
-export async function action({ request }: Route.ActionArgs) {
+export async function action({ request }: { request: Request }) {
   const { user } = await requireAuth(request);
 
   if (request.method !== "POST") {

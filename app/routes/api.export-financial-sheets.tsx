@@ -1,5 +1,4 @@
 import { redirect } from "react-router";
-import type { Route } from "./+types/api.export-financial-sheets";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
 import { invoices, clients } from "../../drizzle/schema";
@@ -13,7 +12,7 @@ import { data } from "react-router";
  * Gera relatório financeiro em Google Sheets com filtros opcionais
  * Query params: startDate, endDate, status, type
  */
-export async function action({ request }: Route.ActionArgs) {
+export async function action({ request }: { request: Request }) {
   const { user } = await requireAuth(request);
 
   if (request.method !== "POST") {

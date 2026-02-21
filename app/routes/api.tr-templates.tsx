@@ -9,9 +9,10 @@ import { requireRole, ROLES } from "~/lib/rbac.server";
 import { db } from "~/lib/db.server";
 import { trTemplates } from "drizzle/schema";
 import { eq, and, ilike, desc, sql } from "drizzle-orm";
+import { jsonApiError } from "~/lib/api-error";
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const user = await requireAuth(request);
+  const { user } = await requireAuth(request);
   await requireRole(user, [ROLES.LUIZ]);
   const url = new URL(request.url);
   const category = url.searchParams.get("category");
@@ -31,7 +32,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const user = await requireAuth(request);
+  const { user } = await requireAuth(request);
   await requireRole(user, [ROLES.LUIZ]);
 
   if (request.method === "POST") {
@@ -92,5 +93,5 @@ export async function action({ request }: Route.ActionArgs) {
     }
   }
 
-  return Response.json({ error: "Method not allowed" }, { status: 405 });
+  return jsonApiError("METHOD_NOT_ALLOWED", "Method not allowed", { status: 405 });
 }

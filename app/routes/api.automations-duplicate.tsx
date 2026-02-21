@@ -5,6 +5,7 @@ import { db } from "~/lib/db.server";
 import { automations } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { logAudit } from "~/lib/audit.server";
+import { buildApiError } from "~/lib/api-error";
 
 export async function action({ request }: Route.ActionArgs) {
   const { user } = await requireAuth(request);
@@ -13,7 +14,7 @@ export async function action({ request }: Route.ActionArgs) {
   const newName = formData.get("newName") as string;
 
   if (!automationId || !newName) {
-    return data({ error: "automationId and newName are required" }, { status: 400 });
+    return data(buildApiError("INVALID_INPUT", "automationId and newName are required"), { status: 400 });
   }
 
   const [source] = await db
@@ -23,7 +24,7 @@ export async function action({ request }: Route.ActionArgs) {
     .limit(1);
 
   if (!source) {
-    return data({ error: "Source automation not found" }, { status: 404 });
+    return data(buildApiError("INVALID_INPUT", "Source automation not found"), { status: 404 });
   }
 
   const [clone] = await db

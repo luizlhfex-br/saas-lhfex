@@ -10,15 +10,16 @@ import { db } from "~/lib/db.server";
 import { publicProcurementProcesses, publicProcurementNotices } from "drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { fireTrigger } from "~/lib/automation-engine.server";
+import { jsonApiError } from "~/lib/api-error";
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const user = await requireAuth(request);
+  const { user } = await requireAuth(request);
   await requireRole(user, [ROLES.LUIZ]);
   const url = new URL(request.url);
   const noticeId = url.searchParams.get("noticeId");
   const status = url.searchParams.get("status");
 
-  if (!noticeId) return Response.json({ error: "noticeId required" }, { status: 400 });
+  if (!noticeId) return jsonApiError("INVALID_INPUT", "noticeId required", { status: 400 });
 
   // Verify user owns this notice
   const notice = await db
@@ -27,7 +28,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     .where(and(eq(publicProcurementNotices.id, noticeId), eq(publicProcurementNotices.userId, user.id)))
     .limit(1);
 
-  if (!notice.length) return Response.json({ error: "Notice not found" }, { status: 404 });
+  if (!notice.length) return jsonApiError("INVALID_INPUT", "Notice not found", { status: 404 });
 
   let query = db
     .select()
@@ -42,7 +43,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const user = await requireAuth(request);
+  const { user } = await requireAuth(request);
   await requireRole(user, [ROLES.LUIZ]);
 
   if (request.method === "POST") {
@@ -65,7 +66,7 @@ export async function action({ request }: Route.ActionArgs) {
         .where(and(eq(publicProcurementNotices.id, String(noticeId)), eq(publicProcurementNotices.userId, user.id)))
         .limit(1);
 
-      if (!notice.length) return Response.json({ error: "Notice not found" }, { status: 404 });
+      if (!notice.length) return jsonApiError("INVALID_INPUT", "Notice not found", { status: 404 });
 
       const newProcess = await db
         .insert(publicProcurementProcesses)
@@ -82,10 +83,13 @@ export async function action({ request }: Route.ActionArgs) {
         .returning();
 
       // Trigger para novo item de compra
-      await fireTrigger("procurement_process_created", {
+      await fireTrigger({
+        type: "procurement_process_created",
         userId: user.id,
-        processId: newProcess[0].id,
-        description: String(description),
+        data: {
+          processId: newProcess[0].id,
+          description: String(description),
+        },
       });
 
       return Response.json({ success: true, process: newProcess[0] }, { status: 201 });
@@ -114,5 +118,5 @@ export async function action({ request }: Route.ActionArgs) {
     }
   }
 
-  return Response.json({ error: "Method not allowed" }, { status: 405 });
+  return jsonApiError("METHOD_NOT_ALLOWED", "Method not allowed", { status: 405 });
 }

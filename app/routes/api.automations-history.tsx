@@ -4,6 +4,7 @@ import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
 import { automationVersionHistory, users } from "../../drizzle/schema";
 import { eq, desc } from "drizzle-orm";
+import { buildApiError } from "~/lib/api-error";
 
 export async function loader({ request }: Route.LoaderArgs) {
   await requireAuth(request);
@@ -12,7 +13,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const automationId = url.searchParams.get("automationId");
 
   if (!automationId) {
-    return data({ error: "automationId is required" }, { status: 400 });
+    return data(buildApiError("INVALID_INPUT", "automationId is required"), { status: 400 });
   }
 
   const history = await db

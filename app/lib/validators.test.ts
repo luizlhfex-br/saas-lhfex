@@ -74,6 +74,7 @@ describe("Validators", () => {
         type: "receivable",
         status: "draft",
         currency: "BRL",
+        subtotal: "1000.00",
         total: "1000.00",
         dueDate: "2026-12-31",
       });
@@ -95,6 +96,7 @@ describe("Validators", () => {
         clientId: "client-123",
         type: "payable",
         status: "sent",
+        subtotal: "12345.67",
         total: "12345.67",
         dueDate: "2026-12-31",
       });
@@ -109,8 +111,7 @@ describe("Validators", () => {
     it("should accept valid process data", () => {
       const result = processSchema.safeParse({
         clientId: "client-123",
-        reference: "PROC-2026-001",
-        type: "import",
+        processType: "import",
         status: "draft",
       });
       expect(result.success).toBe(true);
@@ -148,7 +149,7 @@ describe("Validators", () => {
       const result = chatMessageSchema.safeParse({
         message: "Continue the conversation",
         agentId: "maria",
-        conversationId: "conv-123",
+        conversationId: "f47ac10b-58cc-4372-a567-0e02b2c3d479",
       });
       expect(result.success).toBe(true);
     });

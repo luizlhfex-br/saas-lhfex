@@ -11,7 +11,7 @@ import { personalInvestments } from "drizzle/schema";
 import { eq, and, desc, isNull } from "drizzle-orm";
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const user = await requireAuth(request);
+  const { user } = await requireAuth(request);
   await requireRole(user, [ROLES.LUIZ]);
 
   const url = new URL(request.url);
@@ -47,7 +47,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const user = await requireAuth(request);
+  const { user } = await requireAuth(request);
   await requireRole(user, [ROLES.LUIZ]);
 
   if (request.method === "POST") {
@@ -73,7 +73,7 @@ export async function action({ request }: Route.ActionArgs) {
           ticker: ticker ? String(ticker) : undefined,
           quantity: String(quantity),
           purchasePrice: String(purchasePrice),
-          purchaseDate: new Date(String(purchaseDate)),
+          purchaseDate: String(purchaseDate),
           currentPrice: currentPrice ? String(currentPrice) : String(purchasePrice),
           currentValue:
             currentPrice
@@ -119,5 +119,5 @@ export async function action({ request }: Route.ActionArgs) {
     }
   }
 
-  return Response.json({ error: "Method not allowed" }, { status: 405 });
+  return Response.json({ error: "Method not allowed", code: "METHOD_NOT_ALLOWED" }, { status: 405 });
 }

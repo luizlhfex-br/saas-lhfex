@@ -14,7 +14,7 @@ import {
   Palette,
 } from "lucide-react";
 
-export async function loader({ request }: Route.LoaderArgs) {
+export async function loader({ request }: Route["LoaderArgs"]) {
   const { user } = await requireAuth(request);
   const cookieHeader = request.headers.get("cookie") || "";
   const localeMatch = cookieHeader.match(/locale=([^;]+)/);
@@ -28,7 +28,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   };
 }
 
-export default function SystemUpdatesPage({ loaderData }: Route.ComponentProps) {
+export default function SystemUpdatesPage({ loaderData }: Route["ComponentProps"]) {
   const { user, locale, releaseDate, version } = loaderData;
   const i18n = t(locale);
   const isLuiz = user.email === "luiz@lhfex.com.br";

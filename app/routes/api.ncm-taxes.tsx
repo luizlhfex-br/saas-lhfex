@@ -1,5 +1,6 @@
 import type { Route } from "./+types/api.ncm-taxes";
 import { requireAuth } from "~/lib/auth.server";
+import { jsonApiError } from "~/lib/api-error";
 
 // Common NCM tax rates (TEC - Tarifa Externa Comum)
 // Format: [II%, IPI%, PIS%, COFINS%]
@@ -86,15 +87,14 @@ export async function loader({ request }: Route.LoaderArgs) {
   );
   
   if (!rateCheck.allowed) {
-    return Response.json(
-      { 
-        error: "Muitas consultas. Aguarde um momento antes de tentar novamente.",
-        retryAfter: rateCheck.retryAfterSeconds 
-      },
+    return jsonApiError(
+      "RATE_LIMITED",
+      "Muitas consultas. Aguarde um momento antes de tentar novamente.",
       { 
         status: 429,
         headers: { "Retry-After": String(rateCheck.retryAfterSeconds || 60) }
-      }
+      },
+      { retryAfter: rateCheck.retryAfterSeconds }
     );
   }
 
@@ -102,7 +102,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const code = url.searchParams.get("code")?.replace(/[.\s-]/g, "") || "";
 
   if (!code || code.length < 4) {
-    return Response.json({ error: "NCM deve ter pelo menos 4 dígitos" }, { status: 400 });
+    return jsonApiError("INVALID_INPUT", "NCM deve ter pelo menos 4 dígitos", { status: 400 });
   }
 
   // Try exact match first (4, 6, or 8 digits), then try prefix matches

@@ -2,17 +2,18 @@ import { data } from "react-router";
 import type { Route } from "./+types/api.automations-webhook-listener";
 import { db } from "~/lib/db.server";
 import { automationLogs } from "../../drizzle/schema";
+import { buildApiError } from "~/lib/api-error";
 
 export async function action({ request }: Route.ActionArgs) {
   if (request.method !== "POST") {
-    return data({ error: "Method not allowed" }, { status: 405 });
+    return data(buildApiError("METHOD_NOT_ALLOWED", "Method not allowed"), { status: 405 });
   }
 
   const payload = await request.json();
   const { automationId, status = "success", input = {}, errorMessage } = payload;
 
   if (!automationId) {
-    return data({ error: "automationId is required" }, { status: 400 });
+    return data(buildApiError("INVALID_INPUT", "automationId is required"), { status: 400 });
   }
 
   const [log] = await db

@@ -11,7 +11,7 @@ import { personalFinance } from "drizzle/schema";
 import { eq, and, gte, lte, desc, isNull } from "drizzle-orm";
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const user = await requireAuth(request);
+  const { user } = await requireAuth(request);
   await requireRole(user, [ROLES.LUIZ]);
 
   const url = new URL(request.url);
@@ -26,9 +26,8 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   if (month) {
     const [year, monthNum] = month.split("-");
-    const startDate = new Date(`${year}-${monthNum}-01`);
-    const endDate = new Date(startDate);
-    endDate.setMonth(endDate.getMonth() + 1);
+    const startDate = `${year}-${monthNum}-01`;
+    const endDate = `${year}-${monthNum}-31`;
 
     query = query.where(
       and(
@@ -60,7 +59,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const user = await requireAuth(request);
+  const { user } = await requireAuth(request);
   await requireRole(user, [ROLES.LUIZ]);
 
   if (request.method === "POST") {
@@ -79,7 +78,7 @@ export async function action({ request }: Route.ActionArgs) {
         .insert(personalFinance)
         .values({
           userId: user.id,
-          date: new Date(String(date)),
+          date: String(date),
           type: String(type),
           category: String(category),
           description: String(description),
@@ -120,5 +119,5 @@ export async function action({ request }: Route.ActionArgs) {
     }
   }
 
-  return Response.json({ error: "Method not allowed" }, { status: 405 });
+  return Response.json({ error: "Method not allowed", code: "METHOD_NOT_ALLOWED" }, { status: 405 });
 }

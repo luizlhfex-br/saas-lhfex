@@ -260,10 +260,10 @@ export default function FinancialReportPage({ loaderData }: Route.ComponentProps
             <input type="hidden" name="type" id="export-type" value="receivable,payable" />
             <input type="hidden" name="status" id="export-status" value="sent,paid,draft" />
             <Button type="submit" variant="secondary" size="sm" onClick={(e) => {
-              document.getElementById("export-start-date")!.value = (document.getElementById("filter-start-date") as HTMLInputElement)?.value || "";
-              document.getElementById("export-end-date")!.value = (document.getElementById("filter-end-date") as HTMLInputElement)?.value || "";
-              document.getElementById("export-type")!.value = (document.getElementById("filter-type") as HTMLSelectElement)?.value || "receivable,payable";
-              document.getElementById("export-status")!.value = (document.getElementById("filter-status") as HTMLSelectElement)?.value || "sent,paid,draft";
+              (document.getElementById("export-start-date") as HTMLInputElement).value = (document.getElementById("filter-start-date") as HTMLInputElement)?.value || "";
+              (document.getElementById("export-end-date") as HTMLInputElement).value = (document.getElementById("filter-end-date") as HTMLInputElement)?.value || "";
+              (document.getElementById("export-type") as HTMLInputElement).value = (document.getElementById("filter-type") as HTMLSelectElement)?.value || "receivable,payable";
+              (document.getElementById("export-status") as HTMLInputElement).value = (document.getElementById("filter-status") as HTMLSelectElement)?.value || "sent,paid,draft";
             }}>
               <Zap className="h-4 w-4" />
               {locale === "pt-BR" ? "Exportar Sheets" : "Export Sheets"}

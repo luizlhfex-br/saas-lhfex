@@ -19,6 +19,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     throw new Response("Document not found", { status: 404 });
   }
 
+  if (!doc.fileUrl) {
+    throw new Response("Document has no file URL", { status: 400 });
+  }
+
   // Extract key from fileUrl - the key is what we stored in S3
   // fileUrl format: http://endpoint/bucket/key
   const url = new URL(doc.fileUrl);

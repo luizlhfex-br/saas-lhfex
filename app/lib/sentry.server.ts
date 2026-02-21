@@ -62,11 +62,7 @@ export function initSentryServer() {
         "Failed to fetch",
       ],
       
-      // Integration configuration
-      integrations: [
-        new Sentry.Integrations.Http({ tracing: true }),
-        new Sentry.Integrations.Postgres(),
-      ],
+      // Integrations use SDK defaults
     });
 
     sentryInitialized = true;
@@ -125,11 +121,7 @@ export function clearUserContext() {
  */
 export function startTransaction(name: string, op: string) {
   if (!sentryInitialized) return null;
-  
-  return Sentry.startTransaction({
-    name,
-    op,
-  });
+  return { name, op, finish: () => undefined };
 }
 
 /**

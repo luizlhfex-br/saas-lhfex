@@ -114,8 +114,13 @@ export default function FinancialCashflowNewPage({ loaderData }: Route.Component
   const isSubmitting = navigation.state === "submitting";
   const i18n = t(locale);
 
-  const errors = actionData?.errors || {};
-  const fields = actionData?.fields || {};
+  const actionPayload = (actionData ?? {}) as {
+    errors?: Record<string, string[]>;
+    fields?: Record<string, string>;
+  };
+
+  const errors: Record<string, string[]> = actionPayload.errors || {};
+  const fields: Record<string, string> = actionPayload.fields || {};
 
   const selectedType = fields.type || "income";
   const categoryOptions = categories.filter((c) => c.type === selectedType && !c.parentId);

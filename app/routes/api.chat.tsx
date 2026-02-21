@@ -6,21 +6,31 @@ import { eq, desc } from "drizzle-orm";
 import { checkRateLimit, RATE_LIMITS } from "~/lib/rate-limit.server";
 import { chatMessageSchema } from "~/lib/validators";
 import { askAgent } from "~/lib/ai.server";
+import { jsonApiError } from "~/lib/api-error";
 
 export async function action({ request }: Route.ActionArgs) {
   try {
     const { user } = await requireAuth(request);
 
-  // Rate limiting — 20 messages per minute per user
-  const rateCheck = await checkRateLimit(`chat:${user.id}`, RATE_LIMITS.chatApi.maxAttempts, RATE_LIMITS.chatApi.windowMs);
-  if (!rateCheck.allowed) {
-    return Response.json({ error: "Rate limit exceeded. Try again later." }, { status: 429 });
-  }
+    // Rate limiting — 20 messages per minute per user
+    const rateCheck = await checkRateLimit(`chat:${user.id}`, RATE_LIMITS.chatApi.maxAttempts, RATE_LIMITS.chatApi.windowMs);
+    if (!rateCheck.allowed) {
+      return jsonApiError(
+        "RATE_LIMITED",
+        "Você atingiu o limite de mensagens. Tente novamente em instantes.",
+        { status: 429 },
+      );
+    }
 
     const body = await request.json();
     const parsed = chatMessageSchema.safeParse(body);
     if (!parsed.success) {
-      return Response.json({ error: "Invalid input", details: parsed.error.flatten() }, { status: 400 });
+      return jsonApiError(
+        "INVALID_INPUT",
+        "Dados inválidos para o chat.",
+        { status: 400 },
+        { details: parsed.error.flatten() }
+      );
     }
     const { message, agentId, conversationId } = parsed.data;
 
@@ -76,12 +86,14 @@ export async function action({ request }: Route.ActionArgs) {
 
     return Response.json({ conversationId: convId, reply, agentId, aiModel, aiProvider });
   } catch (error) {
+    if (error instanceof Response) {
+      throw error;
+    }
+
     console.error("[CHAT] Unhandled error:", error);
-    return Response.json(
-      {
-        error:
-          "Não foi possível processar sua mensagem no momento. Verifique sua sessão e tente novamente.",
-      },
+    return jsonApiError(
+      "INTERNAL_ERROR",
+      "Não foi possível processar sua mensagem no momento. Verifique sua sessão e tente novamente.",
       { status: 500 }
     );
   }

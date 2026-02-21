@@ -161,6 +161,8 @@ export async function action({ request }: Route.ActionArgs) {
 export default function AutomationsPage({ loaderData }: Route.ComponentProps) {
   const { automations: autoList, recentLogs } = loaderData;
   const actionData = useActionData<typeof action>();
+  const actionError = actionData && "error" in actionData ? actionData.error : undefined;
+  const createdOk = Boolean(actionData && "ok" in actionData && actionData.ok);
   const navigation = useNavigation();
   const runFetcher = useFetcher();
   const logsFetcher = useFetcher();
@@ -265,7 +267,7 @@ export default function AutomationsPage({ loaderData }: Route.ComponentProps) {
       {showCreate && (
         <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-6 dark:border-yellow-900 dark:bg-yellow-950/30">
           <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">Criar Automação</h2>
-          <Form method="post" className="space-y-4" onSubmit={() => { if (actionData?.created) setShowCreate(false); }}>
+          <Form method="post" className="space-y-4" onSubmit={() => { if (createdOk) setShowCreate(false); }}>
             <input type="hidden" name="intent" value="create" />
 
             <div>
@@ -362,7 +364,7 @@ export default function AutomationsPage({ loaderData }: Route.ComponentProps) {
               </div>
             </div>
 
-            {actionData?.error && <p className="text-sm text-red-500">{actionData.error}</p>}
+            {actionError && <p className="text-sm text-red-500">{actionError}</p>}
 
             <div className="flex gap-2">
               <Button type="submit" loading={navigation.state === "submitting"}>

@@ -10,9 +10,10 @@ import { db } from "~/lib/db.server";
 import { publicProcurementNotices } from "drizzle/schema";
 import { eq, and, isNull, desc, ilike } from "drizzle-orm";
 import { fireTrigger } from "~/lib/automation-engine.server";
+import { jsonApiError } from "~/lib/api-error";
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const user = await requireAuth(request);
+  const { user } = await requireAuth(request);
   await requireRole(user, [ROLES.LUIZ]);
   const url = new URL(request.url);
   const page = parseInt(url.searchParams.get("page") ?? "1");
@@ -43,7 +44,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const user = await requireAuth(request);
+  const { user } = await requireAuth(request);
   await requireRole(user, [ROLES.LUIZ]);
 
   if (request.method === "POST") {
@@ -87,12 +88,15 @@ export async function action({ request }: Route.ActionArgs) {
         .returning();
 
       // Trigger para nova compra pública
-      await fireTrigger("public_procurement_created", {
+      await fireTrigger({
+        type: "public_procurement_created",
         userId: user.id,
-        noticeId: newNotice[0].id,
-        title: String(title),
-        processNumber,
-        closureDate: String(closureDate),
+        data: {
+          noticeId: newNotice[0].id,
+          title: String(title),
+          processNumber,
+          closureDate: String(closureDate),
+        },
       });
 
       return Response.json({ success: true, notice: newNotice[0] }, { status: 201 });
@@ -108,7 +112,7 @@ export async function action({ request }: Route.ActionArgs) {
         .update(publicProcurementNotices)
         .set({
           ...(status && { status: String(status) }),
-          ...(closureDate && { closureDate: new Date(String(closureDate)) }),
+          ...(closureDate && { closureDate: String(closureDate) }),
           ...(contractedValue && { contractedValue: String(contractedValue) }),
           updatedAt: new Date(),
         })
@@ -129,15 +133,18 @@ export async function action({ request }: Route.ActionArgs) {
         .where(and(eq(publicProcurementNotices.id, String(id)), eq(publicProcurementNotices.userId, user.id)));
 
       // Trigger para cancelamento
-      await fireTrigger("public_procurement_cancelled", {
+      await fireTrigger({
+        type: "public_procurement_cancelled",
         userId: user.id,
-        noticeId: id,
-        reason,
+        data: {
+          noticeId: id,
+          reason,
+        },
       });
 
       return Response.json({ success: true });
     }
   }
 
-  return Response.json({ error: "Method not allowed" }, { status: 405 });
+  return jsonApiError("METHOD_NOT_ALLOWED", "Method not allowed", { status: 405 });
 }

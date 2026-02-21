@@ -98,6 +98,7 @@ export default function PersonalLifePage({
   const fetcherData = (fetcher.data || {}) as {
     result?: string;
     error?: string;
+    code?: string;
     provider?: string;
     model?: string;
   };
@@ -107,6 +108,25 @@ export default function PersonalLifePage({
     "Analisar meus gastos pessoais e sugerir 3 economias práticas.",
     "Montar rotina de treino semanal para constância e progressão.",
   ];
+  const lifeErrorMessage = (() => {
+    if (!fetcherData.error) {
+      return "";
+    }
+
+    if (fetcherData.code === "FORBIDDEN_MODULE") {
+      return "Seu usuário não tem permissão para usar este módulo.";
+    }
+
+    if (fetcherData.code === "RATE_LIMITED") {
+      return "Muitas solicitações em sequência. Aguarde alguns segundos e tente de novo.";
+    }
+
+    if (fetcherData.code === "INVALID_INPUT") {
+      return "A tarefa enviada está inválida. Escreva uma solicitação mais clara e tente novamente.";
+    }
+
+    return fetcherData.error;
+  })();
 
   return (
     <div className="space-y-8">
@@ -177,9 +197,9 @@ export default function PersonalLifePage({
           </Button>
         </fetcher.Form>
 
-        {fetcherData.error && (
+        {lifeErrorMessage && (
           <p className="mt-4 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-900/20 dark:text-red-300">
-            {fetcherData.error}
+            {lifeErrorMessage}
           </p>
         )}
 

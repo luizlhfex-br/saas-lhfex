@@ -47,6 +47,7 @@ export default [
     route("personal-life/routines", "routes/personal-life.routines.tsx"),
     route("personal-life/goals", "routes/personal-life.goals.tsx"),
     route("personal-life/promotions", "routes/personal-life.promotions.tsx"),
+    route("personal-life/timeoff", "routes/personal-life.timeoff.tsx"),
     route("knowledge/prompting", "routes/knowledge.prompting.tsx"),
   ]),
 

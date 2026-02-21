@@ -1,4 +1,4 @@
-import { LoaderFunctionArgs, LinksFunction } from "react-router";
+import type { LoaderFunctionArgs, LinksFunction } from "react-router";
 
 export type Route = {
   LoaderArgs: LoaderFunctionArgs;

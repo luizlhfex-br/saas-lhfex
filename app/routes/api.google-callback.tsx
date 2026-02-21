@@ -1,5 +1,4 @@
 import { redirect } from "react-router";
-import type { Route } from "./+types/api.google-callback";
 import { requireAuth } from "~/lib/auth.server";
 import { exchangeCodeForTokens, saveGoogleToken, getValidGoogleToken } from "~/lib/google.server";
 import { data } from "react-router";
@@ -8,7 +7,7 @@ import { data } from "react-router";
  * GET /api/google/callback
  * Recebe código de autorização do Google e troca por tokens
  */
-export async function loader({ request }: Route.LoaderArgs) {
+export async function loader({ request }: { request: Request }) {
   const { user } = await requireAuth(request);
 
   const url = new URL(request.url);
@@ -37,7 +36,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     await saveGoogleToken(
       user.id,
       tokens.accessToken,
-      tokens.refreshToken,
+      tokens.refreshToken || undefined,
       tokens.expiresAt,
       tokens.scope,
     );

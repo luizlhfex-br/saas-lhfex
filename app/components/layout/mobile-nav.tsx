@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { NavLink, Form } from "react-router";
 import {
   LayoutDashboard,
@@ -7,11 +8,14 @@ import {
   Calculator,
   Search,
   Bot,
+  Zap,
+  Sparkles,
   Settings,
   LogOut,
   X,
   Heart,
   Briefcase,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { t, type Locale } from "~/i18n";
@@ -45,11 +49,19 @@ const mainNavItems: NavItem[] = [
   { labelKey: "crm", icon: Users, to: "/crm" },
   { labelKey: "processes", icon: FileText, to: "/processes" },
   { labelKey: "financial", icon: DollarSign, to: "/financial" },
-  { labelKey: "calculator", icon: Calculator, to: "/calculator" },
-  { labelKey: "ncm", icon: Search, to: "/ncm" },
-  { labelKey: "agents", icon: Bot, to: "/agents" },
   { labelKey: "publicProcurement", icon: Briefcase, to: "/public-procurement", requiredEmail: "luiz@lhfex.com.br" },
   { labelKey: "personalLife", icon: Heart, to: "/personal-life", requiredEmail: "luiz@lhfex.com.br" },
+];
+
+const comexNavItems: NavItem[] = [
+  { labelKey: "calculator", icon: Calculator, to: "/calculator" },
+  { labelKey: "ncm", icon: Search, to: "/ncm" },
+];
+
+const aiAutomationNavItems: NavItem[] = [
+  { labelKey: "automations", icon: Zap, to: "/automations" },
+  { labelKey: "agents", icon: Bot, to: "/agents" },
+  { labelKey: "aiUsage", icon: Sparkles, to: "/ai-usage" },
 ];
 
 export function MobileNav({
@@ -60,6 +72,60 @@ export function MobileNav({
   currentPath,
 }: MobileNavProps) {
   const i18n = t(locale);
+  const [openGroups, setOpenGroups] = useState({
+    comex: currentPath.startsWith("/calculator") || currentPath.startsWith("/ncm"),
+    aiAutomation:
+      currentPath.startsWith("/automations") ||
+      currentPath.startsWith("/agents") ||
+      currentPath.startsWith("/ai-usage"),
+  });
+
+  const toggleGroup = (group: "comex" | "aiAutomation") => {
+    setOpenGroups((prev) => ({ ...prev, [group]: !prev[group] }));
+  };
+
+  const renderNavItem = (item: NavItem) => {
+    if (item.requiredEmail && user.email !== item.requiredEmail) {
+      return null;
+    }
+
+    const Icon = item.icon;
+    const label = i18n.nav[item.labelKey] as string;
+
+    if (item.disabled) {
+      return (
+        <div
+          key={item.to}
+          className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-[var(--app-sidebar-muted)]"
+        >
+          <Icon className="h-5 w-5" />
+          <span>{label}</span>
+          <span className="ml-auto rounded-full bg-white/10 px-2 py-0.5 text-xs text-[var(--app-sidebar-muted)]">
+            Em breve
+          </span>
+        </div>
+      );
+    }
+
+    return (
+      <NavLink
+        key={item.to}
+        to={item.to}
+        onClick={onClose}
+        className={({ isActive }) =>
+          cn(
+            "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors",
+            isActive
+              ? "bg-[var(--app-accent)]/20 text-white"
+              : "text-[var(--app-sidebar-muted)] hover:bg-white/5 hover:text-white"
+          )
+        }
+      >
+        <Icon className="h-5 w-5" />
+        <span>{label}</span>
+      </NavLink>
+    );
+  };
 
   return (
     <>
@@ -94,49 +160,37 @@ export function MobileNav({
 
         {/* Navigation */}
         <nav className="flex-1 space-y-2 overflow-y-auto px-4 py-4">
-          {mainNavItems.map((item) => {
-            // Filter items by required email
-            if (item.requiredEmail && user.email !== item.requiredEmail) {
-              return null;
-            }
+          {mainNavItems.map(renderNavItem)}
 
-            const Icon = item.icon;
-            const label = i18n.nav[item.labelKey] as string;
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={() => toggleGroup("comex")}
+              className="flex w-full items-center justify-between rounded-xl px-4 py-2.5 text-sm font-semibold text-[var(--app-sidebar-muted)] transition-colors hover:bg-white/5 hover:text-white"
+            >
+              <span>Comércio Exterior</span>
+              <ChevronDown
+                className={cn("h-4 w-4 transition-transform", openGroups.comex ? "rotate-180" : "rotate-0")}
+              />
+            </button>
+            {openGroups.comex && <div className="mt-1 space-y-1">{comexNavItems.map(renderNavItem)}</div>}
+          </div>
 
-            if (item.disabled) {
-              return (
-                <div
-                  key={item.to}
-                  className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-[var(--app-sidebar-muted)]"
-                >
-                  <Icon className="h-5 w-5" />
-                  <span>{label}</span>
-                  <span className="ml-auto rounded-full bg-white/10 px-2 py-0.5 text-xs text-[var(--app-sidebar-muted)]">
-                    Em breve
-                  </span>
-                </div>
-              );
-            }
-
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                onClick={onClose}
-                className={({ isActive }) =>
-                  cn(
-                    "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-[var(--app-accent)]/20 text-white"
-                      : "text-[var(--app-sidebar-muted)] hover:bg-white/5 hover:text-white"
-                  )
-                }
-              >
-                <Icon className="h-5 w-5" />
-                <span>{label}</span>
-              </NavLink>
-            );
-          })}
+          <div>
+            <button
+              type="button"
+              onClick={() => toggleGroup("aiAutomation")}
+              className="flex w-full items-center justify-between rounded-xl px-4 py-2.5 text-sm font-semibold text-[var(--app-sidebar-muted)] transition-colors hover:bg-white/5 hover:text-white"
+            >
+              <span>IA & Automação</span>
+              <ChevronDown
+                className={cn("h-4 w-4 transition-transform", openGroups.aiAutomation ? "rotate-180" : "rotate-0")}
+              />
+            </button>
+            {openGroups.aiAutomation && (
+              <div className="mt-1 space-y-1">{aiAutomationNavItems.map(renderNavItem)}</div>
+            )}
+          </div>
         </nav>
 
         {/* Bottom section */}

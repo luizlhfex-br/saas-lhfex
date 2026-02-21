@@ -86,10 +86,7 @@ export async function loader({ request }: { request: Request }) {
   } catch (error) {
     console.error("[EXCHANGE] Failed to fetch rate:", error);
 
-    // Return stale cache if available (Redis or memory)
-    if (cached) {
-      return Response.json({ ...cached, stale: true });
-    }
+    // Return stale cache if available (memory)
     if (cachedRate) {
       return Response.json({ ...cachedRate, stale: true });
     }

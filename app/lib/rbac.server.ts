@@ -4,7 +4,15 @@
  */
 
 import { redirect } from "react-router";
-import type { Session } from "~/lib/auth.server";
+type UserLike = { email: string };
+type AuthPayloadLike = { user: UserLike };
+
+function extractEmail(sessionOrUser: UserLike | AuthPayloadLike): string {
+  if ("user" in sessionOrUser) {
+    return sessionOrUser.user.email;
+  }
+  return sessionOrUser.email;
+}
 
 export const ROLES = {
   ADMIN: "admin", // All access
@@ -31,10 +39,10 @@ export function getUserRole(email: string): string {
  * Use in loaders to require specific role
  */
 export async function requireRole(
-  session: Session,
+  session: UserLike | AuthPayloadLike,
   allowedRoles: string[]
 ): Promise<void> {
-  const userRole = getUserRole(session.email);
+  const userRole = getUserRole(extractEmail(session));
 
   // Admin has access to everything
   if (userRole === ROLES.ADMIN) {
@@ -50,8 +58,8 @@ export async function requireRole(
 /**
  * Check if user has access to a module
  */
-export function hasAccess(session: Session, module: "vida-pessoal" | "public-procurement" | "core"): boolean {
-  const role = getUserRole(session.email);
+export function hasAccess(session: UserLike | AuthPayloadLike, module: "vida-pessoal" | "public-procurement" | "core"): boolean {
+  const role = getUserRole(extractEmail(session));
 
   // Admin has access to everything
   if (role === ROLES.ADMIN) return true;

@@ -5,6 +5,7 @@ import { db } from "~/lib/db.server";
 import { automations } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { logAudit } from "~/lib/audit.server";
+import { buildApiError } from "~/lib/api-error";
 
 export async function action({ request }: Route.ActionArgs) {
   const { user } = await requireAuth(request);
@@ -14,13 +15,13 @@ export async function action({ request }: Route.ActionArgs) {
   const scheduleName = formData.get("scheduleName") as string;
 
   if (!automationId || !cronExpression) {
-    return data({ error: "automationId and cronExpression are required" }, { status: 400 });
+    return data(buildApiError("INVALID_INPUT", "automationId and cronExpression are required"), { status: 400 });
   }
 
   const parts = cronExpression.split(" ");
   if (parts.length !== 5) {
     return data(
-      { error: "Invalid cron format. Expected: minute hour day month dayofweek" },
+      buildApiError("INVALID_INPUT", "Invalid cron format. Expected: minute hour day month dayofweek"),
       { status: 400 },
     );
   }
@@ -32,7 +33,7 @@ export async function action({ request }: Route.ActionArgs) {
     .limit(1);
 
   if (!automation) {
-    return data({ error: "Automation not found" }, { status: 404 });
+    return data(buildApiError("INVALID_INPUT", "Automation not found"), { status: 404 });
   }
 
   const newConfig = {

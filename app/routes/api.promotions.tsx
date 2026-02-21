@@ -10,9 +10,10 @@ import { db } from "~/lib/db.server";
 import { promotions } from "drizzle/schema";
 import { eq, and, desc, isNull, lte, gte } from "drizzle-orm";
 import { fireTrigger } from "~/lib/automation-engine.server";
+import { jsonApiError } from "~/lib/api-error";
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const user = await requireAuth(request);
+  const { user } = await requireAuth(request);
   await requireRole(user, [ROLES.LUIZ]);
 
   const url = new URL(request.url);
@@ -47,7 +48,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const user = await requireAuth(request);
+  const { user } = await requireAuth(request);
   await requireRole(user, [ROLES.LUIZ]);
 
   if (request.method === "POST") {
@@ -70,8 +71,8 @@ export async function action({ request }: Route.ActionArgs) {
           name: String(name),
           company: String(company),
           type: String(type),
-          startDate: new Date(String(startDate)),
-          endDate: new Date(String(endDate)),
+          startDate: String(startDate),
+          endDate: String(endDate),
           prize: prize ? String(prize) : undefined,
           link: link ? String(link) : undefined,
           participationStatus: "pending",
@@ -79,11 +80,14 @@ export async function action({ request }: Route.ActionArgs) {
         .returning();
 
       // Trigger para nova promoção
-      await fireTrigger("promotion_created", {
+      await fireTrigger({
+        type: "promotion_created",
         userId: user.id,
-        promotionId: promo[0].id,
-        name: String(name),
-        endDate: String(endDate),
+        data: {
+          promotionId: promo[0].id,
+          name: String(name),
+          endDate: String(endDate),
+        },
       });
 
       return Response.json({ success: true, promotion: promo[0] }, { status: 201 });
@@ -105,10 +109,13 @@ export async function action({ request }: Route.ActionArgs) {
         .returning();
 
       if (newStatus === "won") {
-        await fireTrigger("promotion_won", {
+        await fireTrigger({
+          type: "promotion_won",
           userId: user.id,
-          promotionId,
-          prize: updated[0].prize,
+          data: {
+            promotionId,
+            prize: updated[0].prize,
+          },
         });
       }
 
@@ -127,5 +134,5 @@ export async function action({ request }: Route.ActionArgs) {
     }
   }
 
-  return Response.json({ error: "Method not allowed" }, { status: 405 });
+  return jsonApiError("METHOD_NOT_ALLOWED", "Method not allowed", { status: 405 });
 }

@@ -89,6 +89,9 @@ export const en: Translations = {
     both: "Both",
     prospect: "Prospect",
     notes: "Notes",
+    email: "Email",
+    phone: "Phone",
+    addContact: "Add Contact",
     contactName: "Contact Name",
     role: "Role",
     whatsapp: "WhatsApp",
@@ -199,6 +202,7 @@ export const en: Translations = {
     totalReceivable: "Total Receivable",
     totalPayable: "Total Payable",
     overdueCount: "Overdue Invoices",
+    cashflowTitle: "Cashflow Control",
   },
   ncm: {
     title: "Fiscal Classification (NCM)",

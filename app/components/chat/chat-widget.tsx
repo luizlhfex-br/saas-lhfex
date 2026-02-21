@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import { Bot, X, Send, MessageSquare, ChevronDown } from "lucide-react";
+import { X, Send, MessageSquare, ChevronDown } from "lucide-react";
 import { ChatMessage, TypingIndicator } from "./chat-message";
+import { parseApiErrorResponse } from "~/lib/api-error";
 
 interface Message {
   id: string;
@@ -38,6 +39,30 @@ export function ChatWidget() {
     }
   }, [isOpen]);
 
+  const getApiErrorMessage = async (res: Response) => {
+    const apiError = await parseApiErrorResponse(res);
+
+    if (res.status === 401) {
+      return "Sua sessão expirou. Faça login novamente para continuar.";
+    }
+
+    if (res.status === 429) {
+      return apiError?.error ?? "Você enviou muitas mensagens em pouco tempo. Aguarde alguns segundos.";
+    }
+
+    if (res.status === 400) {
+      const fieldErrors = apiError?.details as { fieldErrors?: Record<string, string[]> } | undefined;
+      const hasConversationIdError = Boolean(fieldErrors?.fieldErrors?.conversationId?.length);
+      if (hasConversationIdError) {
+        setConversationId(null);
+        return "O identificador da conversa ficou inválido. Inicie uma nova conversa e tente novamente.";
+      }
+      return apiError?.error ?? "Não foi possível validar sua mensagem. Revise o conteúdo e tente novamente.";
+    }
+
+    return apiError?.error ?? "Desculpe, ocorreu um erro. Tente novamente.";
+  };
+
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
@@ -53,14 +78,19 @@ export function ChatWidget() {
     setIsLoading(true);
 
     try {
+      const payload: { message: string; agentId: string; conversationId?: string } = {
+        message: userMessage.content,
+        agentId: selectedAgent.id,
+      };
+
+      if (conversationId) {
+        payload.conversationId = conversationId;
+      }
+
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: userMessage.content,
-          agentId: selectedAgent.id,
-          conversationId,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (res.ok) {
@@ -76,12 +106,13 @@ export function ChatWidget() {
         };
         setMessages((prev) => [...prev, assistantMessage]);
       } else {
+        const errorMessage = await getApiErrorMessage(res);
         setMessages((prev) => [
           ...prev,
           {
             id: `error-${Date.now()}`,
             role: "assistant",
-            content: "Desculpe, ocorreu um erro. Tente novamente.",
+            content: errorMessage,
             agentId: selectedAgent.id,
             timestamp: new Date().toISOString(),
           },

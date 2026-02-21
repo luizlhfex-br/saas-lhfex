@@ -1,11 +1,26 @@
-import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
+import {
+  cloneElement,
+  forwardRef,
+  isValidElement,
+  type ButtonHTMLAttributes,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 import { cn } from "~/lib/utils";
 import { Spinner } from "./spinner";
 
-type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "danger";
+type ButtonVariant =
+  | "primary"
+  | "secondary"
+  | "outline"
+  | "ghost"
+  | "danger"
+  | "default"
+  | "destructive"
+  | "dangerous";
 type ButtonSize = "sm" | "md" | "lg";
 
-const variantClasses: Record<ButtonVariant, string> = {
+const variantClasses: Record<Exclude<ButtonVariant, "default" | "destructive" | "dangerous">, string> = {
   primary:
     "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm dark:bg-indigo-600 dark:hover:bg-indigo-500",
   secondary:
@@ -18,6 +33,12 @@ const variantClasses: Record<ButtonVariant, string> = {
     "bg-red-600 hover:bg-red-700 text-white shadow-sm dark:bg-red-600 dark:hover:bg-red-500",
 };
 
+function resolveVariant(variant: ButtonVariant) {
+  if (variant === "default") return "primary" as const;
+  if (variant === "destructive" || variant === "dangerous") return "danger" as const;
+  return variant;
+}
+
 const sizeClasses: Record<ButtonSize, string> = {
   sm: "h-8 px-3 text-sm gap-1.5",
   md: "h-10 px-4 text-sm gap-2",
@@ -28,6 +49,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   loading?: boolean;
+  asChild?: boolean;
   children: ReactNode;
 }
 
@@ -37,6 +59,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       variant = "primary",
       size = "md",
       loading = false,
+      asChild = false,
       disabled,
       className,
       children,
@@ -45,20 +68,30 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const isDisabled = disabled || loading;
+    const resolvedVariant = resolveVariant(variant);
+    const classes = cn(
+      "inline-flex items-center justify-center rounded-md font-medium",
+      "transition-colors duration-150",
+      "focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900",
+      "disabled:pointer-events-none disabled:opacity-50",
+      variantClasses[resolvedVariant],
+      sizeClasses[size],
+      className
+    );
+
+    if (asChild && isValidElement(children)) {
+      const child = children as ReactElement<{ className?: string; "aria-disabled"?: boolean }>;
+      return cloneElement(child, {
+        className: cn(classes, child.props.className),
+        "aria-disabled": isDisabled || undefined,
+      });
+    }
 
     return (
       <button
         ref={ref}
         disabled={isDisabled}
-        className={cn(
-          "inline-flex items-center justify-center rounded-md font-medium",
-          "transition-colors duration-150",
-          "focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900",
-          "disabled:pointer-events-none disabled:opacity-50",
-          variantClasses[variant],
-          sizeClasses[size],
-          className
-        )}
+        className={classes}
         {...props}
       >
         {loading && (

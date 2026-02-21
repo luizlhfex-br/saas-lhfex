@@ -87,6 +87,9 @@ export const ptBR = {
     both: "Ambos",
     prospect: "Prospecto",
     notes: "Observações",
+    email: "Email",
+    phone: "Telefone",
+    addContact: "Adicionar Contato",
     contactName: "Nome do Contato",
     role: "Cargo",
     whatsapp: "WhatsApp",
@@ -197,6 +200,7 @@ export const ptBR = {
     totalReceivable: "Total a Receber",
     totalPayable: "Total a Pagar",
     overdueCount: "Faturas Vencidas",
+    cashflowTitle: "Controle de Caixa",
   },
   ncm: {
     title: "Classificação Fiscal (NCM)",
