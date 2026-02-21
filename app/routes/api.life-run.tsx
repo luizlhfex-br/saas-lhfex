@@ -3,10 +3,14 @@ import { checkRateLimit, RATE_LIMITS } from "~/lib/rate-limit.server";
 import { lifeTaskSchema } from "~/lib/validators";
 import { askLifeAgentLite } from "~/lib/ai.server";
 import { jsonApiError } from "~/lib/api-error";
+import type { AIOperationResult, LifeAgentTaskData } from "~/lib/ai-types";
+import { buildAISuccess, buildAIFailure, buildAIError } from "~/lib/ai-types";
 
 const DEFAULT_ALLOWED_EMAIL = "luiz@lhfex.com.br";
 
 export async function action({ request }: { request: Request }) {
+  const startTime = Date.now();
+  
   try {
     const { user } = await requireAuth(request);
 
@@ -30,23 +34,57 @@ export async function action({ request }: { request: Request }) {
 
     const parsed = lifeTaskSchema.safeParse({ task });
     if (!parsed.success) {
-      return jsonApiError("INVALID_INPUT", "Entrada inválida.", { status: 400 }, { details: parsed.error.flatten() });
+      const error = buildAIFailure(
+        buildAIError("INVALID_INPUT", "Entrada inválida. Descreva a tarefa com mais detalhes.", true, parsed.error.flatten()),
+        "fallback",
+        "none"
+      );
+      return Response.json(error, { status: 400 });
     }
 
     const response = await askLifeAgentLite(parsed.data.task, user.id);
-    return Response.json({
-      result: response.content,
-      provider: response.provider,
-      model: response.model,
-      tokensUsed: response.tokensUsed || 0,
-    });
+    const latencyMs = Date.now() - startTime;
+    
+    // Estimate cost (for free providers it's $0)
+    let costEstimate = "0.00";
+    if (response.provider === "deepseek" || response.provider === "openrouter_paid") {
+      const tokensUsed = response.tokensUsed || 0;
+      costEstimate = ((tokensUsed * 0.14) / 1_000_000).toFixed(6);
+    }
+
+    const result: AIOperationResult<LifeAgentTaskData> = buildAISuccess(
+      {
+        result: response.content,
+        steps: response.content.split("\\n").filter((line) => line.match(/^\\d+[.)]/)),
+        priority: "medium",
+      },
+      response.provider,
+      response.model,
+      response.tokensUsed,
+      latencyMs,
+      costEstimate
+    );
+
+    return Response.json(result);
   } catch (error) {
     if (error instanceof Response) {
       throw error;
     }
 
     console.error("[LIFE_AGENT] Error:", error);
-    return jsonApiError("AI_PROVIDER_ERROR", "Não foi possível executar a automação pessoal agora. Tente novamente.", { status: 500 });
+    
+    const aiError = buildAIFailure(
+      buildAIError(
+        "INTERNAL_ERROR",
+        "Não foi possível executar a automação pessoal agora. Tente novamente.",
+        true,
+        error instanceof Error ? error.message : String(error)
+      ),
+      "fallback",
+      "none"
+    );
+    
+    return Response.json(aiError, { status: 500 });
   }
 }
 

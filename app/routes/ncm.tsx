@@ -6,10 +6,11 @@ import { db } from "~/lib/db.server";
 import { ncmClassifications } from "drizzle/schema";
 import { classifyNCM } from "~/lib/ai.server";
 import { ncmClassificationSchema } from "~/lib/validators";
+import { NCM_PRESETS } from "~/lib/ai-types";
 import { t, type Locale } from "~/i18n";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { Search, Sparkles, Check, Edit, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, Sparkles, Check, Edit, Clock, ChevronDown, ChevronUp, Zap } from "lucide-react";
 import { data } from "react-router";
 import { eq, desc } from "drizzle-orm";
 import { buildApiError } from "~/lib/api-error";
@@ -101,6 +102,9 @@ export default function NcmPage({ loaderData, actionData }: Route.ComponentProps
   const isClassifying = navigation.state === "submitting" && navigation.formData?.get("intent") === "classify";
   const [showHistory, setShowHistory] = useState(false);
   const [correctedNcm, setCorrectedNcm] = useState("");
+  const [inputValue, setInputValue] = useState("");
+  const [showPresets, setShowPresets] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const ad = actionData as {
     success?: boolean;
@@ -143,6 +147,80 @@ export default function NcmPage({ loaderData, actionData }: Route.ComponentProps
         </p>
       </div>
 
+      {/* Quick Presets */}
+      <div className="rounded-xl border border-gray-200 bg-gradient-to-br from-violet-50 to-purple-50 p-6 shadow-sm dark:border-gray-800 dark:from-violet-900/10 dark:to-purple-900/10">
+        <button
+          onClick={() => setShowPresets(!showPresets)}
+          className="mb-3 flex w-full items-center justify-between text-left"
+        >
+          <div className="flex items-center gap-2">
+            <Zap className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              Exemplos Rápidos
+            </h2>
+          </div>
+          {showPresets ? (
+            <ChevronUp className="h-4 w-4 text-gray-500" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-gray-500" />
+          )}
+        </button>
+
+        {showPresets && (
+          <>
+            {/* Category Filter */}
+            <div className="mb-4 flex flex-wrap gap-2">
+              <button
+                onClick={() => setSelectedCategory(null)}
+                className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                  selectedCategory === null
+                    ? "bg-violet-600 text-white"
+                    : "bg-white text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                }`}
+              >
+                Todos
+              </button>
+              {Array.from(new Set(NCM_PRESETS.map((p) => p.category))).map((category) => (
+                <button
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                    selectedCategory === category
+                      ? "bg-violet-600 text-white"
+                      : "bg-white text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
+
+            {/* Preset Cards */}
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {NCM_PRESETS.filter((preset) => !selectedCategory || preset.category === selectedCategory).map(
+                (preset) => (
+                  <button
+                    key={preset.id}
+                    onClick={() => {
+                      setInputValue(preset.description);
+                      setShowPresets(false);
+                    }}
+                    className="group rounded-lg border border-violet-200 bg-white p-3 text-left transition-all hover:border-violet-400 hover:shadow-md dark:border-violet-800 dark:bg-gray-900 dark:hover:border-violet-600"
+                  >
+                    <p className="mb-1 text-sm font-medium text-gray-900 dark:text-gray-100 group-hover:text-violet-600 dark:group-hover:text-violet-400">
+                      {preset.label}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
+                      {preset.description}
+                    </p>
+                  </button>
+                )
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
       {/* Classification Form */}
       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <div className="mb-4 flex items-center gap-2">
@@ -159,6 +237,8 @@ export default function NcmPage({ loaderData, actionData }: Route.ComponentProps
               </label>
               <textarea
                 name="inputDescription"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
                 rows={4}
                 required
                 minLength={5}

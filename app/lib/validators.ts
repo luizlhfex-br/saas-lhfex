@@ -1,4 +1,5 @@
 import { z } from "zod/v4";
+import { AI_CONSTRAINTS } from "~/lib/ai-types";
 
 export const loginSchema = z.object({
   email: z.email("Email inválido"),
@@ -6,7 +7,10 @@ export const loginSchema = z.object({
 });
 
 export const chatMessageSchema = z.object({
-  message: z.string().min(1, "Mensagem é obrigatória").max(5000, "Mensagem muito longa"),
+  message: z
+    .string()
+    .min(AI_CONSTRAINTS.chat.minLength, "Mensagem é obrigatória")
+    .max(AI_CONSTRAINTS.chat.maxLength, "Mensagem muito longa"),
   agentId: z.enum(["airton", "iana", "maria", "iago"]),
   conversationId: z.preprocess(
     (value) => (value === null || value === "" ? undefined : value),
@@ -15,7 +19,10 @@ export const chatMessageSchema = z.object({
 });
 
 export const lifeTaskSchema = z.object({
-  task: z.string().min(5, "Tarefa deve ter pelo menos 5 caracteres").max(3000, "Tarefa muito longa"),
+  task: z
+    .string()
+    .min(AI_CONSTRAINTS.life.minLength, `Tarefa deve ter pelo menos ${AI_CONSTRAINTS.life.minLength} caracteres`)
+    .max(AI_CONSTRAINTS.life.maxLength, "Tarefa muito longa"),
 });
 
 export const clientSchema = z.object({
@@ -72,7 +79,10 @@ export const processSchema = z.object({
 });
 
 export const ncmClassificationSchema = z.object({
-  inputDescription: z.string().min(5, "Descrição deve ter pelo menos 5 caracteres").max(5000),
+  inputDescription: z
+    .string()
+    .min(AI_CONSTRAINTS.ncm.minLength, `Descrição deve ter pelo menos ${AI_CONSTRAINTS.ncm.minLength} caracteres`)
+    .max(AI_CONSTRAINTS.ncm.maxLength, "Descrição muito longa"),
 });
 
 export type NcmClassificationInput = z.infer<typeof ncmClassificationSchema>;
