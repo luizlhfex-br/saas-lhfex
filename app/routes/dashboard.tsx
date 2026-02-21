@@ -21,16 +21,20 @@ async function fetchExchangeRate(): Promise<number> {
   if (cachedRate && now - cachedRate.timestamp < CACHE_TTL) return cachedRate.rate;
 
   try {
-    const res = await fetch("https://economia.awesomeapi.com.br/json/last/USD-BRL", {
-      signal: AbortSignal.timeout(3000),
-    });
+    // BCB série 10813 = USD Importação (oficial)
+    const res = await fetch(
+      "https://api.bcb.gov.br/dados/serie/bcdata.sgs.10813/dados?formato=json",
+      { signal: AbortSignal.timeout(3000) }
+    );
     if (!res.ok) throw new Error("API error");
     const data = await res.json();
-    const rate = parseFloat(data.USDBRL.bid);
+    // BCB retorna array: [{ data: "01/01/2026", valor: "5.2006" }, ...]
+    const latestRate = data[data.length - 1];
+    const rate = parseFloat(latestRate.valor);
     cachedRate = { rate, timestamp: now };
     return rate;
   } catch {
-    return cachedRate?.rate ?? 5.50;
+    return cachedRate?.rate ?? 5.2006;
   }
 }
 
