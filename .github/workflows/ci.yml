@@ -140,7 +140,18 @@ jobs:
     needs: [build, e2e-tests]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
-      - name: Trigger Coolify webhook
+      - name: Validate Coolify webhook secret
+        env:
+          COOLIFY_WEBHOOK_URL: ${{ secrets.COOLIFY_WEBHOOK_URL }}
         run: |
-          echo "Deployment triggered via Coolify GitHub webhook"
-          echo "Coolify will automatically deploy on push to main"
+          if [ -z "$COOLIFY_WEBHOOK_URL" ]; then
+            echo "Missing required secret: COOLIFY_WEBHOOK_URL"
+            exit 1
+          fi
+
+      - name: Trigger Coolify webhook
+        env:
+          COOLIFY_WEBHOOK_URL: ${{ secrets.COOLIFY_WEBHOOK_URL }}
+        run: |
+          curl -fsS -X POST "$COOLIFY_WEBHOOK_URL"
+          echo "Coolify deploy webhook triggered successfully"
