@@ -29,6 +29,7 @@ export default [
     route("financial/cashflow", "routes/financial-cashflow.tsx"),
     route("financial/cashflow/new", "routes/financial-cashflow-new.tsx"),
     route("financial/cashflow/import", "routes/financial-cashflow-import.tsx"),
+    route("financial/categories", "routes/financial-categories.tsx"),
     route("settings", "routes/settings.tsx"),
     route("agents", "routes/agents.tsx"),
     route("automations", "routes/automations.tsx"),
@@ -46,6 +47,7 @@ export default [
     route("personal-life/routines", "routes/personal-life.routines.tsx"),
     route("personal-life/goals", "routes/personal-life.goals.tsx"),
     route("personal-life/promotions", "routes/personal-life.promotions.tsx"),
+    route("knowledge/prompting", "routes/knowledge.prompting.tsx"),
   ]),
 
   // API routes
@@ -83,6 +85,7 @@ export default [
   route("api/promotions", "routes/api.promotions.tsx"),
   route("api/personal-goals", "routes/api.personal-goals.tsx"),
   route("api/life-run", "routes/api.life-run.tsx"),
+  route("api/financial-categories", "routes/api.financial-categories.tsx"),
 
   // Catch-all 404
   route("*", "routes/$.tsx"),

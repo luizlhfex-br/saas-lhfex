@@ -5,11 +5,12 @@ import { cashMovementSchema } from "~/lib/validators";
 import { getUserLocale } from "~/lib/i18n.server";
 import { t } from "~/i18n";
 import { db } from "~/lib/db.server";
-import { cashMovements } from "../../drizzle/schema";
+import { cashMovements, financialCategories } from "../../drizzle/schema";
 import { parseBrazilianCurrency } from "~/lib/cashflow.server";
 import { data } from "react-router";
 import { ChevronLeft } from "lucide-react";
 import { Button } from "~/components/ui/button";
+import { and, eq } from "drizzle-orm";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
@@ -17,7 +18,12 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
 
-  return { locale, today };
+  const categories = await db
+    .select({ id: financialCategories.id, type: financialCategories.type, name: financialCategories.name, parentId: financialCategories.parentId })
+    .from(financialCategories)
+    .where(eq(financialCategories.createdBy, user.id));
+
+  return { locale, today, categories };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -28,8 +34,11 @@ export async function action({ request }: Route.ActionArgs) {
     date: String(formData.get("date") || ""),
     type: String(formData.get("type") || ""),
     category: String(formData.get("category") || ""),
+    subcategory: String(formData.get("subcategory") || ""),
     description: String(formData.get("description") || ""),
     amount: String(formData.get("amount") || ""),
+    hasInvoice: String(formData.get("hasInvoice") || "N"),
+    settlementDate: String(formData.get("settlementDate") || ""),
     paymentMethod: String(formData.get("paymentMethod") || ""),
     costCenter: String(formData.get("costCenter") || ""),
   };
@@ -37,7 +46,9 @@ export async function action({ request }: Route.ActionArgs) {
   // Normalize empty strings to undefined
   const normalized = {
     ...raw,
+    subcategory: raw.subcategory.trim() || undefined,
     description: raw.description.trim() || undefined,
+    settlementDate: raw.settlementDate.trim() || undefined,
     paymentMethod: raw.paymentMethod.trim() || undefined,
     costCenter: raw.costCenter.trim() || undefined,
   };
@@ -54,7 +65,7 @@ export async function action({ request }: Route.ActionArgs) {
     );
   }
 
-  const { date, type, category, description, amount, paymentMethod, costCenter } = result.data;
+  const { date, type, category, subcategory, description, amount, hasInvoice, settlementDate, paymentMethod, costCenter } = result.data;
 
   // Parse amount (Brazilian format: 1.234,56 → 1234.56)
   let parsedAmount: number;
@@ -78,8 +89,11 @@ export async function action({ request }: Route.ActionArgs) {
     date,
     type,
     category,
+    subcategory: subcategory || null,
     description: description || null,
     amount: String(parsedAmount.toFixed(2)),
+    hasInvoice: hasInvoice || "N",
+    settlementDate: settlementDate || null,
     paymentMethod: paymentMethod || null,
     costCenter: costCenter || null,
     createdBy: user.id,
@@ -94,7 +108,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function FinancialCashflowNewPage({ loaderData }: Route.ComponentProps) {
-  const { locale, today } = loaderData;
+  const { locale, today, categories } = loaderData;
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
@@ -102,6 +116,10 @@ export default function FinancialCashflowNewPage({ loaderData }: Route.Component
 
   const errors = actionData?.errors || {};
   const fields = actionData?.fields || {};
+
+  const selectedType = fields.type || "income";
+  const categoryOptions = categories.filter((c) => c.type === selectedType && !c.parentId);
+  const subcategoryOptions = categories.filter((c) => c.type === selectedType && !!c.parentId);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -145,6 +163,15 @@ export default function FinancialCashflowNewPage({ loaderData }: Route.Component
                 name="type"
                 required
                 defaultValue={fields.type || "income"}
+                onChange={(e) => {
+                  const form = e.currentTarget.form;
+                  if (form) {
+                    const categoryEl = form.elements.namedItem("category") as HTMLSelectElement | null;
+                    const subcategoryEl = form.elements.namedItem("subcategory") as HTMLSelectElement | null;
+                    if (categoryEl) categoryEl.value = "";
+                    if (subcategoryEl) subcategoryEl.value = "";
+                  }
+                }}
                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
               >
                 <option value="income">Receita</option>
@@ -158,15 +185,38 @@ export default function FinancialCashflowNewPage({ loaderData }: Route.Component
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Categoria <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
+              <select
                 name="category"
                 required
-                placeholder="Ex: Vendas, Salários, Marketing..."
                 defaultValue={fields.category}
                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-              />
+              >
+                <option value="">Selecione uma categoria</option>
+                {categoryOptions.map((category) => (
+                  <option key={category.id} value={category.name}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
               {errors.category && <p className="mt-1 text-sm text-red-600">{errors.category[0]}</p>}
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Subcategoria
+              </label>
+              <select
+                name="subcategory"
+                defaultValue={fields.subcategory}
+                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+              >
+                <option value="">Sem subcategoria</option>
+                {subcategoryOptions.map((category) => (
+                  <option key={category.id} value={category.name}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Amount */}
@@ -187,6 +237,33 @@ export default function FinancialCashflowNewPage({ loaderData }: Route.Component
             </div>
 
             {/* Payment Method */}
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Nota fiscal
+              </label>
+              <select
+                name="hasInvoice"
+                defaultValue={fields.hasInvoice || "N"}
+                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+              >
+                <option value="S">Sim</option>
+                <option value="N">Não</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Data pagamento/recebimento
+              </label>
+              <input
+                type="date"
+                name="settlementDate"
+                defaultValue={fields.settlementDate || fields.date || today}
+                min="2025-01-01"
+                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+              />
+            </div>
+
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Forma de Pagamento

@@ -94,10 +94,19 @@ export const cashMovementSchema = z.object({
   date: z.string().min(1, "Data é obrigatória"),
   type: z.enum(["income", "expense"], { message: "Tipo deve ser Receita ou Despesa" }),
   category: z.string().min(1, "Categoria é obrigatória").max(100, "Categoria deve ter no máximo 100 caracteres"),
+  subcategory: z.string().max(100, "Subcategoria deve ter no máximo 100 caracteres").optional(),
   description: z.string().max(2000, "Descrição deve ter no máximo 2000 caracteres").optional(),
   amount: z.string().min(1, "Valor é obrigatório"),
+  hasInvoice: z.enum(["S", "N"]).optional(),
+  settlementDate: z.string().optional(),
   paymentMethod: z.string().max(50, "Forma de pagamento deve ter no máximo 50 caracteres").optional(),
   costCenter: z.string().max(50, "Centro de custo deve ter no máximo 50 caracteres").optional(),
+});
+
+export const financialCategorySchema = z.object({
+  type: z.enum(["income", "expense"], { message: "Tipo deve ser Receita ou Despesa" }),
+  name: z.string().min(2, "Nome da categoria é obrigatório").max(100, "Categoria deve ter no máximo 100 caracteres"),
+  parentId: z.string().uuid().optional().or(z.literal("")),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
@@ -108,3 +117,4 @@ export type ContactInput = z.infer<typeof contactSchema>;
 export type ProcessInput = z.infer<typeof processSchema>;
 export type InvoiceInput = z.infer<typeof invoiceSchema>;
 export type CashMovementInput = z.infer<typeof cashMovementSchema>;
+export type FinancialCategoryInput = z.infer<typeof financialCategorySchema>;

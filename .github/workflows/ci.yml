@@ -115,6 +115,18 @@ jobs:
     needs: [lint-and-typecheck, unit-tests]
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Changelog guard (main push)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          echo "Checking for version update in app/config/version.ts"
+          CHANGED=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" | grep -c "^app/config/version.ts$")
+          if [ "$CHANGED" -eq 0 ]; then
+            echo "ERROR: version.ts not updated. Update app/config/version.ts for every deploy."
+            exit 1
+          fi
       
       - name: Setup Node.js
         uses: actions/setup-node@v4

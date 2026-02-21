@@ -15,19 +15,30 @@ export async function loader({ request }: Route.LoaderArgs) {
   const now = new Date();
   const year = parseInt(url.searchParams.get("year") || String(now.getFullYear()));
   const month = parseInt(url.searchParams.get("month") || String(now.getMonth() + 1));
+  const period = url.searchParams.get("period") || "this_month";
+  const startDate = url.searchParams.get("startDate") || undefined;
+  const endDate = url.searchParams.get("endDate") || undefined;
 
-  const cashflow = await getCashFlowForMonth(year, month);
+  const cashflow = await getCashFlowForMonth(year, month, {
+    userId: user.id,
+    period: period as "this_month" | "last_month" | "this_year" | "custom",
+    startDate,
+    endDate,
+  });
 
   return {
     cashflow,
     year,
     month,
+    period,
+    startDate,
+    endDate,
     locale,
   };
 }
 
 export default function FinancialCashflowPage({ loaderData }: Route.ComponentProps) {
-  const { cashflow, year, month, locale } = loaderData;
+  const { cashflow, year, month, period, startDate, endDate, locale } = loaderData;
   const i18n = t(locale);
 
   // Format currency helper (client-side)
@@ -49,6 +60,9 @@ export default function FinancialCashflowPage({ loaderData }: Route.ComponentPro
           {i18n.financial.cashflowTitle || "Controle de Caixa"}
         </h1>
         <div className="flex gap-2">
+          <Button asChild variant="outline">
+            <Link to="/financial/categories">Categorias</Link>
+          </Button>
           <Button asChild variant="outline">
             <Link to="/financial/cashflow/import">
               <Upload className="h-4 w-4 mr-2" />
@@ -98,6 +112,24 @@ export default function FinancialCashflowPage({ loaderData }: Route.ComponentPro
             <ChevronRight className="h-4 w-4" />
           </Link>
         </Button>
+      </div>
+
+      {/* Period filters */}
+      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link to="/financial/cashflow?period=this_month" className={`rounded-full px-3 py-1.5 text-sm ${period === "this_month" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"}`}>
+            Este mês
+          </Link>
+          <Link to="/financial/cashflow?period=last_month" className={`rounded-full px-3 py-1.5 text-sm ${period === "last_month" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"}`}>
+            Último mês
+          </Link>
+          <Link to="/financial/cashflow?period=this_year" className={`rounded-full px-3 py-1.5 text-sm ${period === "this_year" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"}`}>
+            Este ano
+          </Link>
+          <Link to={`/financial/cashflow?period=custom&startDate=${startDate || `${year}-01-01`}&endDate=${endDate || `${year}-12-31`}`} className={`rounded-full px-3 py-1.5 text-sm ${period === "custom" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"}`}>
+            Personalizado
+          </Link>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -200,7 +232,10 @@ export default function FinancialCashflowPage({ loaderData }: Route.ComponentPro
                   <th className="px-6 py-3 font-medium text-gray-600 dark:text-gray-400">Data</th>
                   <th className="px-6 py-3 font-medium text-gray-600 dark:text-gray-400">Tipo</th>
                   <th className="px-6 py-3 font-medium text-gray-600 dark:text-gray-400">Categoria</th>
+                  <th className="px-6 py-3 font-medium text-gray-600 dark:text-gray-400">Subcategoria</th>
                   <th className="px-6 py-3 font-medium text-gray-600 dark:text-gray-400">Descrição</th>
+                  <th className="px-6 py-3 font-medium text-gray-600 dark:text-gray-400">NF</th>
+                  <th className="px-6 py-3 font-medium text-gray-600 dark:text-gray-400">Data Pgto/Rec</th>
                   <th className="px-6 py-3 font-medium text-gray-600 dark:text-gray-400">Pagamento</th>
                   <th className="px-6 py-3 font-medium text-gray-600 dark:text-gray-400">Centro Custo</th>
                   <th className="px-6 py-3 text-right font-medium text-gray-600 dark:text-gray-400">Valor</th>
@@ -218,7 +253,10 @@ export default function FinancialCashflowPage({ loaderData }: Route.ComponentPro
                       </span>
                     </td>
                     <td className="px-6 py-4 text-gray-900 dark:text-gray-100">{mov.category}</td>
+                    <td className="px-6 py-4 text-gray-600 dark:text-gray-400">{mov.subcategory || "-"}</td>
                     <td className="px-6 py-4 text-gray-600 dark:text-gray-400">{mov.description || "-"}</td>
+                    <td className="px-6 py-4 text-gray-600 dark:text-gray-400">{mov.hasInvoice}</td>
+                    <td className="px-6 py-4 text-gray-600 dark:text-gray-400">{mov.settlementDate ? new Date(mov.settlementDate).toLocaleDateString("pt-BR") : "-"}</td>
                     <td className="px-6 py-4 text-gray-600 dark:text-gray-400">{mov.paymentMethod || "-"}</td>
                     <td className="px-6 py-4 text-gray-600 dark:text-gray-400">{mov.costCenter || "-"}</td>
                     <td className={`px-6 py-4 text-right font-semibold ${mov.type === "income" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>

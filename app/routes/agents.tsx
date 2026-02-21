@@ -5,7 +5,8 @@ import { db } from "~/lib/db.server";
 import { chatConversations, chatMessages } from "drizzle/schema";
 import { eq, desc } from "drizzle-orm";
 import { t, type Locale } from "~/i18n";
-import { Bot, Send, MessageSquare, Plus, Clock, ArrowLeft } from "lucide-react";
+import { Bot, Send, MessageSquare, Plus, Clock, ArrowLeft, Sparkles } from "lucide-react";
+import { Link } from "react-router";
 import { ChatMessage, TypingIndicator } from "~/components/chat/chat-message";
 
 const agents = [
@@ -337,6 +338,30 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
         <p className="text-sm text-gray-500 dark:text-gray-400">
           Converse com os agentes de IA especializados da LHFEX
         </p>
+      </div>
+
+      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+              <Sparkles className="h-5 w-5" />
+            </span>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                Guia de prompts
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                5 principios + templates prontos para melhorar a resposta dos agentes.
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/knowledge/prompting"
+            className="rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+          >
+            Abrir guia
+          </Link>
+        </div>
       </div>
 
       {/* Agent Cards */}

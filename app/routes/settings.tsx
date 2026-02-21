@@ -1,4 +1,4 @@
-import { Form, useNavigation } from "react-router";
+import { Form, useNavigation, Link } from "react-router";
 import type { Route } from "./+types/settings";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
@@ -9,7 +9,7 @@ import { Save, User, Globe, Palette, Sparkles, Bug, Wrench, Rocket, CheckCircle2
 import { data } from "react-router";
 import { eq, and, isNull } from "drizzle-orm";
 import { disconnectGoogle } from "~/lib/google.server";
-import { APP_VERSION, APP_RELEASE_DATE } from "~/config/version";
+import { VERSION_HISTORY, type ChangelogEntry } from "~/config/version";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
@@ -78,210 +78,7 @@ export async function action({ request }: Route.ActionArgs) {
   return data({ success: true }, { headers });
 }
 
-interface ChangelogEntry {
-  version: string;
-  date: string;
-  title: string;
-  items: {
-    type: "feature" | "improvement" | "fix" | "infra";
-    text: string;
-  }[];
-}
-
-const changelog: ChangelogEntry[] = [
-  {
-    version: APP_VERSION,
-    date: APP_RELEASE_DATE,
-    title: "Ondas 7.0 & 8.0 — Compras Públicas + Vida Pessoal + Tema Indigo + Documentação",
-    items: [
-      { type: "feature", text: "Onda 7.0 — Compras Públicas: Sistema Lei 14.133/21 com gerenciamento de editais e processos licitatórios" },
-      { type: "feature", text: "Onda 8.0 — Vida Pessoal: Módulo de finanças pessoais, investimentos e rotinas diárias" },
-      { type: "feature", text: "RBAC por email: Módulos restritos por usuário (luiz@lhfex.com.br vs financeiro@lhfex.com.br)" },
-      { type: "improvement", text: "Tema Visual Indigo + Teal: Redesign de interfaces com paleta Data-First/Brutalist (GitHub-like)" },
-      { type: "improvement", text: "Navegação atualizada: Sidebar e mobile-nav com novos módulos e ícones" },
-      { type: "feature", text: "Página de Atualizações do Sistema: Dashboard visual com links aos novos módulos" },
-      { type: "infra", text: "I18N expandido: Labels em pt-BR e en para Compras Públicas e Vida Pessoal" },
-      { type: "infra", text: "Documentação de Sistema: CHANGELOG, UPDATE-LOG.json e THEME-APPLIED.md" },
-      { type: "infra", text: "Config centralizada: app/config/version.ts para rastreamento de versão" },
-    ],
-  },
-  {
-    version: "0.9.0",
-    date: "2026-02-20",
-    title: "Ondas 7.3, 8.2, 8.3 — Testes, Logging & Backup",
-    items: [
-      { type: "feature", text: "Vitest: Framework de testes unitários com cobertura de código (validators, auth, utils)" },
-      { type: "feature", text: "Playwright: Testes E2E automatizados para fluxos críticos (login, CRM, processos)" },
-      { type: "infra", text: "GitHub Actions: Pipeline CI/CD completo (lint, typecheck, tests unitários, tests E2E, build, deploy)" },
-      { type: "feature", text: "Winston Logger: Logging estruturado com rotação de arquivos, níveis configuráveis e suporte a JSON" },
-      { type: "feature", text: "Backup PostgreSQL: Script automatizado pg_dump → S3/MinIO com compressão gzip e limpeza de backups antigos (30 dias)" },
-      { type: "improvement", text: "Scripts NPM: test:unit, test:e2e, backup para execução local e CI/CD" },
-      { type: "infra", text: "Logs organizados: app.log (all), error.log (errors only), exceptions.log, rejections.log" },
-      { type: "infra", text: "Coverage reporting: Cobertura de código com V8 provider e relatórios HTML/JSON" },
-    ],
-  },
-  {
-    version: "0.8.0",
-    date: "2026-02-19",
-    title: "Ondas 7 & 8 — Segurança + Monitoramento",
-    items: [
-      { type: "feature", text: "CSRF Protection: Tokens de segurança em todos os formulários POST/PUT/DELETE" },
-      { type: "improvement", text: "Redis Rate Limiting: Proteção contra abuso agora persiste entre deploys e escala horizontalmente" },
-      { type: "feature", text: "Sentry Integration: Rastreamento de erros e performance em produção com filtragem de dados sensíveis" },
-      { type: "infra", text: "Rate Limit Login: 5 tentativas a cada 15 min por IP (previne força bruta)" },
-      { type: "infra", text: "Rate Limit Chat: 20 mensagens por minuto por usuário" },
-      { type: "infra", text: "Fail-open: Sistema continua funcionando se Redis ou Sentry ficarem indisponíveis" },
-    ],
-  },
-  {
-    version: "0.7.2",
-    date: "2026-02-20",
-    title: "Onda 5.1 — Modernização CRM com Classificação CNAE",
-    items: [
-      { type: "improvement", text: "Replace campos de atividade em texto (ramoAtividade) com código CNAE padronizado (ex: 4713100)" },
-      { type: "improvement", text: "Remover phone/email da tabela clients — agora gerenciados na tabela contacts com 1:N relationship" },
-      { type: "improvement", text: "Remover campos comerciais obsoletos (monthlyVolume, preferredCurrency, preferredIncoterm)" },
-      { type: "feature", text: "Gerenciamento dinâmico de contatos em crm-new com add/remove/mark-primary" },
-      { type: "feature", text: "Batch insert de contatos ao criar cliente com validação: min 1 contato, cada um com nome + (email OR phone)" },
-      { type: "improvement", text: "crm-edit e crm-detail refatorados para exibir CNAE fields ao invés dos campos antigos" },
-      { type: "infra", text: "Schema CRM versão 2: clients.cnaeCode + clients.cnaeDescription; remove 5 colunas obsoletas" },
-      { type: "improvement", text: "i18n atualizado: adicionar cnaeCode/cnaeDescription; remover ramoAtividade/phone/email/monthlyVolume/preferredCurrency/preferredIncoterm" },
-      { type: "infra", text: "seed.ts atualizado com CNAE codes reais de empresas brasileiras (4713100, 0161000, 4741500)" },
-    ],
-  },
-  {
-    version: "0.7.1",
-    date: "2026-02-19",
-    title: "Onda 5.0 — Estabilidade de CNPJ + Chat + Navegação Financeira",
-    items: [
-      { type: "fix", text: "Enriquecimento de CNPJ com validação melhor e fallback de provedor para reduzir falhas de consulta" },
-      { type: "improvement", text: "Formulário de Novo Cliente agora mostra erro inline no CNPJ e retry automático de consulta" },
-      { type: "fix", text: "Chat de Agentes agora exibe mensagens de erro do backend de forma mais clara (sem fallback genérico sempre)" },
-      { type: "improvement", text: "Financeiro com navegação por abas (Faturas/Relatório) e remoção do item duplicado na sidebar" },
-      { type: "infra", text: "Marcador de deploy adicionado no changelog para validação visual de atualização em produção" },
-    ],
-  },
-  {
-    version: "0.7.0",
-    date: "2026-02-17",
-    title: "Milestone 7 — IA Multi-Provider, Auditoria & Recibo",
-    items: [
-      { type: "feature", text: "IA Multi-Provider: Gemini Free → OpenRouter Free → DeepSeek Pago (fallback automático)" },
-      { type: "feature", text: "NCM com Prompt Blindado 2.0 — 5 seções obrigatórias de classificação fiscal" },
-      { type: "feature", text: "Página de Auditoria (/audit) com tabela filtrável por ação e entidade" },
-      { type: "feature", text: "Relatório Financeiro (/financial/report) com gráfico de fluxo de caixa e exportação CSV" },
-      { type: "feature", text: "Recibo de Pagamento (/financial/receipt) — template imprimível com valor por extenso" },
-      { type: "feature", text: "Telegram Bot reescrito: admin exclusivo (Luiz + LHFEX Consultoria), demais usuários negados" },
-      { type: "fix", text: "Bug de tema claro/escuro corrigido — dark class agora aplicada no <html> via root.tsx" },
-      { type: "improvement", text: "Sidebar atualizada com links para Auditoria e Relatório Financeiro" },
-      { type: "infra", text: "Schemas novos: ncm_classifications e ai_usage_logs no PostgreSQL" },
-      { type: "infra", text: "Schema processes atualizado: pending_approval, requiresApproval, approvedBy, approvedAt" },
-    ],
-  },
-  {
-    version: "0.6.0",
-    date: "2026-02-16",
-    title: "Milestone 6 — Hardening & Performance (Auditoria)",
-    items: [
-      { type: "feature", text: "Rate limiting no login (5 tentativas/15min) e API de chat (20 req/min)" },
-      { type: "improvement", text: "Validação Zod estrita no chat API — substituiu type casts inseguros" },
-      { type: "improvement", text: "maxLength em todos os campos de texto livre (notes, description, etc.)" },
-      { type: "infra", text: "Indexes de banco adicionados em colunas de busca (cnpj, status, clientId, etc.)" },
-      { type: "infra", text: "Constraints onDelete (restrict/set null/cascade) em todas as foreign keys" },
-      { type: "fix", text: "Soft delete corrigido no detalhe financeiro — impedia acesso a faturas deletadas" },
-      { type: "improvement", text: "Queries paralelizadas com Promise.all() nos loaders de detalhe" },
-      { type: "feature", text: "Security headers (X-Frame-Options, X-Content-Type-Options, Referrer-Policy)" },
-      { type: "improvement", text: "Flag Secure nos cookies de tema e idioma em produção" },
-      { type: "improvement", text: "Summary financeiro via SQL aggregation (não carrega todas as faturas)" },
-      { type: "improvement", text: "Lista financeira mostra nome do cliente ao invés de UUID" },
-      { type: "improvement", text: "Busca de clientes no CRM movida para SQL (antes era em JavaScript)" },
-      { type: "feature", text: "Paginação adicionada ao CRM (20 clientes por página)" },
-    ],
-  },
-  {
-    version: "0.5.0",
-    date: "2026-02-16",
-    title: "Milestone 5 — Polish & UX",
-    items: [
-      { type: "feature", text: "Toast notifications (sonner) para feedback visual em todas as ações" },
-      { type: "feature", text: "Componente de Skeleton Loader para estados de carregamento" },
-      { type: "feature", text: "Dialog de confirmação estilizado para ações destrutivas" },
-      { type: "feature", text: "Página 404 com visual LHFEX e botão de voltar" },
-      { type: "feature", text: "Breadcrumbs de navegação nas páginas de detalhe" },
-      { type: "feature", text: "Filtros por status, tipo e busca nos Processos e Financeiro" },
-      { type: "feature", text: "Paginação com 20 itens por página em todas as listagens" },
-      { type: "improvement", text: "ErrorBoundary redesenhado com logo e mensagens amigáveis" },
-      { type: "improvement", text: "Meta tags (title, description, og:tags, favicon)" },
-      { type: "improvement", text: "Componente de paginação reutilizável com navegação por páginas" },
-    ],
-  },
-  {
-    version: "0.4.0",
-    date: "2026-02-16",
-    title: "Milestone 4 — Agentes IA & Chat",
-    items: [
-      { type: "feature", text: "Chat com 4 agentes IA especializados (AIrton, IAna, marIA, IAgo)" },
-      { type: "feature", text: "Widget de chat flutuante disponível em todas as páginas" },
-      { type: "feature", text: "Página dedicada de Agentes IA com cards e chat embutido" },
-      { type: "feature", text: "Histórico de conversas com persistência no banco de dados" },
-      { type: "feature", text: "Integração com N8N via webhook para respostas inteligentes" },
-      { type: "feature", text: "Sugestões de perguntas contextuais por agente" },
-      { type: "improvement", text: "Sidebar e navegação mobile com Agentes IA habilitado" },
-      { type: "infra", text: "Schema de chat (chatConversations + chatMessages) no PostgreSQL" },
-      { type: "infra", text: "API /api/chat com fallback para respostas mock" },
-    ],
-  },
-  {
-    version: "0.3.0",
-    date: "2026-02-16",
-    title: "Milestone 3 — Integrações & Automação",
-    items: [
-      { type: "feature", text: "Upload de documentos nos processos (S3/MinIO) com classificação por tipo" },
-      { type: "feature", text: "Download seguro de documentos via URL assinada (presigned URL)" },
-      { type: "feature", text: "Serviço de email (Nodemailer) com templates visuais LHFEX" },
-      { type: "feature", text: "Notificação por email ao mudar status do processo" },
-      { type: "feature", text: "Cotação USD/BRL em tempo real no dashboard (API AwesomeAPI)" },
-      { type: "feature", text: "Sistema de auditoria completo (login, logout, CRUD)" },
-      { type: "feature", text: "Changelog de atualizações do sistema nas Configurações" },
-      { type: "fix", text: "Link do Painel no sidebar corrigido (apontava para /dashboard em vez de /)" },
-      { type: "improvement", text: "Dashboard agora mostra processos recentes com links" },
-      { type: "improvement", text: "Dashboard com contagem real de processos ativos e receita mensal" },
-    ],
-  },
-  {
-    version: "0.2.0",
-    date: "2026-02-15",
-    title: "Milestone 2 — Funcionalidades Core",
-    items: [
-      { type: "feature", text: "Módulo de Processos completo (CRUD com referência automática IMP/EXP-YYYY-XXXX)" },
-      { type: "feature", text: "Timeline de status dos processos com registro automático" },
-      { type: "feature", text: "Calculadora Comex — Simulação de impostos (II, IPI, PIS, COFINS, ICMS)" },
-      { type: "feature", text: "Classificação Fiscal (NCM) — Busca com 20 códigos mais comuns" },
-      { type: "feature", text: "Módulo Financeiro — Faturas (a receber / a pagar) com dashboard" },
-      { type: "improvement", text: "Sidebar habilitada para todos os módulos" },
-      { type: "improvement", text: "Traduções PT-BR e EN para todos os novos módulos" },
-      { type: "infra", text: "Schemas Drizzle para processes, financial (db:push)" },
-    ],
-  },
-  {
-    version: "0.1.0",
-    date: "2026-02-14",
-    title: "Milestone 1 — MVP Deployável",
-    items: [
-      { type: "feature", text: "Autenticação com cookie sessions + bcrypt" },
-      { type: "feature", text: "Dashboard com cards de KPIs e agentes IA" },
-      { type: "feature", text: "CRM completo — Clientes e Contatos (CRUD com soft delete)" },
-      { type: "feature", text: "Criptografia AES-256-GCM para dados sensíveis" },
-      { type: "feature", text: "Internacionalização PT-BR / EN com tipagem TypeScript" },
-      { type: "feature", text: "Tema claro/escuro com persistência" },
-      { type: "feature", text: "Layout responsivo (desktop sidebar + mobile navigation)" },
-      { type: "infra", text: "Deploy via Coolify + Dockerfile otimizado" },
-      { type: "infra", text: "Logo LHFEX integrada (horizontal + circular)" },
-      { type: "fix", text: "Correção do Dockerfile (NODE_ENV=development para instalar devDeps)" },
-      { type: "fix", text: "Correção de tipo i18n (DeepStringify para multi-locale)" },
-    ],
-  },
-];
+const changelog: ChangelogEntry[] = VERSION_HISTORY;
 
 const typeConfig = {
   feature: { icon: Sparkles, label: "Novo", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
@@ -433,6 +230,53 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
           </Button>
         </div>
       </Form>
+
+        {/* Prompting Best Practices */}
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+          <div className="mb-4 flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-blue-500" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              Boas praticas de prompt
+            </h2>
+          </div>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Guia rapido para extrair respostas mais precisas da IA.
+          </p>
+          <div className="mt-4 grid gap-3 text-sm text-gray-700 dark:text-gray-300 sm:grid-cols-2">
+            <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-gray-800/60">
+              <p className="font-semibold">5 principios</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Tarefa, Contexto, Referencias, Avaliacao, Iteracao.
+              </p>
+            </div>
+            <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-gray-800/60">
+              <p className="font-semibold">Estrutura</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Prompt dividido, restricoes e exemplos reais.
+              </p>
+            </div>
+            <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-gray-800/60">
+              <p className="font-semibold">Fluxo</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Encadeamento, avaliacao e iteracao sistematica.
+              </p>
+            </div>
+            <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-gray-800/60">
+              <p className="font-semibold">Seguranca</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Humano no controle e verifique fatos criticos.
+              </p>
+            </div>
+          </div>
+          <div className="mt-4">
+            <Link
+              to="/knowledge/prompting"
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+            >
+              Abrir guia completo
+            </Link>
+          </div>
+        </div>
 
       {/* Changelog / System Updates */}
       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">

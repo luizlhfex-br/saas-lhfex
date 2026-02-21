@@ -9,7 +9,7 @@
 
 import { db } from "~/lib/db.server";
 import { cashMovements } from "../../drizzle/schema";
-import { gte, lte, eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 // --- Types ---
 
@@ -18,8 +18,11 @@ export interface CashMovementDTO {
   date: string; // ISO date string
   type: "income" | "expense";
   category: string;
+  subcategory: string | null;
   description: string | null;
   amount: number; // Parsed as number
+  hasInvoice: "S" | "N";
+  settlementDate: string | null;
   paymentMethod: string | null;
   costCenter: string | null;
 }
@@ -41,6 +44,80 @@ export interface CashFlowSummary {
   month: number;
 }
 
+export type CashflowQuickPeriod = "this_month" | "last_month" | "this_year" | "custom";
+
+interface CashFlowFilters {
+  userId?: string;
+  period?: CashflowQuickPeriod;
+  startDate?: string;
+  endDate?: string;
+}
+
+interface DateRange {
+  startISO: string;
+  endISO: string;
+  year: number;
+  month: number;
+}
+
+function getRangeForFilters(year: number, month: number, filters?: CashFlowFilters): DateRange {
+  const now = new Date();
+  const period = filters?.period;
+
+  if (period === "this_month") {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return {
+      startISO: start.toISOString().split("T")[0],
+      endISO: end.toISOString().split("T")[0],
+      year: now.getFullYear(),
+      month: now.getMonth() + 1,
+    };
+  }
+
+  if (period === "last_month") {
+    const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const start = new Date(lastMonthDate.getFullYear(), lastMonthDate.getMonth(), 1);
+    const end = new Date(lastMonthDate.getFullYear(), lastMonthDate.getMonth() + 1, 0);
+    return {
+      startISO: start.toISOString().split("T")[0],
+      endISO: end.toISOString().split("T")[0],
+      year: lastMonthDate.getFullYear(),
+      month: lastMonthDate.getMonth() + 1,
+    };
+  }
+
+  if (period === "this_year") {
+    const start = new Date(now.getFullYear(), 0, 1);
+    const end = new Date(now.getFullYear(), 11, 31);
+    return {
+      startISO: start.toISOString().split("T")[0],
+      endISO: end.toISOString().split("T")[0],
+      year: now.getFullYear(),
+      month: 0,
+    };
+  }
+
+  if (period === "custom" && filters?.startDate && filters?.endDate) {
+    const customStart = new Date(filters.startDate);
+    return {
+      startISO: filters.startDate,
+      endISO: filters.endDate,
+      year: customStart.getFullYear(),
+      month: customStart.getMonth() + 1,
+    };
+  }
+
+  const startDate = new Date(year, month - 1, 1);
+  const endDate = new Date(year, month, 0);
+  return {
+    startISO: startDate.toISOString().split("T")[0],
+    endISO: endDate.toISOString().split("T")[0],
+    year,
+    month,
+  };
+}
+
 // --- Main Function: Get Cash Flow for Month ---
 
 /**
@@ -49,13 +126,8 @@ export interface CashFlowSummary {
  * @param month - Mês (1-12)
  * @returns Resumo com lançamentos, totais e agrupamento por categoria
  */
-export async function getCashFlowForMonth(year: number, month: number): Promise<CashFlowSummary> {
-  // Calcular início e fim do mês
-  const startDate = new Date(year, month - 1, 1); // month - 1 porque Date usa 0-11
-  const endDate = new Date(year, month, 0); // Dia 0 do próximo mês = último dia do mês atual
-
-  const startISO = startDate.toISOString().split("T")[0];
-  const endISO = endDate.toISOString().split("T")[0];
+export async function getCashFlowForMonth(year: number, month: number, filters?: CashFlowFilters): Promise<CashFlowSummary> {
+  const { startISO, endISO, year: resolvedYear, month: resolvedMonth } = getRangeForFilters(year, month, filters);
 
   // Buscar todos os lançamentos do mês
   const movements = await db
@@ -64,15 +136,19 @@ export async function getCashFlowForMonth(year: number, month: number): Promise<
       date: cashMovements.date,
       type: cashMovements.type,
       category: cashMovements.category,
+      subcategory: cashMovements.subcategory,
       description: cashMovements.description,
       amount: cashMovements.amount,
+      hasInvoice: cashMovements.hasInvoice,
+      settlementDate: cashMovements.settlementDate,
       paymentMethod: cashMovements.paymentMethod,
       costCenter: cashMovements.costCenter,
     })
     .from(cashMovements)
-    .where(
-      sql`${cashMovements.date} >= ${startISO} AND ${cashMovements.date} <= ${endISO}`
-    )
+    .where(and(
+      sql`${cashMovements.date} >= ${startISO} AND ${cashMovements.date} <= ${endISO}`,
+      filters?.userId ? eq(cashMovements.createdBy, filters.userId) : undefined,
+    ))
     .orderBy(cashMovements.date, cashMovements.createdAt);
 
   // Converter para DTO (amount como número)
@@ -81,8 +157,11 @@ export async function getCashFlowForMonth(year: number, month: number): Promise<
     date: m.date,
     type: m.type as "income" | "expense",
     category: m.category,
+    subcategory: m.subcategory,
     description: m.description,
     amount: parseFloat(m.amount),
+    hasInvoice: (m.hasInvoice as "S" | "N") || "N",
+    settlementDate: m.settlementDate,
     paymentMethod: m.paymentMethod,
     costCenter: m.costCenter,
   }));
@@ -133,8 +212,8 @@ export async function getCashFlowForMonth(year: number, month: number): Promise<
     totalExpense,
     balance,
     byCategory,
-    year,
-    month,
+    year: resolvedYear,
+    month: resolvedMonth,
   };
 }
 
