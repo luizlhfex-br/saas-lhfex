@@ -3,6 +3,9 @@ import { type RouteConfig, index, route, layout } from "@react-router/dev/routes
 export default [
   // Public routes
   route("login", "routes/login.tsx"),
+  route("ui-concept-a", "routes/ui-concept-a.tsx"),
+  route("ui-concept-b", "routes/ui-concept-b.tsx"),
+  route("ui-concept-c", "routes/ui-concept-c.tsx"),
 
   // Authenticated routes with app layout
   layout("routes/app-layout.tsx", [
