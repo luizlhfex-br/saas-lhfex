@@ -34,6 +34,7 @@ export default [
     route("settings", "routes/settings.tsx"),
     route("agents", "routes/agents.tsx"),
     route("automations", "routes/automations.tsx"),
+    route("automations/overview", "routes/automations-overview.tsx"),
     route("automations/health", "routes/automations-health.tsx"),
     route("automations/dashboard", "routes/automations-dashboard.tsx"),
     route("crm/pipeline", "routes/crm-pipeline.tsx"),

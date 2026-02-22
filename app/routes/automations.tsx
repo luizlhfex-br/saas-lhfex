@@ -258,9 +258,14 @@ export default function AutomationsPage({ loaderData }: Route.ComponentProps) {
             <p className="text-sm text-gray-500 dark:text-gray-400">Regras "Se-Então" para automatizar o seu fluxo</p>
           </div>
         </div>
-        <Button onClick={() => setShowCreate(!showCreate)}>
-          <Plus className="h-4 w-4" /> Nova Automação
-        </Button>
+        <div className="flex items-center gap-2">
+          <Link to="/automations/overview" className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">
+            🤖 Visão Geral
+          </Link>
+          <Button onClick={() => setShowCreate(!showCreate)}>
+            <Plus className="h-4 w-4" /> Nova Automação
+          </Button>
+        </div>
       </div>
 
       {/* Create form */}

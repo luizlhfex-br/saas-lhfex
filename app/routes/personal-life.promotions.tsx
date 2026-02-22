@@ -1,246 +1,523 @@
-import { Form, redirect, useLoaderData, useNavigation } from "react-router";
+/**
+ * GET/POST /personal-life/promotions
+ * Promoções e Sorteios Pessoais — hobby do Luiz
+ *
+ * Registra promoções/sorteios externos em que o Luiz participa
+ * (Sorteio Natura, Black Friday, concursos, etc.)
+ * Usa a tabela `promotions` do schema personal-life, com userId.
+ */
+
+import { Form, useLoaderData, useNavigation } from "react-router";
 import { useState } from "react";
 import { requireAuth } from "~/lib/auth.server";
+import { requireRole, ROLES } from "~/lib/rbac.server";
 import { db } from "~/lib/db.server";
-import { companyProfile, companyPromotions } from "../../drizzle/schema";
-import { announcePromotion } from "~/lib/openclaw-bot.server";
-import { and, desc, eq } from "drizzle-orm";
+import { promotions } from "../../drizzle/schema/personal-life";
+import { and, desc, eq, isNull } from "drizzle-orm";
+import { data } from "react-router";
+import {
+  Plus,
+  Gift,
+  Trophy,
+  Clock,
+  CheckCircle,
+  XCircle,
+  ExternalLink,
+  Trash2,
+  Tag,
+} from "lucide-react";
+import { Button } from "~/components/ui/button";
+
+// ── Types ──────────────────────────────────────────────────────────────────
+
+type Promotion = typeof promotions.$inferSelect;
+
+const TYPE_LABELS: Record<string, string> = {
+  raffle: "Sorteio",
+  contest: "Concurso",
+  cashback: "Cashback",
+  lucky_draw: "Raspadinha/Cupom",
+  giveaway: "Giveaway",
+  other: "Outro",
+};
+
+const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+  pending: {
+    label: "Participando",
+    color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+    icon: <Clock className="h-3 w-3" />,
+  },
+  participated: {
+    label: "Aguardando resultado",
+    color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300",
+    icon: <Clock className="h-3 w-3" />,
+  },
+  won: {
+    label: "Ganhei! 🎉",
+    color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+    icon: <Trophy className="h-3 w-3" />,
+  },
+  lost: {
+    label: "Não ganhei",
+    color: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400",
+    icon: <XCircle className="h-3 w-3" />,
+  },
+};
+
+function formatDate(dateStr: string) {
+  const [y, m, d] = dateStr.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+function daysUntilEnd(dateStr: string): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const end = new Date(dateStr + "T00:00:00");
+  return Math.round((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+// ── Loader ─────────────────────────────────────────────────────────────────
 
 export async function loader({ request }: { request: Request }) {
-	await requireAuth(request);
+  const { user } = await requireAuth(request);
+  await requireRole(user, [ROLES.LUIZ]);
 
-	const [company] = await db.select().from(companyProfile).limit(1);
+  const url = new URL(request.url);
+  const statusFilter = url.searchParams.get("status") ?? "active";
 
-	if (!company) {
-		return { company: null, promotions: [] };
-	}
+  // Busca promoções pessoais do usuário
+  const allPromotions = await db
+    .select()
+    .from(promotions)
+    .where(
+      and(
+        eq(promotions.userId, user.id),
+        isNull(promotions.deletedAt),
+      )
+    )
+    .orderBy(desc(promotions.endDate));
 
-	const promotions = await db
-		.select()
-		.from(companyPromotions)
-		.where(eq(companyPromotions.companyId, company.id))
-		.orderBy(desc(companyPromotions.createdAt));
+  // KPIs
+  const active = allPromotions.filter(
+    (p) => p.participationStatus === "pending" || p.participationStatus === "participated"
+  );
+  const won = allPromotions.filter((p) => p.participationStatus === "won");
+  const expiringSoon = active.filter((p) => {
+    const days = daysUntilEnd(p.endDate);
+    return days >= 0 && days <= 7;
+  });
 
-	return {
-		company,
-		promotions,
-	};
+  // Filtra para exibição
+  const filtered =
+    statusFilter === "active"
+      ? allPromotions.filter(
+          (p) => p.participationStatus === "pending" || p.participationStatus === "participated"
+        )
+      : statusFilter === "won"
+      ? allPromotions.filter((p) => p.participationStatus === "won")
+      : statusFilter === "lost"
+      ? allPromotions.filter((p) => p.participationStatus === "lost")
+      : allPromotions;
+
+  return {
+    promotions: filtered as Promotion[],
+    kpis: {
+      active: active.length,
+      won: won.length,
+      expiringSoon: expiringSoon.length,
+      total: allPromotions.length,
+    },
+    statusFilter,
+  };
 }
+
+// ── Action ─────────────────────────────────────────────────────────────────
 
 export async function action({ request }: { request: Request }) {
-	await requireAuth(request);
-	const formData = await request.formData();
-	const intent = String(formData.get("intent") || "");
+  const { user } = await requireAuth(request);
+  await requireRole(user, [ROLES.LUIZ]);
 
-	const [company] = await db.select().from(companyProfile).limit(1);
-	if (!company) {
-		return redirect("/settings");
-	}
+  const formData = await request.formData();
+  const intent = formData.get("_intent") as string;
 
-	if (intent === "create") {
-		const title = String(formData.get("title") || "").trim();
-		const type = String(formData.get("type") || "discount").trim();
-		const description = String(formData.get("description") || "").trim();
-		const discountType = String(formData.get("discountType") || "").trim();
-		const discountValueRaw = String(formData.get("discountValue") || "").trim();
-		const startDateRaw = String(formData.get("startDate") || "").trim();
-		const endDateRaw = String(formData.get("endDate") || "").trim();
-		const promotionCode = String(formData.get("promotionCode") || "").trim();
-		const telegramMessage = String(formData.get("telegramMessage") || "").trim();
+  if (intent === "create") {
+    const name = formData.get("name") as string;
+    const company = formData.get("company") as string;
+    const type = (formData.get("type") as string) || "raffle";
+    const startDate = formData.get("startDate") as string;
+    const endDate = formData.get("endDate") as string;
+    const prize = formData.get("prize") as string | null;
+    const link = formData.get("link") as string | null;
+    const rules = formData.get("rules") as string | null;
+    const notes = formData.get("notes") as string | null;
 
-		if (title && startDateRaw && endDateRaw) {
-			await db.insert(companyPromotions).values({
-				companyId: company.id,
-				title,
-				type,
-				description: description || null,
-				discountType: discountType || null,
-				discountValue: discountValueRaw || null,
-				startDate: new Date(startDateRaw),
-				endDate: new Date(endDateRaw),
-				promotionCode: promotionCode || null,
-				telegramMessage: telegramMessage || null,
-				updatedAt: new Date(),
-			});
-		}
-	}
+    if (!name || !company || !startDate || !endDate) {
+      return data({ error: "Campos obrigatórios faltando" }, { status: 400 });
+    }
 
-	if (intent === "toggle") {
-		const promotionId = String(formData.get("promotionId") || "");
-		const isActive = String(formData.get("isActive") || "false") === "true";
+    await db.insert(promotions).values({
+      userId: user.id,
+      name,
+      company,
+      type,
+      startDate,
+      endDate,
+      prize: prize || null,
+      link: link || null,
+      rules: rules || null,
+      notes: notes || null,
+      participationStatus: "pending",
+    });
 
-		if (promotionId) {
-			await db
-				.update(companyPromotions)
-				.set({ isActive: !isActive, updatedAt: new Date() })
-				.where(and(eq(companyPromotions.id, promotionId), eq(companyPromotions.companyId, company.id)));
-		}
-	}
+    return data({ success: true });
+  }
 
-	if (intent === "delete") {
-		const promotionId = String(formData.get("promotionId") || "");
-		if (promotionId) {
-			await db
-				.delete(companyPromotions)
-				.where(and(eq(companyPromotions.id, promotionId), eq(companyPromotions.companyId, company.id)));
-		}
-	}
+  if (intent === "update_status") {
+    const promotionId = formData.get("promotionId") as string;
+    const status = formData.get("status") as string;
 
-	if (intent === "announce") {
-		const promotionId = String(formData.get("promotionId") || "");
-		if (promotionId) {
-			await announcePromotion(promotionId);
-		}
-	}
+    await db
+      .update(promotions)
+      .set({ participationStatus: status, updatedAt: new Date() })
+      .where(and(eq(promotions.id, promotionId), eq(promotions.userId, user.id)));
 
-	return redirect("/personal-life/promotions");
+    return data({ success: true });
+  }
+
+  if (intent === "delete") {
+    const promotionId = formData.get("promotionId") as string;
+    await db
+      .update(promotions)
+      .set({ deletedAt: new Date() })
+      .where(and(eq(promotions.id, promotionId), eq(promotions.userId, user.id)));
+
+    return data({ success: true });
+  }
+
+  return data({ error: "Ação inválida" }, { status: 400 });
 }
 
-export default function PersonalLifePromotionsPage() {
-	const { company, promotions } = useLoaderData<typeof loader>();
-	const navigation = useNavigation();
-	const isSubmitting = navigation.state === "submitting";
-	const [showNewForm, setShowNewForm] = useState(false);
+// ── Page Component ─────────────────────────────────────────────────────────
 
-	if (!company) {
-		return (
-			<div className="mx-auto max-w-4xl">
-				<div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-					<h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Promoções da Empresa</h1>
-					<p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-						Configure primeiro o perfil da empresa em Configurações para habilitar promoções.
-					</p>
-				</div>
-			</div>
-		);
-	}
+export default function PromotionsPage({
+  loaderData,
+}: {
+  loaderData: Awaited<ReturnType<typeof loader>>;
+}) {
+  const { promotions: promo, kpis, statusFilter } = loaderData;
+  const navigation = useNavigation();
+  const isSubmitting = navigation.state === "submitting";
+  const [showForm, setShowForm] = useState(false);
 
-	return (
-		<div className="mx-auto max-w-6xl space-y-6">
-			<div className="flex items-center justify-between">
-				<div>
-					<h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Promoções da Empresa</h1>
-					<p className="text-sm text-gray-500 dark:text-gray-400">Gerencie campanhas e envie anúncios no Telegram</p>
-				</div>
-				<button
-					type="button"
-					onClick={() => setShowNewForm((prev) => !prev)}
-					className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-				>
-					{showNewForm ? "Fechar" : "Nova Promoção"}
-				</button>
-			</div>
+  const today = new Date().toISOString().split("T")[0];
 
-			{showNewForm && (
-				<Form method="post" className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-					<input type="hidden" name="intent" value="create" />
-					<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-						<div>
-							<label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Título</label>
-							<input name="title" required className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800" />
-						</div>
-						<div>
-							<label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Tipo</label>
-							<select name="type" className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800">
-								<option value="discount">Desconto</option>
-								<option value="gift">Brinde</option>
-								<option value="cashback">Cashback</option>
-								<option value="raffle">Sorteio</option>
-							</select>
-						</div>
-						<div>
-							<label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Início</label>
-							<input type="date" name="startDate" required className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800" />
-						</div>
-						<div>
-							<label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Fim</label>
-							<input type="date" name="endDate" required className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800" />
-						</div>
-						<div>
-							<label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Tipo de desconto</label>
-							<select name="discountType" className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800">
-								<option value="">Nenhum</option>
-								<option value="percentage">Percentual</option>
-								<option value="fixed">Valor fixo</option>
-							</select>
-						</div>
-						<div>
-							<label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Valor desconto</label>
-							<input name="discountValue" placeholder="10.00" className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800" />
-						</div>
-						<div className="md:col-span-2">
-							<label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Descrição</label>
-							<textarea name="description" rows={2} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800" />
-						</div>
-						<div>
-							<label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Código</label>
-							<input name="promotionCode" className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800" />
-						</div>
-						<div className="md:col-span-2">
-							<label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Mensagem Telegram (opcional)</label>
-							<textarea name="telegramMessage" rows={3} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800" />
-						</div>
-					</div>
-					<div className="mt-4">
-						<button
-							type="submit"
-							disabled={isSubmitting}
-							className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
-						>
-							{isSubmitting ? "Salvando..." : "Salvar promoção"}
-						</button>
-					</div>
-				</Form>
-			)}
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            🎁 Promoções e Sorteios
+          </h1>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            Concursos, sorteios e promoções em que você está participando
+          </p>
+        </div>
+        <Button onClick={() => setShowForm((v) => !v)}>
+          <Plus className="mr-2 h-4 w-4" />
+          {showForm ? "Fechar" : "Nova Promoção"}
+        </Button>
+      </div>
 
-			<div className="space-y-3">
-				{promotions.length === 0 ? (
-					<div className="rounded-xl border border-gray-200 bg-white p-6 text-sm text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
-						Nenhuma promoção cadastrada ainda.
-					</div>
-				) : (
-					promotions.map((promo) => (
-						<div key={promo.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-							<div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-								<div>
-									<p className="text-base font-semibold text-gray-900 dark:text-gray-100">{promo.title}</p>
-									<p className="text-sm text-gray-500 dark:text-gray-400">{promo.description || "Sem descrição"}</p>
-									<p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-										{new Date(promo.startDate).toLocaleDateString("pt-BR")} até {new Date(promo.endDate).toLocaleDateString("pt-BR")}
-										{promo.promotionCode ? ` • Código: ${promo.promotionCode}` : ""}
-									</p>
-								</div>
-								<div className="flex flex-wrap gap-2">
-									<Form method="post">
-										<input type="hidden" name="intent" value="toggle" />
-										<input type="hidden" name="promotionId" value={promo.id} />
-										<input type="hidden" name="isActive" value={String(promo.isActive)} />
-										<button type="submit" className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800">
-											{promo.isActive ? "Desativar" : "Ativar"}
-										</button>
-									</Form>
+      {/* KPI Cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900/50 dark:bg-blue-900/20">
+          <p className="text-xs font-medium uppercase text-blue-700 dark:text-blue-400">Participando</p>
+          <p className="mt-2 text-2xl font-bold text-blue-900 dark:text-blue-200">{kpis.active}</p>
+          <p className="mt-1 text-xs text-blue-700 dark:text-blue-400">promoções ativas</p>
+        </div>
+        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-900/50 dark:bg-yellow-900/20">
+          <p className="text-xs font-medium uppercase text-yellow-700 dark:text-yellow-400">Encerrando em breve</p>
+          <p className="mt-2 text-2xl font-bold text-yellow-900 dark:text-yellow-200">{kpis.expiringSoon}</p>
+          <p className="mt-1 text-xs text-yellow-700 dark:text-yellow-400">nos próximos 7 dias</p>
+        </div>
+        <div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-900/50 dark:bg-green-900/20">
+          <p className="text-xs font-medium uppercase text-green-700 dark:text-green-400">Ganhei!</p>
+          <p className="mt-2 text-2xl font-bold text-green-900 dark:text-green-200">{kpis.won}</p>
+          <p className="mt-1 text-xs text-green-700 dark:text-green-400">prêmios conquistados</p>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900">
+          <p className="text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Total cadastrado</p>
+          <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{kpis.total}</p>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">promoções registradas</p>
+        </div>
+      </div>
 
-									<Form method="post">
-										<input type="hidden" name="intent" value="announce" />
-										<input type="hidden" name="promotionId" value={promo.id} />
-										<button type="submit" className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700">
-											Anunciar Telegram
-										</button>
-									</Form>
+      {/* Formulário inline */}
+      {showForm && (
+        <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-6 dark:border-indigo-900 dark:bg-indigo-950/30">
+          <h3 className="mb-4 font-semibold text-gray-900 dark:text-white">Nova Promoção / Sorteio</h3>
+          <Form method="post" className="space-y-4" onSubmit={() => setShowForm(false)}>
+            <input type="hidden" name="_intent" value="create" />
 
-									<Form method="post">
-										<input type="hidden" name="intent" value="delete" />
-										<input type="hidden" name="promotionId" value={promo.id} />
-										<button type="submit" className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700">
-											Excluir
-										</button>
-									</Form>
-								</div>
-							</div>
-						</div>
-					))
-				)}
-			</div>
-		</div>
-	);
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                  Nome da Promoção *
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  required
+                  placeholder="Ex: Sorteio Natal Natura"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                  Empresa / Marca *
+                </label>
+                <input
+                  type="text"
+                  name="company"
+                  required
+                  placeholder="Ex: Natura, Amazon, Magazine Luiza"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                  Tipo
+                </label>
+                <select
+                  name="type"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                >
+                  {Object.entries(TYPE_LABELS).map(([val, label]) => (
+                    <option key={val} value={val}>{label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                  Data Início *
+                </label>
+                <input
+                  type="date"
+                  name="startDate"
+                  required
+                  defaultValue={today}
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                  Data Fim *
+                </label>
+                <input
+                  type="date"
+                  name="endDate"
+                  required
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                  Prêmio
+                </label>
+                <input
+                  type="text"
+                  name="prize"
+                  placeholder="Ex: iPhone 16, R$ 1.000, Viagem"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                  Link
+                </label>
+                <input
+                  type="url"
+                  name="link"
+                  placeholder="https://..."
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                Observações / Regras
+              </label>
+              <textarea
+                name="notes"
+                rows={2}
+                placeholder="Regras, como participar, código de participação..."
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Salvando..." : "Adicionar promoção"}
+              </Button>
+            </div>
+          </Form>
+        </div>
+      )}
+
+      {/* Filtros */}
+      <div className="flex flex-wrap gap-2">
+        {[
+          { value: "active", label: "Ativas" },
+          { value: "won", label: "Ganhei 🏆" },
+          { value: "lost", label: "Encerradas" },
+          { value: "all", label: "Todas" },
+        ].map((f) => (
+          <a
+            key={f.value}
+            href={`?status=${f.value}`}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              statusFilter === f.value
+                ? "bg-indigo-600 text-white"
+                : "border border-gray-300 text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
+            }`}
+          >
+            {f.label}
+          </a>
+        ))}
+      </div>
+
+      {/* Lista de promoções */}
+      {promo.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-gray-300 p-12 text-center dark:border-gray-700">
+          <Gift className="mx-auto mb-3 h-10 w-10 text-gray-400" />
+          <p className="text-gray-600 dark:text-gray-400">
+            {statusFilter === "active"
+              ? "Nenhuma promoção ativa. Adicione uma!"
+              : "Nenhuma promoção nesta categoria."}
+          </p>
+          <Button className="mt-4" onClick={() => setShowForm(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Adicionar promoção
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {promo.map((p) => {
+            const days = daysUntilEnd(p.endDate);
+            const statusCfg = STATUS_CONFIG[p.participationStatus ?? "pending"] ?? STATUS_CONFIG.pending;
+            const isExpired = days < 0;
+
+            return (
+              <div
+                key={p.id}
+                className={`rounded-xl border bg-white p-4 transition-colors dark:bg-gray-950 ${
+                  p.participationStatus === "won"
+                    ? "border-green-300 dark:border-green-700"
+                    : isExpired
+                    ? "border-gray-200 opacity-70 dark:border-gray-800"
+                    : "border-gray-200 dark:border-gray-800"
+                }`}
+              >
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  {/* Info */}
+                  <div className="flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold text-gray-900 dark:text-white">{p.name}</span>
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${statusCfg.color}`}>
+                        {statusCfg.icon}
+                        {statusCfg.label}
+                      </span>
+                      <span className="rounded-full border border-gray-200 px-2 py-0.5 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                        {TYPE_LABELS[p.type] ?? p.type}
+                      </span>
+                    </div>
+
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                      <strong>{p.company}</strong>
+                      {p.prize ? ` · Prêmio: ${p.prize}` : ""}
+                    </p>
+
+                    <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                      <span>
+                        📅 {formatDate(p.startDate)} → {formatDate(p.endDate)}
+                      </span>
+                      {!isExpired && (p.participationStatus === "pending" || p.participationStatus === "participated") && (
+                        <span className={days <= 3 ? "font-semibold text-red-500" : days <= 7 ? "text-yellow-600" : ""}>
+                          {days === 0 ? "Encerra hoje!" : days === 1 ? "Encerra amanhã" : `${days} dias restantes`}
+                        </span>
+                      )}
+                      {p.link && (
+                        <a
+                          href={p.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-indigo-600 hover:underline dark:text-indigo-400"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          Ver promoção
+                        </a>
+                      )}
+                    </div>
+
+                    {p.notes && (
+                      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
+                        {p.notes}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Ações */}
+                  <div className="flex flex-wrap items-center gap-2 sm:flex-col sm:items-end">
+                    {/* Update status */}
+                    <Form method="post" className="flex gap-1">
+                      <input type="hidden" name="_intent" value="update_status" />
+                      <input type="hidden" name="promotionId" value={p.id} />
+                      <select
+                        name="status"
+                        defaultValue={p.participationStatus ?? "pending"}
+                        onChange={(e) => e.currentTarget.form?.requestSubmit()}
+                        className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                      >
+                        <option value="pending">Participando</option>
+                        <option value="participated">Aguardando resultado</option>
+                        <option value="won">Ganhei! 🏆</option>
+                        <option value="lost">Não ganhei</option>
+                      </select>
+                    </Form>
+
+                    {/* Delete */}
+                    <Form
+                      method="post"
+                      onSubmit={(e) => !confirm("Remover esta promoção?") && e.preventDefault()}
+                    >
+                      <input type="hidden" name="_intent" value="delete" />
+                      <input type="hidden" name="promotionId" value={p.id} />
+                      <button
+                        type="submit"
+                        className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-red-500 dark:hover:bg-gray-800 dark:hover:text-red-400"
+                        title="Remover"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </Form>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
