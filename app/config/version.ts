@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.2.2";
+export const APP_VERSION = "2.2.3";
 export const APP_RELEASE_DATE = "2026-02-22";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -22,6 +22,18 @@ export interface ChangelogEntry {
 export const VERSION_HISTORY: ChangelogEntry[] = [
   {
     version: APP_VERSION,
+    date: APP_RELEASE_DATE,
+    title: "Rotas nativas Vida Pessoal + Compatibilidade Legada",
+    items: [
+      { type: "improvement", text: "Rotas /personal-life/finances, /accounts, /transactions, /budgets e /recurring agora são nativas (sem wrappers de redirect)" },
+      { type: "improvement", text: "Rota /personal-life/promotions agora contém implementação completa do módulo" },
+      { type: "improvement", text: "Rota /personal-life/radio-monitor agora contém implementação completa do módulo" },
+      { type: "feature",     text: "Compatibilidade mantida: URLs legadas /firefly-*, /company-promotions e /radio-monitor redirecionam para os novos caminhos" },
+      { type: "fix",         text: "Arquitetura de rotas consolidada para evitar dependência de wrappers e facilitar manutenção futura" },
+    ],
+  },
+  {
+    version: "2.2.2",
     date: APP_RELEASE_DATE,
     title: "Reestruturação Vida Pessoal + Firefly Completo",
     items: [
