@@ -18,6 +18,8 @@ import {
   Briefcase,
   Globe,
   ChevronDown,
+  Megaphone,
+  Radio,
 } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { t, type Locale } from "~/i18n";
@@ -37,7 +39,8 @@ interface SidebarProps {
 }
 
 interface NavItem {
-  labelKey: keyof ReturnType<typeof t>["nav"];
+  labelKey?: keyof ReturnType<typeof t>["nav"];
+  label?: string;
   icon: React.ComponentType<{ className?: string }>;
   to: string;
   disabled?: boolean;
@@ -57,6 +60,8 @@ const mainNavItems: NavItem[] = [
 const otherBusinessNavItems: NavItem[] = [
   { labelKey: "publicProcurement", icon: Briefcase, to: "/public-procurement", requiredEmail: "luiz@lhfex.com.br" },
   { labelKey: "internetBusiness", icon: Globe, to: "/other-business/internet", requiredEmail: "luiz@lhfex.com.br" },
+  { label: "Promoções", icon: Megaphone, to: "/company-promotions", requiredEmail: "luiz@lhfex.com.br" },
+  { label: "Radio Monitor", icon: Radio, to: "/radio-monitor", requiredEmail: "luiz@lhfex.com.br" },
 ];
 
 const comexNavItems: NavItem[] = [
@@ -93,7 +98,7 @@ export function Sidebar({ user, locale, currentPath }: SidebarProps) {
     }
 
     const Icon = item.icon;
-    const label = i18n.nav[item.labelKey] as string;
+    const label = item.label || (item.labelKey ? (i18n.nav[item.labelKey] as string) : "");
 
     if (item.disabled) {
       return (

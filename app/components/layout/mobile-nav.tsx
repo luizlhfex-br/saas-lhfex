@@ -16,6 +16,8 @@ import {
   Heart,
   Briefcase,
   ChevronDown,
+  Megaphone,
+  Radio,
 } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { t, type Locale } from "~/i18n";
@@ -37,7 +39,8 @@ interface MobileNavProps {
 }
 
 interface NavItem {
-  labelKey: keyof ReturnType<typeof t>["nav"];
+  labelKey?: keyof ReturnType<typeof t>["nav"];
+  label?: string;
   icon: React.ComponentType<{ className?: string }>;
   to: string;
   disabled?: boolean;
@@ -50,6 +53,8 @@ const mainNavItems: NavItem[] = [
   { labelKey: "processes", icon: FileText, to: "/processes" },
   { labelKey: "financial", icon: DollarSign, to: "/financial" },
   { labelKey: "publicProcurement", icon: Briefcase, to: "/public-procurement", requiredEmail: "luiz@lhfex.com.br" },
+  { label: "Promoções", icon: Megaphone, to: "/company-promotions", requiredEmail: "luiz@lhfex.com.br" },
+  { label: "Radio Monitor", icon: Radio, to: "/radio-monitor", requiredEmail: "luiz@lhfex.com.br" },
   { labelKey: "personalLife", icon: Heart, to: "/personal-life", requiredEmail: "luiz@lhfex.com.br" },
 ];
 
@@ -90,7 +95,7 @@ export function MobileNav({
     }
 
     const Icon = item.icon;
-    const label = i18n.nav[item.labelKey] as string;
+    const label = item.label || (item.labelKey ? (i18n.nav[item.labelKey] as string) : "");
 
     if (item.disabled) {
       return (
