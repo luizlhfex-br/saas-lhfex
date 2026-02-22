@@ -91,50 +91,75 @@ export function initializeCronScheduler() {
   });
 }
 
+// Jobs que devem rodar imediatamente no boot (além de no intervalo)
+const RUN_ON_BOOT: Set<string> = new Set(["vps_monitor"]);
+
 /**
  * Schedule a single cron job using simple time-based intervals
  */
 function scheduleJob(job: CronJob) {
-  // For simplicity, we'll use interval-based scheduling
-  // In production, consider using a library like node-cron
-  
   const intervalMs = parseInterval(job.cronExpression);
-  
-  setInterval(async () => {
+
+  const runJob = async () => {
     try {
       console.log(`[CRON] Running job: ${job.name}`);
       const startTime = Date.now();
-      
       await job.handler();
-      
       const duration = Date.now() - startTime;
       console.log(`[CRON] Job ${job.name} completed in ${duration}ms`);
     } catch (error) {
       console.error(`[CRON] Job ${job.name} failed:`, error);
     }
-  }, intervalMs);
-  
+  };
+
+  // Executa imediatamente no boot para jobs marcados
+  if (RUN_ON_BOOT.has(job.name)) {
+    console.log(`[CRON] Boot run: "${job.name}"`);
+    runJob();
+  }
+
+  setInterval(runJob, intervalMs);
+
   console.log(`[CRON] Scheduled job "${job.name}" every ${intervalMs / 1000 / 60} minutes`);
 }
 
-/**
- * Simple interval parser for cron-like expressions
- * Format: minute hour day month dayofweek
- * Only supports hours field for now
- */
+// Converte expressão cron simplificada em intervalo em ms.
+// "0 */1 * * *" = a cada 1h | "0 7 * * *" = diário | "0 8 * * 1" = semanal
+// "0 9,12,15,18 * * *" = menor gap entre horas listadas
 function parseInterval(expression: string): number {
+  const HOUR = 60 * 60 * 1000;
+  const DAY = 24 * HOUR;
+  const WEEK = 7 * DAY;
+
   const parts = expression.split(" ");
-  if (parts.length < 3) return 60 * 60 * 1000; // Default: 1 hour
-  
-  const hourPart = parts[1];
-  
-  if (hourPart.includes("*/")) {
-    const hours = parseInt(hourPart.replace("*/", ""));
-    return hours * 60 * 60 * 1000;
+  if (parts.length < 5) return HOUR;
+
+  const hourPart = parts[1]!;
+  const dowPart = parts[4]!; // day of week
+
+  // Semanal: day-of-week específico (ex: "* * 0", "* * 1")
+  if (dowPart !== "*") return WEEK;
+
+  // "*/N" → a cada N horas
+  if (hourPart.startsWith("*/")) {
+    const n = parseInt(hourPart.slice(2));
+    return (Number.isFinite(n) && n > 0 ? n : 1) * HOUR;
   }
-  
-  // Default: 1 hour
-  return 60 * 60 * 1000;
+
+  // Lista de horas "9,12,15,18" → intervalo = menor diferença entre elas
+  if (hourPart.includes(",")) {
+    const hours = hourPart.split(",").map(Number).sort((a, b) => a - b);
+    let minGap = DAY;
+    for (let i = 1; i < hours.length; i++) {
+      minGap = Math.min(minGap, (hours[i]! - hours[i - 1]!) * HOUR);
+    }
+    return minGap;
+  }
+
+  // Hora fixa única (ex: "7", "8") → diário
+  if (hourPart !== "*") return DAY;
+
+  return HOUR;
 }
 
 /**
