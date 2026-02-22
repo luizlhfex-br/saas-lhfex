@@ -4,8 +4,8 @@
  */
 
 import { db } from "~/lib/db.server";
-import { processes, invoices, clients, aiUsageLogs } from "drizzle/schema";
-import { isNull, and, notInArray, sql, eq, desc } from "drizzle-orm";
+import { processes, invoices, clients, aiUsageLogs, personalFinance, personalInvestments, personalRoutines, personalGoals, promotions } from "drizzle/schema";
+import { isNull, and, notInArray, sql, eq, desc, asc } from "drizzle-orm";
 import { getCache, setCache, CACHE_TTL } from "~/lib/cache.server";
 import { recordFailure, recordSuccess, checkAndAlert } from "~/lib/ai-metrics.server";
 
@@ -454,13 +454,28 @@ export async function askAgent(
   agentId: string,
   message: string,
   _userId: string,
-  options?: { restricted?: boolean; feature?: AIFeature; forceProvider?: "deepseek" },
+  options?: { restricted?: boolean; feature?: AIFeature; forceProvider?: "deepseek"; includePersonalLifeContext?: boolean },
 ): Promise<AIResponse> {
   const startTime = Date.now();
-  const systemPrompt = AGENT_PROMPTS[agentId] || AGENT_PROMPTS.airton;
+  let systemPrompt = AGENT_PROMPTS[agentId] || AGENT_PROMPTS.airton;
   const context = await loadAgentContext();
-  const contextMessage = buildContextMessage(context, options?.restricted);
+  let contextMessage = buildContextMessage(context, options?.restricted);
   const feature = options?.feature || "chat";
+
+  // Se OpenClaw OU includePersonalLifeContext = true, carregar contexto de vida pessoal
+  if ((agentId === "openclaw" || options?.includePersonalLifeContext) && _userId) {
+    try {
+      const lifeContext = await getPersonalLifeContext(_userId);
+      const lifeContextStr = `
+
+[CONTEXTO VIDA PESSOAL ATUALIZADO]
+${JSON.stringify(lifeContext, null, 2)}`;
+      contextMessage += lifeContextStr;
+    } catch (error) {
+      console.error("[AI] Failed to load personal life context:", error);
+      // Continue without life context
+    }
+  }
 
   // Force DeepSeek for complex tasks
   if (options?.forceProvider === "deepseek") {
@@ -793,5 +808,187 @@ export async function enrichCNPJ(cnpj: string): Promise<CNPJData | null> {
   } catch (fallbackError) {
     console.error("[CNPJ] ReceitaWS enrichment failed:", fallbackError);
     return null;
+  }
+}
+
+// --- Personal Life Context (OpenClaw) ---
+
+interface PersonalLifeContext {
+  finances: {
+    lastTransactions: Array<{
+      date: string;
+      type: string;
+      category: string;
+      description: string;
+      amount: string;
+    }>;
+    thisMonthIncome: number;
+    thisMonthExpense: number;
+    balance: number;
+  };
+  investments: {
+    assets: Array<{
+      name: string;
+      type: string;
+      quantity: string;
+      currentValue: string;
+      gainLoss: string;
+      gainLossPercent: string;
+    }>;
+    totalValue: number;
+    totalGainLoss: number;
+  };
+  routines: {
+    activeCount: number;
+    list: string[];
+  };
+  goals: {
+    inProgressCount: number;
+    list: Array<{
+      title: string;
+      deadline: string;
+      progress: string;
+    }>;
+  };
+  promotions: {
+    pendingCount: number;
+    list: Array<{
+      name: string;
+      endDate: string;
+      type: string;
+    }>;
+  };
+}
+
+export async function getPersonalLifeContext(userId: string): Promise<PersonalLifeContext> {
+  try {
+    // Get current date for month filtering
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [
+      financesAll,
+      investments,
+      routinesActive,
+      goalsInProgress,
+      promotionsPending,
+    ] = await Promise.all([
+      // Last 30 transactions
+      db.select().from(personalFinance)
+        .where(and(
+          eq(personalFinance.userId, userId),
+          isNull(personalFinance.deletedAt)
+        ))
+        .orderBy(desc(personalFinance.date))
+        .limit(30),
+      // All investments
+      db.select().from(personalInvestments)
+        .where(and(
+          eq(personalInvestments.userId, userId),
+          isNull(personalInvestments.deletedAt)
+        )),
+      // Active routines only
+      db.select().from(personalRoutines)
+        .where(and(
+          eq(personalRoutines.userId, userId),
+          eq(personalRoutines.isActive, true)
+        )),
+      // Goals in progress
+      db.select().from(personalGoals)
+        .where(and(
+          eq(personalGoals.userId, userId),
+          eq(personalGoals.status, "in_progress")
+        )),
+      // Pending promotions (by end date)
+      db.select().from(promotions)
+        .where(and(
+          eq(promotions.userId, userId),
+          eq(promotions.participationStatus, "pending")
+        ))
+        .orderBy(asc(promotions.endDate))
+        .limit(10),
+    ]);
+
+    // Calculate finances summary
+    const thisMonthTransactions = financesAll.filter(f => {
+      const fDate = new Date(f.date);
+      return fDate >= monthStart && fDate <= now;
+    });
+
+    const thisMonthIncome = thisMonthTransactions
+      .filter(f => f.type === "income")
+      .reduce((sum, f) => sum + Number(f.amount || 0), 0);
+
+    const thisMonthExpense = thisMonthTransactions
+      .filter(f => f.type === "expense")
+      .reduce((sum, f) => sum + Number(f.amount || 0), 0);
+
+    // Calculate investments summary
+    const totalInvestmentValue = investments.reduce(
+      (sum, inv) => sum + Number(inv.currentValue || 0),
+      0
+    );
+
+    const totalGainLoss = investments.reduce(
+      (sum, inv) => sum + Number(inv.gainLoss || 0),
+      0
+    );
+
+    return {
+      finances: {
+        lastTransactions: financesAll.slice(0, 10).map(f => ({
+          date: f.date.toISOString().split("T")[0],
+          type: f.type,
+          category: f.category,
+          description: f.description,
+          amount: f.amount,
+        })),
+        thisMonthIncome: Number(thisMonthIncome.toFixed(2)),
+        thisMonthExpense: Number(thisMonthExpense.toFixed(2)),
+        balance: Number((thisMonthIncome - thisMonthExpense).toFixed(2)),
+      },
+      investments: {
+        assets: investments.map(inv => ({
+          name: inv.assetName,
+          type: inv.assetType,
+          quantity: String(inv.quantity),
+          currentValue: String(inv.currentValue || 0),
+          gainLoss: String(inv.gainLoss || 0),
+          gainLossPercent: String(inv.gainLossPercent || 0),
+        })),
+        totalValue: Number(totalInvestmentValue.toFixed(2)),
+        totalGainLoss: Number(totalGainLoss.toFixed(2)),
+      },
+      routines: {
+        activeCount: routinesActive.length,
+        list: routinesActive.map(r => r.name),
+      },
+      goals: {
+        inProgressCount: goalsInProgress.length,
+        list: goalsInProgress.map(g => ({
+          title: g.title,
+          deadline: g.deadline.toISOString().split("T")[0],
+          progress: `${g.currentValue}/${g.targetValue} ${g.unit || ""}`.trim(),
+        })),
+      },
+      promotions: {
+        pendingCount: promotionsPending.length,
+        list: promotionsPending.map(p => ({
+          name: p.name,
+          endDate: p.endDate.toISOString().split("T")[0],
+          type: p.type,
+        })),
+      },
+    };
+  } catch (error) {
+    console.error("[OPENCLAW] Failed to load personal life context:", error);
+    // Return empty context on error
+    return {
+      finances: { lastTransactions: [], thisMonthIncome: 0, thisMonthExpense: 0, balance: 0 },
+      investments: { assets: [], totalValue: 0, totalGainLoss: 0 },
+      routines: { activeCount: 0, list: [] },
+      goals: { inProgressCount: 0, list: [] },
+      promotions: { pendingCount: 0, list: [] },
+    };
   }
 }
