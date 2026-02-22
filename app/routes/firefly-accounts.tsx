@@ -70,7 +70,7 @@ export async function action({ request }: { request: Request }) {
     }
   }
 
-  return redirect("/firefly-accounts");
+  return redirect("/personal-life/finances/accounts");
 }
 
 export default function FireflyAccountsPage() {
@@ -88,7 +88,7 @@ export default function FireflyAccountsPage() {
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Firefly • Contas</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">Plano de contas contábil</p>
         </div>
-        <Link to="/firefly-accounting" className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400">Voltar ao dashboard</Link>
+        <Link to="/personal-life/finances" className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400">Voltar ao dashboard</Link>
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">

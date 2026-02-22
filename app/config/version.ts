@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.2.1";
+export const APP_VERSION = "2.2.2";
 export const APP_RELEASE_DATE = "2026-02-22";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -23,6 +23,19 @@ export const VERSION_HISTORY: ChangelogEntry[] = [
   {
     version: APP_VERSION,
     date: APP_RELEASE_DATE,
+    title: "Reestruturação Vida Pessoal + Firefly Completo",
+    items: [
+      { type: "feature",     text: "Firefly virou módulo oficial de Finanças Pessoais em /personal-life/finances" },
+      { type: "feature",     text: "Finanças Pessoais completo: dashboard + contas + lançamentos + orçamentos + recorrências" },
+      { type: "feature",     text: "Promoções e Sorteios movido para /personal-life/promotions" },
+      { type: "feature",     text: "Radio Monitor movido para /personal-life/radio-monitor" },
+      { type: "improvement", text: "Hub Vida Pessoal atualizado: removido Férias & Descanso e substituído por Radio Monitor" },
+      { type: "improvement", text: "Navegação lateral/mobile simplificada com módulos pessoais centralizados em Vida Pessoal" },
+    ],
+  },
+  {
+    version: "2.2.1",
+    date: "2026-02-22",
     title: "Correções Críticas e Notificações Aprimoradas",
     items: [
       { type: "fix",         text: "CRM: campo Nome Fantasia agora limpa corretamente ao enriquecer CNPJ" },

@@ -9,9 +9,8 @@ import { useFetcher, useNavigate } from "react-router";
 import {
   TrendingUp,
   Heart,
-  Trophy,
   Gift,
-  Calendar,
+  Radio,
   Target,
   ArrowRight,
   DollarSign,
@@ -46,7 +45,7 @@ const modules = [
   {
     slug: "finances",
     title: "💰 Finanças Pessoais",
-    description: "Receitas, despesas e controle de cashflow pessoal",
+    description: "Módulo completo Firefly para contas, lançamentos, orçamentos e recorrências",
     icon: DollarSign,
     color: "bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400",
   },
@@ -73,16 +72,16 @@ const modules = [
   },
   {
     slug: "promotions",
-    title: "🎁 Promoções & Sorteios",
-    description: "Hobby de rastrear promoções, concursos e giveaways",
+    title: "🎁 Promoções e Sorteios",
+    description: "Rastreie promoções, concursos e sorteios pessoais",
     icon: Gift,
     color: "bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400",
   },
   {
-    slug: "timeoff",
-    title: "🏖️ Férias & Descanso",
-    description: "Planejador de viagens, férias e momentos de recesso",
-    icon: Calendar,
+    slug: "radio-monitor",
+    title: "📻 Radio Monitor",
+    description: "Monitore rádios e detecte menções de promoções e sorteios",
+    icon: Radio,
     color: "bg-cyan-100 dark:bg-cyan-900/20 text-cyan-700 dark:text-cyan-400",
   },
 ];
@@ -136,7 +135,7 @@ export default function PersonalLifePage({
           Vida Pessoal
         </h1>
         <p className="mt-2 text-gray-600 dark:text-gray-400">
-          Organize sua vida: finanças, investimentos, rotinas, objetivos e hobbies 🎯
+          Organize sua vida: finanças, investimentos, rotinas, objetivos e monitoramento pessoal 🎯
         </p>
       </div>
 

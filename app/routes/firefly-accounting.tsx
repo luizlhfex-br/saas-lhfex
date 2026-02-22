@@ -159,22 +159,22 @@ export default function FireflyAccountingPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Link to="/firefly-accounts" className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800">
+        <Link to="/personal-life/finances/accounts" className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800">
           <p className="text-xs text-gray-500 dark:text-gray-400">Contas</p>
           <p className="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100">{kpis.accountsTotal}</p>
           <p className="text-xs text-gray-500 dark:text-gray-400">{kpis.activeAccounts} ativas</p>
         </Link>
-        <Link to="/firefly-transactions" className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800">
+        <Link to="/personal-life/finances/transactions" className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800">
           <p className="text-xs text-gray-500 dark:text-gray-400">Lançamentos</p>
           <p className="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100">{kpis.transactionsTotal}</p>
           <p className="text-xs text-amber-600 dark:text-amber-400">{kpis.unreconciledTotal} pendentes</p>
         </Link>
-        <Link to="/firefly-budgets" className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800">
+        <Link to="/personal-life/finances/budgets" className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800">
           <p className="text-xs text-gray-500 dark:text-gray-400">Orçamentos</p>
           <p className="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100">{kpis.budgetsTotal}</p>
           <p className="text-xs text-gray-500 dark:text-gray-400">{kpis.activeBudgets} ativos</p>
         </Link>
-        <Link to="/firefly-recurring" className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800">
+        <Link to="/personal-life/finances/recurring" className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800">
           <p className="text-xs text-gray-500 dark:text-gray-400">Recorrências</p>
           <p className="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100">{kpis.recurringTotal}</p>
           <p className="text-xs text-gray-500 dark:text-gray-400">{kpis.activeRecurring} ativas</p>
@@ -193,7 +193,7 @@ export default function FireflyAccountingPage() {
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Lançamentos recentes ({recentTransactions.length})</h2>
-            <Link to="/firefly-transactions" className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400">Ver todos</Link>
+            <Link to="/personal-life/finances/transactions" className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400">Ver todos</Link>
           </div>
           <div className="space-y-3">
             {recentTransactions.length === 0 ? (
@@ -228,7 +228,7 @@ export default function FireflyAccountingPage() {
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Orçamentos recentes ({recentBudgets.length})</h2>
-            <Link to="/firefly-budgets" className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400">Ver todos</Link>
+            <Link to="/personal-life/finances/budgets" className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400">Ver todos</Link>
           </div>
           <div className="space-y-3">
             {recentBudgets.length === 0 ? (
@@ -274,16 +274,16 @@ export default function FireflyAccountingPage() {
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
           <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">Ações rápidas</h2>
           <div className="space-y-3">
-            <Link to="/firefly-accounts" className="block rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800">
+            <Link to="/personal-life/finances/accounts" className="block rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800">
               Gerenciar contas contábeis
             </Link>
-            <Link to="/firefly-transactions" className="block rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800">
+            <Link to="/personal-life/finances/transactions" className="block rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800">
               Registrar e conciliar lançamentos
             </Link>
-            <Link to="/firefly-budgets" className="block rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800">
+            <Link to="/personal-life/finances/budgets" className="block rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800">
               Configurar orçamentos e alertas
             </Link>
-            <Link to="/firefly-recurring" className="block rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800">
+            <Link to="/personal-life/finances/recurring" className="block rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800">
               Gerenciar lançamentos recorrentes
             </Link>
           </div>
