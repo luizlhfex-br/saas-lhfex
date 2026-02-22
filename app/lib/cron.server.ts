@@ -4,10 +4,11 @@
  */
 
 import { db } from "./db.server";
-import { invoices, processes, clients, automationLogs, auditLogs } from "../../drizzle/schema";
+import { invoices, processes, clients, automationLogs, auditLogs, personalFinance } from "../../drizzle/schema";
 import { eq, lt, isNull, and, sql } from "drizzle-orm";
 import { fireTrigger } from "./automation-engine.server";
-import { enrichCNPJ } from "./ai.server";
+import { enrichCNPJ, askAgent } from "./ai.server";
+import os from "node:os";
 
 function parseEnvInt(name: string, fallback: number, min: number, max: number): number {
   const raw = process.env[name];
@@ -51,6 +52,21 @@ const jobs: CronJob[] = [
         handler: cleanupOldAutomationLogs,
       }]
     : []),
+  {
+    name: "news_daily_digest",
+    cronExpression: "0 7 * * *", // Todo dia às 7h
+    handler: sendDailyNewsDigest,
+  },
+  {
+    name: "vps_monitor",
+    cronExpression: "0 */1 * * *", // A cada 1 hora
+    handler: checkVpsResources,
+  },
+  {
+    name: "personal_finance_weekly",
+    cronExpression: "0 8 * * 1", // Toda segunda às 8h
+    handler: sendWeeklyPersonalFinanceSummary,
+  },
 ];
 
 /**
@@ -279,6 +295,260 @@ async function cleanupOldAutomationLogs() {
     console.log(`[CRON] Automation logs retention done. Deleted ${totalToDelete} logs older than ${AUTOMATION_LOG_RETENTION_DAYS} days`);
   } catch (error) {
     console.error("[CRON] Error cleaning old automation logs:", error);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AUTOMAÇÕES PESSOAIS — OpenClaw
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Coleta e resume notícias diárias por tema e envia via Telegram
+ * Roda todo dia às 7h
+ */
+async function sendDailyNewsDigest() {
+  const gnewsKey = process.env.GNEWS_API_KEY;
+  const botToken = process.env.OPENCLAW_TELEGRAM_TOKEN;
+  const chatId = process.env.OPENCLAW_CHAT_ID;
+
+  if (!gnewsKey || !botToken || !chatId) {
+    console.log("[CRON] news_daily_digest: GNEWS_API_KEY, OPENCLAW_TELEGRAM_TOKEN ou OPENCLAW_CHAT_ID não configurados — pulando");
+    return;
+  }
+
+  try {
+    // Temas configurados via variável de ambiente (separados por vírgula)
+    // Formato: "tecnologia:technology,finanças:business,brasil:brazil"
+    const topicsEnv = process.env.NEWS_TOPICS || "tecnologia:technology,inteligência artificial:technology,mercado financeiro:business";
+    const topicPairs = topicsEnv.split(",").map(t => {
+      const [label, category] = t.split(":");
+      return { label: label.trim(), category: (category || "").trim() };
+    });
+
+    const allArticles: string[] = [];
+
+    for (const topic of topicPairs.slice(0, 4)) { // máximo 4 temas
+      try {
+        const url = new URL("https://gnews.io/api/v4/search");
+        url.searchParams.set("q", topic.label);
+        url.searchParams.set("lang", "pt");
+        url.searchParams.set("max", "3");
+        url.searchParams.set("sortby", "publishedAt");
+        url.searchParams.set("apikey", gnewsKey);
+
+        const res = await fetch(url.toString(), { signal: AbortSignal.timeout(10000) });
+        if (!res.ok) continue;
+
+        const data = await res.json() as { articles?: Array<{ title: string; description: string; url: string; source: { name: string } }> };
+        const articles = data.articles?.slice(0, 3) ?? [];
+
+        if (articles.length > 0) {
+          allArticles.push(`📌 *${topic.label.toUpperCase()}*`);
+          for (const a of articles) {
+            const desc = a.description ? ` — ${a.description.slice(0, 100)}` : "";
+            allArticles.push(`• ${a.title}${desc}\n  _${a.source.name}_ | [Ver mais](${a.url})`);
+          }
+          allArticles.push("");
+        }
+      } catch (topicErr) {
+        console.warn(`[CRON] news_daily_digest: falha ao buscar tema "${topic.label}":`, topicErr);
+      }
+    }
+
+    if (allArticles.length === 0) {
+      console.log("[CRON] news_daily_digest: nenhum artigo encontrado");
+      return;
+    }
+
+    // IA resume e comenta as notícias
+    const rawNews = allArticles.join("\n");
+    const aiPrompt = `Você recebeu as seguintes notícias do dia:\n\n${rawNews}\n\nFaça um briefing matinal conciso em português. Para cada tema, destaque o que é mais relevante e importante. Seja direto e use no máximo 3 linhas por tema. Termine com uma frase motivacional curta.`;
+
+    let summaryText: string;
+    try {
+      const aiResponse = await askAgent("openclaw", aiPrompt, "system", { feature: "openclaw" });
+      summaryText = aiResponse.content;
+    } catch {
+      // Fallback: envia notícias brutas sem resumo de IA
+      summaryText = rawNews;
+    }
+
+    const today = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
+    const message = `📰 *NOTÍCIAS DO DIA — ${today.toUpperCase()}*\n\n${summaryText}`;
+
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: Number(chatId),
+        text: message.slice(0, 4000),
+        parse_mode: "Markdown",
+        disable_web_page_preview: false,
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+
+    console.log(`[CRON] news_daily_digest: enviado com ${topicPairs.length} temas`);
+  } catch (error) {
+    console.error("[CRON] news_daily_digest error:", error);
+  }
+}
+
+/**
+ * Monitora recursos da VPS e alerta via Telegram quando ≥ 80%
+ * Roda a cada hora
+ */
+async function checkVpsResources() {
+  const botToken = process.env.OPENCLAW_TELEGRAM_TOKEN || process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.OPENCLAW_CHAT_ID || process.env.TELEGRAM_CHAT_ID;
+
+  if (!botToken || !chatId) {
+    console.log("[CRON] vps_monitor: tokens não configurados — pulando");
+    return;
+  }
+
+  try {
+    const totalRam = os.totalmem();
+    const freeRam = os.freemem();
+    const usedRam = totalRam - freeRam;
+    const ramPct = Math.round((usedRam / totalRam) * 100);
+
+    const cpuLoad = os.loadavg()[0]; // média 1 min
+    const cpuCount = os.cpus().length;
+    const cpuPct = Math.round((cpuLoad / cpuCount) * 100);
+
+    const uptimeHours = Math.round(os.uptime() / 3600);
+
+    const toGB = (bytes: number) => (bytes / 1024 / 1024 / 1024).toFixed(1);
+
+    // Disco — usa /proc/mounts se disponível (Linux)
+    let diskPct = 0;
+    let diskUsedGB = "?";
+    let diskTotalGB = "?";
+    try {
+      // Lê uso do disco via df-like approach em Node.js
+      const { execSync } = await import("node:child_process");
+      const dfOutput = execSync("df / --output=pcent,used,size -B G 2>/dev/null | tail -1", { timeout: 3000 }).toString().trim();
+      const parts = dfOutput.split(/\s+/);
+      if (parts.length >= 3) {
+        diskPct = parseInt(parts[0].replace("%", ""), 10);
+        diskUsedGB = parts[1].replace("G", "");
+        diskTotalGB = parts[2].replace("G", "");
+      }
+    } catch {
+      // df não disponível — pula disco
+    }
+
+    const ALERT_THRESHOLD = 80;
+    const issues: string[] = [];
+    if (ramPct >= ALERT_THRESHOLD) issues.push(`🧠 RAM: ${ramPct}%`);
+    if (cpuPct >= ALERT_THRESHOLD) issues.push(`⚡ CPU: ${cpuPct}%`);
+    if (diskPct >= ALERT_THRESHOLD) issues.push(`💾 Disco: ${diskPct}%`);
+
+    if (issues.length > 0) {
+      // Há problema — envia alerta
+      const tips: Record<string, string> = {
+        "🧠 RAM": "Reiniciar app ou verificar memory leaks",
+        "⚡ CPU": "Verificar processos intensivos no servidor",
+        "💾 Disco": "Limpar logs antigos: `npm run db:cleanup` ou remover arquivos temporários",
+      };
+
+      const tipsText = issues.map(i => {
+        const key = Object.keys(tips).find(k => i.startsWith(k));
+        return key ? `💡 ${tips[key]}` : "";
+      }).filter(Boolean).join("\n");
+
+      const alertMsg = `🔴 *ALERTA VPS HOSTINGER*\n` +
+        `━━━━━━━━━━━━━━━━\n` +
+        issues.join("\n") + "\n" +
+        `━━━━━━━━━━━━━━━━\n` +
+        `🧠 RAM: ${toGB(usedRam)}GB / ${toGB(totalRam)}GB (${ramPct}%)\n` +
+        `⚡ CPU: ${cpuPct}% (${cpuCount} cores, load: ${cpuLoad.toFixed(2)})\n` +
+        (diskPct > 0 ? `💾 Disco: ${diskUsedGB}GB / ${diskTotalGB}GB (${diskPct}%)\n` : "") +
+        `⏱️ Uptime: ${uptimeHours}h\n` +
+        `━━━━━━━━━━━━━━━━\n` +
+        tipsText;
+
+      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: Number(chatId), text: alertMsg, parse_mode: "Markdown" }),
+        signal: AbortSignal.timeout(10000),
+      });
+
+      console.log(`[CRON] vps_monitor: ALERTA enviado — RAM ${ramPct}%, CPU ${cpuPct}%, Disco ${diskPct}%`);
+    } else {
+      console.log(`[CRON] vps_monitor: OK — RAM ${ramPct}%, CPU ${cpuPct}%, Disco ${diskPct}%, Uptime ${uptimeHours}h`);
+    }
+  } catch (error) {
+    console.error("[CRON] vps_monitor error:", error);
+  }
+}
+
+/**
+ * Resumo financeiro pessoal semanal — toda segunda às 8h
+ */
+async function sendWeeklyPersonalFinanceSummary() {
+  const botToken = process.env.OPENCLAW_TELEGRAM_TOKEN;
+  const chatId = process.env.OPENCLAW_CHAT_ID;
+  const userId = process.env.OPENCLAW_USER_ID; // ID do usuário dono do OpenClaw
+
+  if (!botToken || !chatId || !userId) {
+    console.log("[CRON] personal_finance_weekly: env vars não configuradas — pulando");
+    return;
+  }
+
+  try {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const transactions = await db
+      .select()
+      .from(personalFinance)
+      .where(
+        and(
+          eq(personalFinance.userId, userId),
+          sql`${personalFinance.date} >= ${sevenDaysAgo.toISOString().slice(0, 10)}`
+        )
+      )
+      .limit(100);
+
+    if (transactions.length === 0) {
+      console.log("[CRON] personal_finance_weekly: sem transações esta semana");
+      return;
+    }
+
+    const income = transactions.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount), 0);
+    const expense = transactions.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount), 0);
+    const balance = income - expense;
+
+    // Agrupar por categoria
+    const byCategory: Record<string, number> = {};
+    for (const t of transactions.filter(t => t.type === "expense")) {
+      byCategory[t.category] = (byCategory[t.category] || 0) + Number(t.amount);
+    }
+    const topCategories = Object.entries(byCategory)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([cat, val]) => `• ${cat}: R$ ${val.toFixed(2)}`);
+
+    const fmtBRL = (v: number) => `R$ ${v.toFixed(2).replace(".", ",")}`;
+    const msg = `📊 *RESUMO FINANCEIRO PESSOAL*\n_Semana passada_\n\n` +
+      `💚 Receitas: ${fmtBRL(income)}\n` +
+      `🔴 Despesas: ${fmtBRL(expense)}\n` +
+      `${balance >= 0 ? "✅" : "⚠️"} Saldo: ${fmtBRL(balance)}\n\n` +
+      `📌 *Top categorias de gasto:*\n${topCategories.join("\n")}\n\n` +
+      `_${transactions.length} transações no período_`;
+
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: Number(chatId), text: msg, parse_mode: "Markdown" }),
+      signal: AbortSignal.timeout(10000),
+    });
+
+    console.log("[CRON] personal_finance_weekly: resumo enviado");
+  } catch (error) {
+    console.error("[CRON] personal_finance_weekly error:", error);
   }
 }
 

@@ -123,16 +123,19 @@ export async function action({ request }: Route.ActionArgs) {
     });
 
     // Add provider badge to response
-    const providerBadge = response.provider === "gemini" ? "🟢"
-      : response.provider === "openrouter_free" ? "🔵"
-      : response.provider === "deepseek" || response.provider === "openrouter_paid" ? "🟡" : "⚪";
+    // 🟢 Gemini Free | 🔵 OpenRouter Free | 🟠 OpenRouter Paid | 🔴 DeepSeek Paid | ⚪ Unknown
+    const providerBadge = response.provider === "gemini" ? "🟢 Gemini"
+      : response.provider === "openrouter_free" ? "🔵 OpenRouter"
+      : response.provider === "openrouter_paid" ? "🟠 OpenRouter Paid"
+      : response.provider === "deepseek" ? "🔴 DeepSeek"
+      : "⚪";
 
     // Limit to Telegram max (4096 chars)
     let responseText = response.content;
     if (responseText.length > 3950) {
       responseText = responseText.slice(0, 3940) + "...\n\n_(resposta truncada)_";
     }
-    responseText += `\n\n${providerBadge} _${response.model}_`;
+    responseText += `\n\n${providerBadge} · _${response.model}_`;
 
     await sendTelegram(botToken, chatId, responseText, "Markdown");
   } catch (error) {
