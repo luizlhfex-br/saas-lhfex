@@ -6,7 +6,7 @@ export const aiProviderEnum = pgEnum("ai_provider", [
 ]);
 
 export const aiFeatureEnum = pgEnum("ai_feature", [
-  "chat", "ncm_classification", "ocr", "enrichment", "telegram",
+  "chat", "ncm_classification", "ocr", "enrichment", "telegram", "openclaw",
 ]);
 
 export const aiUsageLogs = pgTable("ai_usage_logs", {

@@ -8,6 +8,7 @@ import { processes, invoices, clients, aiUsageLogs, personalFinance, personalInv
 import { isNull, and, notInArray, sql, eq, desc, asc } from "drizzle-orm";
 import { getCache, setCache, CACHE_TTL } from "~/lib/cache.server";
 import { recordFailure, recordSuccess, checkAndAlert } from "~/lib/ai-metrics.server";
+import { selectNextProvider, logProviderDecision, type ProviderType, type StrategyDecision } from "~/lib/ai-provider-strategy";
 
 // --- Types ---
 
@@ -26,7 +27,23 @@ export interface AIResponse {
   tokensUsed?: number;
 }
 
-type AIFeature = "chat" | "ncm_classification" | "ocr" | "enrichment" | "telegram";
+type AIFeature = "chat" | "ncm_classification" | "ocr" | "enrichment" | "telegram" | "openclaw";
+
+// --- AI Guidelines (applied to ALL agents) ---
+
+const AI_GUIDELINES = `
+DIRETRIZES GERAIS DE COMUNICAÇÃO (aplica a todas as respostas):
+1. NUNCA apague arquivos ou dados sem pedir autorização explícita ao usuário. Sempre use soft delete (lixeira).
+2. Use linguagem natural e empática — evite respostas robóticas ou excessivamente formais.
+3. Seja transparente sobre suas limitações — diga honestamente quando não souber algo.
+4. Seja proativo — antecipe problemas e sugira ações antes de ser perguntado.
+5. Personalize — use o nome do usuário quando souber, referencie interações anteriores.
+6. Valide emoções — reconheça frustração/urgência do interlocutor.
+7. Pratique escuta ativa — parafraseie para confirmar entendimento antes de agir.
+8. Resolva com ownership — não "passe a bola", resolva end-to-end.
+9. Pergunte se a resposta ajudou e se precisa de mais algo.
+10. Responda sempre em português brasileiro.
+`;
 
 const LIFE_AGENT_SYSTEM_PROMPT = `Você é o Life Agent da LHFEX para automação de vida pessoal.
 Seu papel é executar tarefas práticas com objetividade, baixo custo e segurança.
@@ -76,22 +93,6 @@ FORMATO DE RESPOSTA:
 
 Assine como OpenClaw 🌙
 ${AI_GUIDELINES}`;
-
-// --- AI Guidelines (applied to ALL agents) ---
-
-const AI_GUIDELINES = `
-DIRETRIZES GERAIS DE COMUNICAÇÃO (aplica a todas as respostas):
-1. NUNCA apague arquivos ou dados sem pedir autorização explícita ao usuário. Sempre use soft delete (lixeira).
-2. Use linguagem natural e empática — evite respostas robóticas ou excessivamente formais.
-3. Seja transparente sobre suas limitações — diga honestamente quando não souber algo.
-4. Seja proativo — antecipe problemas e sugira ações antes de ser perguntado.
-5. Personalize — use o nome do usuário quando souber, referencie interações anteriores.
-6. Valide emoções — reconheça frustração/urgência do interlocutor.
-7. Pratique escuta ativa — parafraseie para confirmar entendimento antes de agir.
-8. Resolva com ownership — não "passe a bola", resolva end-to-end.
-9. Pergunte se a resposta ajudou e se precisa de mais algo.
-10. Responda sempre em português brasileiro.
-`;
 
 // --- System Prompts ---
 
@@ -482,7 +483,7 @@ ${JSON.stringify(lifeContext, null, 2)}`;
     try {
       const result = await callDeepSeek(systemPrompt, message, contextMessage);
       const latencyMs = Date.now() - startTime;
-      await logUsage(result.provider, result.model, feature, 0, 0, true, undefined, _userId, latencyMs);
+      await logUsage(result.provider, result.model, feature, 0, result.tokensUsed || 0, true, undefined, _userId, latencyMs);
       return result;
     } catch (error) {
       const latencyMs = Date.now() - startTime;
@@ -491,45 +492,80 @@ ${JSON.stringify(lifeContext, null, 2)}`;
     }
   }
 
-  // Strategy: Gemini Free → OpenRouter Free → DeepSeek Paid
-  // 1. Try Gemini Free
-  if (process.env.GEMINI_API_KEY) {
+  // ═══════════════════════════════════════════════════════════════════════
+  // INTELLIGENT PROVIDER STRATEGY (Budget-Aware Fallback)
+  // Free tier first (Gemini → OpenRouter Free)
+  // Paid tier as fallback (OpenRouter Paid → DeepSeek Paid)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  const excludedProviders: ProviderType[] = [];
+  const providerCallMap: Record<ProviderType, (prompt: string, msg: string, ctx: string) => Promise<AIResponse>> = {
+    gemini: callGemini,
+    openrouter_free: callOpenRouterFree,
+    openrouter_paid: callOpenRouterFree,  // Same endpoint, reuses free
+    deepseek: callDeepSeek,
+  };
+
+  // Attempt up to 4 times (once per provider) before giving up
+  for (let attempt = 0; attempt < 4; attempt++) {
     try {
-      const result = await callGemini(systemPrompt, message, contextMessage);
+      // Get next available provider based on budget and status
+      const decision: StrategyDecision = await selectNextProvider(excludedProviders);
+
+      // Log the decision
+      await logProviderDecision(decision, feature, _userId);
+
+      // Call the provider
+      const callProvider = providerCallMap[decision.provider];
+      if (!callProvider) {
+        console.warn(`[AI_STRATEGY] Unknown provider: ${decision.provider}`);
+        excludedProviders.push(decision.provider);
+        continue;
+      }
+
+      console.log(`[AI_STRATEGY] 🎯 Attempt ${attempt + 1}: Using ${decision.provider} (${decision.reason})`);
+      const result = await callProvider(systemPrompt, message, contextMessage);
       const latencyMs = Date.now() - startTime;
-      await logUsage("gemini", result.model, feature, 0, result.tokensUsed || 0, true, undefined, _userId, latencyMs);
+
+      // Log successful usage
+      await logUsage(
+        result.provider,
+        result.model,
+        feature,
+        0,  // We don't have detailed token breakdown from all providers
+        result.tokensUsed || 0,
+        true,
+        undefined,
+        _userId,
+        latencyMs
+      );
+
       return result;
     } catch (error) {
-      console.error("[AI] Gemini failed:", (error as Error).message);
       const latencyMs = Date.now() - startTime;
-      await logUsage("gemini", "gemini-2.0-flash", feature, 0, 0, false, String(error), _userId, latencyMs);
-    }
-  }
+      const decision = await selectNextProvider(excludedProviders);
 
-  // 2. Try OpenRouter Free
-  if (process.env.OPENROUTER_API_KEY) {
-    try {
-      const result = await callOpenRouterFree(systemPrompt, message, contextMessage);
-      const latencyMs = Date.now() - startTime;
-      await logUsage("openrouter_free", result.model, feature, 0, result.tokensUsed || 0, true, undefined, _userId, latencyMs);
-      return result;
-    } catch (error) {
-      console.error("[AI] OpenRouter Free failed:", (error as Error).message);
-      const latencyMs = Date.now() - startTime;
-      await logUsage("openrouter_free", "gemini-2.0-flash-exp:free", feature, 0, 0, false, String(error), _userId, latencyMs);
-    }
-  }
+      console.error(
+        `[AI_STRATEGY] ❌ Provider failed (attempt ${attempt + 1}): ${decision.provider}`,
+        (error as Error).message
+      );
 
-  // 3. Try DeepSeek Paid (fallback)
-  try {
-    const result = await callDeepSeek(systemPrompt, message, contextMessage);
-    const latencyMs = Date.now() - startTime;
-    await logUsage(result.provider, result.model, feature, 0, result.tokensUsed || 0, true, undefined, _userId, latencyMs);
-    return result;
-  } catch (error) {
-    console.error("[AI] DeepSeek also failed:", error);
-    const latencyMs = Date.now() - startTime;
-    await logUsage("deepseek", "deepseek-chat", feature, 0, 0, false, String(error), _userId, latencyMs);
+      // Log the failure
+      await logUsage(
+        decision.provider,
+        "unknown",
+        feature,
+        0,
+        0,
+        false,
+        `Provider failed: ${String(error)}`,
+        _userId,
+        latencyMs
+      );
+
+      // Add to excluded list and try next
+      excludedProviders.push(decision.provider);
+    }
   }
 
   // Ultimate fallback — all providers failed
