@@ -308,11 +308,12 @@ async function cleanupOldAutomationLogs() {
  */
 async function sendDailyNewsDigest() {
   const gnewsKey = process.env.GNEWS_API_KEY;
-  const botToken = process.env.OPENCLAW_TELEGRAM_TOKEN;
-  const chatId = process.env.OPENCLAW_CHAT_ID;
+  // Usa bot dedicado de notícias (@lhfex_noticias_bot) se configurado, senão fallback para OpenClaw
+  const botToken = process.env.NEWS_BOT_TOKEN || process.env.OPENCLAW_TELEGRAM_TOKEN;
+  const chatId = process.env.NEWS_BOT_CHAT_ID || process.env.OPENCLAW_CHAT_ID;
 
   if (!gnewsKey || !botToken || !chatId) {
-    console.log("[CRON] news_daily_digest: GNEWS_API_KEY, OPENCLAW_TELEGRAM_TOKEN ou OPENCLAW_CHAT_ID não configurados — pulando");
+    console.log("[CRON] news_daily_digest: GNEWS_API_KEY, NEWS_BOT_TOKEN ou chat ID não configurados — pulando");
     return;
   }
 
@@ -399,11 +400,13 @@ async function sendDailyNewsDigest() {
  * Roda a cada hora
  */
 async function checkVpsResources() {
-  const botToken = process.env.OPENCLAW_TELEGRAM_TOKEN || process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.OPENCLAW_CHAT_ID || process.env.TELEGRAM_CHAT_ID;
+  // Monitor VPS → usa bot dedicado @lhfex_monitor_bot (MONITOR_BOT_TOKEN)
+  // Fallback: bot principal LHFEX Agentes
+  const botToken = process.env.MONITOR_BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.MONITOR_BOT_CHAT_ID || process.env.OPENCLAW_CHAT_ID;
 
   if (!botToken || !chatId) {
-    console.log("[CRON] vps_monitor: tokens não configurados — pulando");
+    console.log("[CRON] vps_monitor: MONITOR_BOT_TOKEN ou chat ID não configurados — pulando");
     return;
   }
 
