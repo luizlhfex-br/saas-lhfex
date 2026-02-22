@@ -5,7 +5,8 @@
 
 import { db } from "./db.server";
 import { invoices, processes, clients, automationLogs, auditLogs, personalFinance } from "../../drizzle/schema";
-import { eq, lt, isNull, and, sql } from "drizzle-orm";
+import { bills } from "../../drizzle/schema/bills";
+import { eq, lt, isNull, and, sql, lte, gte } from "drizzle-orm";
 import { fireTrigger } from "./automation-engine.server";
 import { enrichCNPJ, askAgent } from "./ai.server";
 import os from "node:os";
@@ -66,6 +67,16 @@ const jobs: CronJob[] = [
     name: "personal_finance_weekly",
     cronExpression: "0 8 * * 1", // Toda segunda às 8h
     handler: sendWeeklyPersonalFinanceSummary,
+  },
+  {
+    name: "bills_alert",
+    cronExpression: "0 8 * * *", // Todo dia às 8h
+    handler: sendBillsAlert,
+  },
+  {
+    name: "vps_weekly_report",
+    cronExpression: "0 9 * * 0", // Todo domingo às 9h
+    handler: sendVpsWeeklyReport,
   },
 ];
 
@@ -552,6 +563,218 @@ async function sendWeeklyPersonalFinanceSummary() {
     console.log("[CRON] personal_finance_weekly: resumo enviado");
   } catch (error) {
     console.error("[CRON] personal_finance_weekly error:", error);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ALERTAS DE VENCIMENTOS — @lhfex_monitor_bot
+// ═══════════════════════════════════════════════════════════════
+
+/** Formata barra de progresso ASCII: makeProgressBar(78) → "████████░░ 78%" */
+function makeProgressBar(pct: number, blocks = 10): string {
+  const filled = Math.round((Math.min(pct, 100) / 100) * blocks);
+  const empty = blocks - filled;
+  return "█".repeat(filled) + "░".repeat(empty) + ` ${pct}%`;
+}
+
+/**
+ * Envia alertas de vencimentos próximos via @lhfex_monitor_bot
+ * Roda todo dia às 8h — só envia se houver vencimentos no horizonte
+ */
+async function sendBillsAlert() {
+  const botToken = process.env.MONITOR_BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.MONITOR_BOT_CHAT_ID || process.env.OPENCLAW_CHAT_ID;
+  const userId = process.env.OPENCLAW_USER_ID;
+
+  if (!botToken || !chatId || !userId) {
+    console.log("[CRON] bills_alert: env vars não configuradas — pulando");
+    return;
+  }
+
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().split("T")[0]!;
+
+    // Busca todos os bills ativos do usuário
+    const activeBills = await db
+      .select()
+      .from(bills)
+      .where(
+        and(
+          eq(bills.userId, userId),
+          eq(bills.status, "active"),
+          isNull(bills.deletedAt),
+        )
+      );
+
+    type AlertBill = {
+      id: string;
+      name: string;
+      amount: string;
+      nextDueDate: string;
+      isAutoDebit: boolean | null;
+      alertDaysBefore: number | null;
+      alertOneDayBefore: boolean | null;
+      daysUntil: number;
+    };
+
+    // Filtra bills que devem ser alertados hoje
+    const toAlert: AlertBill[] = [];
+    for (const bill of activeBills) {
+      const dueDate = new Date(bill.nextDueDate + "T00:00:00");
+      const daysUntil = Math.round((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      const alertDays = bill.alertDaysBefore ?? 3;
+
+      const shouldAlert =
+        daysUntil < 0 || // Atrasado
+        (daysUntil <= alertDays) || // Dentro do horizonte configurado
+        (daysUntil === 1 && (bill.alertOneDayBefore ?? true)); // Amanhã com 1d-before
+
+      if (shouldAlert) {
+        toAlert.push({ ...bill, daysUntil });
+      }
+    }
+
+    if (toAlert.length === 0) {
+      console.log("[CRON] bills_alert: sem vencimentos próximos hoje");
+      return;
+    }
+
+    // Ordena por urgência
+    toAlert.sort((a, b) => a.daysUntil - b.daysUntil);
+
+    const fmtBRL = (v: string) =>
+      new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(parseFloat(v));
+
+    const formatDay = (days: number) => {
+      if (days < 0) return `🔴 ${Math.abs(days)}d ATRASADO`;
+      if (days === 0) return "🔴 HOJE";
+      if (days === 1) return "🟡 AMANHÃ";
+      if (days <= 3) return `🟠 Em ${days} dias`;
+      return `⚪ Em ${days} dias`;
+    };
+
+    const lines = toAlert.map(b => {
+      const auto = b.isAutoDebit ? " ✅ auto" : "";
+      return `${formatDay(b.daysUntil)}: *${b.name}* — ${fmtBRL(b.amount)}${auto}`;
+    });
+
+    const totalAmount = toAlert.reduce((s, b) => s + parseFloat(b.amount), 0);
+    const dateFormatted = today.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+    const msg =
+      `🔔 *ALERTAS DE VENCIMENTO — ${dateFormatted}*\n` +
+      `━━━━━━━━━━━━━━━━\n` +
+      lines.join("\n") + "\n" +
+      `━━━━━━━━━━━━━━━━\n` +
+      `💳 Total no período: ${fmtBRL(totalAmount.toString())}`;
+
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: Number(chatId),
+        text: msg,
+        parse_mode: "Markdown",
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+
+    console.log(`[CRON] bills_alert: ${toAlert.length} vencimentos alertados`);
+  } catch (error) {
+    console.error("[CRON] bills_alert error:", error);
+  }
+}
+
+/**
+ * Relatório semanal completo da VPS — todo domingo às 9h
+ * SEMPRE envia (não só quando há alertas)
+ */
+async function sendVpsWeeklyReport() {
+  const botToken = process.env.MONITOR_BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.MONITOR_BOT_CHAT_ID || process.env.OPENCLAW_CHAT_ID;
+
+  if (!botToken || !chatId) {
+    console.log("[CRON] vps_weekly_report: env vars não configuradas — pulando");
+    return;
+  }
+
+  try {
+    // ── Coleta de métricas ──
+    const totalRam = os.totalmem();
+    const freeRam = os.freemem();
+    const usedRam = totalRam - freeRam;
+    const ramPct = Math.round((usedRam / totalRam) * 100);
+
+    const cpuLoad = os.loadavg()[0]; // média 1 min
+    const cpuCount = os.cpus().length;
+    const cpuPct = Math.min(Math.round((cpuLoad / cpuCount) * 100), 100);
+
+    const uptimeSecs = os.uptime();
+    const uptimeDays = Math.floor(uptimeSecs / 86400);
+    const uptimeHours = Math.floor((uptimeSecs % 86400) / 3600);
+
+    const toGB = (bytes: number) => (bytes / 1024 / 1024 / 1024).toFixed(1);
+
+    let diskPct = 0;
+    let diskUsedGB = "?";
+    let diskTotalGB = "?";
+    try {
+      const { execSync } = await import("node:child_process");
+      const dfOutput = execSync("df / --output=pcent,used,size -B G 2>/dev/null | tail -1", { timeout: 3000 }).toString().trim();
+      const parts = dfOutput.split(/\s+/);
+      if (parts.length >= 3) {
+        diskPct = parseInt(parts[0]!.replace("%", ""), 10);
+        diskUsedGB = parts[1]!.replace("G", "");
+        diskTotalGB = parts[2]!.replace("G", "");
+      }
+    } catch {
+      // df não disponível
+    }
+
+    // ── Monta mensagem com barras de progresso ──
+    const WARN = 80;
+    const ramWarn = ramPct >= WARN ? " ⚠️" : "";
+    const cpuWarn = cpuPct >= WARN ? " ⚠️" : "";
+    const diskWarn = diskPct >= WARN ? " ⚠️" : "";
+
+    const dateFormatted = new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+    const hasIssue = ramPct >= WARN || cpuPct >= WARN || diskPct >= WARN;
+    const statusLine = hasIssue
+      ? "⚠️ *Atenção: algum recurso está próximo do limite!*"
+      : "✅ *Tudo dentro do normal.*";
+
+    const msg =
+      `📊 *RELATÓRIO SEMANAL VPS — ${dateFormatted}*\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `🧠 RAM:   ${makeProgressBar(ramPct)}${ramWarn}\n` +
+      `       ${toGB(usedRam)}GB / ${toGB(totalRam)}GB\n` +
+      (diskPct > 0
+        ? `💾 Disco: ${makeProgressBar(diskPct)}${diskWarn}\n` +
+          `       ${diskUsedGB}GB / ${diskTotalGB}GB\n`
+        : `💾 Disco: (não disponível)\n`) +
+      `⚡ CPU:   ${makeProgressBar(cpuPct)}${cpuWarn}\n` +
+      `       load: ${cpuLoad.toFixed(2)} | ${cpuCount} core(s)\n` +
+      `⏱️ Uptime: ${uptimeDays} dias ${uptimeHours}h\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━\n` +
+      statusLine;
+
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: Number(chatId),
+        text: msg,
+        parse_mode: "Markdown",
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+
+    console.log(`[CRON] vps_weekly_report: enviado — RAM ${ramPct}%, CPU ${cpuPct}%, Disco ${diskPct}%`);
+  } catch (error) {
+    console.error("[CRON] vps_weekly_report error:", error);
   }
 }
 

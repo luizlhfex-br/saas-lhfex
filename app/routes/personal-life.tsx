@@ -15,6 +15,7 @@ import {
   ArrowRight,
   DollarSign,
   Zap,
+  Receipt,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 
@@ -76,6 +77,13 @@ const modules = [
     description: "Rastreie promoções, concursos e sorteios pessoais",
     icon: Gift,
     color: "bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400",
+  },
+  {
+    slug: "bills",
+    title: "📋 Vencimentos",
+    description: "Assinaturas, boletos e pagamentos recorrentes com alertas via Telegram",
+    icon: Receipt,
+    color: "bg-orange-100 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400",
   },
   {
     slug: "radio-monitor",
