@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.2.0";
+export const APP_VERSION = "2.2.1";
 export const APP_RELEASE_DATE = "2026-02-22";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -23,6 +23,19 @@ export const VERSION_HISTORY: ChangelogEntry[] = [
   {
     version: APP_VERSION,
     date: APP_RELEASE_DATE,
+    title: "Correções Críticas e Notificações Aprimoradas",
+    items: [
+      { type: "fix",         text: "CRM: campo Nome Fantasia agora limpa corretamente ao enriquecer CNPJ" },
+      { type: "fix",         text: "Google OAuth: corrigido erro 405 ao iniciar autenticação" },
+      { type: "feature",     text: "Notificações: página dedicada com 50 itens e marcar como lida" },
+      { type: "feature",     text: "Telegram: integração com notificações de vencimentos, processos e changelog" },
+      { type: "feature",     text: "CRM: LHFEX adicionada como cliente interno (CNPJ 62.180.992/0001-33)" },
+      { type: "improvement", text: "Dashboard: link 'Ver todas' no widget de notificações" },
+    ],
+  },
+  {
+    version: "2.2.0",
+    date: "2026-02-22",
     title: "Expansão Completa: Cadastros, IA Marketing e Contabilidade",
     items: [
       { type: "fix",         text: "Taxa do dolar agora usa Banco Central (serie 10813 - USD Importacao)" },

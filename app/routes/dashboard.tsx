@@ -315,6 +315,9 @@ export default function DashboardPage({ loaderData }: Route.ComponentProps) {
                   )}
                 </h2>
               </div>
+              <Link to="/notifications" className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+                Ver todas →
+              </Link>
             </div>
             {recentNotifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">

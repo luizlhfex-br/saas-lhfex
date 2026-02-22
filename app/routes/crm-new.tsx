@@ -290,7 +290,7 @@ export default function CrmNewPage({ loaderData }: Route.ComponentProps) {
 
   const fillField = (name: string, value: string) => {
     const input = document.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[name="${name}"]`);
-    if (input && value) {
+    if (input) {
       const descriptor = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input), "value");
       descriptor?.set?.call(input, value);
       input.dispatchEvent(new Event("input", { bubbles: true }));

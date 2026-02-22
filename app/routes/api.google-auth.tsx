@@ -3,6 +3,16 @@ import { requireAuth } from "~/lib/auth.server";
 import { getAuthorizationUrl } from "~/lib/google.server";
 
 /**
+ * GET /api/google/auth
+ * Inicia fluxo de autenticação Google (também aceita POST)
+ */
+export async function loader({ request }: { request: Request }) {
+  const { user } = await requireAuth(request);
+  const authUrl = getAuthorizationUrl();
+  throw redirect(authUrl);
+}
+
+/**
  * POST /api/google/auth
  * Inicia fluxo de autenticação Google
  */
