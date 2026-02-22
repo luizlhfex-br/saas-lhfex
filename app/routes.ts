@@ -91,6 +91,7 @@ export default [
   route("api/life-run", "routes/api.life-run.tsx"),
   route("api/financial-categories", "routes/api.financial-categories.tsx"),
   route("api/company-profile", "routes/api.company-profile.tsx"),
+  route("api/openclaw-telegram-webhook", "routes/api.openclaw-telegram-webhook.tsx"),
 
   // Catch-all 404
   route("*", "routes/$.tsx"),
