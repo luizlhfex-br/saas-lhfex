@@ -20,6 +20,7 @@ import {
   ChevronDown,
   Megaphone,
   Radio,
+  Landmark,
 } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { t, type Locale } from "~/i18n";
@@ -62,6 +63,7 @@ const otherBusinessNavItems: NavItem[] = [
   { labelKey: "internetBusiness", icon: Globe, to: "/other-business/internet", requiredEmail: "luiz@lhfex.com.br" },
   { label: "Promoções", icon: Megaphone, to: "/company-promotions", requiredEmail: "luiz@lhfex.com.br" },
   { label: "Radio Monitor", icon: Radio, to: "/radio-monitor", requiredEmail: "luiz@lhfex.com.br" },
+  { label: "Firefly", icon: Landmark, to: "/firefly-accounting", requiredEmail: "luiz@lhfex.com.br" },
 ];
 
 const comexNavItems: NavItem[] = [
