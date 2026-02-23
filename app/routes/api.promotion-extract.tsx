@@ -53,7 +53,7 @@ export async function action({ request }: Route.ActionArgs) {
       return data({ error: "Não foi possível extrair texto do arquivo" }, { status: 400 });
     }
 
-    const fields = await parsePromotionText(text);
+    const fields = await parsePromotionText(text, user.id);
     return data({ success: true, fields });
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);

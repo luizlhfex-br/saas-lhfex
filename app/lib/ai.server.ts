@@ -648,7 +648,7 @@ Return ONLY valid JSON. If a field is not found, use null.`;
 
 // --- Specialized: Parse Promotion/Raffle Regulation Text ---
 
-export async function parsePromotionText(text: string): Promise<Record<string, string | null>> {
+export async function parsePromotionText(text: string, userId: string): Promise<Record<string, string | null>> {
   const prompt = `You are a document parser for Brazilian promotional regulations (regulamentos de promoção/sorteio/concurso).
 Extract the following fields from this document and return them as JSON:
 - name (string) — nome da promoção, concurso ou sorteio
@@ -662,9 +662,9 @@ Extract the following fields from this document and return them as JSON:
 
 Return ONLY valid JSON. If a field is not found, use null. All dates MUST be in YYYY-MM-DD format.`;
 
-  // Usa o hub multi-provedor com fallback automático (Gemini → OpenRouter → DeepSeek)
-  // Sem forceProvider para garantir que funcione mesmo sem DEEPSEEK_API_KEY
-  const result = await askAgent("iana", `${prompt}\n\n---\n${text}`, "system", {
+  // Openclaw é o agente responsável por toda a aba de vida pessoal.
+  // Passa o userId real para carregar contexto pessoal corretamente.
+  const result = await askAgent("openclaw", `${prompt}\n\n---\n${text}`, userId, {
     feature: "ocr",
   });
 
