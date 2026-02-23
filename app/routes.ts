@@ -53,6 +53,7 @@ export default [
     route("personal-life/bills", "routes/personal-life.bills.tsx"),
     route("personal-life/pessoas", "routes/personal-life.pessoas.tsx"),
     route("knowledge/prompting", "routes/knowledge.prompting.tsx"),
+    route("changelog", "routes/changelog.tsx"),
     route("other-business", "routes/other-business.tsx"),
     route("other-business/internet", "routes/other-business.internet.tsx"),
   ]),
@@ -96,6 +97,8 @@ export default [
   route("api/financial-categories", "routes/api.financial-categories.tsx"),
   route("api/company-profile", "routes/api.company-profile.tsx"),
   route("api/openclaw-telegram-webhook", "routes/api.openclaw-telegram-webhook.tsx"),
+  route("api/radio-monitor-config", "routes/api.radio-monitor-config.tsx"),
+  route("api/radio-monitor-event", "routes/api.radio-monitor-event.tsx"),
 
   // Catch-all 404
   route("*", "routes/$.tsx"),

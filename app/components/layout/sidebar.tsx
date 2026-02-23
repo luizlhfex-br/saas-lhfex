@@ -18,6 +18,7 @@ import {
   Briefcase,
   Globe,
   ChevronDown,
+  ScrollText,
 } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { t, type Locale } from "~/i18n";
@@ -69,6 +70,7 @@ const aiAutomationNavItems: NavItem[] = [
   { labelKey: "automations", icon: Zap, to: "/automations" },
   { labelKey: "agents", icon: Bot, to: "/agents" },
   { labelKey: "aiUsage", icon: Sparkles, to: "/ai-usage" },
+  { label: "Changelog", icon: ScrollText, to: "/changelog" },
 ];
 
 export function Sidebar({ user, locale, currentPath }: SidebarProps) {
