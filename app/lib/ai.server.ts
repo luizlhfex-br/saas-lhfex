@@ -646,6 +646,159 @@ Return ONLY valid JSON. If a field is not found, use null.`;
   return {};
 }
 
+// --- Specialized: Parse Promotion/Raffle Regulation Text ---
+
+export async function parsePromotionText(text: string): Promise<Record<string, string | null>> {
+  const prompt = `You are a document parser for Brazilian promotional regulations (regulamentos de promoção/sorteio/concurso).
+Extract the following fields from this document and return them as JSON:
+- name (string) — nome da promoção, concurso ou sorteio
+- company (string) — empresa ou marca promotora
+- type (string) — one of: "raffle", "contest", "cashback", "lucky_draw", "giveaway", "other"
+- prize (string) — descrição do prêmio principal
+- startDate (string, YYYY-MM-DD) — data de início da promoção
+- endDate (string, YYYY-MM-DD) — data de encerramento ou sorteio
+- link (string or null) — URL para participar, se mencionada
+- rules (string) — resumo das principais regras em no máximo 3 linhas
+
+Return ONLY valid JSON. If a field is not found, use null. All dates MUST be in YYYY-MM-DD format.`;
+
+  const result = await askAgent("openclaw", `${prompt}\n\n---\n${text}`, "system", {
+    feature: "ocr",
+    forceProvider: "deepseek",
+  });
+
+  try {
+    const jsonMatch = result.content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+  } catch {
+    console.error("[Promotion Extract] Failed to parse AI response as JSON");
+  }
+
+  return {};
+}
+
+// --- Specialized: Radio Monitor — Groq Whisper Transcription ---
+
+/**
+ * Transcribes an audio buffer (MP3/WAV) using Groq Whisper (free tier).
+ * Requires GROQ_API_KEY env variable.
+ * Returns transcribed text or empty string on failure.
+ */
+export async function transcribeRadioSegment(
+  audioBuffer: Buffer,
+  filename: string = "segment.mp3"
+): Promise<string> {
+  const groqApiKey = process.env.GROQ_API_KEY;
+  if (!groqApiKey) {
+    console.warn("[RadioMonitor] GROQ_API_KEY not set — transcription skipped");
+    return "";
+  }
+
+  try {
+    const formData = new FormData();
+    const blob = new Blob([audioBuffer], { type: "audio/mpeg" });
+    formData.append("file", blob, filename);
+    formData.append("model", "whisper-large-v3-turbo");
+    formData.append("language", "pt");
+    formData.append("response_format", "text");
+
+    const response = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${groqApiKey}` },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      console.error("[RadioMonitor] Groq Whisper error:", response.status, err);
+      return "";
+    }
+
+    const text = await response.text();
+    return text.trim();
+  } catch (error) {
+    console.error("[RadioMonitor] Transcription failed:", error);
+    return "";
+  }
+}
+
+// --- Specialized: Radio Monitor — Keyword Detection & Promotion Analysis ---
+
+export interface RadioKeywordResult {
+  found: string[];
+  confidence: number; // 0-100
+  isPromotion: boolean;
+  companyName: string | null;
+  promotionDetails: string | null;
+}
+
+/**
+ * Detects promotion keywords in transcribed radio text and extracts details
+ * using the openclaw agent if keywords are found.
+ */
+export async function detectPromotionKeywords(
+  text: string,
+  keywords: string[]
+): Promise<RadioKeywordResult> {
+  if (!text || keywords.length === 0) {
+    return { found: [], confidence: 0, isPromotion: false, companyName: null, promotionDetails: null };
+  }
+
+  // Normalize text for comparison (lowercase, remove accents)
+  const normalizeStr = (s: string) =>
+    s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  const normalizedText = normalizeStr(text);
+  const found = keywords.filter((kw) => normalizedText.includes(normalizeStr(kw)));
+  const confidence = Math.round((found.length / keywords.length) * 100);
+  const isPromotion = confidence >= 30 || found.length >= 2;
+
+  if (!isPromotion) {
+    return { found, confidence, isPromotion: false, companyName: null, promotionDetails: null };
+  }
+
+  // Use openclaw to extract promotion details from transcription
+  try {
+    const prompt = `Você é o openclaw, especialista em detectar promoções e sorteios no rádio.
+
+Analise esta transcrição de rádio e extraia:
+1. Nome da empresa/marca que faz a promoção
+2. Detalhes do prêmio ou sorteio mencionado
+3. Prazo ou data de encerramento (se mencionado)
+4. Como participar (se mencionado)
+
+Palavras-chave detectadas: ${found.join(", ")}
+
+Transcrição:
+${text}
+
+Responda em JSON:
+{
+  "companyName": "Nome da empresa ou null",
+  "promotionDetails": "Resumo da promoção em 2-3 linhas ou null"
+}`;
+
+    const result = await askAgent("openclaw", prompt, "system", { feature: "ocr" });
+    const jsonMatch = result.content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      return {
+        found,
+        confidence,
+        isPromotion,
+        companyName: parsed.companyName || null,
+        promotionDetails: parsed.promotionDetails || null,
+      };
+    }
+  } catch (error) {
+    console.error("[RadioMonitor] Keyword analysis failed:", error);
+  }
+
+  return { found, confidence, isPromotion, companyName: null, promotionDetails: null };
+}
+
 // --- Specialized: NCM Classification (Prompt Blindado 2.0) ---
 
 export async function classifyNCM(

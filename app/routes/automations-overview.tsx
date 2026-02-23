@@ -30,6 +30,7 @@ import {
   Server,
   BarChart3,
   Layers,
+  Radio,
 } from "lucide-react";
 
 // ── Catálogo estático de cron jobs ────────────────────────────────────────
@@ -75,6 +76,16 @@ const CRON_CATALOG: CronEntry[] = [
     output: "@lhfex_openclaw_bot",
     category: "pessoal",
     icon: <DollarSign className="h-5 w-5" />,
+  },
+  {
+    id: "radio_monitor",
+    name: "Monitor de Rádio",
+    description:
+      "Captura segmentos de streams de rádio, transcreve com Groq Whisper e detecta palavras-chave de promoções e sorteios.",
+    schedule: "A cada 2 horas",
+    output: "@lhfex_openclaw_bot",
+    category: "pessoal",
+    icon: <Radio className="h-5 w-5" />,
   },
   // ── LHFEX ────────────────────────────────────────────────────────
   {

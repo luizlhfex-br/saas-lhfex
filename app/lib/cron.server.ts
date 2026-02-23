@@ -9,6 +9,7 @@ import { bills } from "../../drizzle/schema/bills";
 import { eq, lt, isNull, and, sql, lte, gte } from "drizzle-orm";
 import { fireTrigger } from "./automation-engine.server";
 import { enrichCNPJ, askAgent } from "./ai.server";
+import { runRadioMonitor } from "./radio-monitor.server";
 import os from "node:os";
 
 function parseEnvInt(name: string, fallback: number, min: number, max: number): number {
@@ -77,6 +78,11 @@ const jobs: CronJob[] = [
     name: "vps_weekly_report",
     cronExpression: "0 9 * * 0", // Todo domingo às 9h
     handler: sendVpsWeeklyReport,
+  },
+  {
+    name: "radio_monitor",
+    cronExpression: "0 */2 * * *", // A cada 2 horas
+    handler: runRadioMonitor,
   },
 ];
 

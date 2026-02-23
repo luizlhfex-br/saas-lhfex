@@ -8,7 +8,7 @@
  */
 
 import { Form, useLoaderData, useNavigation } from "react-router";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { requireAuth } from "~/lib/auth.server";
 import { requireRole, ROLES } from "~/lib/rbac.server";
 import { db } from "~/lib/db.server";
@@ -20,11 +20,12 @@ import {
   Gift,
   Trophy,
   Clock,
-  CheckCircle,
   XCircle,
   ExternalLink,
   Trash2,
-  Tag,
+  FileText,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 
@@ -208,8 +209,49 @@ export default function PromotionsPage({
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
   const [showForm, setShowForm] = useState(false);
+  const [extracting, setExtracting] = useState(false);
+  const [extractError, setExtractError] = useState<string | null>(null);
+
+  // Refs para auto-fill via IA
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+  const companyRef = useRef<HTMLInputElement>(null);
+  const typeRef = useRef<HTMLSelectElement>(null);
+  const prizeRef = useRef<HTMLInputElement>(null);
+  const startDateRef = useRef<HTMLInputElement>(null);
+  const endDateRef = useRef<HTMLInputElement>(null);
+  const linkRef = useRef<HTMLInputElement>(null);
+  const notesRef = useRef<HTMLTextAreaElement>(null);
 
   const today = new Date().toISOString().split("T")[0];
+
+  async function handlePdfExtract(file: File) {
+    setExtracting(true);
+    setExtractError(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/promotion-extract", { method: "POST", body: fd });
+      const json = await res.json();
+      if (!res.ok || json.error) {
+        setExtractError(json.error || "Erro na extração");
+        return;
+      }
+      const f = json.fields as Record<string, string | null>;
+      if (nameRef.current && f.name)           nameRef.current.value = f.name;
+      if (companyRef.current && f.company)     companyRef.current.value = f.company;
+      if (typeRef.current && f.type)           typeRef.current.value = f.type;
+      if (prizeRef.current && f.prize)         prizeRef.current.value = f.prize;
+      if (startDateRef.current && f.startDate) startDateRef.current.value = f.startDate;
+      if (endDateRef.current && f.endDate)     endDateRef.current.value = f.endDate;
+      if (linkRef.current && f.link)           linkRef.current.value = f.link;
+      if (notesRef.current && f.rules)         notesRef.current.value = f.rules;
+    } catch {
+      setExtractError("Falha ao conectar com o servidor");
+    } finally {
+      setExtracting(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -260,12 +302,49 @@ export default function PromotionsPage({
           <Form method="post" className="space-y-4" onSubmit={() => setShowForm(false)}>
             <input type="hidden" name="_intent" value="create" />
 
+            {/* Upload de regulamento PDF para auto-preenchimento com IA */}
+            <div className="rounded-lg border border-dashed border-indigo-300 bg-white p-3 dark:border-indigo-700 dark:bg-gray-900">
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                  <FileText className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
+                  Anexar regulamento em PDF para auto-preencher os campos
+                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  {extracting && <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-500" />}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={extracting}
+                  >
+                    <Sparkles className="mr-1 h-3 w-3 text-indigo-500" />
+                    {extracting ? "Extraindo..." : "Extrair com IA"}
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.txt"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handlePdfExtract(f);
+                    }}
+                  />
+                </div>
+              </div>
+              {extractError && (
+                <p className="mt-1.5 text-xs text-red-500">{extractError}</p>
+              )}
+            </div>
+
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
                   Nome da Promoção *
                 </label>
                 <input
+                  ref={nameRef}
                   type="text"
                   name="name"
                   required
@@ -278,6 +357,7 @@ export default function PromotionsPage({
                   Empresa / Marca *
                 </label>
                 <input
+                  ref={companyRef}
                   type="text"
                   name="company"
                   required
@@ -293,6 +373,7 @@ export default function PromotionsPage({
                   Tipo
                 </label>
                 <select
+                  ref={typeRef}
                   name="type"
                   className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
                 >
@@ -306,6 +387,7 @@ export default function PromotionsPage({
                   Data Início *
                 </label>
                 <input
+                  ref={startDateRef}
                   type="date"
                   name="startDate"
                   required
@@ -318,6 +400,7 @@ export default function PromotionsPage({
                   Data Fim *
                 </label>
                 <input
+                  ref={endDateRef}
                   type="date"
                   name="endDate"
                   required
@@ -332,6 +415,7 @@ export default function PromotionsPage({
                   Prêmio
                 </label>
                 <input
+                  ref={prizeRef}
                   type="text"
                   name="prize"
                   placeholder="Ex: iPhone 16, R$ 1.000, Viagem"
@@ -343,6 +427,7 @@ export default function PromotionsPage({
                   Link
                 </label>
                 <input
+                  ref={linkRef}
                   type="url"
                   name="link"
                   placeholder="https://..."
@@ -356,6 +441,7 @@ export default function PromotionsPage({
                 Observações / Regras
               </label>
               <textarea
+                ref={notesRef}
                 name="notes"
                 rows={2}
                 placeholder="Regras, como participar, código de participação..."

@@ -69,6 +69,7 @@ export default [
   route("api/notifications", "routes/api.notifications.tsx"),
   route("api/telegram-webhook", "routes/api.telegram-webhook.tsx"),
   route("api/ocr-extract", "routes/api.ocr-extract.tsx"),
+  route("api/promotion-extract", "routes/api.promotion-extract.tsx"),
   route("api/approve-process", "routes/api.approve-process.tsx"),
   route("api/automations-run", "routes/api.automations-run.tsx"),
   route("api/automations-logs", "routes/api.automations-logs.tsx"),
