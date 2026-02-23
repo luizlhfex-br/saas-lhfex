@@ -177,13 +177,6 @@ export default function FinancialPage({ loaderData }: Route.ComponentProps) {
           <TrendingUp className="h-4 w-4" />
           {i18n.nav.financialReport}
         </Link>
-        <Link
-          to="/personal-life/finances"
-          className="flex items-center gap-1.5 rounded-t-lg border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
-        >
-          <LayoutDashboard className="h-4 w-4" />
-          Firefly
-        </Link>
       </div>
 
       {/* Summary Cards */}
