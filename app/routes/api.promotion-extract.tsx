@@ -56,7 +56,14 @@ export async function action({ request }: Route.ActionArgs) {
     const fields = await parsePromotionText(text);
     return data({ success: true, fields });
   } catch (error) {
-    console.error("[Promotion Extract] Error:", error);
-    return data({ error: "Falha ao processar documento" }, { status: 500 });
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error("[Promotion Extract] Error:", msg);
+    // Erros de API/provedor retornam mensagem útil; outros retornam genérico
+    const userMsg = msg.includes("API_KEY") || msg.includes("not configured")
+      ? "Serviço de IA não configurado no servidor. Contate o administrador."
+      : msg.includes("timeout") || msg.includes("AbortError")
+      ? "Tempo limite excedido. Tente novamente."
+      : "Falha ao processar documento";
+    return data({ error: userMsg }, { status: 500 });
   }
 }

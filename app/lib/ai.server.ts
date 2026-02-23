@@ -662,9 +662,10 @@ Extract the following fields from this document and return them as JSON:
 
 Return ONLY valid JSON. If a field is not found, use null. All dates MUST be in YYYY-MM-DD format.`;
 
+  // Usa o hub multi-provedor com fallback automático (Gemini → OpenRouter → DeepSeek)
+  // Sem forceProvider para garantir que funcione mesmo sem DEEPSEEK_API_KEY
   const result = await askAgent("iana", `${prompt}\n\n---\n${text}`, "system", {
     feature: "ocr",
-    forceProvider: "deepseek",
   });
 
   try {
