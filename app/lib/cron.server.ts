@@ -11,6 +11,41 @@ import { fireTrigger } from "./automation-engine.server";
 import { enrichCNPJ, askAgent } from "./ai.server";
 import { runRadioMonitor } from "./radio-monitor.server";
 import os from "node:os";
+import fs from "node:fs";
+
+/**
+ * Mede CPU real via dois snapshots de /proc/stat com 500ms de intervalo.
+ * Muito mais preciso que loadavg em VPS Linux.
+ * Retorna percentual de 0 a 100, ou null se /proc/stat não estiver disponível.
+ */
+async function getRealCpuPercent(): Promise<number | null> {
+  function readProcStat(): { idle: number; total: number } | null {
+    try {
+      const line = fs.readFileSync("/proc/stat", "utf8").split("\n")[0]!;
+      // formato: cpu  user nice system idle iowait irq softirq steal guest guest_nice
+      const nums = line.replace(/^cpu\s+/, "").split(/\s+/).map(Number);
+      const idle = (nums[3] ?? 0) + (nums[4] ?? 0); // idle + iowait
+      const total = nums.reduce((a, b) => a + b, 0);
+      return { idle, total };
+    } catch {
+      return null;
+    }
+  }
+
+  const s1 = readProcStat();
+  if (!s1) return null;
+
+  await new Promise((r) => setTimeout(r, 500));
+
+  const s2 = readProcStat();
+  if (!s2) return null;
+
+  const totalDiff = s2.total - s1.total;
+  const idleDiff = s2.idle - s1.idle;
+
+  if (totalDiff === 0) return 0;
+  return Math.round(((totalDiff - idleDiff) / totalDiff) * 100);
+}
 
 function parseEnvInt(name: string, fallback: number, min: number, max: number): number {
   const raw = process.env[name];
@@ -458,9 +493,13 @@ async function checkVpsResources() {
     const usedRam = totalRam - freeRam;
     const ramPct = Math.round((usedRam / totalRam) * 100);
 
-    const cpuLoad = os.loadavg()[0]; // média 1 min
+    const cpuLoad = os.loadavg()[0]; // média 1 min (exibido no alerta)
     const cpuCount = os.cpus().length;
-    const cpuPct = Math.round((cpuLoad / cpuCount) * 100);
+    // Usa /proc/stat para CPU real; fallback para loadavg se não disponível
+    const cpuPctReal = await getRealCpuPercent();
+    const cpuPct = cpuPctReal !== null
+      ? cpuPctReal
+      : Math.min(Math.round((cpuLoad / cpuCount) * 100), 100);
 
     const uptimeHours = Math.round(os.uptime() / 3600);
 
@@ -738,9 +777,13 @@ async function sendVpsWeeklyReport() {
     const usedRam = totalRam - freeRam;
     const ramPct = Math.round((usedRam / totalRam) * 100);
 
-    const cpuLoad = os.loadavg()[0]; // média 1 min
+    const cpuLoad = os.loadavg()[0]; // média 1 min (exibido no relatório)
     const cpuCount = os.cpus().length;
-    const cpuPct = Math.min(Math.round((cpuLoad / cpuCount) * 100), 100);
+    // Usa /proc/stat para CPU real; fallback para loadavg se não disponível
+    const cpuPctReal = await getRealCpuPercent();
+    const cpuPct = cpuPctReal !== null
+      ? cpuPctReal
+      : Math.min(Math.round((cpuLoad / cpuCount) * 100), 100);
 
     const uptimeSecs = os.uptime();
     const uptimeDays = Math.floor(uptimeSecs / 86400);
