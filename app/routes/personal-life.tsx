@@ -16,6 +16,7 @@ import {
   DollarSign,
   Zap,
   Receipt,
+  Users,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 
@@ -91,6 +92,13 @@ const modules = [
     description: "Monitore rádios e detecte menções de promoções e sorteios",
     icon: Radio,
     color: "bg-cyan-100 dark:bg-cyan-900/20 text-cyan-700 dark:text-cyan-400",
+  },
+  {
+    slug: "pessoas",
+    title: "👥 Pessoas",
+    description: "Cadastro de contatos com dados pessoais, documentos e senhas",
+    icon: Users,
+    color: "bg-indigo-100 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400",
   },
 ];
 

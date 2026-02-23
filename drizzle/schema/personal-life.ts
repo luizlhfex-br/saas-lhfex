@@ -166,6 +166,32 @@ export const plannedTimeOff = pgTable(
   })
 );
 
+// ── Pessoas / Contatos Pessoais ──
+export const pessoas = pgTable(
+  "pessoas",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    nomeCompleto: varchar("nome_completo", { length: 255 }).notNull(),
+    cpf: varchar("cpf", { length: 14 }), // "000.000.000-00"
+    rg: varchar("rg", { length: 30 }),
+    nascimento: date("nascimento"), // "YYYY-MM-DD"
+    celular: varchar("celular", { length: 30 }),
+    email: varchar("email", { length: 255 }),
+    instagram: varchar("instagram", { length: 100 }), // @handle
+    endereco: text("endereco"),
+    senhas: text("senhas"), // JSON: [{label, login, password}]
+    notas: text("notas"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at"),
+  },
+  (table) => ({
+    userIdIdx: index("pessoas_user_id_idx").on(table.userId),
+    nomeIdx: index("pessoas_nome_idx").on(table.nomeCompleto),
+  })
+);
+
 // ── Objetivos Pessoais (Goals) ──
 export const personalGoals = pgTable(
   "personal_goals",
