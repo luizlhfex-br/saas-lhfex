@@ -5,7 +5,7 @@ import { db } from "~/lib/db.server";
 import { users, googleTokens, companyProfile, companyBankAccounts } from "../../drizzle/schema";
 import { t, type Locale } from "~/i18n";
 import { Button } from "~/components/ui/button";
-import { Save, User, Globe, Palette, Sparkles, Bug, Wrench, Rocket, CheckCircle2, Clock, Zap, LogOut, Building2, CreditCard, ChevronDown } from "lucide-react";
+import { Save, User, Globe, Palette, Sparkles, Bug, Wrench, Rocket, CheckCircle2, Clock, Zap, LogOut, Building2, CreditCard, ChevronDown, Shield, ArrowRight } from "lucide-react";
 import { data } from "react-router";
 import { eq, and, isNull } from "drizzle-orm";
 import { disconnectGoogle } from "~/lib/google.server";
@@ -800,6 +800,30 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
               )}
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Logs de Auditoria */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800">
+              <Shield className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+            </div>
+            <div>
+              <h2 className="text-base font-semibold text-gray-900 dark:text-white">Logs de Auditoria</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Registro de todas as ações realizadas no sistema
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/audit"
+            className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+          >
+            Ver logs
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
       </div>
     </div>

@@ -53,7 +53,6 @@ const mainNavItems: NavItem[] = [
   { labelKey: "processes", icon: FileText, to: "/processes" },
   { labelKey: "financial", icon: DollarSign, to: "/financial" },
   { labelKey: "personalLife", icon: Heart, to: "/personal-life", requiredEmail: "luiz@lhfex.com.br" },
-  { labelKey: "audit", icon: Shield, to: "/audit" },
 ];
 
 const otherBusinessNavItems: NavItem[] = [
