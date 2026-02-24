@@ -1,0 +1,16 @@
+[Unit]
+Description=LHFEX Radio Monitor — Projeto 2: Identificação de Músicas (ACRCloud)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/radio-monitor
+ExecStart=/usr/bin/python3 /opt/radio-monitor/musicas.py
+Restart=on-failure
+RestartSec=30
+StandardOutput=append:/opt/radio-monitor/musicas.log
+StandardError=append:/opt/radio-monitor/musicas.log
+
+[Install]
+WantedBy=multi-user.target

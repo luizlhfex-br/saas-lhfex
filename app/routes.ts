@@ -104,6 +104,7 @@ export default [
   route("api/openclaw-telegram-webhook", "routes/api.openclaw-telegram-webhook.tsx"),
   route("api/radio-monitor-config", "routes/api.radio-monitor-config.tsx"),
   route("api/radio-monitor-event", "routes/api.radio-monitor-event.tsx"),
+  route("api/radio-monitor-song", "routes/api.radio-monitor-song.tsx"),
 
   // Catch-all 404
   route("*", "routes/$.tsx"),

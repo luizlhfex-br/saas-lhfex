@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp, boolean, decimal, index } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, text, timestamp, boolean, decimal, integer, index } from "drizzle-orm/pg-core";
 
 export const radioStations = pgTable(
   "radio_stations",
@@ -59,5 +59,24 @@ export const radioMonitorKeywords = pgTable(
     index("radio_monitor_keywords_station_idx").on(table.stationId),
     index("radio_monitor_keywords_category_idx").on(table.category),
     index("radio_monitor_keywords_active_idx").on(table.isActive),
+  ]
+);
+
+export const radioMonitorSongs = pgTable(
+  "radio_monitor_songs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    stationId: uuid("station_id").notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    artist: varchar("artist", { length: 255 }).notNull(),
+    album: varchar("album", { length: 255 }),
+    releaseYear: integer("release_year"),
+    confidence: decimal("confidence", { precision: 5, scale: 2 }), // ACRCloud score 0-100
+    detectedAt: timestamp("detected_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("radio_monitor_songs_station_idx").on(table.stationId),
+    index("radio_monitor_songs_detected_idx").on(table.detectedAt),
   ]
 );

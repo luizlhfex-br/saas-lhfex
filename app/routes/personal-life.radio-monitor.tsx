@@ -7,7 +7,7 @@ import { Form, redirect, useLoaderData, useNavigation } from "react-router";
 import { useState } from "react";
 import { db } from "~/lib/db.server";
 import { requireAuth } from "~/lib/auth.server";
-import { radioStations, radioMonitorEvents, radioMonitorKeywords } from "../../drizzle/schema";
+import { radioStations, radioMonitorEvents, radioMonitorKeywords, radioMonitorSongs } from "../../drizzle/schema";
 import { desc, eq, or, isNull } from "drizzle-orm";
 import {
   Radio,
@@ -21,23 +21,26 @@ import {
   WifiOff,
   Tag,
   Globe,
+  Music2,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 
 type Station = typeof radioStations.$inferSelect;
 type Keyword = typeof radioMonitorKeywords.$inferSelect;
 type Event = typeof radioMonitorEvents.$inferSelect;
+type Song = typeof radioMonitorSongs.$inferSelect;
 
 export async function loader({ request }: { request: Request }) {
   await requireAuth(request);
 
-  const [stations, keywords, events] = await Promise.all([
+  const [stations, keywords, events, songs] = await Promise.all([
     db.select().from(radioStations).orderBy(desc(radioStations.createdAt)),
     db.select().from(radioMonitorKeywords).orderBy(desc(radioMonitorKeywords.createdAt)),
     db.select().from(radioMonitorEvents).orderBy(desc(radioMonitorEvents.recordedAt)).limit(20),
+    db.select().from(radioMonitorSongs).orderBy(desc(radioMonitorSongs.detectedAt)).limit(50),
   ]);
 
-  return { stations, keywords, events };
+  return { stations, keywords, events, songs };
 }
 
 export async function action({ request }: { request: Request }) {
@@ -339,8 +342,15 @@ function ConfidenceBadge({ confidence }: { confidence: string | null }) {
   return <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400">{val}%</span>;
 }
 
+function SongConfidenceBadge({ confidence }: { confidence: string | null }) {
+  const val = Number(confidence ?? 0);
+  if (val >= 85) return <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">{val}%</span>;
+  if (val >= 70) return <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-[10px] font-medium text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">{val}%</span>;
+  return <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500 dark:bg-gray-800">{val}%</span>;
+}
+
 export default function PersonalLifeRadioMonitorPage() {
-  const { stations, keywords, events } = useLoaderData<typeof loader>();
+  const { stations, keywords, events, songs } = useLoaderData<typeof loader>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
   const [showAddStation, setShowAddStation] = useState(false);
@@ -487,6 +497,70 @@ export default function PersonalLifeRadioMonitorPage() {
             Adicionar
           </Button>
         </Form>
+      </div>
+
+      {/* Songs Feed */}
+      <div>
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          <Music2 className="h-4 w-4 text-purple-500" />
+          Músicas Identificadas (últimas {songs.length})
+        </h2>
+        <p className="mb-3 text-xs text-gray-400 dark:text-gray-500">
+          Identificação via ACRCloud (Projeto 2). Script <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">musicas.py</code> rodando na VM.
+        </p>
+
+        {songs.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-purple-200 py-10 text-center dark:border-purple-900">
+            <Music2 className="mx-auto h-9 w-9 text-purple-200 dark:text-purple-900" />
+            <p className="mt-2 text-sm text-gray-400">Nenhuma música identificada ainda</p>
+            <p className="mt-1 text-xs text-gray-400">Configure as env vars <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">ACRCLOUD_HOST</code>, <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">ACRCLOUD_ACCESS_KEY</code> e <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">ACRCLOUD_ACCESS_SECRET</code> e inicie o <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">musicas.py</code></p>
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 dark:bg-gray-800">
+                <tr>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Estação</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Música</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Artista</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Álbum</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Conf.</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Horário</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 bg-white dark:divide-gray-800 dark:bg-gray-900">
+                {(songs as Song[]).map(song => {
+                  const station = stations.find(s => s.id === song.stationId);
+                  return (
+                    <tr key={song.id}>
+                      <td className="px-4 py-3 text-xs font-medium text-gray-700 dark:text-gray-300">
+                        {station?.name ?? <span className="text-gray-400">—</span>}
+                      </td>
+                      <td className="px-4 py-3 text-xs font-semibold text-gray-900 dark:text-gray-100">
+                        {song.title}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">
+                        {song.artist}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
+                        {song.album
+                          ? <>{song.album}{song.releaseYear ? <span className="ml-1 opacity-60">({song.releaseYear})</span> : null}</>
+                          : <span className="text-gray-300 dark:text-gray-600">—</span>
+                        }
+                      </td>
+                      <td className="px-4 py-3">
+                        <SongConfidenceBadge confidence={song.confidence} />
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
+                        {new Date(song.detectedAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Events Feed */}

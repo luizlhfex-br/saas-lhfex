@@ -36,6 +36,12 @@ export async function loader({ request }: Route.LoaderArgs) {
       keyword: k.keyword,
       category: k.category,
       priority: k.priority,
+      stationId: k.stationId,
     })),
+    acrcloud: {
+      host: process.env.ACRCLOUD_HOST ?? "",
+      access_key: process.env.ACRCLOUD_ACCESS_KEY ?? "",
+      access_secret: process.env.ACRCLOUD_ACCESS_SECRET ?? "",
+    },
   });
 }
