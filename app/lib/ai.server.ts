@@ -4,7 +4,7 @@
  */
 
 import { db } from "~/lib/db.server";
-import { processes, invoices, clients, aiUsageLogs, personalFinance, personalInvestments, personalRoutines, personalGoals, promotions } from "drizzle/schema";
+import { processes, invoices, clients, aiUsageLogs, personalFinance, personalInvestments, personalRoutines, personalGoals, promotions, pessoas, plannedTimeOff } from "drizzle/schema";
 import { isNull, and, notInArray, sql, eq, desc, asc } from "drizzle-orm";
 import { getCache, setCache, CACHE_TTL } from "~/lib/cache.server";
 import { recordFailure, recordSuccess, checkAndAlert } from "~/lib/ai-metrics.server";
@@ -1048,6 +1048,34 @@ interface PersonalLifeContext {
       type: string;
     }>;
   };
+  pessoas: {
+    count: number;
+    list: Array<{
+      nome: string;
+      celular: string | null;
+      email: string | null;
+      instagram: string | null;
+    }>;
+  };
+  timeOff: {
+    upcomingCount: number;
+    list: Array<{
+      title: string;
+      startDate: string;
+      endDate: string;
+      location: string | null;
+    }>;
+  };
+  tasks: {
+    pendingCount: number;
+    overdueCount: number;
+    list: Array<{
+      title: string;
+      dueDate: string | null;
+      priority: string;
+      status: string;
+    }>;
+  };
 }
 
 export async function getPersonalLifeContext(userId: string): Promise<PersonalLifeContext> {
@@ -1056,12 +1084,16 @@ export async function getPersonalLifeContext(userId: string): Promise<PersonalLi
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
+    const today = now.toISOString().split("T")[0]!;
+
     const [
       financesAll,
       investments,
       routinesActive,
       goalsInProgress,
       promotionsPending,
+      pessoasList,
+      upcomingTimeOff,
     ] = await Promise.all([
       // Last 30 transactions
       db.select().from(personalFinance)
@@ -1097,6 +1129,32 @@ export async function getPersonalLifeContext(userId: string): Promise<PersonalLi
         ))
         .orderBy(asc(promotions.endDate))
         .limit(10),
+      // Contatos pessoais
+      db.select({
+        nomeCompleto: pessoas.nomeCompleto,
+        celular: pessoas.celular,
+        email: pessoas.email,
+        instagram: pessoas.instagram,
+      }).from(pessoas)
+        .where(and(
+          eq(pessoas.userId, userId),
+          isNull(pessoas.deletedAt)
+        ))
+        .orderBy(asc(pessoas.nomeCompleto))
+        .limit(50),
+      // Próximas viagens/férias
+      db.select({
+        title: plannedTimeOff.title,
+        startDate: plannedTimeOff.startDate,
+        endDate: plannedTimeOff.endDate,
+        location: plannedTimeOff.location,
+      }).from(plannedTimeOff)
+        .where(and(
+          eq(plannedTimeOff.userId, userId),
+          sql`${plannedTimeOff.endDate} >= ${today}`
+        ))
+        .orderBy(asc(plannedTimeOff.startDate))
+        .limit(5),
     ]);
 
     // Calculate finances summary
@@ -1124,10 +1182,39 @@ export async function getPersonalLifeContext(userId: string): Promise<PersonalLi
       0
     );
 
+    // Try to load personalTasks dynamically (may not exist yet)
+    let tasksList: Array<{ title: string; dueDate: string | null; priority: string; status: string }> = [];
+    let tasksOverdue = 0;
+    try {
+      const { personalTasks } = await import("drizzle/schema");
+      const activeTasks = await db.select({
+        title: personalTasks.title,
+        dueDate: personalTasks.dueDate,
+        priority: personalTasks.priority,
+        status: personalTasks.status,
+      }).from(personalTasks)
+        .where(and(
+          eq(personalTasks.userId, userId),
+          isNull(personalTasks.deletedAt),
+          sql`${personalTasks.status} NOT IN ('done', 'cancelled')`
+        ))
+        .orderBy(asc(personalTasks.dueDate))
+        .limit(20);
+      tasksList = activeTasks.map(t => ({
+        title: t.title,
+        dueDate: t.dueDate ? String(t.dueDate) : null,
+        priority: t.priority ?? "medium",
+        status: t.status ?? "pending",
+      }));
+      tasksOverdue = tasksList.filter(t => t.dueDate && t.dueDate < today).length;
+    } catch {
+      // Table doesn't exist yet — silently ignore
+    }
+
     return {
       finances: {
         lastTransactions: financesAll.slice(0, 10).map(f => ({
-          date: f.date.toISOString().split("T")[0],
+          date: f.date.toISOString().split("T")[0]!,
           type: f.type,
           category: f.category,
           description: f.description,
@@ -1157,7 +1244,7 @@ export async function getPersonalLifeContext(userId: string): Promise<PersonalLi
         inProgressCount: goalsInProgress.length,
         list: goalsInProgress.map(g => ({
           title: g.title,
-          deadline: g.deadline.toISOString().split("T")[0],
+          deadline: g.deadline ? g.deadline.toISOString().split("T")[0]! : "",
           progress: `${g.currentValue}/${g.targetValue} ${g.unit || ""}`.trim(),
         })),
       },
@@ -1165,9 +1252,32 @@ export async function getPersonalLifeContext(userId: string): Promise<PersonalLi
         pendingCount: promotionsPending.length,
         list: promotionsPending.map(p => ({
           name: p.name,
-          endDate: p.endDate.toISOString().split("T")[0],
+          endDate: p.endDate ? p.endDate.toISOString().split("T")[0]! : "",
           type: p.type,
         })),
+      },
+      pessoas: {
+        count: pessoasList.length,
+        list: pessoasList.map(p => ({
+          nome: p.nomeCompleto,
+          celular: p.celular,
+          email: p.email,
+          instagram: p.instagram,
+        })),
+      },
+      timeOff: {
+        upcomingCount: upcomingTimeOff.length,
+        list: upcomingTimeOff.map(t => ({
+          title: t.title,
+          startDate: t.startDate ? String(t.startDate) : "",
+          endDate: t.endDate ? String(t.endDate) : "",
+          location: t.location,
+        })),
+      },
+      tasks: {
+        pendingCount: tasksList.length,
+        overdueCount: tasksOverdue,
+        list: tasksList,
       },
     };
   } catch (error) {
@@ -1179,6 +1289,9 @@ export async function getPersonalLifeContext(userId: string): Promise<PersonalLi
       routines: { activeCount: 0, list: [] },
       goals: { inProgressCount: 0, list: [] },
       promotions: { pendingCount: 0, list: [] },
+      pessoas: { count: 0, list: [] },
+      timeOff: { upcomingCount: 0, list: [] },
+      tasks: { pendingCount: 0, overdueCount: 0, list: [] },
     };
   }
 }

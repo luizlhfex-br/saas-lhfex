@@ -741,68 +741,6 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
           </div>
         </div>
 
-      {/* Changelog / System Updates */}
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-        <div className="mb-6 flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-blue-500" />
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Atualizações do Sistema
-          </h2>
-        </div>
-
-        <div className="space-y-8">
-          {changelog.map((release, idx) => (
-            <div key={release.version}>
-              {/* Version Header */}
-              <div className="mb-3 flex items-center gap-3">
-                <div className={`flex h-8 w-8 items-center justify-center rounded-full ${idx === 0 ? "bg-blue-100 dark:bg-blue-900/30" : "bg-gray-100 dark:bg-gray-800"}`}>
-                  {idx === 0 ? (
-                    <CheckCircle2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                  ) : (
-                    <Clock className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                  )}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-gray-900 dark:text-gray-100">v{release.version}</span>
-                    {idx === 0 && (
-                      <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                        Atual
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {release.date} — {release.title}
-                  </p>
-                </div>
-              </div>
-
-              {/* Items */}
-              <div className="ml-11 space-y-2">
-                {release.items.map((item, i) => {
-                  const config = typeConfig[item.type];
-                  const Icon = config.icon;
-                  return (
-                    <div key={i} className="flex items-start gap-2">
-                      <span className={`mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${config.color}`}>
-                        <Icon className="h-3 w-3" />
-                        {config.label}
-                      </span>
-                      <span className="text-sm text-gray-700 dark:text-gray-300">{item.text}</span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Divider */}
-              {idx < changelog.length - 1 && (
-                <div className="mt-6 border-t border-gray-100 dark:border-gray-800" />
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* Logs de Auditoria */}
       <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <div className="flex items-center justify-between">

@@ -48,6 +48,7 @@ export const radioMonitorKeywords = pgTable(
   "radio_monitor_keywords",
   {
     id: uuid("id").defaultRandom().primaryKey(),
+    stationId: uuid("station_id"), // nullable = keyword global; uuid = keyword específica da estação
     keyword: varchar("keyword", { length: 255 }).notNull(),
     category: varchar("category", { length: 50 }), // "promotion", "raffle", "discount", "contest"
     priority: varchar("priority", { length: 20 }).notNull().default("medium"), // "low", "medium", "high"
@@ -55,6 +56,7 @@ export const radioMonitorKeywords = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
+    index("radio_monitor_keywords_station_idx").on(table.stationId),
     index("radio_monitor_keywords_category_idx").on(table.category),
     index("radio_monitor_keywords_active_idx").on(table.isActive),
   ]

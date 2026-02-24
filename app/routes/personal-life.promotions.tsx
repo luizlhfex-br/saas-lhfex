@@ -39,6 +39,8 @@ import {
   Instagram,
   KeyRound,
   User,
+  MessageSquare,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 
@@ -765,6 +767,9 @@ export default function PromotionsPage({
   const [showForm, setShowForm] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [extractError, setExtractError] = useState<string | null>(null);
+  const [strategyLoading, setStrategyLoading] = useState(false);
+  const [strategySuccess, setStrategySuccess] = useState(false);
+  const [lastExtractedText, setLastExtractedText] = useState<string | null>(null);
 
   // Pessoas state
   const [showPessoaForm, setShowPessoaForm] = useState(false);
@@ -785,16 +790,17 @@ export default function PromotionsPage({
   async function handlePdfExtract(file: File) {
     setExtracting(true);
     setExtractError(null);
+    setStrategySuccess(false);
     try {
       const fd = new FormData();
       fd.append("file", file);
       const res = await fetch("/api/promotion-extract", { method: "POST", body: fd });
-      const json = await res.json();
+      const json = await res.json() as { fields?: Record<string, string | null>; extractedText?: string; error?: string };
       if (!res.ok || json.error) {
         setExtractError(json.error || "Erro na extração");
         return;
       }
-      const f = json.fields as Record<string, string | null>;
+      const f = json.fields ?? {};
       if (nameRef.current && f.name)           nameRef.current.value = f.name;
       if (companyRef.current && f.company)     companyRef.current.value = f.company;
       if (typeRef.current && f.type)           typeRef.current.value = f.type;
@@ -803,10 +809,40 @@ export default function PromotionsPage({
       if (endDateRef.current && f.endDate)     endDateRef.current.value = f.endDate;
       if (linkRef.current && f.link)           linkRef.current.value = f.link;
       if (notesRef.current && f.rules)         notesRef.current.value = f.rules;
+      setLastExtractedText(json.extractedText ?? null);
     } catch {
       setExtractError("Falha ao conectar com o servidor");
     } finally {
       setExtracting(false);
+    }
+  }
+
+  async function handleSendStrategy() {
+    setStrategyLoading(true);
+    setStrategySuccess(false);
+    try {
+      const res = await fetch("/api/promotion-strategy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          promotionName: nameRef.current?.value || "",
+          company: companyRef.current?.value || "",
+          prize: prizeRef.current?.value || "",
+          endDate: endDateRef.current?.value || "",
+          rules: notesRef.current?.value || "",
+          extractedText: lastExtractedText || "",
+        }),
+      });
+      if (res.ok) {
+        setStrategySuccess(true);
+      } else {
+        const j = await res.json() as { error?: string };
+        setExtractError(j.error || "Erro ao enviar estratégia");
+      }
+    } catch {
+      setExtractError("Falha ao enviar estratégia para o OpenClaw");
+    } finally {
+      setStrategyLoading(false);
     }
   }
 
@@ -935,6 +971,30 @@ export default function PromotionsPage({
                   </div>
                   {extractError && (
                     <p className="mt-1.5 text-xs text-red-500">{extractError}</p>
+                  )}
+                  {!extracting && !extractError && lastExtractedText && (
+                    <div className="mt-2 flex items-center gap-2">
+                      {strategySuccess ? (
+                        <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          Estratégia enviada no Telegram! ✅
+                        </span>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleSendStrategy}
+                          disabled={strategyLoading}
+                        >
+                          {strategyLoading
+                            ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                            : <MessageSquare className="mr-1 h-3.5 w-3.5 text-violet-500" />
+                          }
+                          {strategyLoading ? "Analisando..." : "💬 Discutir estratégia com OpenClaw"}
+                        </Button>
+                      )}
+                    </div>
                   )}
                 </div>
 

@@ -8,7 +8,7 @@
  * - Promoções e sorteios (hobby)
  */
 
-import { pgTable, uuid, text, varchar, timestamp, boolean, decimal, date, integer, index, foreignKey } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, varchar, timestamp, boolean, decimal, date, integer, index, foreignKey, smallint } from "drizzle-orm/pg-core";
 import { users } from "./auth";
 
 // ── Finanças Pessoais (Receitas/Despesas) ──
@@ -216,5 +216,58 @@ export const personalGoals = pgTable(
     userIdIdx: index("personal_goals_user_id_idx").on(table.userId),
     categoryIdx: index("personal_goals_category_idx").on(table.category),
     deadlineIdx: index("personal_goals_deadline_idx").on(table.deadline),
+  })
+);
+
+// ── TO-DO / Tarefas Pessoais ──
+export const personalTasks = pgTable(
+  "personal_tasks",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    description: text("description"),
+    dueDate: date("due_date"), // nullable — tarefas sem prazo definido
+    priority: varchar("priority", { length: 20 }).default("medium"), // "low"|"medium"|"high"|"critical"
+    status: varchar("status", { length: 20 }).default("pending"), // "pending"|"in_progress"|"done"|"cancelled"
+    category: varchar("category", { length: 50 }).default("personal"), // "work"|"personal"|"financial"|"health"|"errand"|"other"
+    notifyTelegram: boolean("notify_telegram").default(true),
+    notifyDaysBefore: integer("notify_days_before").default(1),
+    completedAt: timestamp("completed_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at"),
+  },
+  (table) => ({
+    userIdIdx: index("personal_tasks_user_id_idx").on(table.userId),
+    statusIdx: index("personal_tasks_status_idx").on(table.status),
+    dueDateIdx: index("personal_tasks_due_date_idx").on(table.dueDate),
+    priorityIdx: index("personal_tasks_priority_idx").on(table.priority),
+  })
+);
+
+// ── Wishlist (Livros, Filmes, Séries, Discos) ──
+export const personalWishlist = pgTable(
+  "personal_wishlist",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    type: varchar("type", { length: 20 }).notNull(), // "book"|"movie"|"series"|"album"
+    title: varchar("title", { length: 255 }).notNull(),
+    creator: varchar("creator", { length: 255 }), // autor/diretor/artista
+    year: integer("year"),
+    genre: varchar("genre", { length: 100 }),
+    notes: text("notes"),
+    status: varchar("status", { length: 20 }).default("want"), // "want"|"watching"|"finished"
+    rating: smallint("rating"), // 1-5, preenchido ao finalizar
+    finishedAt: timestamp("finished_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at"),
+  },
+  (table) => ({
+    userIdIdx: index("personal_wishlist_user_id_idx").on(table.userId),
+    typeIdx: index("personal_wishlist_type_idx").on(table.type),
+    statusIdx: index("personal_wishlist_status_idx").on(table.status),
   })
 );

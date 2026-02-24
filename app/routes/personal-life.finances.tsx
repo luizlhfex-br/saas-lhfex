@@ -153,9 +153,17 @@ export default function PersonalLifeFinancesPage() {
 
 	return (
 		<div className="mx-auto max-w-7xl space-y-6">
-			<div>
-				<h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Firefly Accounting</h1>
-				<p className="text-sm text-gray-500 dark:text-gray-400">Dashboard contábil completo: contas, lançamentos, orçamentos e recorrências</p>
+			<div className="flex items-center justify-between">
+				<div>
+					<h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Firefly Accounting</h1>
+					<p className="text-sm text-gray-500 dark:text-gray-400">Dashboard contábil completo: contas, lançamentos, orçamentos e recorrências</p>
+				</div>
+				<Link
+					to="/personal-life/finances/analytics"
+					className="flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 transition-colors hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-900/20 dark:text-indigo-400"
+				>
+					📊 Analytics
+				</Link>
 			</div>
 
 			<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">

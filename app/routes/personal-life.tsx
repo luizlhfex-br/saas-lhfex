@@ -17,6 +17,8 @@ import {
   Zap,
   Receipt,
   Users,
+  ListTodo,
+  Bookmark,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 
@@ -99,6 +101,20 @@ const modules = [
     description: "Cadastro de contatos com dados pessoais, documentos e senhas",
     icon: Users,
     color: "bg-indigo-100 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400",
+  },
+  {
+    slug: "tasks",
+    title: "✅ TO-DO",
+    description: "Tarefas pessoais com prioridades e resumo diário via Telegram",
+    icon: ListTodo,
+    color: "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400",
+  },
+  {
+    slug: "wishlist",
+    title: "📚 Wishlist",
+    description: "Livros, filmes, séries e discos para ver/ouvir um dia",
+    icon: Bookmark,
+    color: "bg-pink-100 dark:bg-pink-900/20 text-pink-700 dark:text-pink-400",
   },
 ];
 

@@ -110,6 +110,11 @@ const jobs: CronJob[] = [
     handler: sendBillsAlert,
   },
   {
+    name: "tasks_reminder",
+    cronExpression: "0 8 * * *", // Todo dia às 8h — junto com bills_alert
+    handler: sendTasksReminder,
+  },
+  {
     name: "vps_weekly_report",
     cronExpression: "0 9 * * 0", // Todo domingo às 9h
     handler: sendVpsWeeklyReport,
@@ -754,6 +759,112 @@ async function sendBillsAlert() {
     console.log(`[CRON] bills_alert: ${toAlert.length} vencimentos alertados`);
   } catch (error) {
     console.error("[CRON] bills_alert error:", error);
+  }
+}
+
+/**
+ * Resumo diário de tarefas (TO-DO) — todo dia às 8h via OpenClaw bot
+ * Seções: Atrasadas 🔴 | Vencem hoje ⚠️ | Vencem amanhã 📅 | Concluídas ontem ✅
+ * Silencioso se não houver nada a reportar.
+ */
+async function sendTasksReminder() {
+  const botToken = process.env.OPENCLAW_TELEGRAM_TOKEN || process.env.MONITOR_BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.OPENCLAW_CHAT_ID || process.env.MONITOR_BOT_CHAT_ID;
+  const userId = process.env.OPENCLAW_USER_ID;
+
+  if (!botToken || !chatId || !userId) {
+    console.log("[CRON] tasks_reminder: env vars não configuradas — pulando");
+    return;
+  }
+
+  try {
+    const { personalTasks } = await import("../../drizzle/schema");
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().split("T")[0]!;
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split("T")[0]!;
+
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split("T")[0]!;
+
+    const allTasks = await db
+      .select()
+      .from(personalTasks)
+      .where(and(eq(personalTasks.userId, userId), isNull(personalTasks.deletedAt)));
+
+    const overdue = allTasks.filter(
+      t => (t.status === "pending" || t.status === "in_progress") && t.dueDate && String(t.dueDate) < todayStr
+    );
+    const dueToday = allTasks.filter(
+      t => (t.status === "pending" || t.status === "in_progress") && String(t.dueDate) === todayStr
+    );
+    const dueTomorrow = allTasks.filter(
+      t => (t.status === "pending" || t.status === "in_progress") && String(t.dueDate) === tomorrowStr
+    );
+    const doneYesterday = allTasks.filter(
+      t => t.status === "done" && t.completedAt &&
+        t.completedAt.toISOString().split("T")[0] === yesterdayStr
+    );
+
+    if (overdue.length === 0 && dueToday.length === 0 && dueTomorrow.length === 0 && doneYesterday.length === 0) {
+      console.log("[CRON] tasks_reminder: nada a reportar hoje");
+      return;
+    }
+
+    const PRIORITY_EMOJI: Record<string, string> = { critical: "🔴", high: "🟠", medium: "🟡", low: "⚪" };
+
+    const fmtTask = (t: typeof allTasks[0]) => {
+      const p = PRIORITY_EMOJI[t.priority ?? "medium"] ?? "🟡";
+      const due = t.dueDate ? ` (${String(t.dueDate)})` : "";
+      return `${p} ${t.title}${due}`;
+    };
+
+    const dateFormatted = today.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit" });
+    const sections: string[] = [];
+
+    sections.push(`📋 *RESUMO DE TAREFAS — ${dateFormatted.toUpperCase()}*\n━━━━━━━━━━━━━━━━`);
+
+    if (overdue.length > 0) {
+      sections.push(`\n🔴 *ATRASADAS (${overdue.length})*`);
+      overdue.forEach(t => sections.push(`• ${fmtTask(t)}`));
+    }
+
+    if (dueToday.length > 0) {
+      sections.push(`\n⚠️ *VENCEM HOJE (${dueToday.length})*`);
+      dueToday.forEach(t => sections.push(`• ${fmtTask(t)}`));
+    }
+
+    if (dueTomorrow.length > 0) {
+      sections.push(`\n📅 *VENCEM AMANHÃ (${dueTomorrow.length})*`);
+      dueTomorrow.forEach(t => sections.push(`• ${fmtTask(t)}`));
+    }
+
+    if (doneYesterday.length > 0) {
+      sections.push(`\n✅ *CONCLUÍDAS ONTEM (${doneYesterday.length})*`);
+      doneYesterday.forEach(t => sections.push(`• ${t.title}`));
+    }
+
+    const msg = sections.join("\n");
+
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: Number(chatId),
+        text: msg,
+        parse_mode: "Markdown",
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+
+    console.log(`[CRON] tasks_reminder: enviado — ${overdue.length} atrasadas, ${dueToday.length} hoje, ${dueTomorrow.length} amanhã`);
+  } catch (error) {
+    console.error("[CRON] tasks_reminder error:", error);
   }
 }
 
