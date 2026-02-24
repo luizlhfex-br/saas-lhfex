@@ -11,6 +11,8 @@ import {
   Loader2,
   Package,
   Truck,
+  Plus,
+  X,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 
@@ -124,6 +126,42 @@ const colorClasses = {
 // ─── Container types ─────────────────────────────────────────────────────────
 const containerTypes = ["20'DC", "40'DC", "40'HC", "20'Reefer", "40'Reefer"];
 
+// ─── Componente toggle Prepaid / Collect ────────────────────────────────────
+function FreightToggle({
+  value,
+  onChange,
+}: {
+  value: "prepaid" | "collect";
+  onChange: (v: "prepaid" | "collect") => void;
+}) {
+  return (
+    <div className="flex items-center gap-1 rounded-lg border border-gray-200 bg-gray-50 p-1 text-xs dark:border-gray-700 dark:bg-gray-800">
+      <button
+        type="button"
+        onClick={() => onChange("prepaid")}
+        className={`rounded-md px-3 py-1 font-medium transition-colors ${
+          value === "prepaid"
+            ? "bg-white text-indigo-700 shadow-sm dark:bg-gray-700 dark:text-indigo-300"
+            : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+        }`}
+      >
+        Prepaid
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange("collect")}
+        className={`rounded-md px-3 py-1 font-medium transition-colors ${
+          value === "collect"
+            ? "bg-white text-orange-600 shadow-sm dark:bg-gray-700 dark:text-orange-400"
+            : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+        }`}
+      >
+        Collect
+      </button>
+    </div>
+  );
+}
+
 export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
   const { locale } = loaderData;
   const i18n = t(locale);
@@ -179,6 +217,27 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
   const [despachangeFCL, setDespachangeFCL] = useState(3500);
   const [siscomexFCL, setSiscomexFCL] = useState(214.5);
 
+  // Frete Prepaid / Collect
+  const [freightPrepaid, setFreightPrepaid] = useState<"prepaid" | "collect">("prepaid");
+
+  // Custos Nacionais comuns (todos os modais)
+  const [armazenagem, setArmazenagem] = useState(0);
+  const [honorarios, setHonorarios] = useState(0);
+  const [freteRodoviario, setFreteRodoviario] = useState(0);
+
+  // Despesas extras dinâmicas
+  type ExtraCost = { id: number; label: string; value: number };
+  const [extraCosts, setExtraCosts] = useState<ExtraCost[]>([]);
+  const [nextExtraId, setNextExtraId] = useState(1);
+
+  const addExtraCost = () => {
+    setExtraCosts((prev) => [...prev, { id: nextExtraId, label: "", value: 0 }]);
+    setNextExtraId((n) => n + 1);
+  };
+  const removeExtraCost = (id: number) => setExtraCosts((prev) => prev.filter((e) => e.id !== id));
+  const updateExtraCost = (id: number, field: "label" | "value", val: string | number) =>
+    setExtraCosts((prev) => prev.map((e) => (e.id === id ? { ...e, [field]: val } : e)));
+
   // ─── Cálculos por modalidade ─────────────────────────────────────────────
   const calcResult = (() => {
     let freight = 0;
@@ -222,6 +281,18 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
         { label: "Despachante Aduaneiro", value: despachangeFCL },
         { label: "SISCOMEX", value: siscomexFCL },
       ];
+    }
+
+    // Custos nacionais comuns (todos os modais)
+    const commonNational = armazenagem + honorarios + freteRodoviario;
+    const extraTotal = extraCosts.reduce((sum, e) => sum + (Number(e.value) || 0), 0);
+    custosBrasileiros += commonNational + extraTotal;
+
+    if (armazenagem > 0) extraDetails.push({ label: "Armazenagem", value: armazenagem });
+    if (honorarios > 0) extraDetails.push({ label: "Honorários", value: honorarios });
+    if (freteRodoviario > 0) extraDetails.push({ label: "Frete Rodoviário", value: freteRodoviario });
+    for (const ec of extraCosts) {
+      if (ec.value > 0) extraDetails.push({ label: ec.label || "Despesa extra", value: Number(ec.value) });
     }
 
     const cif = fob + freight + insurance;
@@ -287,6 +358,12 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
     setDespachangeFCL(3500);
     setSiscomexFCL(214.5);
     setContainerCount(1);
+    setFreightPrepaid("prepaid");
+    setArmazenagem(0);
+    setHonorarios(0);
+    setFreteRodoviario(0);
+    setExtraCosts([]);
+    setNextExtraId(1);
   };
 
   const handleModalChange = (m: ModalType) => {
@@ -439,9 +516,12 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
           {/* Frete — Aéreo Formal */}
           {currentModal.showFreightInternacional && modal === "air_formal" && (
             <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-              <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
-                <Plane className="h-5 w-5 text-orange-500" /> Frete & Custos Aéreos
-              </h2>
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  <Plane className="h-5 w-5 text-orange-500" /> Frete & Custos Aéreos
+                </h2>
+                <FreightToggle value={freightPrepaid} onChange={setFreightPrepaid} />
+              </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <NumInput label="Frete Aéreo (USD)" value={freightAir} onChange={setFreightAir} />
                 <NumInput
@@ -462,9 +542,12 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
           {/* Frete — Courier */}
           {modal === "courier" && (
             <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-              <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
-                <Package className="h-5 w-5 text-purple-500" /> Courier (DHL / FedEx / UPS)
-              </h2>
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  <Package className="h-5 w-5 text-purple-500" /> Courier (DHL / FedEx / UPS)
+                </h2>
+                <FreightToggle value={freightPrepaid} onChange={setFreightPrepaid} />
+              </div>
               <div className="mb-3 rounded-lg bg-purple-50 p-3 text-xs text-purple-700 dark:bg-purple-900/20 dark:text-purple-400">
                 ICMS MG: <strong>20% por dentro</strong> (vigente desde abril/2025)
               </div>
@@ -482,9 +565,12 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
           {/* Frete — LCL */}
           {modal === "sea_lcl" && (
             <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-              <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
-                <Ship className="h-5 w-5 text-blue-500" /> Frete & Custos Marítimo LCL
-              </h2>
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  <Ship className="h-5 w-5 text-blue-500" /> Frete & Custos Marítimo LCL
+                </h2>
+                <FreightToggle value={freightPrepaid} onChange={setFreightPrepaid} />
+              </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <NumInput label="Frete LCL (USD)" value={freightLCL} onChange={setFreightLCL} />
                 <NumInput label="THC Santos (BRL)" value={thcLCL} onChange={setThcLCL} />
@@ -516,9 +602,12 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
           {/* Frete — FCL */}
           {modal === "sea_fcl" && (
             <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-              <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
-                <Truck className="h-5 w-5 text-teal-500" /> Frete & Custos Marítimo FCL
-              </h2>
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  <Truck className="h-5 w-5 text-teal-500" /> Frete & Custos Marítimo FCL
+                </h2>
+                <FreightToggle value={freightPrepaid} onChange={setFreightPrepaid} />
+              </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {/* Container type + qty */}
                 <div>
@@ -571,6 +660,65 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
               </div>
             </div>
           )}
+
+          {/* Custos Nacionais Comuns */}
+          <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">
+              Custos Nacionais (BRL)
+            </h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <NumInput label="Armazenagem (BRL)" value={armazenagem} onChange={setArmazenagem} />
+              <NumInput label="Honorários (BRL)" value={honorarios} onChange={setHonorarios} />
+              <NumInput label="Frete Rodoviário (BRL)" value={freteRodoviario} onChange={setFreteRodoviario} />
+            </div>
+
+            {/* Despesas extras dinâmicas */}
+            <div className="mt-5">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Outras Despesas</p>
+                <button
+                  type="button"
+                  onClick={addExtraCost}
+                  className="flex items-center gap-1 rounded-lg border border-dashed border-indigo-400 px-2.5 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50 dark:border-indigo-600 dark:text-indigo-400 dark:hover:bg-indigo-900/20"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Adicionar despesa
+                </button>
+              </div>
+              {extraCosts.length === 0 && (
+                <p className="text-xs text-gray-400 dark:text-gray-500">Nenhuma despesa extra adicionada.</p>
+              )}
+              <div className="space-y-2">
+                {extraCosts.map((ec) => (
+                  <div key={ec.id} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="Nome da despesa"
+                      value={ec.label}
+                      onChange={(e) => updateExtraCost(ec.id, "label", e.target.value)}
+                      className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                    />
+                    <input
+                      type="number"
+                      placeholder="0,00"
+                      min="0"
+                      step="0.01"
+                      value={ec.value || ""}
+                      onChange={(e) => updateExtraCost(ec.id, "value", parseFloat(e.target.value) || 0)}
+                      className="w-32 rounded-lg border border-gray-300 px-3 py-2 text-right text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeExtraCost(ec.id)}
+                      className="flex-shrink-0 rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
 
           {/* Alíquotas */}
           <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
@@ -643,6 +791,18 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
 
           {/* CIF */}
           <div className="mb-4 rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                CIF
+              </span>
+              <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                freightPrepaid === "prepaid"
+                  ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300"
+                  : "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300"
+              }`}>
+                Frete {freightPrepaid === "prepaid" ? "Prepaid" : "Collect"}
+              </span>
+            </div>
             <div className="flex items-center justify-between text-sm">
               <span className="font-medium text-blue-700 dark:text-blue-400">
                 {i18n.calculator.cifValue} (USD)
