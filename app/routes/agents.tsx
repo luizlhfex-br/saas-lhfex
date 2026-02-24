@@ -50,6 +50,16 @@ const agents = [
     bg: "bg-purple-50 dark:bg-purple-900/20",
     border: "border-purple-200 dark:border-purple-800",
   },
+  {
+    id: "openclaw",
+    name: "OpenClaw",
+    emoji: "🦞",
+    role: "Assistente Vida Pessoal",
+    description: "Responsável por toda a aba Vida Pessoal — promoções, sorteios, rotinas, finanças pessoais, radio monitor e objetivos pessoais.",
+    color: "from-rose-500 to-pink-500",
+    bg: "bg-rose-50 dark:bg-rose-900/20",
+    border: "border-rose-200 dark:border-rose-800",
+  },
 ];
 
 interface MessageData {
