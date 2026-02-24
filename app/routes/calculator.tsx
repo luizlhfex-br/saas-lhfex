@@ -13,6 +13,8 @@ import {
   Truck,
   Plus,
   X,
+  RefreshCw,
+  BadgeInfo,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 
@@ -176,6 +178,33 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
   const [modal, setModal] = useState<ModalType>("sea_fcl");
   const currentModal = modals.find((m) => m.id === modal)!;
 
+  // PTAX — dólar comercial BCB
+  const [ptaxRate, setPtaxRate] = useState<number | null>(null);
+  const [ptaxLoading, setPtaxLoading] = useState(false);
+  const [ptaxSource, setPtaxSource] = useState<string>("");
+  const [ptaxTimestamp, setPtaxTimestamp] = useState<number | null>(null);
+
+  const fetchPtax = useCallback(async () => {
+    setPtaxLoading(true);
+    try {
+      const res = await fetch("/api/exchange-rate");
+      if (res.ok) {
+        const data = await res.json();
+        const rate = data.ptax ?? data.rate ?? data.bid;
+        if (rate) {
+          setExchangeRate(rate);
+          setPtaxRate(data.ptax ?? null);
+          setPtaxSource(data.source ?? "");
+          setPtaxTimestamp(data.timestamp ?? Date.now());
+        }
+      }
+    } catch {
+      // Silencioso
+    } finally {
+      setPtaxLoading(false);
+    }
+  }, []);
+
   // Common values
   const [fob, setFob] = useState(0);
   const [insurance, setInsurance] = useState(0);
@@ -331,6 +360,9 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
     setFob(0);
     setInsurance(0);
     setExchangeRate(5.75);
+    setPtaxRate(null);
+    setPtaxSource("");
+    setPtaxTimestamp(null);
     setIiRate(14);
     setIpiRate(0);
     setPisRate(2.10);
@@ -504,12 +536,54 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
                 onChange={setInsurance}
                 step="0.01"
               />
-              <NumInput
-                label={i18n.calculator.exchangeRate}
-                value={exchangeRate}
-                onChange={setExchangeRate}
-                step="0.01"
-              />
+              {/* Taxa de Câmbio com botão PTAX */}
+              <div className="sm:col-span-2">
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {i18n.calculator.exchangeRate}
+                    <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                      PTAX BCB
+                    </span>
+                  </label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={fetchPtax}
+                    disabled={ptaxLoading}
+                    className="h-7 gap-1.5 text-xs"
+                  >
+                    {ptaxLoading ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-3 w-3" />
+                    )}
+                    {ptaxLoading ? "Buscando..." : "Buscar PTAX"}
+                  </Button>
+                </div>
+                <input
+                  type="number"
+                  step="0.0001"
+                  value={exchangeRate}
+                  onChange={(e) => setExchangeRate(parseFloat(e.target.value) || 0)}
+                  className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                />
+                {ptaxRate && ptaxTimestamp ? (
+                  <p className="mt-1.5 flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                    <BadgeInfo className="h-3 w-3" />
+                    PTAX Banco Central: R$ {ptaxRate.toFixed(4)} — usado em cálculos aduaneiros
+                    {ptaxSource === "bcb_ptax" && (
+                      <span className="ml-1 rounded bg-green-100 px-1 py-0.5 text-[10px] font-semibold dark:bg-green-900/30">
+                        BCB oficial
+                      </span>
+                    )}
+                  </p>
+                ) : (
+                  <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
+                    Clique em "Buscar PTAX" para obter a taxa oficial do Banco Central (dólar comercial)
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 
