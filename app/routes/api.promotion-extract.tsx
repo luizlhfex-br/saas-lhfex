@@ -38,12 +38,13 @@ export async function action({ request }: Route.ActionArgs) {
     let text = "";
 
     if (file.type === "application/pdf") {
-      const pdfParse = (await import("pdf-parse")) as unknown as (
+      const pdfParseModule = await import("pdf-parse");
+      const pdfParse = (pdfParseModule.default ?? pdfParseModule) as unknown as (
         buffer: Buffer
       ) => Promise<{ text: string }>;
       const buffer = Buffer.from(await file.arrayBuffer());
       const pdfData = await pdfParse(buffer);
-      text = pdfData.text;
+      text = pdfData.text; // atribui ao let externo (bug fix: era const redeclarando)
     } else {
       // Texto plano ou HTML
       text = await file.text();
