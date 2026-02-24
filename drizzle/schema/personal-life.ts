@@ -271,3 +271,22 @@ export const personalWishlist = pgTable(
     statusIdx: index("personal_wishlist_status_idx").on(table.status),
   })
 );
+
+// ── Sites de Promoções ──
+export const promotionSites = pgTable(
+  "promotion_sites",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    name: varchar("name", { length: 255 }).notNull(), // Nome do site, ex: "Pelando"
+    url: text("url").notNull(),                        // URL, ex: "https://www.pelando.com.br"
+    description: text("description"),                  // O que postam, categorias, etc.
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index("promotion_sites_user_id_idx").on(table.userId),
+    activeIdx: index("promotion_sites_active_idx").on(table.isActive),
+  })
+);

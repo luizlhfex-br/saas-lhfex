@@ -11,7 +11,7 @@ import { useState, useRef } from "react";
 import { requireAuth } from "~/lib/auth.server";
 import { requireRole, ROLES } from "~/lib/rbac.server";
 import { db } from "~/lib/db.server";
-import { promotions, pessoas } from "../../drizzle/schema/personal-life";
+import { promotions, pessoas, promotionSites } from "../../drizzle/schema/personal-life";
 import { and, asc, desc, eq, isNull, ilike, or } from "drizzle-orm";
 import { data } from "react-router";
 import {
@@ -41,6 +41,9 @@ import {
   User,
   MessageSquare,
   CheckCircle2,
+  Globe,
+  ToggleLeft,
+  ToggleRight,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 
@@ -48,6 +51,7 @@ import { Button } from "~/components/ui/button";
 
 type Promotion = typeof promotions.$inferSelect;
 type Pessoa = typeof pessoas.$inferSelect;
+type PromoSite = typeof promotionSites.$inferSelect;
 type SenhaEntry = { label: string; login: string; password: string };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -164,6 +168,13 @@ export async function loader({ request }: { request: Request }) {
 
   const pessoasList = await pessoasQuery;
 
+  // Sites de Promoções
+  const sitesList = await db
+    .select()
+    .from(promotionSites)
+    .where(eq(promotionSites.userId, user.id))
+    .orderBy(asc(promotionSites.name));
+
   return {
     promotions: filtered as Promotion[],
     kpis: {
@@ -175,6 +186,7 @@ export async function loader({ request }: { request: Request }) {
     statusFilter,
     pessoasList: pessoasList as Pessoa[],
     pessoaSearch,
+    sitesList: sitesList as PromoSite[],
   };
 }
 
@@ -316,6 +328,34 @@ export async function action({ request }: { request: Request }) {
       .set({ deletedAt: new Date() })
       .where(and(eq(pessoas.id, id), eq(pessoas.userId, user.id)));
 
+    return data({ success: true });
+  }
+
+  // ── Sites de Promoções ──
+  if (intent === "create_site") {
+    const name = (formData.get("name") as string | null)?.trim();
+    const url = (formData.get("url") as string | null)?.trim();
+    const description = (formData.get("description") as string | null)?.trim() || null;
+    if (!name || !url) return data({ error: "Nome e URL são obrigatórios" }, { status: 400 });
+    await db.insert(promotionSites).values({ userId: user.id, name, url, description });
+    return data({ success: true });
+  }
+
+  if (intent === "toggle_site") {
+    const id = formData.get("id") as string;
+    const currentActive = formData.get("isActive") === "true";
+    await db
+      .update(promotionSites)
+      .set({ isActive: !currentActive, updatedAt: new Date() })
+      .where(and(eq(promotionSites.id, id), eq(promotionSites.userId, user.id)));
+    return data({ success: true });
+  }
+
+  if (intent === "delete_site") {
+    const id = formData.get("id") as string;
+    await db
+      .delete(promotionSites)
+      .where(and(eq(promotionSites.id, id), eq(promotionSites.userId, user.id)));
     return data({ success: true });
   }
 
@@ -756,12 +796,15 @@ export default function PromotionsPage({
 }: {
   loaderData: Awaited<ReturnType<typeof loader>>;
 }) {
-  const { promotions: promo, kpis, statusFilter, pessoasList, pessoaSearch } = loaderData;
+  const { promotions: promo, kpis, statusFilter, pessoasList, pessoaSearch, sitesList } = loaderData;
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
 
   // Tabs
-  const [activeTab, setActiveTab] = useState<"promocoes" | "pessoas">("promocoes");
+  const [activeTab, setActiveTab] = useState<"promocoes" | "pessoas" | "sites">("promocoes");
+
+  // Sites state
+  const [showSiteForm, setShowSiteForm] = useState(false);
 
   // Promoções state
   const [showForm, setShowForm] = useState(false);
@@ -891,6 +934,23 @@ export default function PromotionsPage({
           {pessoasList.length > 0 && (
             <span className="rounded-full bg-gray-200 px-1.5 py-0.5 text-xs font-semibold text-gray-600 dark:bg-gray-700 dark:text-gray-300">
               {pessoasList.length}
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("sites")}
+          className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === "sites"
+              ? "bg-white text-indigo-700 shadow-sm dark:bg-gray-800 dark:text-indigo-400"
+              : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          }`}
+        >
+          <Globe className="h-4 w-4" />
+          Sites
+          {sitesList.length > 0 && (
+            <span className="rounded-full bg-gray-200 px-1.5 py-0.5 text-xs font-semibold text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+              {sitesList.length}
             </span>
           )}
         </button>
@@ -1248,6 +1308,150 @@ export default function PromotionsPage({
                   </div>
                 );
               })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── ABA SITES ── */}
+      {activeTab === "sites" && (
+        <div className="space-y-4">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Sites que postam promoções diariamente. Abra direto com um clique.
+            </p>
+            <Button size="sm" onClick={() => setShowSiteForm((v) => !v)}>
+              <Plus className="mr-1 h-4 w-4" />
+              {showSiteForm ? "Fechar" : "Novo Site"}
+            </Button>
+          </div>
+
+          {/* Form de adição */}
+          {showSiteForm && (
+            <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 dark:border-indigo-900 dark:bg-indigo-900/10">
+              <Form method="post" className="space-y-3" onSubmit={() => setShowSiteForm(false)}>
+                <input type="hidden" name="_intent" value="create_site" />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <input
+                    type="text"
+                    name="name"
+                    placeholder="Nome do site *"
+                    required
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                  />
+                  <input
+                    type="url"
+                    name="url"
+                    placeholder="https://www.pelando.com.br *"
+                    required
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                  />
+                </div>
+                <input
+                  type="text"
+                  name="description"
+                  placeholder="Descrição (ex: Ofertas relâmpago de eletrônicos, cupons, etc.)"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                />
+                <div className="flex gap-2">
+                  <Button type="submit" size="sm" disabled={isSubmitting}>Salvar</Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setShowSiteForm(false)}>Cancelar</Button>
+                </div>
+              </Form>
+            </div>
+          )}
+
+          {/* Lista de sites */}
+          {sitesList.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-gray-300 py-12 text-center dark:border-gray-700">
+              <Globe className="mx-auto mb-3 h-10 w-10 text-gray-300 dark:text-gray-600" />
+              <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum site cadastrado ainda.</p>
+              <Button className="mt-4" size="sm" onClick={() => setShowSiteForm(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Adicionar site
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {(sitesList as PromoSite[]).map((site) => (
+                <div
+                  key={site.id}
+                  className={`flex items-center gap-3 rounded-xl border bg-white px-4 py-3 dark:bg-gray-900 ${
+                    site.isActive
+                      ? "border-gray-200 dark:border-gray-700"
+                      : "border-gray-100 opacity-50 dark:border-gray-800"
+                  }`}
+                >
+                  {/* Ícone */}
+                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                    site.isActive
+                      ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400"
+                      : "bg-gray-100 text-gray-400 dark:bg-gray-800"
+                  }`}>
+                    <Globe className="h-4 w-4" />
+                  </div>
+
+                  {/* Conteúdo */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        {site.name}
+                      </span>
+                      {!site.isActive && (
+                        <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500 dark:bg-gray-800">inativo</span>
+                      )}
+                    </div>
+                    {site.description && (
+                      <p className="mt-0.5 truncate text-xs text-gray-500 dark:text-gray-400">{site.description}</p>
+                    )}
+                  </div>
+
+                  {/* Ações */}
+                  <div className="flex shrink-0 items-center gap-1">
+                    {/* Abrir site */}
+                    <a
+                      href={site.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Abrir site"
+                      className="rounded-lg p-1.5 text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-900/20"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+
+                    {/* Toggle ativo */}
+                    <Form method="post">
+                      <input type="hidden" name="_intent" value="toggle_site" />
+                      <input type="hidden" name="id" value={site.id} />
+                      <input type="hidden" name="isActive" value={String(site.isActive)} />
+                      <button
+                        type="submit"
+                        title={site.isActive ? "Desativar" : "Ativar"}
+                        className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                      >
+                        {site.isActive
+                          ? <ToggleRight className="h-4 w-4 text-green-500" />
+                          : <ToggleLeft className="h-4 w-4" />
+                        }
+                      </button>
+                    </Form>
+
+                    {/* Deletar */}
+                    <Form method="post" onSubmit={(e) => { if (!confirm(`Excluir "${site.name}"?`)) e.preventDefault(); }}>
+                      <input type="hidden" name="_intent" value="delete_site" />
+                      <input type="hidden" name="id" value={site.id} />
+                      <button
+                        type="submit"
+                        title="Excluir"
+                        className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </Form>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
