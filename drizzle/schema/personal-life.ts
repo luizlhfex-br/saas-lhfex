@@ -129,6 +129,8 @@ export const promotions = pgTable(
     link: varchar("link", { length: 500 }), // Link para promoção
     proofOfParticipation: text("proof_of_participation"), // JSON or markdown with evidence
     notes: text("notes"),
+    externalId: varchar("external_id", { length: 100 }), // ID externo (ex: numeroCA do SCPC)
+    source: varchar("source", { length: 50 }).default("manual"), // "manual" | "scpc"
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
     deletedAt: timestamp("deleted_at"),

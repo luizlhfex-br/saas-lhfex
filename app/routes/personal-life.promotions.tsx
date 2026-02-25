@@ -46,6 +46,7 @@ import {
   ToggleRight,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
+import type { ScpcPromoMapeada } from "./api.scpc-search";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -357,6 +358,57 @@ export async function action({ request }: { request: Request }) {
       .delete(promotionSites)
       .where(and(eq(promotionSites.id, id), eq(promotionSites.userId, user.id)));
     return data({ success: true });
+  }
+
+  // ── Importar do SCPC ──
+  if (intent === "import_scpc") {
+    const externalId = (formData.get("externalId") as string) || null;
+    const name = formData.get("name") as string;
+    const company = formData.get("company") as string;
+    const type = (formData.get("type") as string) || "raffle";
+    const startDate = formData.get("startDate") as string;
+    const endDate = formData.get("endDate") as string;
+    const prize = (formData.get("prize") as string) || null;
+    const notes = (formData.get("notes") as string) || null;
+
+    if (!name || !company || !startDate || !endDate) {
+      return data({ error: "Dados incompletos" }, { status: 400 });
+    }
+
+    // Verifica duplicata por externalId
+    if (externalId) {
+      const existing = await db
+        .select({ id: promotions.id })
+        .from(promotions)
+        .where(
+          and(
+            eq(promotions.userId, user.id),
+            isNull(promotions.deletedAt),
+            eq(promotions.externalId, externalId)
+          )
+        )
+        .limit(1);
+
+      if (existing.length > 0) {
+        return data({ error: "Já importada", alreadyImported: true });
+      }
+    }
+
+    await db.insert(promotions).values({
+      userId: user.id,
+      name,
+      company,
+      type,
+      startDate,
+      endDate,
+      prize: prize || null,
+      notes: notes || null,
+      participationStatus: "pending",
+      externalId: externalId || null,
+      source: "scpc",
+    });
+
+    return data({ success: true, imported: true });
   }
 
   return data({ error: "Ação inválida" }, { status: 400 });
@@ -817,6 +869,16 @@ export default function PromotionsPage({
   // Pessoas state
   const [showPessoaForm, setShowPessoaForm] = useState(false);
 
+  // SCPC state
+  const scpcFetcher = useFetcher<{ results?: ScpcPromoMapeada[]; total?: number; showing?: number; error?: string }>();
+  const importFetcher = useFetcher<{ success?: boolean; error?: string; alreadyImported?: boolean }>();
+  const [showScpc, setShowScpc] = useState(false);
+  const [scpcAno, setScpcAno] = useState(String(new Date().getFullYear()));
+  const [scpcUf, setScpcUf] = useState("");
+  const [scpcModalidade, setScpcModalidade] = useState("");
+  const [scpcNome, setScpcNome] = useState("");
+  const [importedIds, setImportedIds] = useState<Set<string>>(new Set());
+
   // Refs para auto-fill via IA
   const fileInputRef = useRef<HTMLInputElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
@@ -889,6 +951,14 @@ export default function PromotionsPage({
     }
   }
 
+  function handleScpcSearch() {
+    const params = new URLSearchParams({ ano: scpcAno });
+    if (scpcUf) params.set("uf", scpcUf);
+    if (scpcModalidade) params.set("modalidade", scpcModalidade);
+    if (scpcNome) params.set("nome", scpcNome);
+    scpcFetcher.load(`/api/scpc-search?${params.toString()}`);
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -959,13 +1029,173 @@ export default function PromotionsPage({
       {/* ── ABA PROMOÇÕES ── */}
       {activeTab === "promocoes" && (
         <div className="space-y-6">
-          {/* Botão nova promoção */}
-          <div className="flex justify-end">
-            <Button onClick={() => setShowForm((v) => !v)}>
+          {/* Botões */}
+          <div className="flex gap-2 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => { setShowScpc((v) => !v); setShowForm(false); }}
+            >
+              <Search className="mr-2 h-4 w-4" />
+              {showScpc ? "Fechar SCPC" : "🏛️ Buscar no SCPC"}
+            </Button>
+            <Button onClick={() => { setShowForm((v) => !v); setShowScpc(false); }}>
               <Plus className="mr-2 h-4 w-4" />
               {showForm ? "Fechar" : "Nova Promoção"}
             </Button>
           </div>
+
+          {/* Painel de busca SCPC */}
+          {showScpc && (
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 space-y-4 dark:border-blue-900/50 dark:bg-blue-900/10">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-blue-800 dark:text-blue-200">
+                  🏛️ Promoções Autorizadas pelo Governo (SCPC/SERPRO)
+                </span>
+              </div>
+
+              {/* Filtros */}
+              <div className="grid gap-3 sm:grid-cols-4">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Ano</label>
+                  <select
+                    value={scpcAno}
+                    onChange={(e) => setScpcAno(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                  >
+                    {[2026, 2025, 2024].map((y) => (
+                      <option key={y} value={String(y)}>{y}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Estado (UF)</label>
+                  <select
+                    value={scpcUf}
+                    onChange={(e) => setScpcUf(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                  >
+                    <option value="">Todos</option>
+                    {["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"].map((uf) => (
+                      <option key={uf} value={uf}>{uf}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Modalidade</label>
+                  <select
+                    value={scpcModalidade}
+                    onChange={(e) => setScpcModalidade(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                  >
+                    <option value="">Todas</option>
+                    <option value="Sorteio">Sorteio</option>
+                    <option value="Concurso">Concurso</option>
+                    <option value="Vale-Brinde">Vale-Brinde</option>
+                    <option value="Assemelhado">Assemelhado</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Nome</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={scpcNome}
+                      onChange={(e) => setScpcNome(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleScpcSearch()}
+                      placeholder="Nome da promoção..."
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                    />
+                    <Button type="button" size="sm" onClick={handleScpcSearch} disabled={scpcFetcher.state === "loading"}>
+                      {scpcFetcher.state === "loading"
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : <Search className="h-4 w-4" />
+                      }
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Erro */}
+              {scpcFetcher.data?.error && (
+                <p className="text-sm text-red-500 dark:text-red-400">{scpcFetcher.data.error}</p>
+              )}
+
+              {/* Resultados */}
+              {scpcFetcher.data?.results && (
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Exibindo {scpcFetcher.data.showing} de {scpcFetcher.data.total} promoções
+                  </p>
+                  {scpcFetcher.data.results.length === 0 ? (
+                    <p className="py-4 text-center text-sm text-gray-500">Nenhuma promoção encontrada com esses filtros.</p>
+                  ) : (
+                    <div className="max-h-96 space-y-2 overflow-y-auto pr-1">
+                      {scpcFetcher.data.results.map((item) => {
+                        const alreadyIn = item.alreadyImported || importedIds.has(item.externalId);
+                        return (
+                          <div key={item.externalId} className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{item.name}</p>
+                                <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                                  {item.company} · {formatDate(item.startDate)} → {formatDate(item.endDate)}
+                                </p>
+                                {item.prize && (
+                                  <p className="mt-0.5 text-xs text-indigo-700 dark:text-indigo-400">🏆 {item.prize}</p>
+                                )}
+                                <div className="mt-1 flex flex-wrap gap-1">
+                                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                                    {TYPE_LABELS[item.type] ?? item.type}
+                                  </span>
+                                  <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
+                                    {item.situacao}
+                                  </span>
+                                  {item.abrangencia && (
+                                    <span className="rounded-full bg-gray-50 px-2 py-0.5 text-[10px] text-gray-500 dark:bg-gray-800 dark:text-gray-500">
+                                      {item.abrangencia}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              {alreadyIn ? (
+                                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-green-100 px-2 py-1 text-xs text-green-700 dark:bg-green-900/20 dark:text-green-400">
+                                  <Check className="h-3 w-3" />
+                                  Já cadastrada
+                                </span>
+                              ) : (
+                                <importFetcher.Form
+                                  method="post"
+                                  action="/personal-life/promotions"
+                                >
+                                  <input type="hidden" name="_intent" value="import_scpc" />
+                                  <input type="hidden" name="externalId" value={item.externalId} />
+                                  <input type="hidden" name="name" value={item.name} />
+                                  <input type="hidden" name="company" value={item.company} />
+                                  <input type="hidden" name="type" value={item.type} />
+                                  <input type="hidden" name="startDate" value={item.startDate} />
+                                  <input type="hidden" name="endDate" value={item.endDate} />
+                                  <input type="hidden" name="prize" value={item.prize} />
+                                  <input type="hidden" name="notes" value={`Situação: ${item.situacao}${item.abrangencia ? ` · Abrangência: ${item.abrangencia}` : ""}`} />
+                                  <button
+                                    type="submit"
+                                    onClick={() => setImportedIds((prev) => new Set([...prev, item.externalId]))}
+                                    className="inline-flex shrink-0 items-center gap-1 rounded-full bg-indigo-600 px-3 py-1 text-xs text-white transition-colors hover:bg-indigo-700"
+                                  >
+                                    <Plus className="h-3 w-3" />
+                                    Importar
+                                  </button>
+                                </importFetcher.Form>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* KPI Cards */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

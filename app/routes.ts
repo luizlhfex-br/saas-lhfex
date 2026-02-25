@@ -105,6 +105,7 @@ export default [
   route("api/radio-monitor-config", "routes/api.radio-monitor-config.tsx"),
   route("api/radio-monitor-event", "routes/api.radio-monitor-event.tsx"),
   route("api/radio-monitor-song", "routes/api.radio-monitor-song.tsx"),
+  route("api/scpc-search", "routes/api.scpc-search.tsx"),
 
   // Catch-all 404
   route("*", "routes/$.tsx"),
