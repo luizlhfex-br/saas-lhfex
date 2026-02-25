@@ -680,6 +680,105 @@ Return ONLY valid JSON. If a field is not found, use null. All dates MUST be in 
   return {};
 }
 
+// --- Specialized: OpenClaw Telegram — Data Parsers ---
+
+/**
+ * Parses pessoa (personal contact) data from a natural language Telegram message.
+ * Returns structured fields for inserting into the `pessoas` table.
+ */
+export async function parsePessoaFromTelegram(text: string): Promise<Record<string, string | null>> {
+  const prompt = `Você é um parser de dados pessoais. Extraia os campos da mensagem e retorne JSON:
+- nomeCompleto (string) — nome completo, OBRIGATÓRIO
+- cpf (string | null) — CPF no formato "000.000.000-00" (normalize se precisar)
+- rg (string | null) — RG
+- nascimento (string | null) — data de nascimento no formato YYYY-MM-DD
+- celular (string | null) — telefone/celular com DDD
+- email (string | null) — endereço de e-mail
+- instagram (string | null) — handle do Instagram SEM o @
+- endereco (string | null) — endereço completo
+- notas (string | null) — observações ou informações extras
+
+Retorne APENAS JSON válido, sem texto adicional. Campos não encontrados devem ser null.`;
+
+  const result = await askAgent("iana", `${prompt}\n\n---\n${text}`, "system", {
+    feature: "openclaw",
+    forceProvider: "deepseek",
+  });
+
+  try {
+    const match = result.content.match(/\{[\s\S]*\}/);
+    if (match) return JSON.parse(match[0]);
+  } catch {
+    console.error("[OpenClaw Telegram] parsePessoaFromTelegram: failed to parse JSON");
+  }
+  return {};
+}
+
+/**
+ * Parses client (LHFEX CRM) data from a natural language Telegram message.
+ * Returns structured fields for inserting into `clients` + `contacts` tables.
+ */
+export async function parseClienteFromTelegram(text: string): Promise<Record<string, unknown>> {
+  const prompt = `Você é um parser de dados empresariais brasileiros. Extraia e retorne JSON:
+- cnpj (string | null) — CNPJ no formato "00.000.000/0000-00" (normalize se precisar)
+- razaoSocial (string) — razão social, OBRIGATÓRIO
+- nomeFantasia (string | null) — nome fantasia
+- clientType (string | null) — tipo: "importer", "exporter" ou "both" (padrão: "importer")
+- city (string | null) — cidade
+- state (string | null) — UF com 2 letras
+- notes (string | null) — observações
+- contact (object | null) — dados do contato principal:
+  { name (string), role (string | null), email (string | null), phone (string | null) }
+
+Retorne APENAS JSON válido, sem texto adicional.`;
+
+  const result = await askAgent("iana", `${prompt}\n\n---\n${text}`, "system", {
+    feature: "openclaw",
+    forceProvider: "deepseek",
+  });
+
+  try {
+    const match = result.content.match(/\{[\s\S]*\}/);
+    if (match) return JSON.parse(match[0]);
+  } catch {
+    console.error("[OpenClaw Telegram] parseClienteFromTelegram: failed to parse JSON");
+  }
+  return {};
+}
+
+/**
+ * Parses process (LHFEX comex) data from a natural language Telegram message.
+ * Returns structured fields for inserting into `processes` table.
+ */
+export async function parseProcessoFromTelegram(text: string): Promise<Record<string, unknown>> {
+  const prompt = `Você é um parser de processos de comércio exterior brasileiro. Extraia e retorne JSON:
+- processType (string) — tipo: "import", "export" ou "services", OBRIGATÓRIO
+- clientSearch (string) — nome ou CNPJ do cliente para busca, OBRIGATÓRIO
+- description (string | null) — descrição do produto ou serviço
+- originCountry (string | null) — país de origem (para importação)
+- destinationCountry (string | null) — país de destino (para exportação; padrão: "Brasil")
+- incoterm (string | null) — ex: FOB, CIF, EXW, DAP
+- totalValue (string | null) — valor total (apenas números e ponto decimal, ex: "50000.00")
+- currency (string | null) — moeda: "USD", "EUR", "BRL" (padrão: "USD")
+- hsCode (string | null) — código NCM/HS
+- notes (string | null) — observações
+
+Retorne APENAS JSON válido, sem texto adicional.`;
+
+  const result = await askAgent("iana", `${prompt}\n\n---\n${text}`, "system", {
+    feature: "openclaw",
+    forceProvider: "deepseek",
+  });
+
+  try {
+    const match = result.content.match(/\{[\s\S]*\}/);
+    if (match) return JSON.parse(match[0]);
+  } catch {
+    console.error("[OpenClaw Telegram] parseProcessoFromTelegram: failed to parse JSON");
+  }
+  return {};
+}
+
 // --- Specialized: Radio Monitor — Groq Whisper Transcription ---
 
 /**

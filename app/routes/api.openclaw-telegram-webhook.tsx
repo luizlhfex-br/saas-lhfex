@@ -16,6 +16,11 @@
 import { data } from "react-router";
 import type { Route } from "./+types/api.openclaw-telegram-webhook";
 import { askAgent } from "~/lib/ai.server";
+import {
+  handleCadastrarPessoa,
+  handleNovoCliente,
+  handleAbrirProcesso,
+} from "~/lib/openclaw-telegram-actions.server";
 
 interface TelegramUpdate {
   update_id: number;
@@ -72,11 +77,14 @@ export async function action({ request }: Route.ActionArgs) {
       `❤️ *Hábitos & Rotinas* — rastreamento, sugestões\n` +
       `🎯 *Objetivos* — planejamento, progresso, cronograma\n` +
       `🎁 *Promoções* — rastreamento, oportunidades, ROI\n\n` +
+      `*Comandos de cadastro:*\n` +
+      `/pessoa — Cadastrar contato pessoal\n` +
+      `/cliente — Cadastrar cliente LHFEX\n` +
+      `/processo — Abrir processo de importação/exportação\n\n` +
       `*Exemplos de perguntas:*\n` +
       `"Como estão meus gastos este mês?"\n` +
       `"Qual foi o ROI das promoções do ano?"\n` +
-      `"Como posso melhorar meus hábitos?"\n` +
-      `"Quantos estou economizando por mês?"\n\n` +
+      `"Como posso melhorar meus hábitos?"\n\n` +
       `Basta digitar sua pergunta!`,
       "Markdown"
     );
@@ -87,24 +95,59 @@ export async function action({ request }: Route.ActionArgs) {
   if (text === "/help") {
     await sendTelegram(botToken, chatId,
       `🌙 *OpenClaw — Ajuda*\n\n` +
-      `Comandos:\n` +
+      `*Comandos de cadastro:*\n` +
+      `/pessoa Nome, CPF, celular, email — Cadastrar contato\n` +
+      `/cliente CNPJ, Razão Social, contato — Cadastrar cliente LHFEX\n` +
+      `/processo tipo, cliente, produto — Abrir processo comex\n\n` +
+      `*Exemplos:*\n` +
+      `\`/pessoa João Silva, 31999990000, joao@gmail.com\`\n` +
+      `\`/cliente 12.345.678/0001-90, Empresa ABC, contato: Maria\`\n` +
+      `\`/processo importação, cliente: Empresa ABC, têxteis, USD 50.000\`\n\n` +
+      `*Análise de vida pessoal:*\n` +
       `/start — Mensagem de boas-vindas\n` +
       `/help — Esta mensagem\n\n` +
-      `*Funcionalidades:*\n` +
-      `✓ Análise de finanças pessoais\n` +
-      `✓ Consolidação de investimentos\n` +
-      `✓ Sugestões de hábitos\n` +
-      `✓ Planejamento de objetivos\n` +
-      `✓ Rastreamento de promoções\n\n` +
+      `*Funcionalidades de análise:*\n` +
+      `✓ Finanças pessoais e investimentos\n` +
+      `✓ Hábitos, rotinas e objetivos\n` +
+      `✓ Promoções e sorteios\n` +
+      `✓ Pessoas e contatos\n\n` +
       `*Dicas:*\n` +
       `— Seja específico em suas perguntas\n` +
       `— Mencione períodos (este mês, ano, trimestre)\n` +
-      `— Pergunte sobre padrões e tendências\n` +
-      `— Peça recomendações acionáveis`,
+      `— Pergunte sobre padrões e tendências`,
       "Markdown"
     );
     return data({ ok: true });
   }
+
+  // ── Comandos de cadastro direto ─────────────────────────────────────────
+  if (
+    text.startsWith("/pessoa") ||
+    /cadastrar\s+pessoa/i.test(text) ||
+    /nova\s+pessoa/i.test(text)
+  ) {
+    await handleCadastrarPessoa(text, chatId, botToken);
+    return data({ ok: true });
+  }
+
+  if (
+    text.startsWith("/cliente") ||
+    /novo\s+cliente/i.test(text) ||
+    /cadastrar\s+cliente/i.test(text)
+  ) {
+    await handleNovoCliente(text, chatId, botToken);
+    return data({ ok: true });
+  }
+
+  if (
+    text.startsWith("/processo") ||
+    /abrir\s+processo/i.test(text) ||
+    /novo\s+processo/i.test(text)
+  ) {
+    await handleAbrirProcesso(text, chatId, botToken);
+    return data({ ok: true });
+  }
+  // ── Fim comandos de cadastro ─────────────────────────────────────────────
 
   // Regular message — send to OpenClaw agent
   try {
