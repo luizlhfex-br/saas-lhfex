@@ -2,19 +2,24 @@ import { useSearchParams } from "react-router";
 import type { Route } from "./+types/audit";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
-import { auditLogs, users } from "../../drizzle/schema";
-import { eq, desc, sql, and } from "drizzle-orm";
+import { auditLogs, users, clients, processes } from "../../drizzle/schema";
+import { eq, desc, sql, and, gte } from "drizzle-orm";
 import { t, type Locale } from "~/i18n";
-import { Shield, Filter } from "lucide-react";
+import { Shield, Filter, RotateCcw } from "lucide-react";
 import { Pagination } from "~/components/ui/pagination";
+import { useFetcher } from "react-router";
+import { data } from "react-router";
+import { logAudit } from "~/lib/audit.server";
 
 const ITEMS_PER_PAGE = 20;
+const RECOVER_WINDOW_DAYS = 30;
 
 const ACTION_OPTIONS = [
   "all",
   "create",
   "update",
   "delete",
+  "recover",
   "upload",
   "download",
   "login",
@@ -44,7 +49,6 @@ export async function loader({ request }: Route.LoaderArgs) {
   const actionFilter = url.searchParams.get("action") || "";
   const entityFilter = url.searchParams.get("entity") || "";
 
-  // Build where conditions
   const conditions = [];
 
   if (actionFilter && actionFilter !== "all") {
@@ -57,7 +61,6 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-  // Count query
   const [{ count: totalCount }] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(auditLogs)
@@ -65,13 +68,13 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
-  // Fetch logs with user join
   const logs = await db
     .select({
       id: auditLogs.id,
       action: auditLogs.action,
       entity: auditLogs.entity,
       entityId: auditLogs.entityId,
+      changes: auditLogs.changes,
       ipAddress: auditLogs.ipAddress,
       createdAt: auditLogs.createdAt,
       userName: users.name,
@@ -83,24 +86,81 @@ export async function loader({ request }: Route.LoaderArgs) {
     .limit(ITEMS_PER_PAGE)
     .offset((page - 1) * ITEMS_PER_PAGE);
 
-  return { locale, logs, page, totalPages, totalCount, actionFilter, entityFilter };
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - RECOVER_WINDOW_DAYS);
+
+  return { locale, logs, page, totalPages, totalCount, actionFilter, entityFilter, recoverCutoff: cutoff.toISOString() };
+}
+
+export async function action({ request }: Route.ActionArgs) {
+  const { user } = await requireAuth(request);
+  const formData = await request.formData();
+  const intent = formData.get("intent") as string;
+
+  if (intent === "recover") {
+    const logId = formData.get("logId") as string;
+
+    // Fetch the audit log to get entity data
+    const [log] = await db
+      .select({ entity: auditLogs.entity, entityId: auditLogs.entityId, changes: auditLogs.changes, createdAt: auditLogs.createdAt })
+      .from(auditLogs)
+      .where(eq(auditLogs.id, logId))
+      .limit(1);
+
+    if (!log) return data({ error: "Log não encontrado" });
+
+    // Check 30-day window
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - RECOVER_WINDOW_DAYS);
+    if (new Date(log.createdAt) < cutoff) {
+      return data({ error: "Prazo de recuperação expirado (30 dias)" });
+    }
+
+    const before = (log.changes as Record<string, unknown> | null)?.before as Record<string, unknown> | undefined;
+
+    try {
+      if (log.entity === "client" && before?.id) {
+        await db
+          .update(clients)
+          .set({ deletedAt: null })
+          .where(eq(clients.id, before.id as string));
+      } else if (log.entity === "process" && before?.id) {
+        await db
+          .update(processes)
+          .set({ deletedAt: null })
+          .where(eq(processes.id, before.id as string));
+      } else {
+        return data({ error: `Recuperação automática não suportada para ${log.entity}` });
+      }
+
+      await logAudit({
+        userId: user.id,
+        action: "recover" as Parameters<typeof logAudit>[0]["action"],
+        entity: log.entity as Parameters<typeof logAudit>[0]["entity"],
+        entityId: log.entityId || undefined,
+        changes: { recoveredFromLogId: logId },
+        request,
+      });
+
+      return data({ success: true });
+    } catch (err) {
+      console.error("[AUDIT RECOVER]", err);
+      return data({ error: "Erro ao recuperar registro" });
+    }
+  }
+
+  return data({ error: "Unknown intent" });
 }
 
 const actionBadgeStyles: Record<string, string> = {
-  create:
-    "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400",
-  update:
-    "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400",
-  delete:
-    "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400",
-  upload:
-    "bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400",
-  download:
-    "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400",
-  login:
-    "bg-cyan-50 text-cyan-700 dark:bg-cyan-900/20 dark:text-cyan-400",
-  logout:
-    "bg-yellow-50 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400",
+  create: "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400",
+  update: "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400",
+  delete: "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400",
+  recover: "bg-teal-50 text-teal-700 dark:bg-teal-900/20 dark:text-teal-400",
+  upload: "bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400",
+  download: "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400",
+  login: "bg-cyan-50 text-cyan-700 dark:bg-cyan-900/20 dark:text-cyan-400",
+  logout: "bg-yellow-50 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400",
 };
 
 const entityLabels: Record<string, string> = {
@@ -117,6 +177,7 @@ const actionLabels: Record<string, string> = {
   create: "Criar",
   update: "Atualizar",
   delete: "Excluir",
+  recover: "Recuperar",
   upload: "Upload",
   download: "Download",
   login: "Login",
@@ -134,9 +195,37 @@ function formatDate(date: string | Date, locale: string) {
   });
 }
 
+function RecoverButton({ logId }: { logId: string }) {
+  const fetcher = useFetcher<{ success?: boolean; error?: string }>();
+  const isLoading = fetcher.state !== "idle";
+
+  if (fetcher.data?.success) {
+    return <span className="text-xs text-teal-600 dark:text-teal-400">Recuperado!</span>;
+  }
+
+  if (fetcher.data?.error) {
+    return <span className="text-xs text-red-500">{fetcher.data.error}</span>;
+  }
+
+  return (
+    <fetcher.Form method="post">
+      <input type="hidden" name="intent" value="recover" />
+      <input type="hidden" name="logId" value={logId} />
+      <button
+        type="submit"
+        disabled={isLoading}
+        title="Recuperar registro excluído"
+        className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-teal-600 transition-colors hover:bg-teal-50 disabled:opacity-50 dark:text-teal-400 dark:hover:bg-teal-900/20"
+      >
+        <RotateCcw className="h-3 w-3" />
+        {isLoading ? "..." : "Recuperar"}
+      </button>
+    </fetcher.Form>
+  );
+}
+
 export default function AuditPage({ loaderData }: Route.ComponentProps) {
-  const { locale, logs, page, totalCount, actionFilter, entityFilter } =
-    loaderData;
+  const { locale, logs, page, totalCount, actionFilter, entityFilter, recoverCutoff } = loaderData;
   const i18n = t(locale);
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -226,12 +315,8 @@ export default function AuditPage({ loaderData }: Route.ComponentProps) {
           <span className="ml-auto text-sm text-gray-500 dark:text-gray-400">
             {totalCount}{" "}
             {totalCount === 1
-              ? locale === "en"
-                ? "record"
-                : "registro"
-              : locale === "en"
-                ? "records"
-                : "registros"}
+              ? locale === "en" ? "record" : "registro"
+              : locale === "en" ? "records" : "registros"}
           </span>
         </div>
       </div>
@@ -245,18 +330,11 @@ export default function AuditPage({ loaderData }: Route.ComponentProps) {
           </p>
           <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">
             {hasFilters
-              ? locale === "en"
-                ? "No logs found with these filters."
-                : "Nenhum log encontrado com esses filtros."
-              : locale === "en"
-                ? "No audit logs recorded yet."
-                : "Nenhum log de auditoria registrado ainda."}
+              ? locale === "en" ? "No logs found with these filters." : "Nenhum log encontrado com esses filtros."
+              : locale === "en" ? "No audit logs recorded yet." : "Nenhum log de auditoria registrado ainda."}
           </p>
           {hasFilters && (
-            <button
-              onClick={clearFilters}
-              className="text-sm text-blue-600 hover:underline dark:text-blue-400"
-            >
+            <button onClick={clearFilters} className="text-sm text-blue-600 hover:underline dark:text-blue-400">
               {locale === "en" ? "Clear filters" : "Limpar filtros"}
             </button>
           )}
@@ -285,53 +363,56 @@ export default function AuditPage({ loaderData }: Route.ComponentProps) {
                   <th className="hidden px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 lg:table-cell">
                     IP
                   </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    {locale === "en" ? "Actions" : "Ações"}
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {logs.map((log) => (
-                  <tr
-                    key={log.id}
-                    className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                  >
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                      {formatDate(log.createdAt, locale)}
-                    </td>
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">
-                      {log.userName || (locale === "en" ? "System" : "Sistema")}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          actionBadgeStyles[log.action] ||
-                          "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                        }`}
-                      >
-                        {actionLabels[log.action] || log.action}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                      {entityLabels[log.entity] || log.entity}
-                    </td>
-                    <td className="hidden px-4 py-3 md:table-cell">
-                      <span className="font-mono text-xs text-gray-500 dark:text-gray-400">
-                        {log.entityId
-                          ? `${log.entityId.slice(0, 8)}...`
-                          : "—"}
-                      </span>
-                    </td>
-                    <td className="hidden whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-400 lg:table-cell">
-                      {log.ipAddress || "—"}
-                    </td>
-                  </tr>
-                ))}
+                {logs.map((log) => {
+                  const isRecoverable =
+                    log.action === "delete" &&
+                    new Date(log.createdAt) >= new Date(recoverCutoff) &&
+                    (log.entity === "client" || log.entity === "process");
+
+                  return (
+                    <tr key={log.id} className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                      <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                        {formatDate(log.createdAt, locale)}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {log.userName || (locale === "en" ? "System" : "Sistema")}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                            actionBadgeStyles[log.action] || "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                          }`}
+                        >
+                          {actionLabels[log.action] || log.action}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                        {entityLabels[log.entity] || log.entity}
+                      </td>
+                      <td className="hidden px-4 py-3 md:table-cell">
+                        <span className="font-mono text-xs text-gray-500 dark:text-gray-400">
+                          {log.entityId ? `${log.entityId.slice(0, 8)}...` : "—"}
+                        </span>
+                      </td>
+                      <td className="hidden whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-400 lg:table-cell">
+                        {log.ipAddress || "—"}
+                      </td>
+                      <td className="px-4 py-3">
+                        {isRecoverable && <RecoverButton logId={log.id} />}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
-          <Pagination
-            totalItems={totalCount}
-            itemsPerPage={ITEMS_PER_PAGE}
-            currentPage={page}
-          />
+          <Pagination totalItems={totalCount} itemsPerPage={ITEMS_PER_PAGE} currentPage={page} />
         </div>
       )}
     </div>

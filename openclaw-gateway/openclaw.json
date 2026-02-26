@@ -1,0 +1,284 @@
+{
+  // ── MODELO PRIMÁRIO ───────────────────────────────────────────────────────
+  "model": "gemini:gemini-2.0-flash",
+
+  // ── ROTEAMENTO POR TAREFA ──────────────────────────────────────────────────
+  "models": {
+    "default":        "gemini:gemini-2.0-flash",
+    "heartbeat":      "gemini:gemini-2.0-flash-lite",
+    "image":          "gemini:gemini-2.0-flash",
+    "audio":          "gemini:gemini-2.0-flash",
+    "fallback":       "openrouter:deepseek/deepseek-chat:free",
+    "brain":          "deepseek:deepseek-chat",
+    "subagent":       "deepseek:deepseek-reasoner",
+    "brain_best":     "openrouter:anthropic/claude-opus-4-6",
+    "brain_savings":  "openrouter:moonshotai/kimi-k2-5",
+    "coding":         "openrouter:openai/codex-mini-high",
+    "coding_savings": "openrouter:minimax/minimax-m1"
+  },
+
+  // ── CREDENCIAIS ────────────────────────────────────────────────────────────
+  "gemini":     { "apiKey": "${GEMINI_API_KEY}" },
+  "deepseek":   { "apiKey": "${DEEPSEEK_API_KEY}" },
+  "openrouter": { "apiKey": "${OPENROUTER_API_KEY}", "budgetLimit": 5.0 },
+
+  // ── PROMPT CACHING ─────────────────────────────────────────────────────────
+  "promptCache": {
+    "enabled": true,
+    "paths": [
+      "./prompts/SOUL.md",
+      "./prompts/IDENTITY.md",
+      "./prompts/USER.md"
+    ]
+  },
+
+  // ── MEMÓRIA ────────────────────────────────────────────────────────────────
+  "memory": {
+    "enabled": true,
+    "store": "file",
+    "workspacePath": "/root/.openclaw/workspace",
+    "indexPath": "/root/.openclaw/memory",
+    "flushThreshold": 80000,
+    "autoFlush": true,
+    "loadOnDemand": true
+  },
+
+  // ── SEGURANÇA ──────────────────────────────────────────────────────────────
+  "gateway": { "bind": "127.0.0.1", "port": 18789 },
+
+  // ── CANAIS ─────────────────────────────────────────────────────────────────
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "botToken": "${TELEGRAM_OPENCLAW_BOT_TOKEN}",
+      "dmPolicy": "allowlist",
+      "allowFrom": ["${TELEGRAM_LUIZ_CHAT_ID}"],
+      "groups": { "*": { "enabled": false } }
+    },
+    "slack": {
+      "enabled": true,
+      "botToken": "${SLACK_BOT_TOKEN}",
+      "appToken": "${SLACK_APP_TOKEN}",
+      "signingSecret": "${SLACK_SIGNING_SECRET}",
+      "dmPolicy": "allowlist",
+      "socketMode": true
+    }
+  },
+
+  // ── CRONS PROATIVOS ────────────────────────────────────────────────────────
+  "crons": [
+    {
+      "name": "heartbeat",
+      "schedule": "*/15 * * * *",
+      "message": "HEARTBEAT: leia WORKING.md e verifique tarefas em progresso. Cheque se há @mentions ou tarefas atribuídas novas. Se houver urgências (vencidas ou bloqueadas), notifique Luiz pelo Telegram. Se tudo estiver ok, apenas registre HEARTBEAT_OK na memória sem enviar mensagem.",
+      "model": "gemini:gemini-2.0-flash-lite"
+    },
+    {
+      "name": "morning_brief",
+      "schedule": "0 8 * * *",
+      "message": "Gere o standup matinal da LHFEX no formato:\n\n✅ COMPLETED: liste tarefas concluídas desde ontem\n🔄 IN PROGRESS: tarefas em andamento hoje\n🚫 BLOCKED: itens bloqueados aguardando ação\n👀 NEEDS REVIEW: aguardando decisão\n💡 KEY DECISIONS: decisões importantes do dia\n\nEm seguida, briefing completo: processos abertos + alertas + vencimentos nos próximos 7 dias + promoções encerrando hoje. Use as tools resumo_processos e listar_promocoes.",
+      "channel": "telegram"
+    },
+    {
+      "name": "process_alerts",
+      "schedule": "0 18 * * 1-5",
+      "message": "Verifique via tool buscar_processos: processos inativos há mais de 7 dias e processos com eta nos próximos 3 dias. Se encontrar urgências, alerte Luiz pelo Telegram com a lista formatada.",
+      "channel": "telegram"
+    },
+    {
+      "name": "api_limits_check",
+      "schedule": "0 12 * * *",
+      "message": "Use a tool get_system_status. Se OpenRouter ou DeepSeek estiverem abaixo de 20% do limite diário, avise Luiz pelo Telegram com o percentual atual.",
+      "channel": "telegram"
+    }
+  ],
+
+  // ── SKILLS ─────────────────────────────────────────────────────────────────
+  "skills": {
+    "load": { "bundled": true, "managed": true },
+    "installed": [
+      { "slug": "qmd",          "enabled": true  },
+      { "slug": "web-search",   "enabled": true  },
+      { "slug": "file-ops",     "enabled": true  },
+      { "slug": "reminders",    "enabled": true  },
+      { "slug": "video-frames", "enabled": false },
+      { "slug": "code-runner",  "enabled": false }
+    ]
+  },
+
+  // ── TOOLS SAAS ─────────────────────────────────────────────────────────────
+  "tools": [
+    {
+      "name": "resumo_processos",
+      "method": "GET",
+      "url": "${SAAS_URL}/api/openclaw-tools",
+      "headers": { "X-OpenClaw-Key": "${OPENCLAW_TOOLS_API_KEY}" },
+      "parameters": { "action": { "const": "resumo_processos" } },
+      "description": "KPIs de processos: contagem por status, chegando em 7 dias, alertas."
+    },
+    {
+      "name": "buscar_processos",
+      "method": "GET",
+      "url": "${SAAS_URL}/api/openclaw-tools",
+      "headers": { "X-OpenClaw-Key": "${OPENCLAW_TOOLS_API_KEY}" },
+      "parameters": {
+        "action": { "const": "buscar_processos" },
+        "q": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "description": "Lista processos filtrados por texto ou status."
+    },
+    {
+      "name": "ver_financeiro_pessoal",
+      "method": "GET",
+      "url": "${SAAS_URL}/api/openclaw-tools",
+      "headers": { "X-OpenClaw-Key": "${OPENCLAW_TOOLS_API_KEY}" },
+      "parameters": {
+        "action": { "const": "ver_financeiro_pessoal" },
+        "mes": { "type": "string" }
+      },
+      "description": "Financeiro pessoal: saldo, categorias, últimas transações. Mês no formato YYYY-MM."
+    },
+    {
+      "name": "listar_promocoes",
+      "method": "GET",
+      "url": "${SAAS_URL}/api/openclaw-tools",
+      "headers": { "X-OpenClaw-Key": "${OPENCLAW_TOOLS_API_KEY}" },
+      "parameters": {
+        "action": { "const": "listar_promocoes" },
+        "status": { "type": "string" }
+      },
+      "description": "Promoções com status de participação (pending, participated, won, lost)."
+    },
+    {
+      "name": "buscar_clientes",
+      "method": "GET",
+      "url": "${SAAS_URL}/api/openclaw-tools",
+      "headers": { "X-OpenClaw-Key": "${OPENCLAW_TOOLS_API_KEY}" },
+      "parameters": {
+        "action": { "const": "buscar_clientes" },
+        "q": { "type": "string" }
+      },
+      "description": "Busca clientes no CRM por nome, nome fantasia ou CNPJ."
+    },
+    {
+      "name": "criar_cliente",
+      "method": "POST",
+      "url": "${SAAS_URL}/api/openclaw-tools",
+      "headers": { "X-OpenClaw-Key": "${OPENCLAW_TOOLS_API_KEY}", "Content-Type": "application/json" },
+      "body": {
+        "action": { "const": "criar_cliente" },
+        "cnpj": { "type": "string" },
+        "razaoSocial": { "type": "string" },
+        "nomeFantasia": { "type": "string" },
+        "clientType": { "type": "string" },
+        "contato": { "type": "string" },
+        "telefone": { "type": "string" },
+        "email": { "type": "string" }
+      },
+      "description": "Cria novo cliente no CRM. razaoSocial é obrigatório."
+    },
+    {
+      "name": "abrir_processo",
+      "method": "POST",
+      "url": "${SAAS_URL}/api/openclaw-tools",
+      "headers": { "X-OpenClaw-Key": "${OPENCLAW_TOOLS_API_KEY}", "Content-Type": "application/json" },
+      "body": {
+        "action": { "const": "abrir_processo" },
+        "processType": { "type": "string" },
+        "clientSearch": { "type": "string" },
+        "description": { "type": "string" },
+        "incoterm": { "type": "string" },
+        "totalValue": { "type": "number" },
+        "currency": { "type": "string" }
+      },
+      "description": "Abre processo de importação (import), exportação (export) ou serviço (services)."
+    },
+    {
+      "name": "adicionar_transacao",
+      "method": "POST",
+      "url": "${SAAS_URL}/api/openclaw-tools",
+      "headers": { "X-OpenClaw-Key": "${OPENCLAW_TOOLS_API_KEY}", "Content-Type": "application/json" },
+      "body": {
+        "action": { "const": "adicionar_transacao" },
+        "type": { "type": "string" },
+        "amount": { "type": "number" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "date": { "type": "string" }
+      },
+      "description": "Adiciona transação financeira pessoal. type: income ou expense."
+    },
+    {
+      "name": "consultar_iana",
+      "method": "POST",
+      "url": "${SAAS_URL}/api/openclaw-tools",
+      "headers": { "X-OpenClaw-Key": "${OPENCLAW_TOOLS_API_KEY}", "Content-Type": "application/json" },
+      "body": {
+        "action": { "const": "ask_agent" },
+        "agentId": { "const": "iana" },
+        "message": { "type": "string" }
+      },
+      "description": "Consulta IAna: NCM, Incoterms, documentação aduaneira, tributação."
+    },
+    {
+      "name": "consultar_maria",
+      "method": "POST",
+      "url": "${SAAS_URL}/api/openclaw-tools",
+      "headers": { "X-OpenClaw-Key": "${OPENCLAW_TOOLS_API_KEY}", "Content-Type": "application/json" },
+      "body": {
+        "action": { "const": "ask_agent" },
+        "agentId": { "const": "maria" },
+        "message": { "type": "string" }
+      },
+      "description": "Consulta marIA: financeiro, câmbio, custos de importação/exportação."
+    },
+    {
+      "name": "consultar_airton",
+      "method": "POST",
+      "url": "${SAAS_URL}/api/openclaw-tools",
+      "headers": { "X-OpenClaw-Key": "${OPENCLAW_TOOLS_API_KEY}", "Content-Type": "application/json" },
+      "body": {
+        "action": { "const": "ask_agent" },
+        "agentId": { "const": "airton" },
+        "message": { "type": "string" }
+      },
+      "description": "Consulta AIrton: estratégia, visão geral, decisões de negócio."
+    },
+    {
+      "name": "criar_tarefa_mc",
+      "method": "POST",
+      "url": "${SAAS_URL}/api/openclaw-tools",
+      "headers": { "X-OpenClaw-Key": "${OPENCLAW_TOOLS_API_KEY}", "Content-Type": "application/json" },
+      "body": {
+        "action": { "const": "criar_tarefa_mc" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "priority": { "type": "string" },
+        "column": { "type": "string" }
+      },
+      "description": "Cria tarefa no Mission Control. column: inbox|todo|in_progress|review|done|blocked. priority: low|medium|high|urgent."
+    },
+    {
+      "name": "atualizar_tarefa_mc",
+      "method": "POST",
+      "url": "${SAAS_URL}/api/openclaw-tools",
+      "headers": { "X-OpenClaw-Key": "${OPENCLAW_TOOLS_API_KEY}", "Content-Type": "application/json" },
+      "body": {
+        "action": { "const": "atualizar_tarefa_mc" },
+        "taskId": { "type": "string" },
+        "column": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "description": "Move tarefa no Kanban ou adiciona anotação."
+    },
+    {
+      "name": "get_system_status",
+      "method": "GET",
+      "url": "${SAAS_URL}/api/openclaw-tools",
+      "headers": { "X-OpenClaw-Key": "${OPENCLAW_TOOLS_API_KEY}" },
+      "parameters": { "action": { "const": "system_status" } },
+      "description": "Status: versão openclaw, limites API OpenRouter, timestamp."
+    }
+  ]
+}
