@@ -1495,6 +1495,16 @@ export default function PromotionsPage({
                               Ver promoção
                             </a>
                           )}
+                          {p.endDate && (
+                            <a
+                              href={`https://calendar.google.com/calendar/r/eventedit?text=${encodeURIComponent(`Promoção: ${p.name}`)}&dates=${p.endDate.replace(/-/g, "")}/${p.endDate.replace(/-/g, "")}&details=${encodeURIComponent(`Empresa: ${p.company}${p.prize ? ` | Prêmio: ${p.prize}` : ""}${p.rules ? ` | ${p.rules}` : ""}`)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-green-600 hover:underline dark:text-green-400"
+                            >
+                              📅 Adicionar ao Calendar
+                            </a>
+                          )}
                         </div>
 
                         {p.notes && (

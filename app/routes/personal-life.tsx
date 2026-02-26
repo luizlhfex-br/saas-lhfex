@@ -19,6 +19,7 @@ import {
   Users,
   ListTodo,
   Bookmark,
+  GraduationCap,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 
@@ -115,6 +116,13 @@ const modules = [
     description: "Livros, filmes, séries e discos para ver/ouvir um dia",
     icon: Bookmark,
     color: "bg-pink-100 dark:bg-pink-900/20 text-pink-700 dark:text-pink-400",
+  },
+  {
+    slug: "studies",
+    title: "🎓 Estudos",
+    description: "Faculdades, matérias, provas e prazos com integração ao Google Calendar",
+    icon: GraduationCap,
+    color: "bg-violet-100 dark:bg-violet-900/20 text-violet-700 dark:text-violet-400",
   },
 ];
 

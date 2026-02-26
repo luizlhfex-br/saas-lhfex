@@ -56,6 +56,7 @@ export default [
     route("personal-life/tasks", "routes/personal-life.tasks.tsx"),
     route("personal-life/wishlist", "routes/personal-life.wishlist.tsx"),
     route("personal-life/radio-monitor", "routes/personal-life.radio-monitor.tsx"),
+    route("personal-life/studies", "routes/personal-life.studies.tsx"),
     route("knowledge/prompting", "routes/knowledge.prompting.tsx"),
     route("changelog", "routes/changelog.tsx"),
     route("other-business", "routes/other-business.tsx"),
@@ -108,6 +109,7 @@ export default [
   route("api/radio-monitor-event", "routes/api.radio-monitor-event.tsx"),
   route("api/radio-monitor-song", "routes/api.radio-monitor-song.tsx"),
   route("api/scpc-search", "routes/api.scpc-search.tsx"),
+  route("api/personal-studies", "routes/api.personal-studies.tsx"),
 
   // Catch-all 404
   route("*", "routes/$.tsx"),

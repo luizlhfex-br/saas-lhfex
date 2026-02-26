@@ -22,3 +22,4 @@ export * from "./firefly-accounting";
 export * from "./bills";
 export * from "./mission-control";
 export * from "./openclaw-crons";
+export * from "./personal-studies";
