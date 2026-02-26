@@ -649,18 +649,22 @@ Return ONLY valid JSON. If a field is not found, use null.`;
 // --- Specialized: Parse Promotion/Raffle Regulation Text ---
 
 export async function parsePromotionText(text: string, userId: string): Promise<Record<string, string | null>> {
-  const prompt = `You are a document parser for Brazilian promotional regulations (regulamentos de promoção/sorteio/concurso).
-Extract the following fields from this document and return them as JSON:
+  const prompt = `Você é um parser de regulamentos de promoções, concursos e sorteios brasileiros.
+Extraia os seguintes campos do documento abaixo e retorne APENAS um objeto JSON válido.
+NÃO use blocos de código markdown. NÃO inclua texto antes ou depois do JSON.
+
+Campos a extrair:
 - name (string) — nome da promoção, concurso ou sorteio
 - company (string) — empresa ou marca promotora
-- type (string) — one of: "raffle", "contest", "cashback", "lucky_draw", "giveaway", "other"
+- type (string) — um de: "raffle", "contest", "cashback", "lucky_draw", "giveaway", "other"
 - prize (string) — descrição do prêmio principal
 - startDate (string, YYYY-MM-DD) — data de início da promoção
 - endDate (string, YYYY-MM-DD) — data de encerramento ou sorteio
-- link (string or null) — URL para participar, se mencionada
+- link (string ou null) — URL para participar, se mencionada
 - rules (string) — resumo das principais regras em no máximo 3 linhas
 
-Return ONLY valid JSON. If a field is not found, use null. All dates MUST be in YYYY-MM-DD format.`;
+Se um campo não for encontrado, use null. Todas as datas DEVEM estar no formato YYYY-MM-DD.
+Retorne SOMENTE o objeto JSON, nada mais.`;
 
   // Openclaw é o agente responsável por toda a aba de vida pessoal.
   // Passa o userId real para carregar contexto pessoal corretamente.
@@ -669,12 +673,20 @@ Return ONLY valid JSON. If a field is not found, use null. All dates MUST be in 
   });
 
   try {
-    const jsonMatch = result.content.match(/\{[\s\S]*\}/);
+    // Strip markdown code fences if the model wrapped the JSON anyway
+    const stripped = result.content
+      .replace(/```json\s*/gi, "")
+      .replace(/```\s*/g, "")
+      .trim();
+    const jsonMatch = stripped.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (Object.keys(parsed).length > 0) {
+        return parsed;
+      }
     }
   } catch {
-    console.error("[Promotion Extract] Failed to parse AI response as JSON");
+    console.error("[Promotion Extract] Failed to parse AI response as JSON:", result.content.substring(0, 200));
   }
 
   return {};

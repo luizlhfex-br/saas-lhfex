@@ -28,6 +28,63 @@ type Entry = {
 
 const CHANGELOG: Entry[] = [
   {
+    date: "2026-02-26",
+    type: "feat",
+    title: "OpenClaw AI Gateway",
+    items: [
+      "Container Docker autônomo em openclaw-gateway/ — build via Coolify a partir do repo público",
+      "Modelo primário Gemini 2.0 Flash + roteamento por tarefa (brain, subagent, coding, research)",
+      "Slack Socket Mode — openclaw.ai conectado ao workspace LHFEX via xapp token",
+      "Heartbeat a cada 15 min — verifica WORKING.md e notifica urgências via Telegram",
+      "Backup de memória automático no GitHub (luizlhfex-br/saas-lhfex)",
+      "Morning brief às 8h e alertas de processos às 18h nos dias úteis",
+      "Sonar (Perplexity) adicionado como modelo 'research' para perguntas com dados em tempo real",
+    ],
+  },
+  {
+    date: "2026-02-26",
+    type: "feat",
+    title: "Mission Control & Crons",
+    items: [
+      "Kanban com 6 colunas em /agents — inbox, todo, in_progress, review, done, blocked",
+      "Tab 'Crons' em /agents — visualização e gerenciamento dos crons do openclaw.ai",
+      "Tab 'Conhecimento IA' em /agents — gestão de memória e arquivos do agente",
+      "Schema mission_control_tasks criado no Postgres",
+      "Schema openclaw_crons criado no Postgres",
+      "API /api/openclaw-tools: actions criar_tarefa_mc e atualizar_tarefa_mc",
+    ],
+  },
+  {
+    date: "2026-02-25",
+    type: "feat",
+    title: "Audit Log — Recuperar deleções",
+    items: [
+      "Botão ↩ Recuperar no Audit Log para deleções com menos de 30 dias",
+      "Restauração de clientes: reativa registro soft-deleted na tabela clients",
+      "Restauração de processos: reativa registro soft-deleted na tabela processes",
+      "API /api/audit-log com action restore_deletion",
+    ],
+  },
+  {
+    date: "2026-02-25",
+    type: "feat",
+    title: "API openclaw-tools",
+    items: [
+      "Endpoint GET/POST /api/openclaw-tools com autenticação via header X-OpenClaw-Key",
+      "14 actions: resumo_processos, buscar_processos, ver_financeiro_pessoal, listar_promocoes, buscar_clientes, system_status, criar_cliente, abrir_processo, adicionar_transacao, ask_agent (IAna/marIA/AIrton), criar_tarefa_mc, atualizar_tarefa_mc",
+    ],
+  },
+  {
+    date: "2026-02-24",
+    type: "feat",
+    title: "Integração SCPC",
+    items: [
+      "Busca de CPF/CNPJ em tempo real via scraping do portal SCPC",
+      "Exibe pendências financeiras e alertas integrados ao CRM de clientes",
+      "Dados sempre frescos — sem cache, consulta ao vivo a cada busca",
+    ],
+  },
+  {
     date: "2026-02-23",
     type: "feat",
     title: "Módulo Pessoas + Melhorias gerais",

@@ -14,7 +14,8 @@
     "brain_best":     "openrouter:anthropic/claude-opus-4-6",
     "brain_savings":  "openrouter:moonshotai/kimi-k2-5",
     "coding":         "openrouter:openai/codex-mini-high",
-    "coding_savings": "openrouter:minimax/minimax-m1"
+    "coding_savings": "openrouter:minimax/minimax-m1",
+    "research":       "openrouter:perplexity/sonar"
   },
 
   // ── CREDENCIAIS ────────────────────────────────────────────────────────────
@@ -52,7 +53,7 @@
       "enabled": true,
       "botToken": "${TELEGRAM_OPENCLAW_BOT_TOKEN}",
       "dmPolicy": "allowlist",
-      "allowFrom": ["${TELEGRAM_LUIZ_CHAT_ID}"],
+      "allowFrom": ["916838588", "8250567910", "5235733821"],
       "groups": { "*": { "enabled": false } }
     },
     "slack": {

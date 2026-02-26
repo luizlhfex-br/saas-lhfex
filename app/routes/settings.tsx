@@ -5,7 +5,7 @@ import { db } from "~/lib/db.server";
 import { users, googleTokens, companyProfile, companyBankAccounts } from "../../drizzle/schema";
 import { t, type Locale } from "~/i18n";
 import { Button } from "~/components/ui/button";
-import { Save, User, Globe, Palette, Sparkles, Bug, Wrench, Rocket, CheckCircle2, Clock, Zap, LogOut, Building2, CreditCard, ChevronDown, Shield, ArrowRight } from "lucide-react";
+import { Save, User, Globe, Palette, Sparkles, Bug, Wrench, Rocket, CheckCircle2, Clock, Zap, LogOut, Building2, CreditCard, ChevronDown, Shield, ArrowRight, ExternalLink } from "lucide-react";
 import { data } from "react-router";
 import { eq, and, isNull } from "drizzle-orm";
 import { disconnectGoogle } from "~/lib/google.server";
@@ -740,6 +740,38 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
             </Link>
           </div>
         </div>
+
+      {/* APIs & Consumo */}
+      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <div className="mb-4 flex items-center gap-2">
+          <Zap className="h-5 w-5 text-yellow-500" />
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            APIs &amp; Consumo
+          </h2>
+        </div>
+        <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
+          Acesse os dashboards de uso e limites de cada provedor de IA.
+        </p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            { name: "OpenRouter", url: "https://openrouter.ai/activity", color: "text-purple-600 dark:text-purple-400" },
+            { name: "DeepSeek", url: "https://platform.deepseek.com/usage", color: "text-blue-600 dark:text-blue-400" },
+            { name: "Gemini", url: "https://aistudio.google.com/app/usage", color: "text-green-600 dark:text-green-400" },
+            { name: "Anthropic", url: "https://console.anthropic.com/usage", color: "text-orange-600 dark:text-orange-400" },
+          ].map(({ name, url, color }) => (
+            <a
+              key={name}
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium transition-colors hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+            >
+              <span className={color}>{name}</span>
+              <ExternalLink className="h-3.5 w-3.5 text-gray-400" />
+            </a>
+          ))}
+        </div>
+      </div>
 
       {/* Logs de Auditoria */}
       <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
