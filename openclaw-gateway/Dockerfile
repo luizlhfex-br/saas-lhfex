@@ -1,6 +1,6 @@
 FROM node:22-alpine
-RUN apk add --no-cache git openssh-client python3 make g++ cmake && \
-    npm install -g openclaw clawhub && \
+RUN apk add --no-cache git openssh-client && \
+    npm install -g openclaw clawhub --ignore-scripts && \
     git config --global user.email "openclaw@lhfex.com.br" && \
     git config --global user.name "OpenClaw LHFEX"
 WORKDIR /root/.openclaw
