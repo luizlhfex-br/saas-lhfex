@@ -103,6 +103,7 @@ export default [
   route("api/company-profile", "routes/api.company-profile.tsx"),
   route("api/openclaw-telegram-webhook", "routes/api.openclaw-telegram-webhook.tsx"),
   route("api/openclaw-tools", "routes/api.openclaw-tools.tsx"),
+  route("api/delete-telegram-webhook", "routes/api.delete-telegram-webhook.tsx"),
   route("api/radio-monitor-config", "routes/api.radio-monitor-config.tsx"),
   route("api/radio-monitor-event", "routes/api.radio-monitor-event.tsx"),
   route("api/radio-monitor-song", "routes/api.radio-monitor-song.tsx"),

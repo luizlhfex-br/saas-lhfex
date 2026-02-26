@@ -43,6 +43,21 @@ function badRequest(msg: string) {
   });
 }
 
+async function sendSlackAlert(text: string): Promise<void> {
+  const url = process.env.SLACK_WEBHOOK_URL;
+  if (!url) return;
+  try {
+    await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+      signal: AbortSignal.timeout(5000),
+    });
+  } catch {
+    // non-blocking
+  }
+}
+
 function checkAuth(request: Request): boolean {
   const key = request.headers.get("X-OpenClaw-Key");
   const expected = process.env.OPENCLAW_TOOLS_API_KEY;
@@ -261,6 +276,17 @@ export async function loader({ request }: Route.LoaderArgs) {
       }
     } catch {
       openrouter = { error: "unreachable" };
+    }
+
+    // Slack alert if OpenRouter usage is high
+    const limitRemaining = openrouter.limit_remaining as number | undefined;
+    const usageDaily = openrouter.usage_daily as number | undefined;
+    if (typeof limitRemaining === "number" && typeof usageDaily === "number") {
+      const total = limitRemaining + usageDaily;
+      const pct = total > 0 ? Math.round((limitRemaining / total) * 100) : 100;
+      if (pct < 20) {
+        await sendSlackAlert(`⚠️ *OpenRouter Free* — apenas ${pct}% do limite restante (${limitRemaining} req). Considere recarregar.`);
+      }
     }
 
     return ok({
