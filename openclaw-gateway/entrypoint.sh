@@ -160,11 +160,22 @@ fi
 # ── GATEWAY ───────────────────────────────────────────────────────────────────
 echo "[openclaw] Iniciando gateway na porta 18789..."
 LOG="$WORKSPACE/gateway-startup.log"
-echo "=== Startup $(date) ===" >> "$LOG"
 
-# Roda gateway capturando stderr no log do workspace (volume persistente)
-# Permite diagnóstico mesmo sem acesso ao terminal do container
-openclaw gateway 2>>"$LOG"
+# Imprimir log de crash anterior no stdout (visível no Coolify Logs)
+if [ -f "$LOG" ] && [ -s "$LOG" ]; then
+  echo "========== CRASH LOG ANTERIOR =========="
+  cat "$LOG"
+  echo "========================================="
+  rm -f "$LOG"
+fi
+
+# Capturar stdout+stderr do gateway em arquivo temporário
+# Em crash-loop o processo sai rápido — buffer é OK
+echo "[startup $(date)]" > /tmp/gw.log
+openclaw gateway >> /tmp/gw.log 2>&1
 EXIT_CODE=$?
-echo "=== Gateway saiu com código $EXIT_CODE em $(date) ===" >> "$LOG"
+echo "[exit code=$EXIT_CODE at $(date)]" >> /tmp/gw.log
+# Imprimir no stdout (visível no Coolify Logs) e salvar no volume persistente
+cat /tmp/gw.log
+cat /tmp/gw.log >> "$LOG"
 exit $EXIT_CODE
