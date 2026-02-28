@@ -9,7 +9,11 @@ FROM node:22-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
         git openssh-client \
     && rm -rf /var/lib/apt/lists/* \
+    && git config --global url."https://github.com/".insteadOf "git+ssh://git@github.com/" \
+    && git config --global url."https://github.com/".insteadOf "ssh://git@github.com/" \
+    && git config --global url."https://github.com/".insteadOf "git://github.com/" \
     && npm install -g openclaw@2026.2.26 clawhub \
+    && git config --global --unset-all url."https://github.com/".insteadOf \
     && git config --global user.email "openclaw@lhfex.com.br" \
     && git config --global user.name "OpenClaw LHFEX"
 WORKDIR /root/.openclaw
