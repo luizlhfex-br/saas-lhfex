@@ -35,7 +35,10 @@
 
   // ── GATEWAY ──────────────────────────────────────────────────────────────
   // bind=custom+0.0.0.0 para funcionar no Docker (Coolify proxy)
+  // mode=local é obrigatório — sem isso o gateway bloqueia com:
+  // "Gateway start blocked: set gateway.mode=local or pass --allow-unconfigured"
   "gateway": {
+    "mode":           "local",
     "bind":           "custom",
     "customBindHost": "0.0.0.0",
     "port":           18789
