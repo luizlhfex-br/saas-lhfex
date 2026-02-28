@@ -24,10 +24,11 @@
       },
 
       // Heartbeat a cada 15 min usando modelo lite
+      // target deve ser um channel ID configurado ("telegram" ou "slack")
       "heartbeat": {
         "every":  "15m",
         "model":  "gemini/gemini-2.0-flash-lite",
-        "target": "last"
+        "target": "telegram"
       }
     }
   },
