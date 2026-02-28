@@ -159,4 +159,12 @@ fi
 
 # ── GATEWAY ───────────────────────────────────────────────────────────────────
 echo "[openclaw] Iniciando gateway na porta 18789..."
-exec openclaw gateway
+LOG="$WORKSPACE/gateway-startup.log"
+echo "=== Startup $(date) ===" >> "$LOG"
+
+# Roda gateway capturando stderr no log do workspace (volume persistente)
+# Permite diagnóstico mesmo sem acesso ao terminal do container
+openclaw gateway 2>>"$LOG"
+EXIT_CODE=$?
+echo "=== Gateway saiu com código $EXIT_CODE em $(date) ===" >> "$LOG"
+exit $EXIT_CODE
