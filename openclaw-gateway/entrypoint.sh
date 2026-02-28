@@ -28,11 +28,11 @@ if [ -n "$GITHUB_BACKUP_TOKEN" ] && [ -n "$GITHUB_BACKUP_REPO" ]; then
   cd "$WORKSPACE"
   git init 2>/dev/null || true
   git remote rm origin 2>/dev/null || true
-  git remote add origin "https://${GITHUB_BACKUP_TOKEN}@github.com/${GITHUB_BACKUP_REPO}.git"
+  git remote add origin "https://${GITHUB_BACKUP_TOKEN}@github.com/${GITHUB_BACKUP_REPO}.git" 2>/dev/null || true
   git fetch origin openclaw-memory --depth=1 2>/dev/null || true
   git checkout -B openclaw-memory 2>/dev/null || true
-  git config user.email "openclaw@lhfex.com.br"
-  git config user.name "OpenClaw LHFEX"
+  git config user.email "openclaw@lhfex.com.br" 2>/dev/null || true
+  git config user.name "OpenClaw LHFEX" 2>/dev/null || true
 
   # Loop de backup a cada hora em background
   (while true; do
@@ -50,51 +50,111 @@ if [ -n "$GITHUB_BACKUP_TOKEN" ] && [ -n "$GITHUB_BACKUP_REPO" ]; then
 fi
 
 # ── CRON JOBS ─────────────────────────────────────────────────────────────────
-# Cria diretório de cron jobs
+# Schema correto: { "version": 1, "jobs": [...] }
+# Ref: openclaw@2026.2.26 CronJobSchema (send-*.js)
 CRON_DIR=/root/.openclaw/cron
 mkdir -p "$CRON_DIR"
 
 if [ ! -f "$CRON_DIR/jobs.json" ]; then
-  echo "[openclaw] Criando cron jobs..."
+  echo "[openclaw] Criando cron jobs (formato v1)..."
   cat > "$CRON_DIR/jobs.json" << 'CRONEOF'
-[
-  {
-    "id": "morning-brief",
-    "name": "morning_brief",
-    "schedule": "0 8 * * 1-5",
-    "timezone": "America/Sao_Paulo",
-    "enabled": true,
-    "message": "BRIEFING MATINAL: Gerar briefing completo do dia para Luiz. Consultar: 1) resumo_processos (processos vencendo hoje/amanhã, alertas) 2) Tarefas bloqueadas no Mission Control 3) KPIs principais. Enviar resumo estruturado no Telegram para Luiz (chat_id 916838588). Seja direto e use números concretos."
-  },
-  {
-    "id": "process-alerts-am",
-    "name": "process_alerts_am",
-    "schedule": "0 9 * * 1-5",
-    "timezone": "America/Sao_Paulo",
-    "enabled": true,
-    "message": "ALERTA DE PROCESSOS (manhã): Verificar processos em risco via action=resumo_processos. Se há processos vencendo em ≤3 dias ou com alertas, notificar Luiz no Telegram com lista detalhada. Se tudo OK, responder HEARTBEAT_OK sem notificar."
-  },
-  {
-    "id": "process-alerts-pm",
-    "name": "process_alerts_pm",
-    "schedule": "0 17 * * 1-5",
-    "timezone": "America/Sao_Paulo",
-    "enabled": true,
-    "message": "ALERTA DE PROCESSOS (tarde): Verificar processos em risco via action=resumo_processos. Se há processos vencendo em ≤3 dias ou com alertas, notificar Luiz no Telegram com lista detalhada. Se tudo OK, responder HEARTBEAT_OK sem notificar."
-  },
-  {
-    "id": "api-limits-check",
-    "name": "api_limits_check",
-    "schedule": "0 18 * * *",
-    "timezone": "America/Sao_Paulo",
-    "enabled": true,
-    "message": "API LIMITS: Verificar system_status via action=system_status. Se qualquer limite de API está acima de 80% do quota, alertar Luiz no Telegram com detalhes. Se tudo OK, responder HEARTBEAT_OK sem notificar."
-  }
-]
+{
+  "version": 1,
+  "jobs": [
+    {
+      "id": "morning-brief",
+      "name": "morning_brief",
+      "description": "Briefing matinal com processos, tarefas e KPIs",
+      "enabled": true,
+      "deleteAfterRun": false,
+      "createdAtMs": 1772323200000,
+      "updatedAtMs": 1772323200000,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 8 * * 1-5",
+        "tz": "America/Sao_Paulo",
+        "staggerMs": 0
+      },
+      "sessionTarget": "main",
+      "wakeMode": "now",
+      "payload": {
+        "kind": "agentTurn",
+        "message": "BRIEFING MATINAL: Gerar briefing completo do dia para Luiz. Consultar via web_fetch: 1) action=resumo_processos (processos vencendo hoje/amanhã, alertas) 2) Tarefas bloqueadas no Mission Control 3) KPIs principais. Enviar resumo estruturado no Telegram para Luiz (chat_id 916838588). Seja direto e use números concretos."
+      },
+      "state": {}
+    },
+    {
+      "id": "process-alerts-am",
+      "name": "process_alerts_am",
+      "description": "Alerta de processos em risco - manhã",
+      "enabled": true,
+      "deleteAfterRun": false,
+      "createdAtMs": 1772323200000,
+      "updatedAtMs": 1772323200000,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 9 * * 1-5",
+        "tz": "America/Sao_Paulo",
+        "staggerMs": 0
+      },
+      "sessionTarget": "main",
+      "wakeMode": "now",
+      "payload": {
+        "kind": "agentTurn",
+        "message": "ALERTA DE PROCESSOS (manhã): Verificar processos em risco via web_fetch action=resumo_processos. Se há processos vencendo em 3 dias ou com alertas, notificar Luiz no Telegram com lista detalhada. Se tudo OK, não notificar."
+      },
+      "state": {}
+    },
+    {
+      "id": "process-alerts-pm",
+      "name": "process_alerts_pm",
+      "description": "Alerta de processos em risco - tarde",
+      "enabled": true,
+      "deleteAfterRun": false,
+      "createdAtMs": 1772323200000,
+      "updatedAtMs": 1772323200000,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 17 * * 1-5",
+        "tz": "America/Sao_Paulo",
+        "staggerMs": 0
+      },
+      "sessionTarget": "main",
+      "wakeMode": "now",
+      "payload": {
+        "kind": "agentTurn",
+        "message": "ALERTA DE PROCESSOS (tarde): Verificar processos em risco via web_fetch action=resumo_processos. Se há processos vencendo em 3 dias ou com alertas, notificar Luiz no Telegram com lista detalhada. Se tudo OK, não notificar."
+      },
+      "state": {}
+    },
+    {
+      "id": "api-limits-check",
+      "name": "api_limits_check",
+      "description": "Verificação diária de limites de API",
+      "enabled": true,
+      "deleteAfterRun": false,
+      "createdAtMs": 1772323200000,
+      "updatedAtMs": 1772323200000,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 18 * * *",
+        "tz": "America/Sao_Paulo",
+        "staggerMs": 0
+      },
+      "sessionTarget": "main",
+      "wakeMode": "now",
+      "payload": {
+        "kind": "agentTurn",
+        "message": "API LIMITS: Verificar system_status via web_fetch action=system_status. Se qualquer limite de API acima de 80% do quota, alertar Luiz no Telegram com detalhes. Se tudo OK, não notificar."
+      },
+      "state": {}
+    }
+  ]
+}
 CRONEOF
-  echo "[openclaw] Cron jobs criados (4 jobs: morning_brief, process_alerts x2, api_limits)."
+  echo "[openclaw] Cron jobs criados: morning_brief, process_alerts x2, api_limits."
 else
-  echo "[openclaw] Cron jobs já existem, pulando criação."
+  echo "[openclaw] Cron jobs já existem, mantendo."
 fi
 
 # ── GATEWAY ───────────────────────────────────────────────────────────────────
