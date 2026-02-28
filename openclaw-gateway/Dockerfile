@@ -3,7 +3,7 @@ FROM node:22-alpine
 # Para atualizar: checar changelog em npmjs.com/package/openclaw, testar com
 # "openclaw doctor", depois atualizar a versão aqui e fazer Redeploy
 RUN apk add --no-cache git openssh-client && \
-    npm install -g openclaw@2026.2.26 clawhub --ignore-scripts && \
+    npm install -g openclaw@2026.2.26 clawhub && \
     git config --global user.email "openclaw@lhfex.com.br" && \
     git config --global user.name "OpenClaw LHFEX"
 WORKDIR /root/.openclaw

@@ -44,7 +44,7 @@
   // ── CANAIS ───────────────────────────────────────────────────────────────
   "channels": {
     "telegram": {
-      "enabled":   true,
+      "enabled":   false,
       "botToken":  "${TELEGRAM_OPENCLAW_BOT_TOKEN}",
       "dmPolicy":  "allowlist",
       "allowFrom": ["916838588", "8250567910", "5235733821"],
