@@ -159,23 +159,9 @@ fi
 
 # ── GATEWAY ───────────────────────────────────────────────────────────────────
 echo "[openclaw] Iniciando gateway na porta 18789..."
-LOG="$WORKSPACE/gateway-startup.log"
 
-# Imprimir log de crash anterior no stdout (visível no Coolify Logs)
-if [ -f "$LOG" ] && [ -s "$LOG" ]; then
-  echo "========== CRASH LOG ANTERIOR =========="
-  cat "$LOG"
-  echo "========================================="
-  rm -f "$LOG"
-fi
-
-# Capturar stdout+stderr do gateway em arquivo temporário
-# Em crash-loop o processo sai rápido — buffer é OK
-echo "[startup $(date)]" > /tmp/gw.log
-openclaw gateway >> /tmp/gw.log 2>&1
-EXIT_CODE=$?
-echo "[exit code=$EXIT_CODE at $(date)]" >> /tmp/gw.log
-# Imprimir no stdout (visível no Coolify Logs) e salvar no volume persistente
-cat /tmp/gw.log
-cat /tmp/gw.log >> "$LOG"
-exit $EXIT_CODE
+# exec substitui o shell pelo processo do gateway:
+# - stdout/stderr vão direto para Docker logs (Coolify Logs)
+# - gateway recebe PID 1 (SIGTERM correto do Docker)
+# - sem buffering, sem set -e escondendo erros
+exec openclaw gateway
