@@ -1,21 +1,29 @@
 FROM node:22-slim
 # node:22-slim (Debian) é necessário porque openclaw depende de node-llama-cpp,
-# que requer binários pré-compilados disponíveis para Debian/Ubuntu mas NÃO para Alpine.
+# que requer binários pré-compilados Debian/Ubuntu (Alpine usa musl libc sem cmake).
 #
-# Versão pinada para evitar breaking changes em updates automáticos.
-# Para atualizar: checar changelog em npmjs.com/package/openclaw, testar com
-# "openclaw doctor", depois atualizar a versão aqui e fazer Redeploy.
+# Versão pinada. Para atualizar: ver npmjs.com/package/openclaw, testar
+# "openclaw doctor", atualizar a versão aqui e fazer Redeploy.
 
-# ── Escrever .gitconfig ANTES de instalar o git ──────────────────────────────
-# @whiskeysockets/baileys (dep do clawhub) define libsignal-node como
-# git+ssh://github.com URL — sem isso o npm install falha com exit 128.
-# Escrever o arquivo direto evita qualquer problema de escaping no shell.
-RUN printf '[url "https://github.com/"]\n    insteadOf = ssh://git@github.com/\n    insteadOf = git+ssh://git@github.com/\n    insteadOf = git://github.com/\n[user]\n    email = openclaw@lhfex.com.br\n    name = OpenClaw LHFEX\n' > /root/.gitconfig
+# HOME explícito garante que git encontra /root/.gitconfig
+ENV HOME=/root
 
-# ── Instalar dependências + packages ─────────────────────────────────────────
+# Desabilita git config do sistema (/etc/gitconfig) que pode sobrepor o nosso.
+# O config em ~/.gitconfig (copiado abaixo) ainda é lido normalmente.
+ENV GIT_CONFIG_NOSYSTEM=1
+
+# Copia gitconfig com regras insteadOf antes de instalar qualquer coisa.
+# COPY garante que o arquivo está 100% correto (sem risco de escaping de shell).
+# Regras: redireciona URLs SSH/git do GitHub para HTTPS durante o npm install.
+# (@whiskeysockets/baileys@7.0.0-rc.9 tem dep git+https:// para libsignal-node)
+COPY gitconfig /root/.gitconfig
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
         git openssh-client \
     && rm -rf /var/lib/apt/lists/* \
+    && echo "=== git config global ===" \
+    && git config --global --list \
+    && echo "=== npm install ===" \
     && npm install -g openclaw@2026.2.26 clawhub
 
 WORKDIR /root/.openclaw
