@@ -8,21 +8,30 @@ FROM node:22-slim
 # HOME explícito garante que git encontra /root/.gitconfig
 ENV HOME=/root
 
-# Desabilita git config do sistema (/etc/gitconfig) que pode sobrepor o nosso.
-# O config em ~/.gitconfig (copiado abaixo) ainda é lido normalmente.
+# Desabilita git config do sistema (/etc/gitconfig).
 ENV GIT_CONFIG_NOSYSTEM=1
 
-# Copia gitconfig com regras insteadOf antes de instalar qualquer coisa.
-# COPY garante que o arquivo está 100% correto (sem risco de escaping de shell).
-# Regras: redireciona URLs SSH/git do GitHub para HTTPS durante o npm install.
-# (@whiskeysockets/baileys@7.0.0-rc.9 tem dep git+https:// para libsignal-node)
+# GIT_CONFIG_COUNT/KEY_n/VALUE_n: máxima prioridade (git 2.32+).
+# Sobrepõe system, global E qualquer env injetado pelo Coolify.
+# Redireciona SSH/git GitHub → HTTPS para npm install sem chaves SSH.
+ENV GIT_CONFIG_COUNT=3 \
+    GIT_CONFIG_KEY_0="url.https://github.com/.insteadof" \
+    GIT_CONFIG_VALUE_0="ssh://git@github.com/" \
+    GIT_CONFIG_KEY_1="url.https://github.com/.insteadof" \
+    GIT_CONFIG_VALUE_1="git+ssh://git@github.com/" \
+    GIT_CONFIG_KEY_2="url.https://github.com/.insteadof" \
+    GIT_CONFIG_VALUE_2="git://github.com/"
+
+# Copia gitconfig como fallback adicional.
 COPY gitconfig /root/.gitconfig
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        git openssh-client \
+        git \
     && rm -rf /var/lib/apt/lists/* \
-    && echo "=== git config global ===" \
-    && git config --global --list \
+    && echo "=== git config list ===" \
+    && git config --list \
+    && echo "=== test url rewrite: ssh→https ===" \
+    && git ls-remote ssh://git@github.com/WhiskeySockets/libsignal-node.git HEAD \
     && echo "=== npm install ===" \
     && npm install -g openclaw@2026.2.26 clawhub
 
