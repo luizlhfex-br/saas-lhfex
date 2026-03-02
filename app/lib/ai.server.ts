@@ -810,7 +810,7 @@ export async function transcribeRadioSegment(
 
   try {
     const formData = new FormData();
-    const blob = new Blob([audioBuffer], { type: "audio/mpeg" });
+    const blob = new Blob([new Uint8Array(audioBuffer)], { type: "audio/mpeg" });
     formData.append("file", blob, filename);
     formData.append("model", "whisper-large-v3-turbo");
     formData.append("language", "pt");
@@ -1325,7 +1325,7 @@ export async function getPersonalLifeContext(userId: string): Promise<PersonalLi
     return {
       finances: {
         lastTransactions: financesAll.slice(0, 10).map(f => ({
-          date: f.date.toISOString().split("T")[0]!,
+          date: f.date ?? "",
           type: f.type,
           category: f.category,
           description: f.description,
@@ -1355,7 +1355,7 @@ export async function getPersonalLifeContext(userId: string): Promise<PersonalLi
         inProgressCount: goalsInProgress.length,
         list: goalsInProgress.map(g => ({
           title: g.title,
-          deadline: g.deadline ? g.deadline.toISOString().split("T")[0]! : "",
+          deadline: g.deadline ?? "",
           progress: `${g.currentValue}/${g.targetValue} ${g.unit || ""}`.trim(),
         })),
       },
@@ -1363,7 +1363,7 @@ export async function getPersonalLifeContext(userId: string): Promise<PersonalLi
         pendingCount: promotionsPending.length,
         list: promotionsPending.map(p => ({
           name: p.name,
-          endDate: p.endDate ? p.endDate.toISOString().split("T")[0]! : "",
+          endDate: p.endDate ?? "",
           type: p.type,
         })),
       },

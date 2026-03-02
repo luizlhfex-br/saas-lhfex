@@ -351,7 +351,6 @@ export async function action({ request }: Route.ActionArgs) {
         phone: telefone || null,
         email: email || null,
         isPrimary: true,
-        createdBy: userId,
       });
     }
 

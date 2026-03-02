@@ -2,12 +2,21 @@ import { pgTable, uuid, varchar, text, timestamp, boolean, pgEnum, index } from 
 import { users } from "./auth";
 
 export const notificationTypeEnum = pgEnum("notification_type", [
-  "process_status",
-  "invoice_due",
-  "eta_approaching",
+  // Valores usados pelo notifications-generator.server.ts
+  "info",
+  "success",
+  "warning",
+  "error",
+  "invoice",
+  "process",
+  "changelog",
+  // Valores legados / sistema
   "system",
   "automation",
   "approval_request",
+  "process_status",
+  "invoice_due",
+  "eta_approaching",
 ]);
 
 export const notifications = pgTable("notifications", {

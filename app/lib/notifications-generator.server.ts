@@ -14,7 +14,7 @@ const APP_URL = process.env.APP_URL || "https://app.lhfex.com.br";
 interface BusinessNotificationOptions {
   title: string;
   message: string;
-  type: "info" | "success" | "warning" | "error" | "invoice" | "process" | "changelog";
+  type: "info" | "success" | "warning" | "error" | "invoice" | "process" | "changelog" | "system" | "automation";
   userId?: number;
   link?: string;
   sendTelegram?: boolean;
