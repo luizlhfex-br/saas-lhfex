@@ -32,7 +32,7 @@ export function Topbar({
   const currentLocaleLabel = locales.find((l) => l.value === locale)?.label ?? "PT";
 
   return (
-    <header className="sticky top-0 z-20 flex h-18 items-center border-b border-[var(--app-border)] bg-[var(--app-topbar)] px-4 backdrop-blur lg:px-8">
+    <header className="sticky top-0 z-20 flex h-12 items-center bg-[var(--app-topbar)] px-4 shadow-[0_1px_0_var(--app-border)] backdrop-blur lg:px-8">
       {/* Mobile: hamburger */}
       <button
         type="button"

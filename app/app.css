@@ -1,17 +1,17 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif,
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  --font-mono: "Monaco", "Courier New", monospace;
+  --font-mono: "JetBrains Mono", "Monaco", "Courier New", monospace;
 
-  /* Aurora Palette */
-  --color-primary: #0e7490;
-  --color-primary-dark: #0f766e;
-  --color-primary-light: #22c55e;
+  /* Slate Pro Palette */
+  --color-primary:       #4f46e5;
+  --color-primary-dark:  #4338ca;
+  --color-primary-light: #818cf8;
 
-  --color-sidebar-bg: #0b1324;
-  --color-sidebar-hover: #14213b;
+  --color-sidebar-bg:    #0f0f10;
+  --color-sidebar-hover: #1a1a1b;
 }
 
 html,
@@ -107,24 +107,26 @@ body {
   }
 }
 
+/* ── Theme preview variants ──────────────────────────────────────────────── */
+
 .theme-aurora {
-  --preview-font: "Manrope", "Segoe UI", sans-serif;
-  --preview-bg: #f5f6f2;
-  --preview-bg-image: radial-gradient(circle at 20% 20%, rgba(14, 116, 144, 0.12), transparent 55%),
-    radial-gradient(circle at 85% 15%, rgba(34, 197, 94, 0.12), transparent 50%),
-    linear-gradient(120deg, rgba(15, 23, 42, 0.03), rgba(248, 250, 252, 0.6));
+  --preview-font: "Inter", "Segoe UI", sans-serif;
+  --preview-bg: #f8fafc;
+  --preview-bg-image: radial-gradient(circle at 20% 20%, rgba(79, 70, 229, 0.08), transparent 55%),
+    radial-gradient(circle at 85% 15%, rgba(124, 58, 237, 0.07), transparent 50%),
+    linear-gradient(120deg, rgba(15, 23, 42, 0.02), rgba(248, 250, 252, 0.6));
   --preview-text: #0f172a;
-  --preview-muted: #475569;
-  --preview-sidebar: #0b1324;
+  --preview-muted: #64748b;
+  --preview-sidebar: #0f0f10;
   --preview-card: #ffffff;
   --preview-pill: rgba(15, 23, 42, 0.04);
   --preview-border: rgba(15, 23, 42, 0.08);
-  --preview-border-strong: rgba(15, 23, 42, 0.2);
-  --preview-accent: #0e7490;
-  --preview-accent-2: #16a34a;
+  --preview-border-strong: rgba(15, 23, 42, 0.18);
+  --preview-accent: #4f46e5;
+  --preview-accent-2: #7c3aed;
   --preview-on-accent: #ffffff;
-  --preview-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
-  --preview-glow: 0 16px 30px rgba(14, 116, 144, 0.3);
+  --preview-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --preview-glow: 0 8px 20px rgba(79, 70, 229, 0.25);
 }
 
 .theme-meridian {
@@ -167,48 +169,44 @@ body {
   --preview-glow: 0 18px 35px rgba(15, 118, 110, 0.32);
 }
 
+/* ── App-wide CSS variables ──────────────────────────────────────────────── */
+
 :root {
-  --app-bg: #f5f6f2;
-  --app-surface: #ffffff;
-  --app-surface-2: #f8fafc;
-  --app-border: rgba(15, 23, 42, 0.08);
-  --app-border-strong: rgba(15, 23, 42, 0.2);
-  --app-text: #0f172a;
-  --app-muted: #475569;
-  --app-accent: #0e7490;
-  --app-accent-2: #16a34a;
-  --app-on-accent: #ffffff;
-  --app-sidebar-bg: #0b1324;
-  --app-sidebar-text: #e2e8f0;
+  /* Slate Pro — Light Mode */
+  --app-bg:            #f8fafc;
+  --app-surface:       #ffffff;
+  --app-surface-2:     #f1f5f9;
+  --app-border:        rgba(15, 23, 42, 0.08);
+  --app-border-strong: rgba(15, 23, 42, 0.18);
+  --app-text:          #0f172a;
+  --app-muted:         #64748b;
+  --app-accent:        #4f46e5;
+  --app-accent-2:      #7c3aed;
+  --app-on-accent:     #ffffff;
+  --app-sidebar-bg:    #0f0f10;
+  --app-sidebar-text:  #e2e8f0;
   --app-sidebar-muted: #94a3b8;
-  --app-topbar: rgba(255, 255, 255, 0.9);
-  --app-card-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
-  --app-glow: 0 16px 30px rgba(14, 116, 144, 0.24);
+  --app-topbar:        rgba(248, 250, 252, 0.95);
+  --app-card-shadow:   0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --app-glow:          0 8px 20px rgba(79, 70, 229, 0.2);
 }
 
-/* Violeta como cor primária */
 :is(.dark) {
-  --app-bg: #0b1020;
-  --app-surface: #0f172a;
-  --app-surface-2: #111827;
-  --app-border: rgba(148, 163, 184, 0.12);
-  --app-border-strong: rgba(148, 163, 184, 0.3);
-  --app-text: #e2e8f0;
-  --app-muted: #94a3b8;
-  --app-accent: #2dd4bf;
-  --app-accent-2: #22c55e;
-  --app-on-accent: #0b1020;
-  --app-sidebar-bg: #060b17;
-  --app-sidebar-text: #e2e8f0;
-  --app-sidebar-muted: #94a3b8;
-  --app-topbar: rgba(11, 16, 32, 0.88);
-  --app-card-shadow: 0 24px 60px rgba(8, 13, 26, 0.45);
-  --app-glow: 0 18px 34px rgba(45, 212, 191, 0.2);
-
-  --color-blue-600: #0e7490;
-  --color-blue-700: #0f766e;
-  --color-blue-50: #f0fdfa;
-  --color-blue-100: #ccfbf1;
-  --color-blue-900: #134e4a;
-  --color-blue-900-20: rgb(20 83 45 / 0.2);
+  /* Slate Pro — Dark Mode */
+  --app-bg:            #0c0e14;
+  --app-surface:       #161b27;
+  --app-surface-2:     #1e2535;
+  --app-border:        rgba(148, 163, 184, 0.1);
+  --app-border-strong: rgba(148, 163, 184, 0.22);
+  --app-text:          #f1f5f9;
+  --app-muted:         #94a3b8;
+  --app-accent:        #818cf8;
+  --app-accent-2:      #a78bfa;
+  --app-on-accent:     #ffffff;
+  --app-sidebar-bg:    #080a0f;
+  --app-sidebar-text:  #e2e8f0;
+  --app-sidebar-muted: #64748b;
+  --app-topbar:        rgba(12, 14, 20, 0.92);
+  --app-card-shadow:   0 1px 3px rgba(0, 0, 0, 0.3);
+  --app-glow:          0 8px 20px rgba(129, 140, 248, 0.15);
 }

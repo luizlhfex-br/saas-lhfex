@@ -12,12 +12,13 @@ import {
   LogOut,
   Zap,
   Kanban,
-  Shield,
   Sparkles,
   Heart,
   Briefcase,
   Globe,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ScrollText,
 } from "lucide-react";
 import { cn } from "~/lib/utils";
@@ -35,6 +36,8 @@ interface SidebarProps {
   user: User;
   locale: Locale;
   currentPath: string;
+  collapsed: boolean;
+  onToggle: () => void;
 }
 
 interface NavItem {
@@ -43,7 +46,7 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   to: string;
   disabled?: boolean;
-  requiredEmail?: string; // Only show if user email matches
+  requiredEmail?: string;
 }
 
 const mainNavItems: NavItem[] = [
@@ -72,7 +75,7 @@ const aiAutomationNavItems: NavItem[] = [
   { label: "Changelog", icon: ScrollText, to: "/changelog" },
 ];
 
-export function Sidebar({ user, locale, currentPath }: SidebarProps) {
+export function Sidebar({ user, locale, currentPath, collapsed, onToggle }: SidebarProps) {
   const i18n = t(locale);
   const [openGroups, setOpenGroups] = useState({
     comex: currentPath.startsWith("/calculator") || currentPath.startsWith("/ncm"),
@@ -89,24 +92,28 @@ export function Sidebar({ user, locale, currentPath }: SidebarProps) {
     setOpenGroups((prev) => ({ ...prev, [group]: !prev[group] }));
   };
 
-  const renderNavItem = (item: NavItem) => {
-    if (item.requiredEmail && user.email !== item.requiredEmail) {
-      return null;
-    }
+  const isItemVisible = (item: NavItem) =>
+    !item.requiredEmail || user.email === item.requiredEmail;
 
+  const getLabel = (item: NavItem) =>
+    item.label || (item.labelKey ? (i18n.nav[item.labelKey] as string) : "");
+
+  // ── Expanded: full nav item ─────────────────────────────────────────────
+  const renderNavItem = (item: NavItem) => {
+    if (!isItemVisible(item)) return null;
     const Icon = item.icon;
-    const label = item.label || (item.labelKey ? (i18n.nav[item.labelKey] as string) : "");
+    const label = getLabel(item);
 
     if (item.disabled) {
       return (
         <div
           key={item.to}
-          className="group relative flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-[var(--app-sidebar-muted)]"
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-[var(--app-sidebar-muted)]"
           title="Em breve"
         >
-          <Icon className="h-5 w-5" />
-          <span>{label}</span>
-          <span className="ml-auto rounded-full bg-white/10 px-2 py-0.5 text-xs text-[var(--app-sidebar-muted)]">
+          <Icon className="h-4 w-4 shrink-0" />
+          <span className="truncate">{label}</span>
+          <span className="ml-auto rounded-full bg-white/10 px-1.5 py-0.5 text-[10px]">
             Em breve
           </span>
         </div>
@@ -119,130 +126,254 @@ export function Sidebar({ user, locale, currentPath }: SidebarProps) {
         to={item.to}
         className={({ isActive }) =>
           cn(
-            "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors",
+            "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
             isActive
-              ? "bg-[var(--app-accent)]/20 text-white shadow-[var(--app-glow)]"
+              ? "bg-indigo-500/15 text-indigo-300"
               : "text-[var(--app-sidebar-muted)] hover:bg-white/5 hover:text-white"
           )
         }
       >
-        <Icon className="h-5 w-5" />
-        <span>{label}</span>
+        <Icon className="h-4 w-4 shrink-0" />
+        <span className="truncate">{label}</span>
       </NavLink>
     );
   };
 
+  // ── Collapsed: icon-only nav item ───────────────────────────────────────
+  const renderIconItem = (item: NavItem) => {
+    if (!isItemVisible(item)) return null;
+    const Icon = item.icon;
+    const label = getLabel(item);
+
+    return (
+      <NavLink
+        key={item.to}
+        to={item.to}
+        title={label}
+        className={({ isActive }) =>
+          cn(
+            "flex h-9 w-9 items-center justify-center rounded-lg transition-colors",
+            isActive
+              ? "bg-indigo-500/15 text-indigo-300"
+              : "text-[var(--app-sidebar-muted)] hover:bg-white/10 hover:text-white"
+          )
+        }
+      >
+        <Icon className="h-4 w-4" />
+      </NavLink>
+    );
+  };
+
+  const allGroupedItems = [
+    ...comexNavItems,
+    ...aiAutomationNavItems,
+    ...otherBusinessNavItems,
+  ];
+
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 flex-col border-r border-[var(--app-border-strong)] bg-[var(--app-sidebar-bg)] text-[var(--app-sidebar-text)] lg:flex">
-      {/* Logo */}
-      <div className="flex h-20 items-center px-6">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.4em] text-emerald-300">LHFEX</p>
-          <img
-            src="/images/logo-horizontal.png"
-            alt="LHFEX"
-            className="mt-2 h-8 w-auto"
-          />
-        </div>
+    <aside
+      className={cn(
+        "fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-white/5 bg-[var(--app-sidebar-bg)] text-[var(--app-sidebar-text)] transition-[width] duration-200 ease-in-out lg:flex",
+        collapsed ? "w-16" : "w-60"
+      )}
+    >
+      {/* ── Header ─────────────────────────────────────────────────────── */}
+      <div
+        className={cn(
+          "flex h-14 shrink-0 items-center border-b border-white/5",
+          collapsed ? "justify-center" : "justify-between px-4"
+        )}
+      >
+        {!collapsed && (
+          <span className="text-xs font-bold tracking-[0.3em] text-indigo-400">
+            LHFEX
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={onToggle}
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--app-sidebar-muted)] transition-colors hover:bg-white/10 hover:text-white"
+          title={collapsed ? "Expandir menu" : "Recolher menu"}
+        >
+          {collapsed ? (
+            <ChevronRight className="h-4 w-4" />
+          ) : (
+            <ChevronLeft className="h-4 w-4" />
+          )}
+        </button>
       </div>
 
-      {/* Main navigation */}
-      <nav className="flex-1 space-y-2 overflow-y-auto px-4 py-2">
-        {mainNavItems.map(renderNavItem)}
+      {/* ── Navigation ─────────────────────────────────────────────────── */}
+      {collapsed ? (
+        // Icon-only flat list
+        <nav className="flex flex-1 flex-col items-center gap-1 overflow-y-auto py-3">
+          {mainNavItems.map(renderIconItem)}
 
-        <div className="pt-2">
-          <button
-            type="button"
-            onClick={() => toggleGroup("comex")}
-            className="flex w-full items-center justify-between rounded-xl px-4 py-2.5 text-sm font-semibold text-[var(--app-sidebar-muted)] transition-colors hover:bg-white/5 hover:text-white"
-          >
-            <span>Comércio Exterior</span>
-            <ChevronDown
-              className={cn("h-4 w-4 transition-transform", openGroups.comex ? "rotate-180" : "rotate-0")}
-            />
-          </button>
-          {openGroups.comex && <div className="mt-1 space-y-1">{comexNavItems.map(renderNavItem)}</div>}
-        </div>
+          {/* Divider between main and grouped items */}
+          <div className="my-1 h-px w-8 bg-white/10" />
 
-        <div>
-          <button
-            type="button"
-            onClick={() => toggleGroup("aiAutomation")}
-            className="flex w-full items-center justify-between rounded-xl px-4 py-2.5 text-sm font-semibold text-[var(--app-sidebar-muted)] transition-colors hover:bg-white/5 hover:text-white"
-          >
-            <span>IA & Automação</span>
-            <ChevronDown
-              className={cn("h-4 w-4 transition-transform", openGroups.aiAutomation ? "rotate-180" : "rotate-0")}
-            />
-          </button>
-          {openGroups.aiAutomation && (
-            <div className="mt-1 space-y-1">{aiAutomationNavItems.map(renderNavItem)}</div>
-          )}
-        </div>
+          {allGroupedItems.map(renderIconItem)}
+        </nav>
+      ) : (
+        // Full navigation with groups
+        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-3">
+          {mainNavItems.map(renderNavItem)}
 
-        {/* Outros Negócios — only shown if user has at least one item visible */}
-        {user.email === "luiz@lhfex.com.br" && (
+          {/* Comércio Exterior */}
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => toggleGroup("comex")}
+              className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider text-[var(--app-sidebar-muted)] transition-colors hover:bg-white/5 hover:text-white"
+            >
+              <span>Comex</span>
+              <ChevronDown
+                className={cn(
+                  "h-3.5 w-3.5 transition-transform",
+                  openGroups.comex ? "rotate-180" : "rotate-0"
+                )}
+              />
+            </button>
+            {openGroups.comex && (
+              <div className="mt-0.5 space-y-0.5">{comexNavItems.map(renderNavItem)}</div>
+            )}
+          </div>
+
+          {/* IA & Automação */}
           <div>
             <button
               type="button"
-              onClick={() => toggleGroup("otherBusiness")}
-              className="flex w-full items-center justify-between rounded-xl px-4 py-2.5 text-sm font-semibold text-[var(--app-sidebar-muted)] transition-colors hover:bg-white/5 hover:text-white"
+              onClick={() => toggleGroup("aiAutomation")}
+              className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider text-[var(--app-sidebar-muted)] transition-colors hover:bg-white/5 hover:text-white"
             >
-              <span>Outros Negócios</span>
+              <span>IA & Auto</span>
               <ChevronDown
-                className={cn("h-4 w-4 transition-transform", openGroups.otherBusiness ? "rotate-180" : "rotate-0")}
+                className={cn(
+                  "h-3.5 w-3.5 transition-transform",
+                  openGroups.aiAutomation ? "rotate-180" : "rotate-0"
+                )}
               />
             </button>
-            {openGroups.otherBusiness && (
-              <div className="mt-1 space-y-1">{otherBusinessNavItems.map(renderNavItem)}</div>
+            {openGroups.aiAutomation && (
+              <div className="mt-0.5 space-y-0.5">
+                {aiAutomationNavItems.map(renderNavItem)}
+              </div>
             )}
           </div>
+
+          {/* Outros Negócios — restricted */}
+          {user.email === "luiz@lhfex.com.br" && (
+            <div>
+              <button
+                type="button"
+                onClick={() => toggleGroup("otherBusiness")}
+                className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider text-[var(--app-sidebar-muted)] transition-colors hover:bg-white/5 hover:text-white"
+              >
+                <span>Outros</span>
+                <ChevronDown
+                  className={cn(
+                    "h-3.5 w-3.5 transition-transform",
+                    openGroups.otherBusiness ? "rotate-180" : "rotate-0"
+                  )}
+                />
+              </button>
+              {openGroups.otherBusiness && (
+                <div className="mt-0.5 space-y-0.5">
+                  {otherBusinessNavItems.map(renderNavItem)}
+                </div>
+              )}
+            </div>
+          )}
+        </nav>
+      )}
+
+      {/* ── Bottom: user + settings + logout ───────────────────────────── */}
+      <div
+        className={cn(
+          "shrink-0 border-t border-white/5",
+          collapsed ? "flex flex-col items-center gap-1 py-3" : "px-3 py-3"
         )}
-      </nav>
+      >
+        {collapsed ? (
+          <>
+            {/* Avatar */}
+            <div
+              className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500/20 text-sm font-semibold text-indigo-300"
+              title={user.name}
+            >
+              {user.name.charAt(0).toUpperCase()}
+            </div>
+            {/* Settings */}
+            <NavLink
+              to="/settings"
+              title={i18n.nav.settings}
+              className={({ isActive }) =>
+                cn(
+                  "flex h-9 w-9 items-center justify-center rounded-lg transition-colors",
+                  isActive
+                    ? "bg-indigo-500/15 text-indigo-300"
+                    : "text-[var(--app-sidebar-muted)] hover:bg-white/10 hover:text-white"
+                )
+              }
+            >
+              <Settings className="h-4 w-4" />
+            </NavLink>
+            {/* Logout */}
+            <Form method="post" action="/logout">
+              <button
+                type="submit"
+                title={i18n.auth.logout}
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--app-sidebar-muted)] transition-colors hover:bg-white/10 hover:text-white"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </Form>
+          </>
+        ) : (
+          <>
+            {/* User info */}
+            <div className="mb-2 flex items-center gap-2.5 rounded-lg px-2 py-2">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-500/20 text-sm font-semibold text-indigo-300">
+                {user.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-white">
+                  {user.name}
+                </p>
+                <p className="truncate text-xs text-[var(--app-sidebar-muted)]">
+                  {user.email}
+                </p>
+              </div>
+            </div>
 
-      {/* Bottom section */}
-      <div className="border-t border-white/10 px-4 py-5">
-        {/* User info */}
-        <div className="mb-4 flex items-center gap-3 px-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--app-accent)] text-sm font-medium text-[var(--app-on-accent)]">
-            {user.name.charAt(0).toUpperCase()}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-white">
-              {user.name}
-            </p>
-            <p className="truncate text-xs text-[var(--app-sidebar-muted)]">
-              {user.email}
-            </p>
-          </div>
-        </div>
+            {/* Settings */}
+            <NavLink
+              to="/settings"
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  isActive
+                    ? "bg-indigo-500/15 text-indigo-300"
+                    : "text-[var(--app-sidebar-muted)] hover:bg-white/5 hover:text-white"
+                )
+              }
+            >
+              <Settings className="h-4 w-4 shrink-0" />
+              <span>{i18n.nav.settings}</span>
+            </NavLink>
 
-        {/* Settings */}
-        <NavLink
-          to="/settings"
-          className={({ isActive }) =>
-            cn(
-              "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors",
-              isActive
-                ? "bg-[var(--app-accent)]/20 text-white"
-                : "text-[var(--app-sidebar-muted)] hover:bg-white/5 hover:text-white"
-            )
-          }
-        >
-          <Settings className="h-5 w-5" />
-          <span>{i18n.nav.settings}</span>
-        </NavLink>
-
-        {/* Logout */}
-        <Form method="post" action="/logout">
-          <button
-            type="submit"
-            className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-[var(--app-sidebar-muted)] transition-colors hover:bg-white/5 hover:text-white"
-          >
-            <LogOut className="h-5 w-5" />
-            <span>{i18n.auth.logout}</span>
-          </button>
-        </Form>
+            {/* Logout */}
+            <Form method="post" action="/logout">
+              <button
+                type="submit"
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-[var(--app-sidebar-muted)] transition-colors hover:bg-white/5 hover:text-white"
+              >
+                <LogOut className="h-4 w-4 shrink-0" />
+                <span>{i18n.auth.logout}</span>
+              </button>
+            </Form>
+          </>
+        )}
       </div>
     </aside>
   );

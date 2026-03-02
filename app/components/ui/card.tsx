@@ -9,8 +9,8 @@ export function Card({ className, children, ...props }: CardProps) {
   return (
     <div
       className={cn(
-        "rounded-lg border border-gray-200 bg-white shadow-sm",
-        "dark:border-gray-800 dark:bg-gray-900",
+        "rounded-xl border bg-[var(--app-surface)]",
+        "border-[var(--app-border)] shadow-[var(--app-card-shadow)]",
         className
       )}
       {...props}
@@ -26,7 +26,7 @@ export function CardHeader({
   ...props
 }: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("flex flex-col gap-1.5 p-6", className)} {...props}>
+    <div className={cn("flex flex-col gap-1.5 p-4", className)} {...props}>
       {children}
     </div>
   );
@@ -40,7 +40,7 @@ export function CardTitle({
   return (
     <h3
       className={cn(
-        "text-lg font-semibold text-gray-900 dark:text-gray-100",
+        "text-base font-semibold text-[var(--app-text)]",
         className
       )}
       {...props}
@@ -57,7 +57,7 @@ export function CardDescription({
 }: HTMLAttributes<HTMLParagraphElement>) {
   return (
     <p
-      className={cn("text-sm text-gray-500 dark:text-gray-400", className)}
+      className={cn("text-sm text-[var(--app-muted)]", className)}
       {...props}
     >
       {children}
@@ -71,7 +71,7 @@ export function CardContent({
   ...props
 }: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("p-6 pt-0", className)} {...props}>
+    <div className={cn("p-4 pt-0", className)} {...props}>
       {children}
     </div>
   );
@@ -85,7 +85,7 @@ export function CardFooter({
   return (
     <div
       className={cn(
-        "flex items-center border-t border-gray-200 p-6 dark:border-gray-800",
+        "flex items-center border-t border-[var(--app-border)] p-4",
         className
       )}
       {...props}
