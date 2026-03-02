@@ -7,7 +7,7 @@
       // Modelo primário + fallback
       "model": {
         "primary": "gemini/gemini-2.0-flash",
-        "fallbacks": ["openrouter/deepseek/deepseek-chat:free"]
+        "fallbacks": ["openrouter/deepseek/deepseek-chat"]
       },
 
       // Catálogo de modelos disponíveis + aliases
@@ -23,11 +23,12 @@
         "openrouter/perplexity/sonar":           { "alias": "research"       }
       },
 
-      // Heartbeat a cada 15 min usando modelo lite
+      // Heartbeat a cada 15 min usando modelo primário
+      // gemini-2.0-flash-lite retorna "Unknown model" → usar primary
       // target deve ser um channel ID configurado ("telegram" ou "slack")
       "heartbeat": {
         "every":  "15m",
-        "model":  "gemini/gemini-2.0-flash-lite",
+        "model":  "gemini/gemini-2.0-flash",
         "target": "telegram"
       }
     }
