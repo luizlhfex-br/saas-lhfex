@@ -28,6 +28,40 @@ type Entry = {
 
 const CHANGELOG: Entry[] = [
   {
+    date: "2026-03-02",
+    type: "fix",
+    title: "openclaw: heartbeat model + deepseek fallback + RUNBOOK",
+    items: [
+      "Heartbeat model: gemini-2.0-flash-lite → gemini-2.0-flash (lite retornava FailoverError: Unknown model)",
+      "Fallback deepseek: removido sufixo :free que causava 404 No endpoints found",
+      "RUNBOOK.md criado em openclaw-gateway/ com diagnóstico dos 7 bugs e guia de operação",
+    ],
+  },
+  {
+    date: "2026-03-02",
+    type: "fix",
+    title: "TypeScript: 5 erros corrigidos + E2E timeout",
+    items: [
+      "ai.server.ts: removido .toISOString() em campos SQL DATE (já retornam string YYYY-MM-DD)",
+      "ai.server.ts: Blob([new Uint8Array(audioBuffer)]) para compatibilidade TypeScript",
+      "api.openclaw-tools.tsx: removido campo createdBy inexistente na tabela contacts",
+      "notifications.ts: enum notification_type alinhado com valores usados no código",
+      "playwright.config.ts: reuseExistingServer=true, timeout aumentado para 180s",
+    ],
+  },
+  {
+    date: "2026-03-02",
+    type: "feat",
+    title: "Módulo Estudos — /personal-life/studies",
+    items: [
+      "Schema: 3 tabelas — personal_study_courses, personal_study_subjects, personal_study_events",
+      "UI: tabs Cursos, Matérias e Agenda com formulários inline",
+      "Agenda: botão 📅 Adicionar ao Google Calendar via deep link (sem OAuth)",
+      "API: /api/personal-studies com CRUD completo (GET + POST)",
+      "Integrado ao dashboard Vida Pessoal com card 🎓 Estudos",
+    ],
+  },
+  {
     date: "2026-02-26",
     type: "feat",
     title: "OpenClaw AI Gateway",
