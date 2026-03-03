@@ -34,20 +34,11 @@
       },
 
       // Heartbeat a cada 15 min usando modelo primário
+      // Quiet hours (00h-05h BRT): implementado via SOUL.md + cron schedules
       "heartbeat": {
         "every":  "15m",
         "model":  "gemini/gemini-2.0-flash",
         "target": "telegram"
-      },
-
-      // Quiet hours: silêncio total entre 00h-05h (horário de Brasília)
-      // Urgências sempre passam: "urgente", "emergência", "crítico", "servidor caiu", "erro grave"
-      "quietHours": {
-        "enabled":         true,
-        "start":           "00:00",
-        "end":             "05:00",
-        "timezone":        "America/Sao_Paulo",
-        "urgencyKeywords": ["urgente", "emergência", "crítico", "servidor caiu", "erro grave", "falha grave", "ajuda"]
       }
     }
   },
