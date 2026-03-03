@@ -13,12 +13,14 @@ import {
 } from "recharts";
 
 // Exchange rate cache
-let cachedRate: { rate: number; timestamp: number } | null = null;
+let cachedRate: { rate: number; rateDate: string; timestamp: number } | null = null;
 const CACHE_TTL = 5 * 60 * 1000;
 
-async function fetchExchangeRate(): Promise<number> {
+async function fetchExchangeRate(): Promise<{ rate: number; rateDate: string }> {
   const now = Date.now();
-  if (cachedRate && now - cachedRate.timestamp < CACHE_TTL) return cachedRate.rate;
+  if (cachedRate && now - cachedRate.timestamp < CACHE_TTL) {
+    return { rate: cachedRate.rate, rateDate: cachedRate.rateDate };
+  }
 
   try {
     // BCB série 10813 = USD Importação (oficial)
@@ -31,10 +33,12 @@ async function fetchExchangeRate(): Promise<number> {
     // BCB retorna array: [{ data: "01/01/2026", valor: "5.2006" }, ...]
     const latestRate = data[data.length - 1];
     const rate = parseFloat(latestRate.valor);
-    cachedRate = { rate, timestamp: now };
-    return rate;
+    // BCB data: "DD/MM/YYYY" → convert to "DD/MM/YYYY HHh" display
+    const rateDate = latestRate.data as string; // "DD/MM/YYYY"
+    cachedRate = { rate, rateDate, timestamp: now };
+    return { rate, rateDate };
   } catch {
-    return cachedRate?.rate ?? 5.2006;
+    return { rate: cachedRate?.rate ?? 5.2006, rateDate: cachedRate?.rateDate ?? "" };
   }
 }
 
@@ -136,7 +140,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     user: { id: user.id, name: user.name, locale: user.locale },
     locale,
     stats: {
-      dollarRate,
+      dollarRate: dollarRate.rate,
+      dollarRateDate: dollarRate.rateDate,
       activeProcesses: processCountResult[0]?.count ?? 0,
       activeClients: clientCountResult[0]?.count ?? 0,
       monthlyRevenue: Number(revenueResult[0]?.total ?? 0),
@@ -166,10 +171,16 @@ export default function DashboardPage({ loaderData }: Route.ComponentProps) {
   };
 
   const statCards = [
-    { label: i18n.dashboard.dollarRate, value: `R$ ${stats.dollarRate.toFixed(2)}`, icon: DollarSign, color: "text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/20" },
-    { label: i18n.dashboard.activeProcesses, value: stats.activeProcesses.toString(), icon: FileText, color: "text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/20" },
-    { label: i18n.dashboard.activeClients, value: stats.activeClients.toString(), icon: Users, color: "text-purple-600 bg-purple-50 dark:text-purple-400 dark:bg-purple-900/20" },
-    { label: i18n.dashboard.monthlyRevenue, value: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(stats.monthlyRevenue), icon: TrendingUp, color: "text-orange-600 bg-orange-50 dark:text-orange-400 dark:bg-orange-900/20" },
+    {
+      label: i18n.dashboard.dollarRate,
+      value: `R$ ${stats.dollarRate.toFixed(2)}`,
+      sub: stats.dollarRateDate ? `PTAX BCB · ${stats.dollarRateDate}` : "PTAX BCB",
+      icon: DollarSign,
+      color: "text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/20",
+    },
+    { label: i18n.dashboard.activeProcesses, value: stats.activeProcesses.toString(), sub: "", icon: FileText, color: "text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/20" },
+    { label: i18n.dashboard.activeClients, value: stats.activeClients.toString(), sub: "", icon: Users, color: "text-purple-600 bg-purple-50 dark:text-purple-400 dark:bg-purple-900/20" },
+    { label: i18n.dashboard.monthlyRevenue, value: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(stats.monthlyRevenue), sub: "", icon: TrendingUp, color: "text-orange-600 bg-orange-50 dark:text-orange-400 dark:bg-orange-900/20" },
   ];
 
   const fmtBRL = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(v);
@@ -205,6 +216,9 @@ export default function DashboardPage({ loaderData }: Route.ComponentProps) {
                 <div>
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{card.label}</p>
                   <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-100">{card.value}</p>
+                  {card.sub && (
+                    <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">{card.sub}</p>
+                  )}
                 </div>
                 <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${card.color}`}>
                   <Icon className="h-6 w-6" />
