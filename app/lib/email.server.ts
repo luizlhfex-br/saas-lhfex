@@ -139,6 +139,96 @@ export async function sendInvoiceDueReminder(params: {
   });
 }
 
+export async function sendInvoiceEmail(params: {
+  to: string;
+  clientName: string;
+  invoiceNumber: string;
+  invoiceId: string;
+  total: string;
+  currency: string;
+  dueDate: string;
+  items?: Array<{ description: string; total: string }>;
+  companyName?: string;
+  companyCnpj?: string;
+  bankName?: string;
+  bankAgency?: string;
+  bankAccount?: string;
+  pixKey?: string;
+}): Promise<boolean> {
+  const {
+    to, clientName, invoiceNumber, invoiceId, total, currency, dueDate, items = [],
+    companyName = "FREITAS E FREITAS CONSULTORIA E SERVICOS LTDA",
+    companyCnpj = "62.180.992/0001-33",
+    bankName = "Banco Inter (077)",
+    bankAgency = "0001",
+    bankAccount = "49691119-8",
+    pixKey,
+  } = params;
+
+  const viewUrl = `${APP_URL}/financial/fatura-print?invoiceId=${invoiceId}`;
+  const pixDisplay = pixKey || companyCnpj;
+
+  const itemsHtml = items.length > 0
+    ? `<table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:13px;">
+        <thead>
+          <tr style="background:#1e3a5f;color:#fff;">
+            <th style="padding:8px 12px;text-align:left;">Descrição</th>
+            <th style="padding:8px 12px;text-align:right;width:120px;">Valor</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${items.map((it, i) => `
+            <tr style="background:${i % 2 === 0 ? "#fff" : "#f8fafc"};">
+              <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;">${it.description}</td>
+              <td style="padding:8px 12px;text-align:right;border-bottom:1px solid #e2e8f0;">R$ ${it.total}</td>
+            </tr>`).join("")}
+        </tbody>
+      </table>`
+    : "";
+
+  const body = `
+    <p>Olá, <strong>${clientName}</strong>!</p>
+    <p>Segue a fatura de cobrança referente aos serviços prestados pela <strong>${companyName}</strong>.</p>
+
+    <table style="width:100%;border-collapse:collapse;margin:16px 0;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;">
+      <tr><td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;font-weight:bold;width:40%;background:#f8fafc;">Fatura Nº</td><td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;"><strong>${invoiceNumber}</strong></td></tr>
+      <tr><td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;font-weight:bold;background:#f8fafc;">Valor Total</td><td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;font-size:18px;font-weight:bold;color:#1e3a5f;">${currency} ${total}</td></tr>
+      <tr><td style="padding:10px 14px;font-weight:bold;background:#f8fafc;">Vencimento</td><td style="padding:10px 14px;color:#dc2626;font-weight:bold;">${dueDate}</td></tr>
+    </table>
+
+    ${itemsHtml}
+
+    <h3 style="margin:20px 0 12px;font-size:14px;color:#1e3a5f;text-transform:uppercase;letter-spacing:1px;">Dados para Pagamento</h3>
+
+    <table style="width:100%;border-collapse:collapse;border:2px solid #1e3a5f;border-radius:8px;font-size:13px;">
+      <tr><td style="padding:8px 14px;border-bottom:1px solid #e2e8f0;color:#555;font-weight:bold;width:35%;background:#f8fafc;">Banco</td><td style="padding:8px 14px;border-bottom:1px solid #e2e8f0;">${bankName}</td></tr>
+      <tr><td style="padding:8px 14px;border-bottom:1px solid #e2e8f0;color:#555;font-weight:bold;background:#f8fafc;">Agência</td><td style="padding:8px 14px;border-bottom:1px solid #e2e8f0;">${bankAgency}</td></tr>
+      <tr><td style="padding:8px 14px;border-bottom:1px solid #e2e8f0;color:#555;font-weight:bold;background:#f8fafc;">Conta Corrente</td><td style="padding:8px 14px;border-bottom:1px solid #e2e8f0;">${bankAccount}</td></tr>
+      <tr><td style="padding:8px 14px;border-bottom:1px solid #e2e8f0;color:#555;font-weight:bold;background:#f8fafc;">Titular</td><td style="padding:8px 14px;border-bottom:1px solid #e2e8f0;">${companyName}</td></tr>
+      <tr><td style="padding:8px 14px;border-bottom:1px solid #e2e8f0;color:#555;font-weight:bold;background:#f8fafc;">CNPJ</td><td style="padding:8px 14px;border-bottom:1px solid #e2e8f0;">${companyCnpj}</td></tr>
+      <tr><td style="padding:8px 14px;color:#555;font-weight:bold;background:#f8fafc;">PIX</td><td style="padding:8px 14px;font-weight:bold;color:#1e3a5f;">${pixDisplay} (CNPJ)</td></tr>
+    </table>
+
+    <p style="margin-top:12px;color:#dc2626;font-size:13px;font-weight:bold;">⚠️ Prazo: 10 dias corridos a partir da data de emissão.</p>
+
+    <p style="margin-top:20px;">
+      <a href="${viewUrl}" style="display:inline-block;background:#1e3a5f;color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px;">
+        📄 Visualizar Fatura Completa
+      </a>
+    </p>
+
+    <p style="margin-top:16px;font-size:12px;color:#9ca3af;">
+      Dúvidas? Responda este email ou acesse <a href="${APP_URL}" style="color:#2563eb;">saas.lhfex.com.br</a>
+    </p>
+  `;
+
+  return sendEmail({
+    to,
+    subject: `Fatura de Cobrança ${invoiceNumber} — ${companyName}`,
+    html: baseTemplate(`Fatura de Cobrança Nº ${invoiceNumber}`, body),
+  });
+}
+
 export async function sendWelcomeEmail(params: {
   to: string;
   name: string;
