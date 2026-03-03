@@ -20,6 +20,7 @@ import {
   ListTodo,
   Bookmark,
   GraduationCap,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 
@@ -123,6 +124,13 @@ const modules = [
     description: "Faculdades, matérias, provas e prazos com integração ao Google Calendar",
     icon: GraduationCap,
     color: "bg-violet-100 dark:bg-violet-900/20 text-violet-700 dark:text-violet-400",
+  },
+  {
+    slug: "clean-days",
+    title: "🌱 Dia Limpo",
+    description: "Rastreador de streak pessoal — privado",
+    icon: CheckCircle2,
+    color: "bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400",
   },
 ];
 
