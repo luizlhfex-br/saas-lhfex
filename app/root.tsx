@@ -42,7 +42,8 @@ export const links: Route.LinksFunction = () => [
     rel: "stylesheet",
     href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Fraunces:opsz,wght@9..144,300..900&family=Sora:wght@200..800&display=swap",
   },
-  { rel: "icon", href: "/favicon.ico" },
+  { rel: "icon", href: "/images/logo-circle.png", type: "image/png" },
+  { rel: "apple-touch-icon", href: "/images/logo-circle.png" },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -110,9 +111,9 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 dark:bg-gray-950">
       <div className="w-full max-w-md text-center">
         <img
-          src="/images/logo-horizontal.png"
+          src="/images/logo-circle.png"
           alt="LHFEX"
-          className="mx-auto mb-8 h-10 w-auto"
+          className="mx-auto mb-8 h-16 w-16"
         />
         <div className="mb-2 text-6xl font-bold text-gray-200 dark:text-gray-800">
           {status}

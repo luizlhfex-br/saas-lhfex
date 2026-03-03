@@ -139,9 +139,9 @@ export default function LoginPage() {
         {/* Logo and branding */}
         <div className="mb-8 text-center">
           <img
-            src="/images/logo-horizontal.png"
+            src="/images/logo-circle.png"
             alt="LHFEX Consultoria"
-            className="mx-auto mb-4 h-28 w-auto sm:h-32"
+            className="mx-auto mb-4 h-20 w-20 sm:h-24 sm:w-24"
           />
           <h1 className="text-2xl font-bold text-[var(--app-text)]">
             {i18n.auth.welcome}
