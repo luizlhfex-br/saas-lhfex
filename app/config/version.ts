@@ -3,8 +3,8 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.2.3";
-export const APP_RELEASE_DATE = "2026-02-22";
+export const APP_VERSION = "2.3.0";
+export const APP_RELEASE_DATE = "2026-03-03";
 export const APP_NAME = "LHFEX SaaS";
 
 export type ChangelogItemType = "feature" | "improvement" | "fix" | "infra";
@@ -21,8 +21,28 @@ export interface ChangelogEntry {
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
   {
-    version: APP_VERSION,
-    date: APP_RELEASE_DATE,
+    version: "2.3.0",
+    date: "2026-03-03",
+    title: "Slate Pro Redesign + OpenClaw 2.0 + Faturamento Profissional",
+    items: [
+      { type: "improvement", text: "Redesign completo 'Slate Pro': sidebar escura, cards compactos, tipografia moderna" },
+      { type: "improvement", text: "Logo circular no login e favicon atualizado para logo-circle.png" },
+      { type: "feature",     text: "Dashboard: cotação PTAX BCB exibe data de atualização ('PTAX BCB · DD/MM/YYYY')" },
+      { type: "feature",     text: "Dia Limpo: tracker de streak pessoal com grade estilo GitHub contributions (12 meses)" },
+      { type: "feature",     text: "Faturamento: template profissional de fatura de cobrança com branding LHFEX" },
+      { type: "feature",     text: "Faturamento: botão 'Enviar por Email' no detalhe da fatura (dados Banco Inter incluídos)" },
+      { type: "feature",     text: "OpenClaw 2.0: hierarquia 4 camadas (Gemini free → openrouter/auto → DeepSeek → OR pago)" },
+      { type: "feature",     text: "OpenClaw: quiet hours 00h–05h (silêncio noturno com bypass por palavras urgentes)" },
+      { type: "improvement", text: "SOUL.md: regra absoluta 'NUNCA MINTA', capacidades reais documentadas com ✅/⚠️/❌" },
+      { type: "feature",     text: "Telegram bot: suporte a mensagens de voz/áudio via Groq Whisper transcription" },
+      { type: "feature",     text: "Telegram bot: suporte a imagens via Gemini Vision 2.0 Flash analysis" },
+      { type: "feature",     text: "Heartbeats: 6 novos crons (update-check, VPS diário, personal morning, briefing LHFEX, weekly, promoções)" },
+      { type: "infra",       text: "Env vars: GROQ_API_KEY, INTER_CLIENT_ID/SECRET/ACCOUNT, OPENCLAW_TOOLS_API_KEY configurados no Coolify" },
+    ],
+  },
+  {
+    version: "2.2.3",
+    date: "2026-02-22",
     title: "Rotas nativas Vida Pessoal + Compatibilidade Legada",
     items: [
       { type: "improvement", text: "Rotas /personal-life/finances, /accounts, /transactions, /budgets e /recurring agora são nativas (sem wrappers de redirect)" },
