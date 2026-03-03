@@ -4,16 +4,26 @@
     "defaults": {
       "workspace": "/root/.openclaw/workspace",
 
-      // Modelo primário + fallback
+      // Hierarquia de 4 camadas — troca automática por ordem
+      // Camada 1: Gemini direto (grátis, primário, ~1500 req/dia)
+      // Camada 2: OpenRouter /free (roteador automático para free, ~50-100/dia)
+      // Camada 3: DeepSeek direto (pago, tokens já comprados — usar até acabar)
+      // Camada 4: OpenRouter pago (último recurso, gera custo)
       "model": {
         "primary": "gemini/gemini-2.0-flash",
-        "fallbacks": ["openrouter/deepseek/deepseek-chat"]
+        "fallbacks": [
+          "openrouter/auto",
+          "deepseek/deepseek-chat",
+          "openrouter/deepseek/deepseek-chat"
+        ]
       },
 
       // Catálogo de modelos disponíveis + aliases
       "models": {
         "gemini/gemini-2.0-flash":               { "alias": "default"        },
         "gemini/gemini-2.0-flash-lite":          { "alias": "lite"           },
+        "openrouter/auto":                        { "alias": "free"           },
+        "deepseek/deepseek-chat":                { "alias": "deepseek-direct" },
         "openrouter/deepseek/deepseek-chat":     { "alias": "brain"          },
         "openrouter/deepseek/deepseek-reasoner": { "alias": "subagent"       },
         "openrouter/anthropic/claude-opus-4-6":  { "alias": "brain-best"     },
@@ -24,12 +34,20 @@
       },
 
       // Heartbeat a cada 15 min usando modelo primário
-      // gemini-2.0-flash-lite retorna "Unknown model" → usar primary
-      // target deve ser um channel ID configurado ("telegram" ou "slack")
       "heartbeat": {
         "every":  "15m",
         "model":  "gemini/gemini-2.0-flash",
         "target": "telegram"
+      },
+
+      // Quiet hours: silêncio total entre 00h-05h (horário de Brasília)
+      // Urgências sempre passam: "urgente", "emergência", "crítico", "servidor caiu", "erro grave"
+      "quietHours": {
+        "enabled":         true,
+        "start":           "00:00",
+        "end":             "05:00",
+        "timezone":        "America/Sao_Paulo",
+        "urgencyKeywords": ["urgente", "emergência", "crítico", "servidor caiu", "erro grave", "falha grave", "ajuda"]
       }
     }
   },

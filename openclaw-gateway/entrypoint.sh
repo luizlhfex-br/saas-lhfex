@@ -20,6 +20,13 @@ for f in SOUL.md IDENTITY.md USER.md AGENTS.md WORKING.md; do
   fi
 done
 
+# Sempre atualiza SOUL.md — garante regras de honestidade e quiet hours
+# (sobrescreve versão antiga no volume persistente)
+if [ -f "/root/.openclaw/prompts/SOUL.md" ]; then
+  cp "/root/.openclaw/prompts/SOUL.md" "$WORKSPACE/SOUL.md"
+  echo "[openclaw] SOUL.md atualizado no workspace."
+fi
+
 echo "[openclaw] Workspace ready."
 
 # ── GITHUB BACKUP ─────────────────────────────────────────────────────────────
@@ -50,28 +57,27 @@ if [ -n "$GITHUB_BACKUP_TOKEN" ] && [ -n "$GITHUB_BACKUP_REPO" ]; then
 fi
 
 # ── CRON JOBS ─────────────────────────────────────────────────────────────────
-# Schema correto: { "version": 1, "jobs": [...] }
-# Ref: openclaw@2026.2.26 CronJobSchema (send-*.js)
+# SEMPRE recria o arquivo com a versão mais recente dos jobs.
+# Isso garante que novos jobs adicionados aqui entrem em vigor no próximo deploy.
 CRON_DIR=/root/.openclaw/cron
 mkdir -p "$CRON_DIR"
 
-if [ ! -f "$CRON_DIR/jobs.json" ]; then
-  echo "[openclaw] Criando cron jobs (formato v1)..."
-  cat > "$CRON_DIR/jobs.json" << 'CRONEOF'
+echo "[openclaw] Recriando cron jobs (versão 2026-03-03)..."
+cat > "$CRON_DIR/jobs.json" << 'CRONEOF'
 {
   "version": 1,
   "jobs": [
     {
-      "id": "morning-brief",
-      "name": "morning_brief",
-      "description": "Briefing matinal com processos, tarefas e KPIs",
+      "id": "openclaw-update-check",
+      "name": "openclaw_update_check",
+      "description": "Verifica se há nova versão do OpenClaw disponível",
       "enabled": true,
       "deleteAfterRun": false,
       "createdAtMs": 1772323200000,
-      "updatedAtMs": 1772323200000,
+      "updatedAtMs": 1772496000000,
       "schedule": {
         "kind": "cron",
-        "expr": "0 8 * * 1-5",
+        "expr": "0 10 * * *",
         "tz": "America/Sao_Paulo",
         "staggerMs": 0
       },
@@ -79,21 +85,21 @@ if [ ! -f "$CRON_DIR/jobs.json" ]; then
       "wakeMode": "now",
       "payload": {
         "kind": "agentTurn",
-        "message": "BRIEFING MATINAL: Gerar briefing completo do dia para Luiz. Consultar via web_fetch: 1) action=resumo_processos (processos vencendo hoje/amanhã, alertas) 2) Tarefas bloqueadas no Mission Control 3) KPIs principais. Enviar resumo estruturado no Telegram para Luiz (chat_id 916838588). Seja direto e use números concretos."
+        "message": "UPDATE CHECK: Verifique se há uma nova versão do OpenClaw disponível. Acesse https://github.com/openclaw/openclaw/releases via web_fetch e compare com a versão atual registrada em WORKING.md ou no sistema. Se houver versão mais nova que a atual (2026.2.26), notifique Luiz no Telegram com: 1) Versão nova disponível 2) Data de lançamento 3) Resumo das novidades principais 4) Recomendação: vale atualizar agora? 5) Pergunta se quer o comando de atualização. Se não há versão nova: silêncio total, não notificar."
       },
       "state": {}
     },
     {
-      "id": "process-alerts-am",
-      "name": "process_alerts_am",
-      "description": "Alerta de processos em risco - manhã",
+      "id": "vps-daily-status",
+      "name": "vps_daily_status",
+      "description": "Relatório diário do status do VPS (7h)",
       "enabled": true,
       "deleteAfterRun": false,
       "createdAtMs": 1772323200000,
-      "updatedAtMs": 1772323200000,
+      "updatedAtMs": 1772496000000,
       "schedule": {
         "kind": "cron",
-        "expr": "0 9 * * 1-5",
+        "expr": "0 7 * * *",
         "tz": "America/Sao_Paulo",
         "staggerMs": 0
       },
@@ -101,18 +107,106 @@ if [ ! -f "$CRON_DIR/jobs.json" ]; then
       "wakeMode": "now",
       "payload": {
         "kind": "agentTurn",
-        "message": "ALERTA DE PROCESSOS (manhã): Verificar processos em risco via web_fetch action=resumo_processos. Se há processos vencendo em 3 dias ou com alertas, notificar Luiz no Telegram com lista detalhada. Se tudo OK, não notificar."
+        "message": "VPS STATUS DIÁRIO: Verifique o status do sistema via web_fetch action=system_status no SAAS. Envie um relatório resumido para o Luiz APENAS se houver algum problema: CPU acima de 80% por período prolongado, disco acima de 85%, serviços down, ou erros críticos recentes. Se tudo estiver normal (CPU < 80%, disco < 85%, serviços OK), NÃO envie mensagem — silêncio é sinal de saúde."
+      },
+      "state": {}
+    },
+    {
+      "id": "personal-morning",
+      "name": "personal_morning",
+      "description": "Briefing matinal pessoal (8h todos os dias)",
+      "enabled": true,
+      "deleteAfterRun": false,
+      "createdAtMs": 1772323200000,
+      "updatedAtMs": 1772496000000,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 8 * * *",
+        "tz": "America/Sao_Paulo",
+        "staggerMs": 0
+      },
+      "sessionTarget": "main",
+      "wakeMode": "now",
+      "payload": {
+        "kind": "agentTurn",
+        "message": "BRIEFING MATINAL: Envie um briefing conciso para o Luiz no Telegram. Inclua: 1) Bom dia com data de hoje 2) Processos LHFEX urgentes ou vencendo hoje/amanhã (via web_fetch action=resumo_processos) — se nenhum, diga 'processos: tudo OK' 3) Tarefas pessoais pendentes do WORKING.md se houver 4) Uma dica ou motivação curta (1 frase). Use emojis com moderação. Seja direto: máximo 10 linhas."
+      },
+      "state": {}
+    },
+    {
+      "id": "morning-brief",
+      "name": "morning_brief",
+      "description": "Briefing LHFEX detalhado (8h dias úteis) — substitui o matinal nos úteis",
+      "enabled": true,
+      "deleteAfterRun": false,
+      "createdAtMs": 1772323200000,
+      "updatedAtMs": 1772496000000,
+      "schedule": {
+        "kind": "cron",
+        "expr": "30 8 * * 1-5",
+        "tz": "America/Sao_Paulo",
+        "staggerMs": 0
+      },
+      "sessionTarget": "main",
+      "wakeMode": "now",
+      "payload": {
+        "kind": "agentTurn",
+        "message": "BRIEFING LHFEX (dia útil): Gerar briefing operacional para Luiz. Consultar via web_fetch: 1) action=resumo_processos — processos vencendo hoje/amanhã, alertas críticos 2) action=system_status — status dos serviços. Enviar resumo estruturado no Telegram. Seja direto e use números concretos. Se não há alertas, diga 'operações: sem alertas' e termine aí."
+      },
+      "state": {}
+    },
+    {
+      "id": "lhfex-weekly",
+      "name": "lhfex_weekly",
+      "description": "Resumo semanal LHFEX (segunda 9h)",
+      "enabled": true,
+      "deleteAfterRun": false,
+      "createdAtMs": 1772323200000,
+      "updatedAtMs": 1772496000000,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 9 * * 1",
+        "tz": "America/Sao_Paulo",
+        "staggerMs": 0
+      },
+      "sessionTarget": "main",
+      "wakeMode": "now",
+      "payload": {
+        "kind": "agentTurn",
+        "message": "RESUMO SEMANAL LHFEX: É segunda-feira, hora do relatório semanal. Consultar via web_fetch: 1) action=resumo_processos — todos os processos em aberto, vencimentos desta semana 2) action=system_status — saúde do sistema na semana. Enviar para Luiz no Telegram um resumo semanal com: processos em aberto (quantidade por status), alertas da semana, e próximos vencimentos nos próximos 7 dias. Seja objetivo."
+      },
+      "state": {}
+    },
+    {
+      "id": "promotions-checker",
+      "name": "promotions_checker",
+      "description": "Monitor de promoções e sorteios (seg, qua, sex 12h)",
+      "enabled": true,
+      "deleteAfterRun": false,
+      "createdAtMs": 1772323200000,
+      "updatedAtMs": 1772496000000,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 12 * * 1,3,5",
+        "tz": "America/Sao_Paulo",
+        "staggerMs": 0
+      },
+      "sessionTarget": "main",
+      "wakeMode": "now",
+      "payload": {
+        "kind": "agentTurn",
+        "message": "MONITOR DE PROMOÇÕES: Pesquise promoções e sorteios ativos nos seguintes sites via web_fetch: 1) https://acheipromocao.com.br/ 2) https://portaldapromo.com.br/promocoes/ativas 3) https://pegapromocao.com.br/promocoes/ . Analise e classifique por PRIORIDADE: 🏆 MÁXIMA = gratuitas (só cadastro, sem compra) ou promoções de rádio BH (Itatiaia, CBN, Jovem Pan Minas) | 🥈 ALTA = válidas para MG/Belo Horizonte | 🥉 MÉDIA = Brasil inteiro | ⚠️ BAIXA = apenas outros estados (informe qual estado). Para cada promoção relevante: nome, prazo, como participar, e se vale a pena (avalie o prêmio vs facilidade). Verifique MEMORY.md para não repetir promoções já alertadas. Se não houver promoções novas interessantes, NÃO envie mensagem."
       },
       "state": {}
     },
     {
       "id": "process-alerts-pm",
       "name": "process_alerts_pm",
-      "description": "Alerta de processos em risco - tarde",
+      "description": "Alerta de processos em risco - tarde (17h dias úteis)",
       "enabled": true,
       "deleteAfterRun": false,
       "createdAtMs": 1772323200000,
-      "updatedAtMs": 1772323200000,
+      "updatedAtMs": 1772496000000,
       "schedule": {
         "kind": "cron",
         "expr": "0 17 * * 1-5",
@@ -126,36 +220,11 @@ if [ ! -f "$CRON_DIR/jobs.json" ]; then
         "message": "ALERTA DE PROCESSOS (tarde): Verificar processos em risco via web_fetch action=resumo_processos. Se há processos vencendo em 3 dias ou com alertas, notificar Luiz no Telegram com lista detalhada. Se tudo OK, não notificar."
       },
       "state": {}
-    },
-    {
-      "id": "api-limits-check",
-      "name": "api_limits_check",
-      "description": "Verificação diária de limites de API",
-      "enabled": true,
-      "deleteAfterRun": false,
-      "createdAtMs": 1772323200000,
-      "updatedAtMs": 1772323200000,
-      "schedule": {
-        "kind": "cron",
-        "expr": "0 18 * * *",
-        "tz": "America/Sao_Paulo",
-        "staggerMs": 0
-      },
-      "sessionTarget": "main",
-      "wakeMode": "now",
-      "payload": {
-        "kind": "agentTurn",
-        "message": "API LIMITS: Verificar system_status via web_fetch action=system_status. Se qualquer limite de API acima de 80% do quota, alertar Luiz no Telegram com detalhes. Se tudo OK, não notificar."
-      },
-      "state": {}
     }
   ]
 }
 CRONEOF
-  echo "[openclaw] Cron jobs criados: morning_brief, process_alerts x2, api_limits."
-else
-  echo "[openclaw] Cron jobs já existem, mantendo."
-fi
+echo "[openclaw] Cron jobs criados: update-check, vps-daily, personal-morning, morning-brief, lhfex-weekly, promotions-checker, process-alerts-pm."
 
 # ── GATEWAY ───────────────────────────────────────────────────────────────────
 echo "[openclaw] Iniciando gateway na porta 18789..."
