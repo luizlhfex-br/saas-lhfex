@@ -28,6 +28,27 @@ type Entry = {
 
 const CHANGELOG: Entry[] = [
   {
+    date: "2026-03-03",
+    version: "2.3.0",
+    commit: "646235f",
+    type: "release",
+    title: "Slate Pro + OpenClaw 2.0 + Faturamento Profissional",
+    items: [
+      "Redesign 'Slate Pro' — sidebar escura, accent índigo, Inter font, cards flat com ícones Lucide",
+      "Logo circle (SVG) como favicon + apple-touch-icon no root.tsx e tela de login",
+      "OpenClaw: hierarquia 4 camadas (Gemini 2.0 Flash → OpenRouter auto → DeepSeek → Kimi K2.5)",
+      "OpenClaw: SOUL.md com regra de honestidade absoluta (NUNCA MINTA) + controle de acesso por usuário",
+      "OpenClaw: 7 cron jobs — update-check (10h), vps-daily (7h), personal-morning (8h), morning-brief (8:30h dias úteis), lhfex-weekly (seg 9h), promotions-checker (seg/qua/sex 12h), process-alerts-pm (18h dias úteis)",
+      "Telegram webhook: transcrição de áudio via Groq Whisper (whisper-large-v3-turbo)",
+      "Telegram webhook: análise de imagens via Gemini Vision 2.0 Flash",
+      "Dia Limpo: streak tracker com grid estilo GitHub contributions — schema, migração e UI completa",
+      "Dashboard: cotação PTAX BCB com data de atualização ('DD/MM/YYYY') abaixo do valor",
+      "Faturamento: template HTML profissional com logo LHFEX, tabela de itens e dados Banco Inter para impressão/PDF + envio por email",
+      "OPENCLAW_TOOLS_API_KEY: configurada em saas-lhfex e openclaw-ai para comunicação segura",
+      "fix(openclaw): removido agents.defaults.quietHours (chave inválida) — quiet hours via SOUL.md",
+    ],
+  },
+  {
     date: "2026-03-02",
     type: "fix",
     title: "openclaw: heartbeat model + deepseek fallback + RUNBOOK",

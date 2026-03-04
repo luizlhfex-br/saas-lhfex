@@ -20,12 +20,24 @@ for f in SOUL.md IDENTITY.md USER.md AGENTS.md WORKING.md; do
   fi
 done
 
-# Sempre atualiza SOUL.md — garante regras de honestidade e quiet hours
+# Sempre atualiza SOUL.md e CHANGELOG.md — garante regras e histórico atualizados
 # (sobrescreve versão antiga no volume persistente)
 if [ -f "/root/.openclaw/prompts/SOUL.md" ]; then
   cp "/root/.openclaw/prompts/SOUL.md" "$WORKSPACE/SOUL.md"
   echo "[openclaw] SOUL.md atualizado no workspace."
 fi
+if [ -f "/root/.openclaw/prompts/CHANGELOG.md" ]; then
+  cp "/root/.openclaw/prompts/CHANGELOG.md" "$WORKSPACE/CHANGELOG.md"
+  echo "[openclaw] CHANGELOG.md disponível no workspace."
+fi
+
+# Cria estrutura de memória organizada (Fase 4 — Bruno Okamoto)
+mkdir -p "$WORKSPACE/memory"
+for memfile in decisions.md projects.md people.md lessons.md pending.md; do
+  if [ ! -f "$WORKSPACE/memory/$memfile" ]; then
+    echo "# $memfile\n<!-- Arquivo de memória estruturada do OpenClaw -->" > "$WORKSPACE/memory/$memfile"
+  fi
+done
 
 echo "[openclaw] Workspace ready."
 
@@ -225,6 +237,19 @@ cat > "$CRON_DIR/jobs.json" << 'CRONEOF'
 }
 CRONEOF
 echo "[openclaw] Cron jobs criados: update-check, vps-daily, personal-morning, morning-brief, lhfex-weekly, promotions-checker, process-alerts-pm."
+
+# ── DEPLOY NOTIFICATION ───────────────────────────────────────────────────────
+# Notifica o lhfex_monitor_bot no Telegram sempre que o container reiniciar/deployar
+if [ -n "$TELEGRAM_OPENCLAW_BOT_TOKEN" ] && [ -n "$TELEGRAM_LUIZ_CHAT_ID" ]; then
+  DEPLOY_MSG="🚀 *OpenClaw reiniciado* — $(date '+%d/%m/%Y %H:%M') BRT%0A"
+  DEPLOY_MSG="${DEPLOY_MSG}📦 Gateway v2026.2.26 · 7 crons ativos%0A"
+  DEPLOY_MSG="${DEPLOY_MSG}🤖 Gemini 2.0 Flash → OR/auto → DeepSeek → Kimi K2.5"
+  curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_OPENCLAW_BOT_TOKEN}/sendMessage" \
+    -d "chat_id=${TELEGRAM_LUIZ_CHAT_ID}" \
+    -d "text=${DEPLOY_MSG}" \
+    -d "parse_mode=Markdown" > /dev/null 2>&1 || true
+  echo "[openclaw] Deploy notification enviada."
+fi
 
 # ── GATEWAY ───────────────────────────────────────────────────────────────────
 echo "[openclaw] Iniciando gateway na porta 18789..."

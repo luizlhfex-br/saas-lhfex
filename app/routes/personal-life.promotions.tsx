@@ -11,7 +11,7 @@ import { useState, useRef } from "react";
 import { requireAuth } from "~/lib/auth.server";
 import { requireRole, ROLES } from "~/lib/rbac.server";
 import { db } from "~/lib/db.server";
-import { promotions, pessoas, promotionSites } from "../../drizzle/schema/personal-life";
+import { promotions, pessoas, promotionSites, literaryContests } from "../../drizzle/schema/personal-life";
 import { and, asc, desc, eq, isNull, ilike, or } from "drizzle-orm";
 import { data } from "react-router";
 import {
@@ -44,6 +44,10 @@ import {
   Globe,
   ToggleLeft,
   ToggleRight,
+  BookOpen,
+  PenLine,
+  CalendarDays,
+  Award,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import type { ScpcPromoMapeada } from "./api.scpc-search";
@@ -53,6 +57,7 @@ import type { ScpcPromoMapeada } from "./api.scpc-search";
 type Promotion = typeof promotions.$inferSelect;
 type Pessoa = typeof pessoas.$inferSelect;
 type PromoSite = typeof promotionSites.$inferSelect;
+type LiteraryContest = typeof literaryContests.$inferSelect;
 type SenhaEntry = { label: string; login: string; password: string };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -176,6 +181,13 @@ export async function loader({ request }: { request: Request }) {
     .where(eq(promotionSites.userId, user.id))
     .orderBy(asc(promotionSites.name));
 
+  // Concursos Literários
+  const contestsList = await db
+    .select()
+    .from(literaryContests)
+    .where(eq(literaryContests.userId, user.id))
+    .orderBy(asc(literaryContests.deadline));
+
   return {
     promotions: filtered as Promotion[],
     kpis: {
@@ -188,6 +200,7 @@ export async function loader({ request }: { request: Request }) {
     pessoasList: pessoasList as Pessoa[],
     pessoaSearch,
     sitesList: sitesList as PromoSite[],
+    contestsList: contestsList as LiteraryContest[],
   };
 }
 
@@ -357,6 +370,34 @@ export async function action({ request }: { request: Request }) {
     await db
       .delete(promotionSites)
       .where(and(eq(promotionSites.id, id), eq(promotionSites.userId, user.id)));
+    return data({ success: true });
+  }
+
+  // ── Concursos Literários ──
+  if (intent === "create_contest") {
+    const name = (formData.get("name") as string | null)?.trim();
+    const organizer = (formData.get("organizer") as string | null)?.trim() || null;
+    const theme = (formData.get("theme") as string | null)?.trim() || null;
+    const modality = (formData.get("modality") as string | null) || null;
+    const deadline = (formData.get("deadline") as string | null) || null;
+    const link = (formData.get("link") as string | null)?.trim() || null;
+    const prize = (formData.get("prize") as string | null)?.trim() || null;
+    const notes = (formData.get("notes") as string | null)?.trim() || null;
+    if (!name) return data({ error: "Nome é obrigatório" }, { status: 400 });
+    await db.insert(literaryContests).values({ userId: user.id, name, organizer, theme, modality, deadline, link, prize, notes });
+    return data({ success: true });
+  }
+
+  if (intent === "update_contest_status") {
+    const id = formData.get("id") as string;
+    const status = formData.get("status") as string;
+    await db.update(literaryContests).set({ status, updatedAt: new Date() }).where(and(eq(literaryContests.id, id), eq(literaryContests.userId, user.id)));
+    return data({ success: true });
+  }
+
+  if (intent === "delete_contest") {
+    const id = formData.get("id") as string;
+    await db.delete(literaryContests).where(and(eq(literaryContests.id, id), eq(literaryContests.userId, user.id)));
     return data({ success: true });
   }
 
@@ -848,12 +889,12 @@ export default function PromotionsPage({
 }: {
   loaderData: Awaited<ReturnType<typeof loader>>;
 }) {
-  const { promotions: promo, kpis, statusFilter, pessoasList, pessoaSearch, sitesList } = loaderData;
+  const { promotions: promo, kpis, statusFilter, pessoasList, pessoaSearch, sitesList, contestsList } = loaderData;
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
 
   // Tabs
-  const [activeTab, setActiveTab] = useState<"promocoes" | "pessoas" | "sites">("promocoes");
+  const [activeTab, setActiveTab] = useState<"promocoes" | "pessoas" | "sites" | "concursos">("promocoes");
 
   // Sites state
   const [showSiteForm, setShowSiteForm] = useState(false);
@@ -868,6 +909,9 @@ export default function PromotionsPage({
 
   // Pessoas state
   const [showPessoaForm, setShowPessoaForm] = useState(false);
+
+  // Concursos state
+  const [showContestForm, setShowContestForm] = useState(false);
 
   // SCPC state
   const scpcFetcher = useFetcher<{ results?: ScpcPromoMapeada[]; total?: number; showing?: number; error?: string }>();
@@ -1021,6 +1065,23 @@ export default function PromotionsPage({
           {sitesList.length > 0 && (
             <span className="rounded-full bg-gray-200 px-1.5 py-0.5 text-xs font-semibold text-gray-600 dark:bg-gray-700 dark:text-gray-300">
               {sitesList.length}
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("concursos")}
+          className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === "concursos"
+              ? "bg-white text-indigo-700 shadow-sm dark:bg-gray-800 dark:text-indigo-400"
+              : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          }`}
+        >
+          <BookOpen className="h-4 w-4" />
+          Concursos
+          {contestsList.length > 0 && (
+            <span className="rounded-full bg-violet-100 px-1.5 py-0.5 text-xs font-semibold text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">
+              {contestsList.length}
             </span>
           )}
         </button>
@@ -1751,6 +1812,252 @@ export default function PromotionsPage({
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── ABA CONCURSOS LITERÁRIOS ── */}
+      {activeTab === "concursos" && (
+        <div className="space-y-6">
+
+          {/* Sites de acompanhamento */}
+          <div className="rounded-xl border border-violet-200 bg-violet-50 p-4 dark:border-violet-900/50 dark:bg-violet-900/10">
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-violet-800 dark:text-violet-300">
+              <Globe className="h-4 w-4" />
+              Sites de Concursos — Inscrições Abertas
+            </h3>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {[
+                { name: "Concursos Literários .net.br", url: "https://concursosliterarios.net.br/category/concursos/concursos-abertos/", desc: "Concursos abertos, atualizado frequentemente" },
+                { name: "Seleções Literárias — com prêmio", url: "https://selecoesliterarias.com.br/categoria/concursos-literarios-premio-dinheiro/", desc: "Apenas concursos com prêmio em dinheiro" },
+                { name: "Blog Concursos Literários", url: "https://concursos-literarios.blogspot.com/p/inscricoes-abertas.html", desc: "Inscrições abertas — lista histórica completa" },
+                { name: "Plataforma de Escritores", url: "https://www.plataformadeescritores.com.br/concursos", desc: "Concursos + espaço para escritores brasileiros" },
+              ].map((site) => (
+                <a
+                  key={site.url}
+                  href={site.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-start gap-3 rounded-lg border border-violet-200 bg-white p-3 transition-colors hover:border-violet-400 hover:bg-violet-50 dark:border-violet-800 dark:bg-gray-900 dark:hover:border-violet-600"
+                >
+                  <ExternalLink className="mt-0.5 h-4 w-4 shrink-0 text-violet-500" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{site.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{site.desc}</p>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+
+          {/* Ferramenta de escrita AI */}
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-900/10">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-amber-800 dark:text-amber-300">
+                  <PenLine className="h-4 w-4" />
+                  IA para Escrita Criativa
+                </h3>
+                <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+                  <strong>Sudowrite</strong> é a melhor IA especializada em escrita criativa — poesia, ficção, conto, crônica.
+                  Superior ao ChatGPT/Claude para narrativa e poemas de concurso.
+                </p>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Alternativas: <strong>NovelAI</strong> (ficção com controle de estilo) · <strong>Claude</strong> (revisão, estrutura, análise de regulamentos)
+                </p>
+              </div>
+              <a
+                href="https://sudowrite.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700"
+              >
+                Abrir Sudowrite ↗
+              </a>
+            </div>
+          </div>
+
+          {/* Registro pessoal */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-200">
+                <Award className="h-4 w-4 text-violet-500" />
+                Meus Concursos ({contestsList.length})
+              </h3>
+              <Button size="sm" onClick={() => setShowContestForm((v) => !v)}>
+                <Plus className="mr-1 h-4 w-4" />
+                {showContestForm ? "Fechar" : "Registrar"}
+              </Button>
+            </div>
+
+            {/* Formulário de novo concurso */}
+            {showContestForm && (
+              <div className="rounded-xl border border-violet-200 bg-violet-50 p-4 dark:border-violet-900 dark:bg-violet-900/10">
+                <Form method="post" className="space-y-3" onSubmit={() => setShowContestForm(false)}>
+                  <input type="hidden" name="_intent" value="create_contest" />
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <input
+                      type="text"
+                      name="name"
+                      placeholder="Nome do concurso *"
+                      required
+                      className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                    />
+                    <input
+                      type="text"
+                      name="organizer"
+                      placeholder="Organizador (ex: SESC, revista XYZ)"
+                      className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                    />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <select
+                      name="modality"
+                      className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                    >
+                      <option value="">Modalidade</option>
+                      <option value="poema">Poema</option>
+                      <option value="conto">Conto</option>
+                      <option value="cronica">Crônica</option>
+                      <option value="microconto">Microconto</option>
+                      <option value="outro">Outro</option>
+                    </select>
+                    <input
+                      type="date"
+                      name="deadline"
+                      className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                    />
+                    <input
+                      type="text"
+                      name="prize"
+                      placeholder="Prêmio (ex: R$ 2.000)"
+                      className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                    />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <input
+                      type="text"
+                      name="theme"
+                      placeholder="Tema (ex: Amor e perdão, Natureza)"
+                      className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                    />
+                    <input
+                      type="url"
+                      name="link"
+                      placeholder="Link do regulamento"
+                      className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                    />
+                  </div>
+                  <textarea
+                    name="notes"
+                    placeholder="Notas (limite de palavras, regras especiais, etc.)"
+                    rows={2}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                  />
+                  <div className="flex gap-2">
+                    <Button type="submit" size="sm" disabled={isSubmitting}>Salvar</Button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setShowContestForm(false)}>Cancelar</Button>
+                  </div>
+                </Form>
+              </div>
+            )}
+
+            {/* Lista de concursos */}
+            {contestsList.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-gray-300 py-12 text-center dark:border-gray-700">
+                <BookOpen className="mx-auto mb-3 h-10 w-10 text-gray-300 dark:text-gray-600" />
+                <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum concurso registrado ainda.</p>
+                <Button className="mt-4" size="sm" onClick={() => setShowContestForm(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Registrar concurso
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {contestsList.map((c) => {
+                  const daysLeft = c.deadline ? daysUntilEnd(c.deadline) : null;
+                  const statusColor: Record<string, string> = {
+                    rascunho: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+                    enviado: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+                    premiado: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+                    nao_premiado: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400",
+                  };
+                  const statusLabel: Record<string, string> = {
+                    rascunho: "Rascunho",
+                    enviado: "Enviado",
+                    premiado: "Premiado 🏆",
+                    nao_premiado: "Não premiado",
+                  };
+                  const modalityLabel: Record<string, string> = {
+                    poema: "📜 Poema",
+                    conto: "📖 Conto",
+                    cronica: "✍️ Crônica",
+                    microconto: "⚡ Microconto",
+                    outro: "📝 Outro",
+                  };
+                  return (
+                    <div key={c.id} className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h4 className="font-medium text-gray-900 dark:text-gray-100">{c.name}</h4>
+                            {c.modality && (
+                              <span className="text-xs text-gray-500 dark:text-gray-400">{modalityLabel[c.modality] ?? c.modality}</span>
+                            )}
+                            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColor[c.status ?? "rascunho"] ?? statusColor.rascunho}`}>
+                              {statusLabel[c.status ?? "rascunho"] ?? c.status}
+                            </span>
+                          </div>
+                          <div className="mt-1 flex flex-wrap gap-3 text-xs text-gray-500 dark:text-gray-400">
+                            {c.organizer && <span>{c.organizer}</span>}
+                            {c.theme && <span>Tema: {c.theme}</span>}
+                            {c.prize && <span className="text-amber-600 dark:text-amber-400">🏅 {c.prize}</span>}
+                            {c.deadline && (
+                              <span className={`flex items-center gap-1 ${daysLeft !== null && daysLeft <= 7 && daysLeft >= 0 ? "font-semibold text-red-600 dark:text-red-400" : ""}`}>
+                                <CalendarDays className="h-3 w-3" />
+                                {formatDate(c.deadline)}
+                                {daysLeft !== null && daysLeft >= 0 && ` (${daysLeft}d)`}
+                                {daysLeft !== null && daysLeft < 0 && " (encerrado)"}
+                              </span>
+                            )}
+                          </div>
+                          {c.notes && <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{c.notes}</p>}
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          {c.link && (
+                            <a href={c.link} target="_blank" rel="noopener noreferrer" className="rounded p-1 text-gray-400 hover:text-violet-600">
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          )}
+                          <Form method="post">
+                            <input type="hidden" name="_intent" value="update_contest_status" />
+                            <input type="hidden" name="id" value={c.id} />
+                            <select
+                              name="status"
+                              defaultValue={c.status ?? "rascunho"}
+                              onChange={(e) => e.currentTarget.form?.requestSubmit()}
+                              className="rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                            >
+                              <option value="rascunho">Rascunho</option>
+                              <option value="enviado">Enviado</option>
+                              <option value="premiado">Premiado</option>
+                              <option value="nao_premiado">Não premiado</option>
+                            </select>
+                          </Form>
+                          <Form method="post" onSubmit={(e) => { if (!confirm("Remover este concurso?")) e.preventDefault(); }}>
+                            <input type="hidden" name="_intent" value="delete_contest" />
+                            <input type="hidden" name="id" value={c.id} />
+                            <button type="submit" className="rounded p-1 text-gray-300 hover:text-red-500">
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </Form>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

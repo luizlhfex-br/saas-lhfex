@@ -6,15 +6,15 @@
 
       // Hierarquia de 4 camadas — troca automática por ordem
       // Camada 1: Gemini direto (grátis, primário, ~1500 req/dia)
-      // Camada 2: OpenRouter /free (roteador automático para free, ~50-100/dia)
+      // Camada 2: OpenRouter /auto (roteador grátis — escolhe o melhor free disponível)
       // Camada 3: DeepSeek direto (pago, tokens já comprados — usar até acabar)
-      // Camada 4: OpenRouter pago (último recurso, gera custo)
+      // Camada 4: Kimi K2.5 via OpenRouter (econômico, custo mínimo)
       "model": {
         "primary": "gemini/gemini-2.0-flash",
         "fallbacks": [
           "openrouter/auto",
           "deepseek/deepseek-chat",
-          "openrouter/deepseek/deepseek-chat"
+          "openrouter/moonshotai/kimi-k2-5"
         ]
       },
 
@@ -103,6 +103,35 @@
       "file-ops":   { "enabled": true  },
       "reminders":  { "enabled": true  },
       "qmd":        { "enabled": true  }
+    }
+  },
+
+  // ── MEMÓRIA (Fase 4 — Bruno Okamoto) ─────────────────────────────────────
+  // Busca híbrida BM25+vector, TTL 6h, flush 40k tokens, últimas 3 respostas
+  "memorySearch": {
+    "sources": ["memory", "sessions"],
+    "query": {
+      "hybrid": {
+        "enabled":     true,
+        "vectorWeight": 0.5,
+        "textWeight":  0.5
+      }
+    }
+  },
+
+  "contextPruning": {
+    "mode":               "cache-ttl",
+    "ttl":                "6h",
+    "keepLastAssistants": 3
+  },
+
+  "compaction": {
+    "mode":                   "default",
+    "reserveTokensFloor":     30000,
+    "memoryFlush": {
+      "enabled":              true,
+      "softThresholdTokens":  40000,
+      "prompt": "Before this context is compacted, extract and save all important information to memory files. Focus on: 1. DECISIONS made (what was decided and why). 2. STATE CHANGES (what was configured, installed, or modified). 3. LESSONS LEARNED (what worked, what failed, key insights). 4. BLOCKERS waiting for input. 5. Key facts about projects, people, or systems. Write to /root/.openclaw/workspace/memory/ files. Do not skip — missing context is permanently lost after compaction."
     }
   }
 }

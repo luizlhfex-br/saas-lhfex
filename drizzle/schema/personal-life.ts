@@ -274,6 +274,31 @@ export const personalWishlist = pgTable(
   })
 );
 
+// ── Concursos Literários ──
+export const literaryContests = pgTable(
+  "literary_contests",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    name: varchar("name", { length: 255 }).notNull(),
+    organizer: varchar("organizer", { length: 255 }),
+    theme: text("theme"),
+    modality: varchar("modality", { length: 50 }), // "poema" | "conto" | "cronica" | "microconto" | "outro"
+    deadline: date("deadline"),
+    link: varchar("link", { length: 500 }),
+    prize: varchar("prize", { length: 255 }),
+    status: varchar("status", { length: 50 }).default("rascunho"), // "rascunho" | "enviado" | "premiado" | "nao_premiado"
+    notes: text("notes"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index("literary_contests_user_id_idx").on(table.userId),
+    deadlineIdx: index("literary_contests_deadline_idx").on(table.deadline),
+    statusIdx: index("literary_contests_status_idx").on(table.status),
+  })
+);
+
 // ── Sites de Promoções ──
 export const promotionSites = pgTable(
   "promotion_sites",
