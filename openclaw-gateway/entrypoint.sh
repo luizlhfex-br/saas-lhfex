@@ -239,11 +239,33 @@ cat > "$CRON_DIR/jobs.json" << 'CRONEOF'
         "message": "ALERTA DE PROCESSOS (tarde): Verificar processos em risco via web_fetch action=resumo_processos. Se há processos vencendo em 3 dias ou com alertas, notificar Luiz no Telegram com lista detalhada. Se tudo OK, não notificar."
       },
       "state": {}
+    },
+    {
+      "id": "self-heartbeat",
+      "name": "self_heartbeat",
+      "description": "Confirma que o OpenClaw está vivo 3x por dia (9h, 15h, 21h). Silêncio = container caiu.",
+      "enabled": true,
+      "deleteAfterRun": false,
+      "createdAtMs": 1772496000000,
+      "updatedAtMs": 1772496000000,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 9,15,21 * * *",
+        "tz": "America/Sao_Paulo",
+        "staggerMs": 0
+      },
+      "sessionTarget": "main",
+      "wakeMode": "now",
+      "payload": {
+        "kind": "agentTurn",
+        "message": "HEARTBEAT: Confirme que está online com uma mensagem curta no Telegram. Formato exato: '✅ OpenClaw online — HH:MM BRT'. Nada mais, só isso."
+      },
+      "state": {}
     }
   ]
 }
 CRONEOF
-echo "[openclaw] Cron jobs criados: update-check, vps-daily, personal-morning, morning-brief, lhfex-weekly, promotions-checker, process-alerts-pm."
+echo "[openclaw] Cron jobs criados: update-check, vps-daily, personal-morning, morning-brief, lhfex-weekly, promotions-checker, process-alerts-pm, self-heartbeat."
 
 # ── DEPLOY NOTIFICATION ───────────────────────────────────────────────────────
 # Notifica o lhfex_monitor_bot no Telegram sempre que o container reiniciar/deployar

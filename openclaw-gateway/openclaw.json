@@ -1,14 +1,8 @@
 {
-  // ── AGENT DEFAULTS ───────────────────────────────────────────────────────
   "agents": {
     "defaults": {
       "workspace": "/root/.openclaw/workspace",
 
-      // Hierarquia de 4 camadas — troca automática por ordem
-      // Camada 1: Gemini direto (grátis, primário, ~1500 req/dia)
-      // Camada 2: OpenRouter /auto (roteador grátis — escolhe o melhor free disponível)
-      // Camada 3: DeepSeek direto (pago, tokens já comprados — usar até acabar)
-      // Camada 4: Kimi K2.5 via OpenRouter (econômico, custo mínimo)
       "model": {
         "primary": "gemini/gemini-2.0-flash",
         "fallbacks": [
@@ -18,7 +12,6 @@
         ]
       },
 
-      // Catálogo de modelos disponíveis + aliases
       "models": {
         "gemini/gemini-2.0-flash":               { "alias": "default"        },
         "gemini/gemini-2.0-flash-lite":          { "alias": "lite"           },
@@ -33,8 +26,6 @@
         "openrouter/perplexity/sonar":           { "alias": "research"       }
       },
 
-      // Heartbeat a cada 30 min usando modelo primário (era 15m — corte de 50% de custo idle)
-      // Quiet hours (00h-05h BRT): implementado via SOUL.md + cron schedules
       "heartbeat": {
         "every":  "30m",
         "model":  "gemini/gemini-2.0-flash",
@@ -43,10 +34,6 @@
     }
   },
 
-  // ── GATEWAY ──────────────────────────────────────────────────────────────
-  // bind=custom+0.0.0.0 para funcionar no Docker (Coolify proxy)
-  // mode=local é obrigatório — sem isso o gateway bloqueia com:
-  // "Gateway start blocked: set gateway.mode=local or pass --allow-unconfigured"
   "gateway": {
     "mode":           "local",
     "bind":           "custom",
@@ -57,7 +44,6 @@
     }
   },
 
-  // ── CANAIS ───────────────────────────────────────────────────────────────
   "channels": {
     "telegram": {
       "enabled":   true,
@@ -76,27 +62,22 @@
     }
   },
 
-  // ── TOOLS ────────────────────────────────────────────────────────────────
-  // web_fetch habilitado para o agente chamar a API SAAS diretamente
   "tools": {
     "web": {
       "fetch": {
-        "enabled":       true,
-        "maxChars":      100000,
+        "enabled":        true,
+        "maxChars":       100000,
         "timeoutSeconds": 30
       }
     }
   },
 
-  // ── CRON (scheduler config) ──────────────────────────────────────────────
-  // Jobs definidos via CLI após o container iniciar (ver entrypoint.sh)
   "cron": {
     "enabled":           true,
     "maxConcurrentRuns": 2,
     "sessionRetention":  "24h"
   },
 
-  // ── SKILLS ───────────────────────────────────────────────────────────────
   "skills": {
     "entries": {
       "web-search": { "enabled": true  },
@@ -106,21 +87,17 @@
     }
   },
 
-  // ── MEMÓRIA (Fase 4 — Bruno Okamoto) ─────────────────────────────────────
-  // Busca híbrida BM25+vector, TTL 6h, flush 40k tokens, últimas 3 respostas
   "memorySearch": {
     "sources": ["memory", "sessions"],
     "query": {
       "hybrid": {
-        "enabled":     true,
+        "enabled":      true,
         "vectorWeight": 0.5,
-        "textWeight":  0.5
+        "textWeight":   0.5
       }
     }
   },
 
-  // cache-ttl: reutiliza cache do sistema (SOUL.md, IDENTITY.md) entre mensagens
-  // → até 90% de desconto em tokens repetidos (prompt caching automático)
   "contextPruning": {
     "mode":               "cache-ttl",
     "ttl":                "6h",
@@ -128,11 +105,11 @@
   },
 
   "compaction": {
-    "mode":                   "default",
-    "reserveTokensFloor":     30000,
+    "mode":               "default",
+    "reserveTokensFloor": 30000,
     "memoryFlush": {
-      "enabled":              true,
-      "softThresholdTokens":  40000,
+      "enabled":             true,
+      "softThresholdTokens": 40000,
       "prompt": "Before this context is compacted, extract and save all important information to memory files. Focus on: 1. DECISIONS made (what was decided and why). 2. STATE CHANGES (what was configured, installed, or modified). 3. LESSONS LEARNED (what worked, what failed, key insights). 4. BLOCKERS waiting for input. 5. Key facts about projects, people, or systems. Write to /root/.openclaw/workspace/memory/ files. Do not skip — missing context is permanently lost after compaction."
     }
   }

@@ -28,6 +28,28 @@ type Entry = {
 
 const CHANGELOG: Entry[] = [
   {
+    date: "2026-03-04",
+    version: "2.4.0",
+    commit: "df278fe",
+    type: "release",
+    title: "Áudio/Imagem nos Agentes + Task Queue + Cost Optimization + Fixes",
+    items: [
+      "fix(openclaw): comentários // no openclaw.json causavam crash do container — JSON inválido removido",
+      "fix: tabelas daily333, seinfeld_habits, seinfeld_logs, claude_tasks criadas via db:push",
+      "Airton, IAna, marIA e IAgo agora transcrevem áudio (Groq Whisper) e analisam fotos (Gemini Vision)",
+      "Task queue OpenClaw↔Claude Code via tabela claude_tasks + scripts/claude-daemon.sh",
+      "Guardrails de custo no SOUL.md: max 2 tools/heartbeat, warning 25 msgs, loop detection",
+      "Heartbeat 30min (era 15min) — redução de ~50% no custo idle do OpenClaw",
+      "API openclaw-tools: buscar_processos slim (10 registros, campos reduzidos)",
+      "Protocolo debugging 4 fases — openclaw-gateway/prompts/skills/diagnostico.md",
+      "Concursos Literários: 4th tab no módulo Promoções com sites, Sudowrite AI e tabela de inscrições",
+      "Módulo Produtividade: Pomodoro, 3-3-3, Eisenhower, Seinfeld streak, Time Blocking",
+      "Monitor OpenClaw: cron heartbeat 3x/dia (9h, 15h, 21h) + endpoint GET /api/monitor-openclaw",
+      "CHANGELOG.md criado no openclaw-gateway/prompts/ para auto-consciência do OpenClaw",
+      "entrypoint.sh: copia skills/ e CHANGELOG.md ao workspace, notificação de deploy no Telegram",
+    ],
+  },
+  {
     date: "2026-03-03",
     version: "2.3.0",
     commit: "646235f",
