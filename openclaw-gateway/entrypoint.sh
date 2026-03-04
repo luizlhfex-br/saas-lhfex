@@ -20,6 +20,13 @@ for f in SOUL.md IDENTITY.md USER.md AGENTS.md WORKING.md; do
   fi
 done
 
+# Sempre copia skills/ locais — protocolo de debugging e skills customizadas
+if [ -d "/root/.openclaw/prompts/skills" ]; then
+  mkdir -p "$WORKSPACE/skills"
+  cp -r /root/.openclaw/prompts/skills/. "$WORKSPACE/skills/"
+  echo "[openclaw] Skills locais copiadas para workspace ($(ls /root/.openclaw/prompts/skills/ | wc -l) arquivos)."
+fi
+
 # Sempre atualiza SOUL.md e CHANGELOG.md — garante regras e histórico atualizados
 # (sobrescreve versão antiga no volume persistente)
 if [ -f "/root/.openclaw/prompts/SOUL.md" ]; then

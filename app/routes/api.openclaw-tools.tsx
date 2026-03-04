@@ -18,6 +18,7 @@ import {
   personalFinance,
   promotions,
   missionControlTasks,
+  claudeTasks,
 } from "../../drizzle/schema";
 import { eq, desc, ilike, or, and, isNull, sql, gte, lte } from "drizzle-orm";
 import { askAgent } from "~/lib/ai.server";
@@ -122,7 +123,8 @@ export async function loader({ request }: Route.LoaderArgs) {
       .orderBy(processes.eta)
       .limit(5);
 
-    return ok({ counts, arrivingSoon: soon });
+    const summary = `Processos ativos: ${counts.inProgress} em andamento, ${counts.awaitingDocs} aguardando docs, ${counts.customsClearance} em desembaraço, ${counts.inTransit} em trânsito, ${counts.draft} rascunhos. Chegando em 7 dias: ${soon.length}.`;
+    return ok({ counts, arrivingSoon: soon, summary });
   }
 
   // ── buscar_processos ──────────────────────────────────────────────────────
@@ -140,12 +142,8 @@ export async function loader({ request }: Route.LoaderArgs) {
         processType: processes.processType,
         status: processes.status,
         description: processes.description,
-        totalValue: processes.totalValue,
-        currency: processes.currency,
-        incoterm: processes.incoterm,
         eta: processes.eta,
         clientName: clients.razaoSocial,
-        createdAt: processes.createdAt,
       })
       .from(processes)
       .leftJoin(clients, eq(processes.clientId, clients.id))
@@ -163,9 +161,9 @@ export async function loader({ request }: Route.LoaderArgs) {
         ),
       )
       .orderBy(desc(processes.updatedAt))
-      .limit(20);
+      .limit(10);
 
-    return ok(rows);
+    return ok({ processes: rows, total: rows.length, hint: "Para detalhes de um processo específico, use action=buscar_processos&q=REFERENCIA" });
   }
 
   // ── ver_financeiro_pessoal ────────────────────────────────────────────────
@@ -295,6 +293,26 @@ export async function loader({ request }: Route.LoaderArgs) {
       openrouter,
       timestamp: new Date().toISOString(),
     });
+  }
+
+  if (action === "listar_tarefas_claude") {
+    const tasks = await db
+      .select()
+      .from(claudeTasks)
+      .where(eq(claudeTasks.userId, userId))
+      .orderBy(desc(claudeTasks.updatedAt))
+      .limit(10);
+    return ok({ tasks });
+  }
+
+  if (action === "listar_tarefas_pendentes") {
+    const tasks = await db
+      .select()
+      .from(claudeTasks)
+      .where(and(eq(claudeTasks.userId, userId), eq(claudeTasks.status, "pending")))
+      .orderBy(claudeTasks.createdAt)
+      .limit(5);
+    return ok({ tasks });
   }
 
   return badRequest(`Unknown action: ${action}`);
@@ -487,6 +505,28 @@ export async function action({ request }: Route.ActionArgs) {
       .set(updates)
       .where(eq(missionControlTasks.id, taskId));
 
+    return ok({ success: true });
+  }
+
+  // ── criar_tarefa_claude ───────────────────────────────────────────────────
+  if (act === "criar_tarefa_claude") {
+    const { prompt, source } = body as { prompt?: string; source?: string };
+    if (!prompt) return badRequest("prompt é obrigatório");
+    const [task] = await db
+      .insert(claudeTasks)
+      .values({ userId, prompt, source: source || "openclaw" })
+      .returning({ id: claudeTasks.id, status: claudeTasks.status });
+    return ok({ success: true, id: task.id, status: task.status });
+  }
+
+  // ── atualizar_tarefa_claude ───────────────────────────────────────────────
+  if (act === "atualizar_tarefa_claude") {
+    const { id, status, result, errorMsg } = body as { id?: string; status?: string; result?: string; errorMsg?: string };
+    if (!id || !status) return badRequest("id e status são obrigatórios");
+    await db
+      .update(claudeTasks)
+      .set({ status, result: result || null, errorMsg: errorMsg || null, updatedAt: new Date() })
+      .where(and(eq(claudeTasks.id, id), eq(claudeTasks.userId, userId)));
     return ok({ success: true });
   }
 

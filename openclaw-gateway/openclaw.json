@@ -33,10 +33,10 @@
         "openrouter/perplexity/sonar":           { "alias": "research"       }
       },
 
-      // Heartbeat a cada 15 min usando modelo primário
+      // Heartbeat a cada 30 min usando modelo primário (era 15m — corte de 50% de custo idle)
       // Quiet hours (00h-05h BRT): implementado via SOUL.md + cron schedules
       "heartbeat": {
-        "every":  "15m",
+        "every":  "30m",
         "model":  "gemini/gemini-2.0-flash",
         "target": "telegram"
       }
@@ -119,6 +119,8 @@
     }
   },
 
+  // cache-ttl: reutiliza cache do sistema (SOUL.md, IDENTITY.md) entre mensagens
+  // → até 90% de desconto em tokens repetidos (prompt caching automático)
   "contextPruning": {
     "mode":               "cache-ttl",
     "ttl":                "6h",

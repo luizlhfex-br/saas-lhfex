@@ -24,3 +24,5 @@ export * from "./mission-control";
 export * from "./openclaw-crons";
 export * from "./personal-studies";
 export * from "./clean-days";
+export * from "./claude-tasks";
+export * from "./productivity";
