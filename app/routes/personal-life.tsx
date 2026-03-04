@@ -21,6 +21,7 @@ import {
   Bookmark,
   GraduationCap,
   CheckCircle2,
+  Timer,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 
@@ -131,6 +132,13 @@ const modules = [
     description: "Rastreador de streak pessoal — privado",
     icon: CheckCircle2,
     color: "bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400",
+  },
+  {
+    slug: "productivity",
+    title: "⏱️ Produtividade",
+    description: "Pomodoro, 3-3-3, Eisenhower, Seinfeld",
+    icon: Timer,
+    color: "bg-indigo-100 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400",
   },
 ];
 
