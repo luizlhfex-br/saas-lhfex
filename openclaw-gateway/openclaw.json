@@ -30,6 +30,33 @@
         "every":  "30m",
         "model":  "gemini/gemini-2.0-flash",
         "target": "telegram"
+      },
+
+      "memorySearch": {
+        "sources": ["memory", "sessions"],
+        "query": {
+          "hybrid": {
+            "enabled":      true,
+            "vectorWeight": 0.5,
+            "textWeight":   0.5
+          }
+        }
+      },
+
+      "contextPruning": {
+        "mode":               "cache-ttl",
+        "ttl":                "6h",
+        "keepLastAssistants": 3
+      },
+
+      "compaction": {
+        "mode":               "default",
+        "reserveTokensFloor": 30000,
+        "memoryFlush": {
+          "enabled":             true,
+          "softThresholdTokens": 40000,
+          "prompt": "Before this context is compacted, extract and save all important information to memory files. Focus on: 1. DECISIONS made (what was decided and why). 2. STATE CHANGES (what was configured, installed, or modified). 3. LESSONS LEARNED (what worked, what failed, key insights). 4. BLOCKERS waiting for input. 5. Key facts about projects, people, or systems. Write to /root/.openclaw/workspace/memory/ files. Do not skip — missing context is permanently lost after compaction."
+        }
       }
     }
   },
@@ -84,33 +111,6 @@
       "file-ops":   { "enabled": true  },
       "reminders":  { "enabled": true  },
       "qmd":        { "enabled": true  }
-    }
-  },
-
-  "memorySearch": {
-    "sources": ["memory", "sessions"],
-    "query": {
-      "hybrid": {
-        "enabled":      true,
-        "vectorWeight": 0.5,
-        "textWeight":   0.5
-      }
-    }
-  },
-
-  "contextPruning": {
-    "mode":               "cache-ttl",
-    "ttl":                "6h",
-    "keepLastAssistants": 3
-  },
-
-  "compaction": {
-    "mode":               "default",
-    "reserveTokensFloor": 30000,
-    "memoryFlush": {
-      "enabled":             true,
-      "softThresholdTokens": 40000,
-      "prompt": "Before this context is compacted, extract and save all important information to memory files. Focus on: 1. DECISIONS made (what was decided and why). 2. STATE CHANGES (what was configured, installed, or modified). 3. LESSONS LEARNED (what worked, what failed, key insights). 4. BLOCKERS waiting for input. 5. Key facts about projects, people, or systems. Write to /root/.openclaw/workspace/memory/ files. Do not skip — missing context is permanently lost after compaction."
     }
   }
 }
