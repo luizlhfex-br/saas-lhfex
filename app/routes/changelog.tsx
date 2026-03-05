@@ -28,6 +28,28 @@ type Entry = {
 
 const CHANGELOG: Entry[] = [
   {
+    date: "2026-03-05",
+    version: "2.5.0",
+    commit: "pending",
+    type: "release",
+    title: "OpenClaw v2.0 — Multi-Agentes + SAAS Total Access + LLM Chain Fix",
+    items: [
+      "OpenClaw: 4 agentes nomeados (AIrton 🎯, IAna 📦, marIA 💰, IAgo 🔧) com system prompts especializados",
+      "OpenClaw: thinking adaptativo (thinkingDefault: adaptive) + PDF model Gemini Flash",
+      "OpenClaw: browser Playwright habilitado (headless, noSandbox) — Dockerfile atualizado",
+      "OpenClaw: web search via Perplexity sonar (OpenRouter) + exec com allowlist",
+      "OpenClaw: plugin llm-task habilitado + skill SAAS.md com guia completo de acesso",
+      "OpenClaw: Telegram Forum topics placeholder — routear cada tópico a um agente dedicado",
+      "SAAS API: 8 novos endpoints GET — cotacao_dolar, ver_investimentos, ver_habitos, ver_objetivos, ver_pessoas, ver_folgas, ver_tarefas_mc, contexto_completo",
+      "SAAS API: contexto_completo usa Promise.allSettled com 7 sub-queries paralelas para snapshot único",
+      "SAAS API: Jina AI search gratuito (10M tokens/mês) documentado na skill SAAS.md",
+      "fix(ai): providerCallMap removeu openrouter_paid (dead code — chamava callOpenRouterFree)",
+      "fix(ai): LIFE_AGENT_MAX_OUTPUT_TOKENS aumentado de 1200 → 3000",
+      "fix(ai-strategy): simplificado para 3 tiers (Gemini → OpenRouter Free → DeepSeek Paid)",
+      "IDEAS.md criado com backlog de ideias futuras organizadas por categoria",
+    ],
+  },
+  {
     date: "2026-03-04",
     version: "2.4.0",
     commit: "df278fe",

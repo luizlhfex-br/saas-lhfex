@@ -495,19 +495,18 @@ ${JSON.stringify(lifeContext, null, 2)}`;
   // ═══════════════════════════════════════════════════════════════════════
   // INTELLIGENT PROVIDER STRATEGY (Budget-Aware Fallback)
   // Free tier first (Gemini → OpenRouter Free)
-  // Paid tier as fallback (OpenRouter Paid → DeepSeek Paid)
+  // Paid tier as fallback (DeepSeek Paid)
   // ═══════════════════════════════════════════════════════════════════════
 
   const excludedProviders: ProviderType[] = [];
   const providerCallMap: Record<ProviderType, (prompt: string, msg: string, ctx: string) => Promise<AIResponse>> = {
     gemini: callGemini,
     openrouter_free: callOpenRouterFree,
-    openrouter_paid: callOpenRouterFree,  // Same endpoint, reuses free
     deepseek: callDeepSeek,
   };
 
-  // Attempt up to 4 times (once per provider) before giving up
-  for (let attempt = 0; attempt < 4; attempt++) {
+  // Attempt up to 3 times (once per provider) before giving up
+  for (let attempt = 0; attempt < 3; attempt++) {
     try {
       // Get next available provider based on budget and status
       const decision: StrategyDecision = await selectNextProvider(excludedProviders);
@@ -578,7 +577,7 @@ ${JSON.stringify(lifeContext, null, 2)}`;
 
 export async function askLifeAgentLite(task: string, userId: string): Promise<AIResponse> {
   const startTime = Date.now();
-  const maxOutputTokens = Number(process.env.LIFE_AGENT_MAX_OUTPUT_TOKENS ||1200);
+  const maxOutputTokens = Number(process.env.LIFE_AGENT_MAX_OUTPUT_TOKENS || 3000);
 
   if (process.env.GEMINI_API_KEY) {
     try {

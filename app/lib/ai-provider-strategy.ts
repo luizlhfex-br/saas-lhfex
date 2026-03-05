@@ -4,8 +4,7 @@
  * Estratégia de fallback inteligente:
  * 1. Gemini Free (100% gratuito) ← PRIMEIRO
  * 2. OpenRouter Free (100% gratuito) ← SEGUNDO
- * 3. OpenRouter Paid (tem orçamento) ← TERCEIRO
- * 4. DeepSeek Paid (último resort) ← QUARTO
+ * 3. DeepSeek Paid (último resort) ← TERCEIRO
  *
  * Controle de quota:
  * - Monitorar custos diários/mensais
@@ -37,22 +36,13 @@ export const PROVIDER_BUDGETS = {
     priority: 2, // SEGUNDO
   },
 
-  // Pago OpenRouter — controlar quota
-  openrouter_paid: {
-    monthlyBudget: 50, // USD $50/mês máximo
-    dailyLimit: 100_000, // tokens/dia
-    alertAt: 0.8, // Alertar a $40 (80% de $50)
-    costPerMTok: 0.15, // ~$0.15 por 1M tokens (média)
-    priority: 3, // TERCEIRO
-  },
-
   // Pago DeepSeek — último resort
   deepseek: {
     monthlyBudget: 100, // USD $100/mês máximo
     dailyLimit: 200_000,
     alertAt: 0.8, // Alertar a $80
     costPerMTok: 0.14, // DeepSeek é barato (~$0.14 por 1M tokens)
-    priority: 4, // QUARTO (último resort)
+    priority: 3, // TERCEIRO (último resort)
   },
 } as const;
 
@@ -196,13 +186,12 @@ export async function isProviderAvailable(
  * Lógica:
  * 1. Tenta Gemini Free (sempre)
  * 2. Se falhar, tenta OpenRouter Free (sempre)
- * 3. Se falhar, tenta OpenRouter Paid (se tiver orçamento)
- * 4. Se falhar, tenta DeepSeek Paid (último resort, se tiver orçamento)
+ * 3. Se falhar, tenta DeepSeek Paid (último resort, se tiver orçamento)
  */
 export async function selectNextProvider(
   excludeProviders: ProviderType[] = []
 ): Promise<StrategyDecision> {
-  const providers: ProviderType[] = ["gemini", "openrouter_free", "openrouter_paid", "deepseek"];
+  const providers: ProviderType[] = ["gemini", "openrouter_free", "deepseek"];
 
   for (const provider of providers) {
     if (excludeProviders.includes(provider)) {
@@ -221,9 +210,7 @@ export async function selectNextProvider(
           ? "Gemini Free disponível"
           : provider === "openrouter_free"
             ? "OpenRouter Free disponível (Gemini falhou)"
-            : provider === "openrouter_paid"
-              ? `OpenRouter Paid ($${status.costMonth.toFixed(2)}/$50)`
-              : `DeepSeek Paid (último resort, $${status.costMonth.toFixed(2)}/$100)`;
+            : `DeepSeek Paid (último resort, $${status.costMonth.toFixed(2)}/$100)`;
 
       return {
         provider,
@@ -258,7 +245,7 @@ export async function checkBudgetAlerts(): Promise<
 > {
   const alerts: Array<{ provider: ProviderType; status: ProviderStatus }> = [];
 
-  for (const provider of ["openrouter_paid", "deepseek"] as const) {
+  for (const provider of ["deepseek"] as const) {
     const status = await isProviderAvailable(provider);
 
     if (status.percentOfMonth >= PROVIDER_BUDGETS[provider].alertAt * 100) {
@@ -303,7 +290,6 @@ export async function getProviderUsageDashboard(): Promise<
   for (const provider of [
     "gemini",
     "openrouter_free",
-    "openrouter_paid",
     "deepseek",
   ] as const) {
     const status = await isProviderAvailable(provider);

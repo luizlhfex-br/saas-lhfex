@@ -2,7 +2,6 @@
   "agents": {
     "defaults": {
       "workspace": "/root/.openclaw/workspace",
-
       "model": {
         "primary": "gemini/gemini-2.0-flash",
         "fallbacks": [
@@ -11,106 +10,231 @@
           "openrouter/moonshotai/kimi-k2-5"
         ]
       },
-
       "models": {
-        "gemini/gemini-2.0-flash":               { "alias": "default"        },
-        "gemini/gemini-2.0-flash-lite":          { "alias": "lite"           },
-        "openrouter/auto":                        { "alias": "free"           },
-        "deepseek/deepseek-chat":                { "alias": "deepseek-direct" },
-        "openrouter/deepseek/deepseek-chat":     { "alias": "brain"          },
-        "openrouter/deepseek/deepseek-reasoner": { "alias": "subagent"       },
-        "openrouter/anthropic/claude-opus-4-6":  { "alias": "brain-best"     },
-        "openrouter/moonshotai/kimi-k2-5":       { "alias": "brain-savings"  },
-        "openrouter/openai/codex-mini-high":     { "alias": "coding"         },
-        "openrouter/minimax/minimax-m1":         { "alias": "coding-savings" },
-        "openrouter/perplexity/sonar":           { "alias": "research"       }
+        "gemini/gemini-2.0-flash": {
+          "alias": "default"
+        },
+        "gemini/gemini-2.0-flash-lite": {
+          "alias": "lite"
+        },
+        "openrouter/auto": {
+          "alias": "free"
+        },
+        "deepseek/deepseek-chat": {
+          "alias": "deepseek-direct"
+        },
+        "openrouter/deepseek/deepseek-chat": {
+          "alias": "brain"
+        },
+        "openrouter/deepseek/deepseek-reasoner": {
+          "alias": "subagent"
+        },
+        "openrouter/anthropic/claude-opus-4-6": {
+          "alias": "brain-best"
+        },
+        "openrouter/moonshotai/kimi-k2-5": {
+          "alias": "brain-savings"
+        },
+        "openrouter/openai/codex-mini-high": {
+          "alias": "coding"
+        },
+        "openrouter/minimax/minimax-m1": {
+          "alias": "coding-savings"
+        },
+        "openrouter/perplexity/sonar": {
+          "alias": "research"
+        }
       },
-
       "heartbeat": {
-        "every":  "30m",
-        "model":  "gemini/gemini-2.0-flash",
+        "every": "30m",
+        "model": "gemini/gemini-2.0-flash",
         "target": "telegram"
       },
-
       "memorySearch": {
-        "sources": ["memory", "sessions"],
+        "sources": [
+          "memory",
+          "sessions"
+        ],
         "query": {
           "hybrid": {
-            "enabled":      true,
+            "enabled": true,
             "vectorWeight": 0.5,
-            "textWeight":   0.5
+            "textWeight": 0.5
           }
         }
       },
-
       "contextPruning": {
-        "mode":               "cache-ttl",
-        "ttl":                "6h",
+        "mode": "cache-ttl",
+        "ttl": "6h",
         "keepLastAssistants": 3
       },
-
       "compaction": {
-        "mode":               "default",
+        "mode": "default",
         "reserveTokensFloor": 30000,
         "memoryFlush": {
-          "enabled":             true,
+          "enabled": true,
           "softThresholdTokens": 40000,
           "prompt": "Before this context is compacted, extract and save all important information to memory files. Focus on: 1. DECISIONS made (what was decided and why). 2. STATE CHANGES (what was configured, installed, or modified). 3. LESSONS LEARNED (what worked, what failed, key insights). 4. BLOCKERS waiting for input. 5. Key facts about projects, people, or systems. Write to /root/.openclaw/workspace/memory/ files. Do not skip — missing context is permanently lost after compaction."
         }
-      }
+      },
+      "thinkingDefault": "adaptive",
+      "pdfModel": "gemini/gemini-2.0-flash",
+      "pdfMaxBytesMb": 10,
+      "pdfMaxPages": 20
+    },
+    "airton": {
+      "model": {
+        "primary": "gemini/gemini-2.0-flash",
+        "fallbacks": [
+          "openrouter/auto",
+          "deepseek/deepseek-chat"
+        ]
+      },
+      "systemPromptTemplate": "Você é o AIrton 🎯, Maestro da LHFEX — plataforma de comércio exterior. Carregue o contexto do sistema via SAAS API antes de responder (GET $SAAS_URL/api/openclaw-tools?action=contexto_completo com header X-OpenClaw-Key: $OPENCLAW_TOOLS_API_KEY). Seja direto, estratégico e proativo. Coordene outros agentes quando relevante. Assine como AIrton 🎯"
+    },
+    "iana": {
+      "model": {
+        "primary": "gemini/gemini-2.0-flash",
+        "fallbacks": [
+          "deepseek/deepseek-chat"
+        ]
+      },
+      "systemPromptTemplate": "Você é a IAna 📦, especialista em Comércio Exterior da LHFEX. Domínio: NCM/SH, classificação aduaneira (RGI 1 e 6), DI/DUIMP, cálculo de impostos (II/IPI/PIS/COFINS/ICMS), INCOTERMS, descrições blindadas. Carregue contexto do SAAS (GET $SAAS_URL/api/openclaw-tools?action=contexto_completo). Cite legislação quando relevante. Assine como IAna 📦"
+    },
+    "maria": {
+      "model": {
+        "primary": "gemini/gemini-2.0-flash",
+        "fallbacks": [
+          "deepseek/deepseek-chat"
+        ]
+      },
+      "systemPromptTemplate": "Você é a marIA 💰, Gestora Financeira da LHFEX. Domínio: custos de importação/exportação, câmbio, planejamento tributário, fluxo de caixa, DRE. Carregue contexto financeiro (GET $SAAS_URL/api/openclaw-tools?action=contexto_completo). Seja precisa com números. Assine como marIA 💰"
+    },
+    "iago": {
+      "model": {
+        "primary": "gemini/gemini-2.0-flash",
+        "fallbacks": [
+          "deepseek/deepseek-chat"
+        ]
+      },
+      "systemPromptTemplate": "Você é o IAgo 🔧, Engenheiro de Infraestrutura da LHFEX. Domínio: servidores, APIs, automações, monitoring, troubleshooting técnico. Carregue status do sistema (GET $SAAS_URL/api/openclaw-tools?action=system_status). Técnico, direto, sempre sugira próximo passo. Assine como IAgo 🔧"
     }
   },
-
   "gateway": {
-    "mode":           "local",
-    "bind":           "custom",
+    "mode": "local",
+    "bind": "custom",
     "customBindHost": "0.0.0.0",
-    "port":           18789,
+    "port": 18789,
     "controlUi": {
       "dangerouslyAllowHostHeaderOriginFallback": true
     }
   },
-
   "channels": {
     "telegram": {
-      "enabled":   true,
-      "botToken":  "${TELEGRAM_OPENCLAW_BOT_TOKEN}",
-      "dmPolicy":  "allowlist",
-      "allowFrom": ["916838588", "8250567910", "5235733821"],
-      "groups":    { "*": { "enabled": false } }
+      "enabled": true,
+      "botToken": "${TELEGRAM_OPENCLAW_BOT_TOKEN}",
+      "dmPolicy": "allowlist",
+      "allowFrom": [
+        "916838588",
+        "8250567910",
+        "5235733821"
+      ],
+      "groups": {
+        "PLACEHOLDER_GROUP_ID": {
+          "enabled": true,
+          "requireMention": false,
+          "topics": {
+            "PLACEHOLDER_AIRTON_TOPIC": {
+              "agentId": "airton"
+            },
+            "PLACEHOLDER_IANA_TOPIC": {
+              "agentId": "iana"
+            },
+            "PLACEHOLDER_MARIA_TOPIC": {
+              "agentId": "maria"
+            },
+            "PLACEHOLDER_IAGO_TOPIC": {
+              "agentId": "iago"
+            }
+          }
+        }
+      }
     },
     "slack": {
-      "enabled":       false,
-      "botToken":      "${SLACK_BOT_TOKEN}",
-      "appToken":      "${SLACK_APP_TOKEN}",
+      "enabled": false,
+      "botToken": "${SLACK_BOT_TOKEN}",
+      "appToken": "${SLACK_APP_TOKEN}",
       "signingSecret": "${SLACK_SIGNING_SECRET}",
-      "dmPolicy":      "allowlist",
-      "allowFrom":     ["*"]
+      "dmPolicy": "allowlist",
+      "allowFrom": [
+        "*"
+      ]
     }
   },
-
   "tools": {
     "web": {
       "fetch": {
-        "enabled":        true,
-        "maxChars":       100000,
+        "enabled": true,
+        "maxChars": 100000,
         "timeoutSeconds": 30
+      },
+      "search": {
+        "provider": "perplexity",
+        "perplexity": {
+          "apiKey": {
+            "source": "env",
+            "id": "OPENROUTER_API_KEY"
+          },
+          "baseUrl": "https://openrouter.ai/api/v1",
+          "model": "perplexity/sonar"
+        }
+      }
+    },
+    "exec": {
+      "host": "gateway",
+      "security": "allowlist",
+      "ask": "on-miss",
+      "timeout": 300,
+      "safeBins": [
+        "node",
+        "curl",
+        "jq",
+        "date",
+        "echo"
+      ]
+    }
+  },
+  "cron": {
+    "enabled": true,
+    "maxConcurrentRuns": 2,
+    "sessionRetention": "24h"
+  },
+  "skills": {
+    "entries": {
+      "web-search": {
+        "enabled": true
+      },
+      "file-ops": {
+        "enabled": true
+      },
+      "reminders": {
+        "enabled": true
+      },
+      "qmd": {
+        "enabled": true
       }
     }
   },
-
-  "cron": {
-    "enabled":           true,
-    "maxConcurrentRuns": 2,
-    "sessionRetention":  "24h"
+  "browser": {
+    "enabled": true,
+    "headless": true,
+    "noSandbox": true
   },
-
-  "skills": {
+  "plugins": {
     "entries": {
-      "web-search": { "enabled": true  },
-      "file-ops":   { "enabled": true  },
-      "reminders":  { "enabled": true  },
-      "qmd":        { "enabled": true  }
+      "llm-task": {
+        "enabled": true
+      }
     }
   }
 }

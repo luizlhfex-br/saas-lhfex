@@ -19,6 +19,12 @@ import {
   promotions,
   missionControlTasks,
   claudeTasks,
+  personalInvestments,
+  seinfeldHabits,
+  seinfeldLogs,
+  personalGoals,
+  pessoas,
+  plannedTimeOff,
 } from "../../drizzle/schema";
 import { eq, desc, ilike, or, and, isNull, sql, gte, lte } from "drizzle-orm";
 import { askAgent } from "~/lib/ai.server";
@@ -313,6 +319,398 @@ export async function loader({ request }: Route.LoaderArgs) {
       .orderBy(claudeTasks.createdAt)
       .limit(5);
     return ok({ tasks });
+  }
+
+  // ── cotacao_dolar ─────────────────────────────────────────────────────────
+  if (action === "cotacao_dolar") {
+    try {
+      const res = await fetch("https://economia.awesomeapi.com.br/json/last/USD-BRL", {
+        signal: AbortSignal.timeout(5000),
+      });
+      const data = (await res.json()) as {
+        USDBRL?: { bid: string; ask: string; high: string; low: string; timestamp: string };
+      };
+      const usd = data.USDBRL;
+      return ok({ bid: usd?.bid, ask: usd?.ask, high: usd?.high, low: usd?.low, timestamp: usd?.timestamp });
+    } catch {
+      return ok({ error: "Falha ao buscar cotação do dólar" });
+    }
+  }
+
+  // ── ver_investimentos ─────────────────────────────────────────────────────
+  if (action === "ver_investimentos") {
+    try {
+      const rows = await db
+        .select({
+          id: personalInvestments.id,
+          assetType: personalInvestments.assetType,
+          assetName: personalInvestments.assetName,
+          ticker: personalInvestments.ticker,
+          quantity: personalInvestments.quantity,
+          purchasePrice: personalInvestments.purchasePrice,
+          purchaseDate: personalInvestments.purchaseDate,
+          currentPrice: personalInvestments.currentPrice,
+          currentValue: personalInvestments.currentValue,
+          gainLoss: personalInvestments.gainLoss,
+          gainLossPercent: personalInvestments.gainLossPercent,
+          broker: personalInvestments.broker,
+          notes: personalInvestments.notes,
+        })
+        .from(personalInvestments)
+        .where(and(eq(personalInvestments.userId, userId), isNull(personalInvestments.deletedAt)))
+        .orderBy(personalInvestments.assetType, desc(personalInvestments.currentValue));
+
+      const byType: Record<string, { count: number; totalValue: number }> = {};
+      let totalPortfolio = 0;
+      for (const r of rows) {
+        const val = Number(r.currentValue ?? 0);
+        totalPortfolio += val;
+        if (!byType[r.assetType]) byType[r.assetType] = { count: 0, totalValue: 0 };
+        byType[r.assetType].count += 1;
+        byType[r.assetType].totalValue += val;
+      }
+
+      return ok({ total: rows.length, totalPortfolio, porTipo: byType, investimentos: rows });
+    } catch (err) {
+      return ok({ available: false, error: String(err) });
+    }
+  }
+
+  // ── ver_habitos ───────────────────────────────────────────────────────────
+  if (action === "ver_habitos") {
+    try {
+      const habits = await db
+        .select()
+        .from(seinfeldHabits)
+        .where(and(eq(seinfeldHabits.userId, userId), eq(seinfeldHabits.active, true)))
+        .orderBy(seinfeldHabits.createdAt);
+
+      const today = new Date();
+      const thirtyDaysAgo = new Date(today);
+      thirtyDaysAgo.setDate(today.getDate() - 30);
+
+      const logs = await db
+        .select()
+        .from(seinfeldLogs)
+        .where(
+          and(
+            eq(seinfeldLogs.userId, userId),
+            gte(seinfeldLogs.date, thirtyDaysAgo.toISOString().slice(0, 10)),
+            lte(seinfeldLogs.date, today.toISOString().slice(0, 10)),
+          ),
+        )
+        .orderBy(desc(seinfeldLogs.date));
+
+      const habitResults = habits.map((habit) => {
+        const habitLogs = logs
+          .filter((l) => l.habitId === habit.id && l.done)
+          .map((l) => l.date)
+          .sort()
+          .reverse();
+
+        let streak = 0;
+        const checkDate = new Date(today);
+        for (let i = 0; i <= 30; i++) {
+          const dateStr = checkDate.toISOString().slice(0, 10);
+          if (habitLogs.includes(dateStr)) {
+            streak++;
+            checkDate.setDate(checkDate.getDate() - 1);
+          } else if (i === 0) {
+            checkDate.setDate(checkDate.getDate() - 1);
+          } else {
+            break;
+          }
+        }
+
+        return { ...habit, streakAtual: streak, completadosUltimos30Dias: habitLogs.length };
+      });
+
+      return ok({ habitos: habitResults, totalAtivos: habits.length });
+    } catch (err) {
+      return ok({ available: false, error: String(err) });
+    }
+  }
+
+  // ── ver_objetivos ─────────────────────────────────────────────────────────
+  if (action === "ver_objetivos") {
+    try {
+      const rows = await db
+        .select()
+        .from(personalGoals)
+        .where(and(eq(personalGoals.userId, userId), eq(personalGoals.status, "in_progress")))
+        .orderBy(personalGoals.deadline, desc(personalGoals.updatedAt))
+        .limit(20);
+      return ok({ total: rows.length, objetivos: rows });
+    } catch (err) {
+      return ok({ available: false, error: String(err) });
+    }
+  }
+
+  // ── ver_pessoas ───────────────────────────────────────────────────────────
+  if (action === "ver_pessoas") {
+    try {
+      const q = url.searchParams.get("q") || "";
+      const rows = await db
+        .select({
+          id: pessoas.id,
+          nomeCompleto: pessoas.nomeCompleto,
+          nascimento: pessoas.nascimento,
+          celular: pessoas.celular,
+          email: pessoas.email,
+          instagram: pessoas.instagram,
+          endereco: pessoas.endereco,
+          notas: pessoas.notas,
+        })
+        .from(pessoas)
+        .where(
+          and(
+            eq(pessoas.userId, userId),
+            isNull(pessoas.deletedAt),
+            q ? or(ilike(pessoas.nomeCompleto, `%${q}%`), ilike(pessoas.email, `%${q}%`)) : undefined,
+          ),
+        )
+        .orderBy(pessoas.nomeCompleto)
+        .limit(30);
+      return ok({ total: rows.length, pessoas: rows });
+    } catch (err) {
+      return ok({ available: false, error: String(err) });
+    }
+  }
+
+  // ── ver_folgas ────────────────────────────────────────────────────────────
+  if (action === "ver_folgas") {
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+      const rows = await db
+        .select()
+        .from(plannedTimeOff)
+        .where(
+          and(
+            eq(plannedTimeOff.userId, userId),
+            gte(plannedTimeOff.startDate, sixMonthsAgo.toISOString().slice(0, 10)),
+          ),
+        )
+        .orderBy(plannedTimeOff.startDate);
+
+      const futuras = rows.filter((r) => r.startDate >= today);
+      const passadas = rows.filter((r) => r.startDate < today);
+      return ok({ futuras, passadasRecentes: passadas.slice(-5), total: rows.length });
+    } catch (err) {
+      return ok({ available: false, error: String(err) });
+    }
+  }
+
+  // ── ver_tarefas_mc ────────────────────────────────────────────────────────
+  if (action === "ver_tarefas_mc") {
+    try {
+      const tasks = await db
+        .select()
+        .from(missionControlTasks)
+        .where(and(eq(missionControlTasks.userId, userId), isNull(missionControlTasks.deletedAt)))
+        .orderBy(missionControlTasks.createdAt);
+
+      const grouped = {
+        inbox: tasks.filter((t) => t.column === "inbox"),
+        todo: tasks.filter((t) => t.column === "todo"),
+        inProgress: tasks.filter((t) => t.column === "in_progress"),
+        review: tasks.filter((t) => t.column === "review"),
+        blocked: tasks.filter((t) => t.column === "blocked"),
+        done: tasks
+          .filter((t) => t.column === "done")
+          .sort((a, b) => {
+            const aTime = a.completedAt ? new Date(a.completedAt).getTime() : 0;
+            const bTime = b.completedAt ? new Date(b.completedAt).getTime() : 0;
+            return bTime - aTime;
+          })
+          .slice(0, 10),
+      };
+
+      const totalAtivas = tasks.filter((t) => t.column !== "done").length;
+      return ok({ grouped, totalAtivas, totalDone: tasks.filter((t) => t.column === "done").length });
+    } catch (err) {
+      return ok({ available: false, error: String(err) });
+    }
+  }
+
+  // ── contexto_completo ─────────────────────────────────────────────────────
+  if (action === "contexto_completo") {
+    const mesAtual = new Date().toISOString().slice(0, 7);
+    const [year, month] = mesAtual.split("-");
+    const startDate = `${year}-${month}-01`;
+    const endDate = `${year}-${month}-31`;
+
+    const [resumoData, cotacaoData, financeiroData, promocoesData, tarefasMcData, habitosData, objetivosData] =
+      await Promise.allSettled([
+        // 1. Resumo processos
+        (async () => {
+          const [counts] = await db
+            .select({
+              total: sql<number>`count(*)::int`,
+              inProgress: sql<number>`count(*) filter (where status = 'in_progress')::int`,
+              awaitingDocs: sql<number>`count(*) filter (where status = 'awaiting_docs')::int`,
+              draft: sql<number>`count(*) filter (where status = 'draft')::int`,
+              customsClearance: sql<number>`count(*) filter (where status = 'customs_clearance')::int`,
+              inTransit: sql<number>`count(*) filter (where status = 'in_transit')::int`,
+            })
+            .from(processes)
+            .where(
+              and(
+                isNull(processes.deletedAt),
+                or(
+                  eq(processes.status, "in_progress"),
+                  eq(processes.status, "awaiting_docs"),
+                  eq(processes.status, "draft"),
+                  eq(processes.status, "customs_clearance"),
+                  eq(processes.status, "in_transit"),
+                ),
+              ),
+            );
+          const soon = await db
+            .select({ id: processes.id, reference: processes.reference, eta: processes.eta, status: processes.status })
+            .from(processes)
+            .where(
+              and(
+                isNull(processes.deletedAt),
+                gte(processes.eta, sql`now()`),
+                lte(processes.eta, sql`now() + interval '7 days'`),
+              ),
+            )
+            .orderBy(processes.eta)
+            .limit(5);
+          return { counts, arrivingSoon: soon };
+        })(),
+        // 2. Cotação dólar
+        fetch("https://economia.awesomeapi.com.br/json/last/USD-BRL", { signal: AbortSignal.timeout(5000) })
+          .then((r) => r.json())
+          .then(
+            (d: { USDBRL?: { bid: string; ask: string; high: string; low: string; timestamp: string } }) => d.USDBRL,
+          ),
+        // 3. Financeiro pessoal mês atual
+        (async () => {
+          const rows = await db
+            .select()
+            .from(personalFinance)
+            .where(
+              and(
+                eq(personalFinance.userId, userId),
+                isNull(personalFinance.deletedAt),
+                gte(personalFinance.date, startDate),
+                lte(personalFinance.date, endDate),
+              ),
+            )
+            .orderBy(desc(personalFinance.date))
+            .limit(100);
+          const receitas = rows.filter((r) => r.type === "income").reduce((s, r) => s + Number(r.amount), 0);
+          const despesas = rows.filter((r) => r.type === "expense").reduce((s, r) => s + Number(r.amount), 0);
+          return { mes: mesAtual, receitas, despesas, saldo: receitas - despesas, totalTransacoes: rows.length };
+        })(),
+        // 4. Promoções participando
+        db
+          .select({
+            id: promotions.id,
+            name: promotions.name,
+            company: promotions.company,
+            endDate: promotions.endDate,
+            participationStatus: promotions.participationStatus,
+          })
+          .from(promotions)
+          .where(
+            and(
+              eq(promotions.userId, userId),
+              isNull(promotions.deletedAt),
+              eq(promotions.participationStatus, "participated"),
+            ),
+          )
+          .orderBy(desc(promotions.endDate))
+          .limit(10),
+        // 5. Tarefas Mission Control
+        (async () => {
+          const tasks = await db
+            .select()
+            .from(missionControlTasks)
+            .where(and(eq(missionControlTasks.userId, userId), isNull(missionControlTasks.deletedAt)))
+            .orderBy(missionControlTasks.createdAt);
+          return {
+            inbox: tasks.filter((t) => t.column === "inbox"),
+            todo: tasks.filter((t) => t.column === "todo"),
+            inProgress: tasks.filter((t) => t.column === "in_progress"),
+            review: tasks.filter((t) => t.column === "review"),
+            blocked: tasks.filter((t) => t.column === "blocked"),
+            totalAtivas: tasks.filter((t) => t.column !== "done").length,
+          };
+        })(),
+        // 6. Hábitos com streak
+        (async () => {
+          const habits = await db
+            .select()
+            .from(seinfeldHabits)
+            .where(and(eq(seinfeldHabits.userId, userId), eq(seinfeldHabits.active, true)));
+          const today = new Date();
+          const dateFrom = new Date(today);
+          dateFrom.setDate(today.getDate() - 30);
+          const logs = await db
+            .select()
+            .from(seinfeldLogs)
+            .where(
+              and(
+                eq(seinfeldLogs.userId, userId),
+                gte(seinfeldLogs.date, dateFrom.toISOString().slice(0, 10)),
+                lte(seinfeldLogs.date, today.toISOString().slice(0, 10)),
+              ),
+            );
+          return habits.map((habit) => {
+            const habitLogs = logs
+              .filter((l) => l.habitId === habit.id && l.done)
+              .map((l) => l.date)
+              .sort()
+              .reverse();
+            let streak = 0;
+            const checkDate = new Date(today);
+            for (let i = 0; i <= 30; i++) {
+              const dateStr = checkDate.toISOString().slice(0, 10);
+              if (habitLogs.includes(dateStr)) {
+                streak++;
+                checkDate.setDate(checkDate.getDate() - 1);
+              } else if (i === 0) {
+                checkDate.setDate(checkDate.getDate() - 1);
+              } else {
+                break;
+              }
+            }
+            return { id: habit.id, name: habit.name, emoji: habit.emoji, streakAtual: streak };
+          });
+        })(),
+        // 7. Objetivos em andamento
+        db
+          .select({
+            id: personalGoals.id,
+            title: personalGoals.title,
+            category: personalGoals.category,
+            targetValue: personalGoals.targetValue,
+            currentValue: personalGoals.currentValue,
+            unit: personalGoals.unit,
+            deadline: personalGoals.deadline,
+            priority: personalGoals.priority,
+          })
+          .from(personalGoals)
+          .where(and(eq(personalGoals.userId, userId), eq(personalGoals.status, "in_progress")))
+          .orderBy(personalGoals.deadline)
+          .limit(10),
+      ]);
+
+    return ok({
+      timestamp: new Date().toISOString(),
+      resumo: resumoData.status === "fulfilled" ? resumoData.value : null,
+      cotacao: cotacaoData.status === "fulfilled" ? cotacaoData.value : null,
+      financeiro: financeiroData.status === "fulfilled" ? financeiroData.value : null,
+      promocoes: promocoesData.status === "fulfilled" ? promocoesData.value : null,
+      tarefasMc: tarefasMcData.status === "fulfilled" ? tarefasMcData.value : null,
+      habitos: habitosData.status === "fulfilled" ? habitosData.value : null,
+      objetivos: objetivosData.status === "fulfilled" ? objetivosData.value : null,
+    });
   }
 
   return badRequest(`Unknown action: ${action}`);
