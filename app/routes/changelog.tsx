@@ -30,7 +30,7 @@ const CHANGELOG: Entry[] = [
   {
     date: "2026-03-05",
     version: "2.5.0",
-    commit: "pending",
+    commit: "020ec0a",
     type: "release",
     title: "OpenClaw v2.0 — Multi-Agentes + SAAS Total Access + LLM Chain Fix",
     items: [
