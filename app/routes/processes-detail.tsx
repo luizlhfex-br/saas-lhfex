@@ -45,6 +45,60 @@ export async function action({ request, params }: Route.ActionArgs) {
   const formData = await request.formData();
   const intent = formData.get("intent") as string;
 
+  if (intent === "cancel-process") {
+    const justification = String(formData.get("justification") || "").trim();
+
+    if (!justification) {
+      return data({ error: "Informe a justificativa do cancelamento." }, { status: 400 });
+    }
+
+    const [proc] = await db
+      .select({ id: processes.id, reference: processes.reference, status: processes.status })
+      .from(processes)
+      .where(and(eq(processes.id, params.id), isNull(processes.deletedAt)))
+      .limit(1);
+
+    if (!proc) {
+      return data({ error: "Processo não encontrado." }, { status: 404 });
+    }
+
+    if (proc.status === "cancelled") {
+      return data({ error: "Este processo já está cancelado." }, { status: 400 });
+    }
+
+    if (proc.status === "completed") {
+      return data({ error: "Processo concluído não pode ser cancelado." }, { status: 400 });
+    }
+
+    await db
+      .update(processes)
+      .set({ status: "cancelled", updatedAt: new Date() })
+      .where(eq(processes.id, params.id));
+
+    await db.insert(processTimeline).values({
+      processId: params.id,
+      status: "cancelled",
+      title: "Processo cancelado",
+      description: `Justificativa: ${justification}`,
+      createdBy: user.id,
+    });
+
+    await logAudit({
+      userId: user.id,
+      action: "update",
+      entity: "process",
+      entityId: params.id,
+      changes: {
+        statusBefore: proc.status,
+        statusAfter: "cancelled",
+        justification,
+      },
+      request,
+    });
+
+    return redirect(`/processes/${params.id}`);
+  }
+
   if (intent === "upload") {
     const file = formData.get("file") as File;
     const docType = formData.get("docType") as string || "other";
@@ -125,8 +179,10 @@ export default function ProcessesDetailPage({ loaderData, actionData }: Route.Co
   const ocrFetcher = useFetcher<{ fields?: Record<string, string>; preview?: string; error?: string }>();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [showCancelForm, setShowCancelForm] = useState(false);
 
   const isApproving = approvalFetcher.state === "submitting";
+  const isCancelling = navigation.state === "submitting" && navigation.formData?.get("intent") === "cancel-process";
   const isExtracting = ocrFetcher.state === "submitting";
 
   // Show OCR result as toast when done
@@ -193,6 +249,50 @@ export default function ProcessesDetailPage({ loaderData, actionData }: Route.Co
           <Button variant="outline"><Edit className="h-4 w-4" />{i18n.common.edit}</Button>
         </Link>
       </div>
+
+      {proc.status !== "cancelled" && proc.status !== "completed" && (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-900/40 dark:bg-rose-900/20">
+          {!showCancelForm ? (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-rose-900 dark:text-rose-200">Cancelar processo</p>
+                <p className="text-xs text-rose-700 dark:text-rose-300">
+                  O processo permanece no histórico e na listagem com status inativo (cancelado).
+                </p>
+              </div>
+              <Button variant="outline" onClick={() => setShowCancelForm(true)}>
+                <XCircle className="h-4 w-4" />
+                Cancelar processo
+              </Button>
+            </div>
+          ) : (
+            <Form method="post" className="space-y-3">
+              <input type="hidden" name="intent" value="cancel-process" />
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-rose-900 dark:text-rose-200">
+                  Justificativa do cancelamento
+                </label>
+                <textarea
+                  name="justification"
+                  rows={3}
+                  required
+                  placeholder="Ex: cliente desistiu da operação, documentação incompleta, erro de abertura..."
+                  className="block w-full rounded-lg border border-rose-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20 dark:border-rose-800 dark:bg-gray-900 dark:text-gray-100"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Button type="submit" variant="outline" disabled={isCancelling}>
+                  <XCircle className="h-4 w-4" />
+                  {isCancelling ? "Cancelando..." : "Confirmar cancelamento"}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setShowCancelForm(false)} disabled={isCancelling}>
+                  Voltar
+                </Button>
+              </div>
+            </Form>
+          )}
+        </div>
+      )}
 
       {/* Banner de Aprovação */}
       {proc.status === "pending_approval" && (
