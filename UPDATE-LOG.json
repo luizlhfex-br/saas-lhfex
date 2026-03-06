@@ -75,5 +75,47 @@
   "required_actions": {
     "user": ["Hard refresh (Ctrl+Shift+R) para novo visual","Acessar /personal-life/clean-days para Dia Limpo","Em /financial/:id usar botao 'Visualizar Fatura'","Verificar email do cliente no CRM para envio","Configurar dados bancarios em /settings Empresa"],
     "deployment": ["saas-lhfex: redeploy no Coolify","openclaw-ai: redeploy no Coolify"]
+  },
+  "session_2026_03_06": {
+    "date": "2026-03-06",
+    "objective": "Estabilizar OpenClaw, atualizar para v2026.3.2, corrigir acesso SAAS e registrar mudanças",
+    "commits": [
+      {
+        "sha": "0d5c7e4",
+        "message": "fix(openclaw): hardcodar URL e keys no SAAS.md"
+      },
+      {
+        "sha": "6a2af7c",
+        "message": "fix(openclaw): hardcodar URL e keys no SAAS.md (agente não expande env vars)"
+      },
+      {
+        "sha": "84603e3",
+        "message": "chore: bump version to 2.5.0 (sync with changelog)"
+      },
+      {
+        "sha": "8982d99",
+        "message": "feat(openclaw): adicionar agentes nomeados (AIrton, IAna, marIA, IAgo)"
+      },
+      {
+        "sha": "36c6321",
+        "message": "fix(openclaw): remover agents nomeados incompatíveis com runtime atual"
+      }
+    ],
+    "infra_actions": [
+      "SAAS redeploy disparado via script PHP (queues 119, 120 e 121)",
+      "SAAS.md copiado para o container openclaw em /root/.openclaw/workspace/skills/SAAS.md e /root/.openclaw/prompts/skills/SAAS.md",
+      "OpenClaw atualizado no container de 2026.2.26 para 2026.3.2",
+      "OpenClaw config validado com sucesso após update"
+    ],
+    "alerts_hardening": {
+      "critical_fixes_applied": [
+        "gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback => false",
+        "channels.telegram.groups.-1003699307481.allowFrom configurado com IDs autorizados"
+      ],
+      "pending_warnings": [
+        "tools.exec.safeBins contém bins sem safeBinProfiles",
+        "No auth rate limiting configured"
+      ]
+    }
   }
 }

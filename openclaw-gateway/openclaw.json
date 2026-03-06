@@ -85,7 +85,7 @@
     "customBindHost": "0.0.0.0",
     "port": 18789,
     "controlUi": {
-      "dangerouslyAllowHostHeaderOriginFallback": true
+      "dangerouslyAllowHostHeaderOriginFallback": false
     }
   },
   "channels": {
@@ -101,7 +101,12 @@
       "groups": {
         "-1003699307481": {
           "enabled": true,
-          "requireMention": false
+          "requireMention": false,
+          "allowFrom": [
+            "916838588",
+            "8250567910",
+            "5235733821"
+          ]
         }
       }
     },
