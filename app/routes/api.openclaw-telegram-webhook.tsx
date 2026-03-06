@@ -238,8 +238,7 @@ export async function action({ request }: Route.ActionArgs) {
     // Provider badge
     const providerBadge = response.provider === "gemini" ? "🟢 Gemini"
       : response.provider === "openrouter_free" ? "🔵 OpenRouter"
-      : response.provider === "openrouter_paid" ? "🟠 OpenRouter Paid"
-      : response.provider === "deepseek" ? "🔴 DeepSeek"
+      : response.provider === "deepseek" ? "🟠 DeepSeek Paid"
       : "⚪";
 
     let responseText = response.content;

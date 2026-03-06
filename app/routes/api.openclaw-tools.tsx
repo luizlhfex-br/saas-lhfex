@@ -10,6 +10,7 @@
 
 import type { Route } from "./+types/api.openclaw-tools";
 import { db } from "~/lib/db.server";
+import { APP_VERSION } from "~/config/version";
 import {
   clients,
   contacts,
@@ -293,11 +294,25 @@ export async function loader({ request }: Route.LoaderArgs) {
       }
     }
 
+    const now = new Date();
+    const timestampSaoPaulo = now.toLocaleString("pt-BR", {
+      timeZone: "America/Sao_Paulo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    });
+
     return ok({
-      openclawVersion: process.env.OPENCLAW_VERSION ?? "unknown",
-      saasVersion: process.env.npm_package_version ?? "unknown",
+      openclawVersion: process.env.OPENCLAW_VERSION ?? process.env.OPENCLAW_TARGET_VERSION ?? "2026.3.2",
+      saasVersion: APP_VERSION,
       openrouter,
-      timestamp: new Date().toISOString(),
+      timestamp: now.toISOString(),
+      timestampSaoPaulo,
+      timezone: "America/Sao_Paulo",
     });
   }
 

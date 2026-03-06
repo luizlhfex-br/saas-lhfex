@@ -162,8 +162,7 @@ export async function action({ request }: Route.ActionArgs) {
       });
       const providerBadge = agentResponse.provider === "gemini" ? "🟢 Gemini"
         : agentResponse.provider === "openrouter_free" ? "🔵 OpenRouter"
-        : agentResponse.provider === "openrouter_paid" ? "🟠 OpenRouter Paid"
-        : agentResponse.provider === "deepseek" ? "🔴 DeepSeek"
+        : agentResponse.provider === "deepseek" ? "🟠 DeepSeek Paid"
         : "⚪";
       let responseText = agentResponse.content;
       if (responseText.length > 3900) responseText = responseText.slice(0, 3890) + "...\n_(truncado)_";
@@ -191,8 +190,7 @@ export async function action({ request }: Route.ActionArgs) {
       });
       const providerBadge = agentResponse.provider === "gemini" ? "🟢 Gemini"
         : agentResponse.provider === "openrouter_free" ? "🔵 OpenRouter"
-        : agentResponse.provider === "openrouter_paid" ? "🟠 OpenRouter Paid"
-        : agentResponse.provider === "deepseek" ? "🔴 DeepSeek"
+        : agentResponse.provider === "deepseek" ? "🟠 DeepSeek Paid"
         : "⚪";
       let responseText = agentResponse.content;
       if (responseText.length > 3950) responseText = responseText.slice(0, 3940) + "...\n_(truncado)_";
@@ -207,11 +205,10 @@ export async function action({ request }: Route.ActionArgs) {
     });
 
     // Add provider badge to response
-    // 🟢 Gemini Free | 🔵 OpenRouter Free | 🟠 OpenRouter Paid | 🔴 DeepSeek Paid | ⚪ Unknown
+    // 🟢 Gemini Free | 🔵 OpenRouter Free | 🟠 DeepSeek Paid | ⚪ Unknown
     const providerBadge = response.provider === "gemini" ? "🟢 Gemini"
       : response.provider === "openrouter_free" ? "🔵 OpenRouter"
-      : response.provider === "openrouter_paid" ? "🟠 OpenRouter Paid"
-      : response.provider === "deepseek" ? "🔴 DeepSeek"
+      : response.provider === "deepseek" ? "🟠 DeepSeek Paid"
       : "⚪";
 
     // Limit to Telegram max (4096 chars)

@@ -117,5 +117,35 @@
         "No auth rate limiting configured"
       ]
     }
+  },
+  "session_2026_03_06_hardening_wave2": {
+    "date": "2026-03-06",
+    "objective": "Reduzir warnings remanescentes do openclaw status sem interromper operação",
+    "changes": [
+      "gateway.auth.rateLimit configurado (maxAttempts=10, windowMs=60000, lockoutMs=300000)",
+      "session.dmScope definido como per-channel-peer para isolar DMs",
+      "tools.exec.safeBins removido 'node' para reduzir superfície de execução"
+    ],
+    "runtime_actions": [
+      "Aplicar openclaw.json no container ativo",
+      "chmod 700 /root/.openclaw para corrigir permissões",
+      "Revalidar status/security audit pós-restart"
+    ]
+  },
+  "session_2026_03_06_p0_telegram_saas": {
+    "date": "2026-03-06",
+    "objective": "Corrigir percepção de fallback pago, horário BR e versão/status no SAAS tools",
+    "files_changed": [
+      "app/lib/ai.server.ts",
+      "app/routes/api.telegram-webhook.tsx",
+      "app/routes/api.openclaw-telegram-webhook.tsx",
+      "app/routes/api.openclaw-tools.tsx"
+    ],
+    "changes": [
+      "provider openrouter_paid removido do fluxo de resposta e classificação consolidada em deepseek",
+      "badges Telegram alinhadas para: Gemini, OpenRouter, DeepSeek Paid",
+      "contexto de IA passa a incluir horário atual America/Sao_Paulo",
+      "system_status retorna saasVersion via APP_VERSION, openclawVersion com fallback e timestampSaoPaulo"
+    ]
   }
 }

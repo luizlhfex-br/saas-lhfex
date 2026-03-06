@@ -23,7 +23,7 @@ interface AgentContext {
 export interface AIResponse {
   content: string;
   model: string;
-  provider: "gemini" | "openrouter_free" | "openrouter_paid" | "deepseek";
+  provider: "gemini" | "openrouter_free" | "deepseek";
   tokensUsed?: number;
 }
 
@@ -197,6 +197,16 @@ async function loadAgentContext(): Promise<AgentContext> {
 
 function buildContextMessage(ctx: AgentContext, restricted = false): string {
   const fmtBRL = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+  const saoPauloNow = new Date().toLocaleString("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
 
   if (restricted) {
     // Restricted mode: no financial values, no sensitive details
@@ -208,6 +218,7 @@ IMPORTANTE: Este usuário tem acesso restrito. NÃO revele valores financeiros, 
   }
 
   return `[CONTEXTO DO SISTEMA LHFEX]
+- Horário atual (America/Sao_Paulo): ${saoPauloNow}
 - Processos ativos: ${ctx.activeProcesses}
 - Clientes cadastrados: ${ctx.totalClients}
 - Receita do mês (recebida): ${fmtBRL(ctx.monthlyRevenue)}
@@ -218,7 +229,7 @@ IMPORTANTE: Este usuário tem acesso restrito. NÃO revele valores financeiros, 
 // --- Usage Logging ---
 
 async function logUsage(
-  provider: "gemini" | "openrouter_free" | "openrouter_paid" | "deepseek",
+  provider: "gemini" | "openrouter_free" | "deepseek",
   model: string,
   feature: AIFeature,
   tokensIn: number,
@@ -232,8 +243,6 @@ async function logUsage(
     // Estimate cost (approximate)
     let costEstimate = "0";
     if (provider === "deepseek") {
-      costEstimate = String(((tokensIn * 0.14 + tokensOut * 0.28) / 1_000_000).toFixed(6));
-    } else if (provider === "openrouter_paid") {
       costEstimate = String(((tokensIn * 0.14 + tokensOut * 0.28) / 1_000_000).toFixed(6));
     }
     // gemini and openrouter_free = $0
@@ -376,7 +385,7 @@ async function callDeepSeek(
   contextMessage: string,
   maxOutputTokens = 2000,
 ): Promise<AIResponse> {
-  // Try via OpenRouter first (paid model)
+  // Try via OpenRouter first (paid model transport), but keep provider classification as deepseek
   const orKey = process.env.OPENROUTER_API_KEY;
   if (orKey) {
     try {
@@ -406,7 +415,7 @@ async function callDeepSeek(
         return {
           content: data.choices?.[0]?.message?.content || "Sem resposta.",
           model: data.model || model,
-          provider: "openrouter_paid",
+          provider: "deepseek",
           tokensUsed: data.usage?.total_tokens,
         };
       }

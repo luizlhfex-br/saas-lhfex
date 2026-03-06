@@ -84,9 +84,19 @@
     "bind": "custom",
     "customBindHost": "0.0.0.0",
     "port": 18789,
+    "auth": {
+      "rateLimit": {
+        "maxAttempts": 10,
+        "windowMs": 60000,
+        "lockoutMs": 300000
+      }
+    },
     "controlUi": {
       "dangerouslyAllowHostHeaderOriginFallback": false
     }
+  },
+  "session": {
+    "dmScope": "per-channel-peer"
   },
   "channels": {
     "telegram": {
@@ -142,7 +152,6 @@
       "security": "allowlist",
       "ask": "on-miss",
       "safeBins": [
-        "node",
         "curl",
         "jq",
         "date",
