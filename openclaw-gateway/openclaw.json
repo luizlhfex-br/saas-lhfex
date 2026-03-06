@@ -97,7 +97,13 @@
         "916838588",
         "8250567910",
         "5235733821"
-      ]
+      ],
+      "groups": {
+        "-1003699307481": {
+          "enabled": true,
+          "requireMention": false
+        }
+      }
     },
     "slack": {
       "enabled": false,
