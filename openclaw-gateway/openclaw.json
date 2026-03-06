@@ -10,6 +10,10 @@
           "openrouter/moonshotai/kimi-k2-5"
         ]
       },
+      "thinkingDefault": "adaptive",
+      "pdfModel": "gemini/gemini-2.0-flash",
+      "pdfMaxBytesMb": 10,
+      "pdfMaxPages": 20,
       "models": {
         "gemini/gemini-2.0-flash": {
           "alias": "default"
@@ -121,6 +125,24 @@
             "8250567910",
             "5235733821"
           ]
+        },
+        "PLACEHOLDER_GROUP_ID": {
+          "enabled": true,
+          "requireMention": false,
+          "topics": {
+            "PLACEHOLDER_AIRTON_TOPIC": {
+              "agentId": "airton"
+            },
+            "PLACEHOLDER_IANA_TOPIC": {
+              "agentId": "iana"
+            },
+            "PLACEHOLDER_MARIA_TOPIC": {
+              "agentId": "maria"
+            },
+            "PLACEHOLDER_IAGO_TOPIC": {
+              "agentId": "iago"
+            }
+          }
         }
       }
     },
@@ -155,6 +177,7 @@
       "host": "gateway",
       "security": "allowlist",
       "ask": "on-miss",
+      "timeout": 300,
       "safeBins": [
         "curl",
         "jq",

@@ -33,7 +33,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && echo "=== test url rewrite: ssh→https ===" \
     && git ls-remote ssh://git@github.com/WhiskeySockets/libsignal-node.git HEAD \
     && echo "=== npm install ===" \
-    && npm install -g openclaw@2026.2.26 clawhub
+    && npm install -g openclaw@2026.3.2 clawhub
 
 WORKDIR /root/.openclaw
 COPY openclaw.json ./
