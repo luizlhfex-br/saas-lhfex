@@ -1,35 +1,10 @@
-# WORKING.md — Estado Atual
+## Conversation metadata log
 
-**Sessão:** agent:openclaw:main
-**Iniciado:** [será atualizado automaticamente]
-**Último heartbeat:** [será atualizado automaticamente]
-
----
-
-## Em Progresso
-_nada no momento_
-
----
-
-## Pendente Revisão
-_nada no momento_
-
----
-
-## Bloqueado
-_nada no momento_
-
----
-
-## Próximas Tarefas
-_nada agendado_
-
----
-
-## Últimas 5 Decisões
-_sem histórico ainda_
-
----
-
-## Notas da Sessão
-Sistema inicializado. Aguardando instruções de Luiz ou crons agendados.
+- timestamp: 2026-03-06T01:14:00Z
+- sender_id: 916838588
+- sender_name: Luiz
+- sender_username: RicksonBH
+- conversation_label: SaaS LHFEX id:-1003699307481 topic:8
+- is_group_chat: true
+- is_forum: true
+- note: untrusted metadata received via @meuchatid_bot

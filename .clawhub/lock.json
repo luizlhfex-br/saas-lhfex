@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "skills": {
+    "auto-updater": {
+      "version": "1.0.0",
+      "installedAt": 1772755903087
+    },
+    "self-improving-agent": {
+      "version": "1.0.11",
+      "installedAt": 1772755909811
+    },
+    "free-ride": {
+      "version": "1.0.4",
+      "installedAt": 1772755919030
+    },
+    "obsidian": {
+      "version": "1.0.0",
+      "installedAt": 1772755920652
+    },
+    "tavily": {
+      "version": "1.0.0",
+      "installedAt": 1772755935721
+    },
+    "summarize": {
+      "version": "1.0.0",
+      "installedAt": 1772755942923
+    }
+  }
+}
