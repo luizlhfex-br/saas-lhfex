@@ -3,8 +3,8 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.3.0";
-export const APP_RELEASE_DATE = "2026-03-03";
+export const APP_VERSION = "2.5.0";
+export const APP_RELEASE_DATE = "2026-03-05";
 export const APP_NAME = "LHFEX SaaS";
 
 export type ChangelogItemType = "feature" | "improvement" | "fix" | "infra";
