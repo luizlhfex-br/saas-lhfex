@@ -92,7 +92,11 @@
       }
     },
     "controlUi": {
-      "dangerouslyAllowHostHeaderOriginFallback": false
+      "dangerouslyAllowHostHeaderOriginFallback": false,
+      "allowedOrigins": [
+        "https://nw8cc8s8c8kkcgkggocccgw4.72.60.151.145.sslip.io",
+        "http://nw8cc8s8c8kkcgkggocccgw4.72.60.151.145.sslip.io"
+      ]
     }
   },
   "session": {
