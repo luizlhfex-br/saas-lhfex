@@ -47,6 +47,29 @@ interface TelegramUpdate {
 }
 
 const openclawPaidApprovalMap = new Map<number, number>();
+const openclawCnpjConfirmationMap = new Map<number, { originalText: string; cnpj: string; expiresAt: number }>();
+
+const CNPJ_REGEX = /\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/;
+
+function normalizeCnpj(input: string): string {
+  const digits = input.replace(/\D/g, "");
+  if (digits.length !== 14) return "";
+  return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+}
+
+function extractCnpjFromText(text: string): string {
+  const match = text.match(CNPJ_REGEX);
+  if (!match) return "";
+  return normalizeCnpj(match[0]);
+}
+
+function isConfirmMessage(text: string): boolean {
+  return /^(sim|s|ok|confirmo|pode|prosseguir)$/i.test(text.trim());
+}
+
+function isRejectMessage(text: string): boolean {
+  return /^(não|nao|n|cancelar|cancela|parar|recusar)$/i.test(text.trim());
+}
 
 function isPaidOverrideMessage(text: string): boolean {
   return /^\/pago$/i.test(text)
@@ -172,6 +195,31 @@ export async function action({ request }: Route.ActionArgs) {
   // Se ainda não há texto para processar, ignorar silenciosamente
   if (!messageText) return data({ ok: true });
 
+  const pendingCnpjConfirmation = openclawCnpjConfirmationMap.get(chatId);
+  if (pendingCnpjConfirmation) {
+    if (Date.now() > pendingCnpjConfirmation.expiresAt) {
+      openclawCnpjConfirmationMap.delete(chatId);
+    } else if (isConfirmMessage(messageText)) {
+      openclawCnpjConfirmationMap.delete(chatId);
+      await sendTelegram(botToken, chatId, `✅ Confirmação recebida. Cadastrando cliente com CNPJ *${pendingCnpjConfirmation.cnpj}*...`, "Markdown");
+      await handleNovoCliente(pendingCnpjConfirmation.originalText, chatId, botToken);
+      return data({ ok: true });
+    } else if (isRejectMessage(messageText)) {
+      openclawCnpjConfirmationMap.delete(chatId);
+      await sendTelegram(botToken, chatId, "❎ Cadastro cancelado. Se quiser, envie novamente o comando com os dados corrigidos.");
+      return data({ ok: true });
+    } else if (messageText !== "/start") {
+      await sendTelegram(
+        botToken,
+        chatId,
+        `⏳ Tenho um cadastro pendente para CNPJ *${pendingCnpjConfirmation.cnpj}*.
+Responda *sim* para confirmar ou *não* para cancelar (expira em 10 min).`,
+        "Markdown"
+      );
+      return data({ ok: true });
+    }
+  }
+
   // ── Comandos especiais ────────────────────────────────────────────────────
 
   if (isPaidOverrideMessage(messageText)) {
@@ -251,11 +299,47 @@ export async function action({ request }: Route.ActionArgs) {
     /novo\s+cliente/i.test(messageText) ||
     /cadastrar\s+cliente/i.test(messageText)
   ) {
+    const cnpj = extractCnpjFromText(messageText);
+    if (cnpj) {
+      openclawCnpjConfirmationMap.set(chatId, {
+        originalText: messageText,
+        cnpj,
+        expiresAt: Date.now() + 10 * 60 * 1000,
+      });
+
+      await sendTelegram(
+        botToken,
+        chatId,
+        `🔐 Confirma o cadastro de cliente para CNPJ *${cnpj}*?
+Responda *sim* para continuar ou *não* para cancelar (válido por 10 min).`,
+        "Markdown"
+      );
+      return data({ ok: true });
+    }
+
     await handleNovoCliente(messageText, chatId, botToken);
     return data({ ok: true });
   }
 
-  if (/\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/.test(messageText)) {
+  if (CNPJ_REGEX.test(messageText)) {
+    const cnpj = extractCnpjFromText(messageText);
+    if (cnpj) {
+      openclawCnpjConfirmationMap.set(chatId, {
+        originalText: messageText,
+        cnpj,
+        expiresAt: Date.now() + 10 * 60 * 1000,
+      });
+
+      await sendTelegram(
+        botToken,
+        chatId,
+        `🔐 Confirma o cadastro de cliente para CNPJ *${cnpj}*?
+Responda *sim* para continuar ou *não* para cancelar (válido por 10 min).`,
+        "Markdown"
+      );
+      return data({ ok: true });
+    }
+
     await handleNovoCliente(messageText, chatId, botToken);
     return data({ ok: true });
   }
