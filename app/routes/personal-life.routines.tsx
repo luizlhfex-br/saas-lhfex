@@ -1,6 +1,6 @@
 /**
  * GET/POST /personal-life/routines
- * Módulo de Rotinas & Hábitos Pessoais
+ * Módulo de Rotinas de Saúde
  *
  * Seções:
  *   1. Hoje — checklist diário com streak
@@ -65,21 +65,31 @@ type TrackingRow = {
 // ── Constants ──────────────────────────────────────────────────────────────
 
 const ROUTINE_TYPE_LABELS: Record<string, string> = {
-  exercise: "Exercício",
-  meditation: "Meditação",
-  reading: "Leitura",
+  exercise: "Atividade física",
   sleep: "Sono",
-  nutrition: "Nutrição",
-  learning: "Aprendizado",
-  hobby: "Hobby",
+  nutrition: "Alimentação",
+  hydration: "Hidratação",
+  mental_health: "Saúde mental",
+  medication: "Medicação/Suplementos",
+  mobility: "Mobilidade/Alongamento",
+  checkup: "Check-up/Exames",
+  meditation: "Mindfulness/Meditação",
+  reading: "Leitura (bem-estar)",
+  learning: "Aprendizado saudável",
+  hobby: "Lazer terapêutico",
 };
 
 const ROUTINE_TYPE_EMOJIS: Record<string, string> = {
   exercise: "🏃",
-  meditation: "🧘",
-  reading: "📚",
   sleep: "😴",
   nutrition: "🥗",
+  hydration: "💧",
+  mental_health: "🧠",
+  medication: "💊",
+  mobility: "🧘",
+  checkup: "🩺",
+  meditation: "🧘",
+  reading: "📚",
   learning: "💡",
   hobby: "🎨",
 };
@@ -93,10 +103,13 @@ const FREQUENCY_LABELS: Record<string, string> = {
 
 const UNIT_LABELS: Record<string, string> = {
   minutes: "minutos",
-  pages: "páginas",
+  steps: "passos",
+  ml: "ml",
+  liters: "litros",
   km: "km",
   hours: "horas",
   times: "vezes",
+  pages: "páginas",
 };
 
 const DAY_HEADERS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -407,7 +420,7 @@ function RoutineModal({
         {/* Modal header */}
         <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            {isEdit ? "Editar Rotina" : "Nova Rotina"}
+            {isEdit ? "Editar Rotina de Saúde" : "Nova Rotina de Saúde"}
           </h2>
           <button
             type="button"
@@ -435,7 +448,7 @@ function RoutineModal({
               name="name"
               required
               defaultValue={editTarget?.name ?? ""}
-              placeholder="Ex: Corrida matinal, Meditação, Leitura noturna..."
+              placeholder="Ex: Caminhada 30min, Beber água, Dormir antes das 23h..."
               className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 transition focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500 dark:focus:border-green-400"
             />
           </div>
@@ -451,13 +464,14 @@ function RoutineModal({
               defaultValue={editTarget?.routineType ?? "exercise"}
               className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 transition focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
             >
-              <option value="exercise">🏃 Exercício</option>
-              <option value="meditation">🧘 Meditação</option>
-              <option value="reading">📚 Leitura</option>
+              <option value="exercise">🏃 Atividade física</option>
               <option value="sleep">😴 Sono</option>
-              <option value="nutrition">🥗 Nutrição</option>
-              <option value="learning">💡 Aprendizado</option>
-              <option value="hobby">🎨 Hobby</option>
+              <option value="nutrition">🥗 Alimentação</option>
+              <option value="hydration">💧 Hidratação</option>
+              <option value="mental_health">🧠 Saúde mental</option>
+              <option value="medication">💊 Medicação/Suplementos</option>
+              <option value="mobility">🧘 Mobilidade/Alongamento</option>
+              <option value="checkup">🩺 Check-up/Exames</option>
             </select>
           </div>
 
@@ -500,10 +514,13 @@ function RoutineModal({
                 className="w-1/2 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 transition focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
               >
                 <option value="minutes">minutos</option>
-                <option value="pages">páginas</option>
-                <option value="km">km</option>
                 <option value="hours">horas</option>
+                <option value="steps">passos</option>
+                <option value="ml">ml</option>
+                <option value="liters">litros</option>
+                <option value="km">km</option>
                 <option value="times">vezes</option>
+                <option value="pages">páginas</option>
               </select>
             </div>
           </div>
@@ -955,7 +972,7 @@ function ManageTab({
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-          Gerenciar Rotinas
+          Gerenciar Rotinas de Saúde
         </h2>
         <Button
           type="button"
@@ -1065,10 +1082,10 @@ export default function PersonalLifeRoutinesPage({
           </Link>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              ❤️ Rotinas & Hábitos
+              🩺 Rotinas de Saúde
             </h1>
             <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
-              Construa consistência diária — {completedToday}/{routines.length} hoje
+              Construa saúde com consistência diária — {completedToday}/{routines.length} hoje
             </p>
           </div>
         </div>
@@ -1078,7 +1095,7 @@ export default function PersonalLifeRoutinesPage({
           className="bg-green-600 text-white hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-500"
         >
           <Plus className="mr-2 h-4 w-4" />
-          Nova Rotina
+          Nova Rotina de Saúde
         </Button>
       </div>
 

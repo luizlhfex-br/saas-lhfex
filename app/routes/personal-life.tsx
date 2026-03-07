@@ -63,8 +63,8 @@ const modules = [
   },
   {
     slug: "routines",
-    title: "❤️ Rotinas & Hábitos",
-    description: "Rastreador de exercício, meditação, leitura e mais",
+    title: "🩺 Rotinas de Saúde",
+    description: "Acompanhe treino, sono, hidratação, alimentação e autocuidado diário",
     icon: Heart,
     color: "bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400",
   },
