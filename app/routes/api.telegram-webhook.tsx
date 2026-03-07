@@ -176,8 +176,12 @@ export async function action({ request }: Route.ActionArgs) {
   // Operações no SAAS via Telegram (somente admin)
   const isClientCreateCmd =
     text.startsWith("/cliente") ||
+    /cadastro\s+de\s+cliente/i.test(text) ||
+    /cria(?:r)?\s+(?:um\s+)?cliente/i.test(text) ||
     /novo\s+cliente/i.test(text) ||
     /cadastrar\s+cliente/i.test(text);
+
+  const hasCnpj = /\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/.test(text);
 
   const isProcessCreateCmd =
     text.startsWith("/processo") ||
@@ -188,7 +192,7 @@ export async function action({ request }: Route.ActionArgs) {
     text.startsWith("/cancelar_processo") ||
     /cancelar\s+processo/i.test(text);
 
-  if (isClientCreateCmd || isProcessCreateCmd || isProcessCancelCmd) {
+  if (isClientCreateCmd || isProcessCreateCmd || isProcessCancelCmd || hasCnpj) {
     if (accessLevel !== "admin") {
       await sendTelegram(
         botToken,
@@ -198,7 +202,7 @@ export async function action({ request }: Route.ActionArgs) {
       return data({ ok: true });
     }
 
-    if (isClientCreateCmd) {
+    if (isClientCreateCmd || hasCnpj) {
       await handleNovoCliente(text, chatId, botToken);
       return data({ ok: true });
     }

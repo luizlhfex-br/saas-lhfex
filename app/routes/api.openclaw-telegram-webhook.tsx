@@ -237,9 +237,16 @@ export async function action({ request }: Route.ActionArgs) {
 
   if (
     messageText.startsWith("/cliente") ||
+    /cadastro\s+de\s+cliente/i.test(messageText) ||
+    /cria(?:r)?\s+(?:um\s+)?cliente/i.test(messageText) ||
     /novo\s+cliente/i.test(messageText) ||
     /cadastrar\s+cliente/i.test(messageText)
   ) {
+    await handleNovoCliente(messageText, chatId, botToken);
+    return data({ ok: true });
+  }
+
+  if (/\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/.test(messageText)) {
     await handleNovoCliente(messageText, chatId, botToken);
     return data({ ok: true });
   }

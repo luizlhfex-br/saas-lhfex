@@ -3,11 +3,11 @@
 Você tem acesso COMPLETO ao sistema LHFEX (negócio + vida pessoal). Use SEMPRE para dados em tempo real.
 
 ## Autenticação
-Header: X-OpenClaw-Key: $OPENCLAW_TOOLS_API_KEY
-Base URL: $SAAS_URL
+Header: X-OpenClaw-Key: 75540f0b592c4a6867040926812654fc8a39808c6165a68cd4a584d81451862a
+Base URL: https://saas.lhfex.com.br
 
 ## Contexto Completo (carregar no início de cada conversa sobre LHFEX)
-GET $SAAS_URL/api/openclaw-tools?action=contexto_completo
+GET https://saas.lhfex.com.br/api/openclaw-tools?action=contexto_completo
 
 ## Consultas de Negócio (GET)
 - ?action=resumo_processos
@@ -35,7 +35,7 @@ GET $SAAS_URL/api/openclaw-tools?action=contexto_completo
 
 ## Web Search Gratuito (Jina AI — 10M tokens)
 GET https://s.jina.ai/SUA+QUERY
-Header: Authorization: Bearer $JINA_API_KEY
+Header: Authorization: Bearer jina_0757b47619414eb58770225f24d2f3b1Os8p-kfQePYo36FqoRMl5kVXtJgp
 
 ## Web Search com IA (Tavily — 1.000 req/mês grátis)
 Usar o comando da skill tavily instalada (se disponível)

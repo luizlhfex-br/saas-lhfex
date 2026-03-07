@@ -16,7 +16,20 @@ import {
   parsePessoaFromTelegram,
   parseClienteFromTelegram,
   parseProcessoFromTelegram,
+  enrichCNPJ,
 } from "./ai.server";
+
+function normalizeCnpj(input: string): string {
+  const digits = input.replace(/\D/g, "");
+  if (digits.length !== 14) return "";
+  return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+}
+
+function extractCnpjFromText(text: string): string {
+  const m = text.match(/\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/);
+  if (!m) return "";
+  return normalizeCnpj(m[0]);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper: send Telegram message with Markdown retry
@@ -118,19 +131,40 @@ export async function handleNovoCliente(text: string, chatId: number, botToken: 
   await sendTg(botToken, chatId, "⏳ Analisando dados do cliente...");
 
   const fields = await parseClienteFromTelegram(text);
+  const extractedCnpj = extractCnpjFromText(text);
+  const cnpj = normalizeCnpj(((fields.cnpj as string | null) ?? extractedCnpj) || "");
+  let razaoSocial = (fields.razaoSocial as string | undefined)?.trim() || "";
+  let nomeFantasia = (fields.nomeFantasia as string | null) ?? null;
+  let city = (fields.city as string | null) ?? null;
+  let state = (fields.state as string | null) ?? null;
+  let notes = (fields.notes as string | null) ?? null;
 
-  if (!fields.razaoSocial) {
+  if (!razaoSocial && cnpj) {
+    try {
+      const enriched = await enrichCNPJ(cnpj);
+      if (enriched) {
+        razaoSocial = enriched.razaoSocial || razaoSocial;
+        nomeFantasia = nomeFantasia || enriched.nomeFantasia || null;
+        city = city || enriched.city || null;
+        state = state || enriched.state || null;
+        notes = notes || (enriched.situacao ? `Situação cadastral: ${enriched.situacao}` : null);
+      }
+    } catch (error) {
+      console.error("[OpenClaw Actions] CNPJ enrichment failed:", error);
+    }
+  }
+
+  if (!razaoSocial) {
     await sendTg(botToken, chatId,
-      `❌ *Razão Social não identificada.*\n\n` +
-      `Informe pelo menos a razão social. Exemplo:\n` +
-      `\`/cliente CNPJ: 12.345.678/0001-90, Empresa ABC Ltda, contato: João, tel: 11999998888\``,
+      `❌ *Não consegui identificar os dados para cadastro.*\n\n` +
+      `Envie ao menos um CNPJ válido ou razão social. Exemplo:\n` +
+      `\`/cliente 03.954.434/0001-19\``,
       "Markdown"
     );
     return;
   }
 
   const userId = process.env.OPENCLAW_USER_ID;
-  const cnpj = (fields.cnpj as string | null) ?? "";
   const contact = (fields.contact as Record<string, string> | null) ?? {};
 
   // Verifica CNPJ duplicado
@@ -154,12 +188,12 @@ export async function handleNovoCliente(text: string, chatId: number, botToken: 
 
     const [newClient] = await db.insert(clients).values({
       cnpj: cnpj || "00.000.000/0000-00",
-      razaoSocial: fields.razaoSocial as string,
-      nomeFantasia: (fields.nomeFantasia as string | null) ?? null,
+      razaoSocial,
+      nomeFantasia,
       clientType,
-      city: (fields.city as string | null) ?? null,
-      state: (fields.state as string | null) ?? null,
-      notes: (fields.notes as string | null) ?? null,
+      city,
+      state,
+      notes,
       status: "active",
       createdBy: userId ?? null,
     }).returning();
