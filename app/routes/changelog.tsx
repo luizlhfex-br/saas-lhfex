@@ -50,6 +50,9 @@ const CHANGELOG: Entry[] = [
       "Cadastro de cliente: enriquecimento por CNPJ (razão social/cidade/UF) antes de gravar, quando possível",
       "OpenClaw skill runtime: SAAS.md em workspace com URL/chave resolvidas para evitar erro 'Invalid URL: ${SAAS_URL}'",
       "Deploy SAAS da feature de cancelamento concluído (queue 131 finished)",
+      "Webhook SAAS: suporte ampliado para mídia enviada como documento (áudio/image/*), com transcrição/análise e fallback claro quando formato não suportado",
+      "Webhook OpenClaw: análise de imagem e transcrição de áudio agora entram no fluxo do agente (resposta contextual, sem análise isolada)",
+      "Tela /changelog: entradas agora agrupadas por dia automaticamente para consolidar todas as atualizações da data",
     ],
   },
   {
