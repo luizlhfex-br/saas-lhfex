@@ -1276,7 +1276,6 @@ export default function PromotionsPage({
                       }
                     </Button>
                   </div>
-                  </div>
                 </div>
               </div>
 
