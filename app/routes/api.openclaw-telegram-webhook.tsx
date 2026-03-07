@@ -156,7 +156,7 @@ export async function action({ request }: Route.ActionArgs) {
           : "🖼️ _(imagem analisada)_ ";
       } else {
         await sendTelegram(botToken, chatId,
-          "❌ Não consegui analisar a imagem. Tente novamente com uma imagem diferente."
+          "❌ Não consegui analisar a imagem agora (cota/instabilidade do Gemini Free). Tente novamente em alguns minutos ou envie um áudio/texto."
         );
         return data({ ok: true });
       }
@@ -360,18 +360,32 @@ async function transcribeAudioWithGroq(botToken: string, fileId: string, mimeTyp
   const audioBuffer = await audioRes.arrayBuffer();
 
   // 3. Determine MIME type from URL
-  const ext = fileUrl.split(".").pop()?.toLowerCase() ?? "ogg";
-  const mimeMap: Record<string, string> = {
-    ogg: "audio/ogg",
-    oga: "audio/ogg",
-    mp3: "audio/mpeg",
-    mp4: "audio/mp4",
-    m4a: "audio/mp4",
-    wav: "audio/wav",
-    webm: "audio/webm",
-    flac: "audio/flac",
+  const extFromUrl = fileUrl.split(".").pop()?.toLowerCase();
+  const normalizedHint = mimeTypeHint?.toLowerCase().split(";")[0]?.trim();
+  const mimeToExt: Record<string, string> = {
+    "audio/ogg": "ogg",
+    "audio/opus": "opus",
+    "audio/mpeg": "mp3",
+    "audio/mp3": "mp3",
+    "audio/mp4": "mp4",
+    "audio/x-m4a": "m4a",
+    "audio/wav": "wav",
+    "audio/x-wav": "wav",
+    "audio/webm": "webm",
+    "audio/flac": "flac",
   };
-  const mimeType = mimeTypeHint ?? mimeMap[ext] ?? "audio/ogg";
+  const allowedExt = new Set(["flac", "mp3", "mp4", "mpeg", "mpga", "m4a", "ogg", "opus", "wav", "webm"]);
+  const extFromHint = normalizedHint ? mimeToExt[normalizedHint] : undefined;
+  const ext = (extFromHint && allowedExt.has(extFromHint))
+    ? extFromHint
+    : (extFromUrl && allowedExt.has(extFromUrl) ? extFromUrl : "ogg");
+
+  const mimeMap: Record<string, string> = {
+    ogg: "audio/ogg", opus: "audio/opus", mp3: "audio/mpeg",
+    mpeg: "audio/mpeg", mpga: "audio/mpeg", mp4: "audio/mp4",
+    m4a: "audio/mp4", wav: "audio/wav", webm: "audio/webm", flac: "audio/flac",
+  };
+  const mimeType = mimeMap[ext] ?? "audio/ogg";
   const fileName = `audio.${ext}`;
 
   // 4. Send to Groq Whisper
@@ -434,35 +448,48 @@ async function analyzeImageWithGemini(botToken: string, fileId: string, caption:
     ? `Analise esta imagem. O usuário enviou com a legenda: "${caption}". Responda em português, seja direto e útil.`
     : "Analise esta imagem e descreva o que você vê. Se for um documento, extrai as informações relevantes. Se for um produto, identifique-o. Responda em português, seja direto e útil.";
 
-  const geminiRes = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: prompt },
-            { inline_data: { mime_type: mimeType, data: base64 } },
-          ],
-        }],
-        generationConfig: { maxOutputTokens: 1024, temperature: 0.3 },
-      }),
-      signal: AbortSignal.timeout(30000),
-    }
-  );
+  const models = ["gemini-2.0-flash", "gemini-1.5-flash"];
 
-  if (!geminiRes.ok) {
-    const errText = await geminiRes.text();
-    console.error("[OPENCLAW] Gemini vision failed:", geminiRes.status, errText);
-    return null;
+  for (const model of models) {
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { text: prompt },
+                { inline_data: { mime_type: mimeType, data: base64 } },
+              ],
+            }],
+            generationConfig: { maxOutputTokens: 1024, temperature: 0.3 },
+          }),
+          signal: AbortSignal.timeout(30000),
+        }
+      );
+
+      if (geminiRes.ok) {
+        const geminiJson = await geminiRes.json() as {
+          candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+        };
+        const text = geminiJson.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+        if (text) return text;
+      } else {
+        const errText = await geminiRes.text();
+        console.error("[OPENCLAW] Gemini vision failed:", model, geminiRes.status, errText);
+        if (geminiRes.status === 429 && attempt < 2) {
+          await new Promise((resolve) => setTimeout(resolve, 1200 * attempt));
+          continue;
+        }
+      }
+
+      break;
+    }
   }
 
-  const geminiJson = await geminiRes.json() as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-  };
-
-  return geminiJson.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? null;
+  return null;
 }
 
 async function sendTelegram(token: string, chatId: number, text: string, parseMode?: string) {
