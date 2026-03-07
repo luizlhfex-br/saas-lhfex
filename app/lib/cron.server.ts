@@ -874,7 +874,8 @@ async function sendTasksReminder() {
 }
 
 /**
- * Alerta diário de prazos (Promoções, Objetivos e Concursos Literários)
+ * Alerta diário de prazos (itens com data final)
+ * Cobre: Promoções, Objetivos, Concursos Literários, Eventos de Estudo (provas/trabalhos) e Time Off.
  * Janela: atrasados, hoje, amanhã e próximos 7 dias.
  * Silencioso se não houver nada relevante.
  */
@@ -889,7 +890,14 @@ async function sendDeadlinesAlert() {
   }
 
   try {
-    const { promotions, personalGoals, literaryContests } = await import("../../drizzle/schema");
+    const {
+      promotions,
+      personalGoals,
+      literaryContests,
+      personalStudyEvents,
+      personalStudySubjects,
+      plannedTimeOff,
+    } = await import("../../drizzle/schema");
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -902,7 +910,12 @@ async function sendDeadlinesAlert() {
       return Math.round(diff / (1000 * 60 * 60 * 24));
     };
 
-    type DeadlineItem = { kind: "promo" | "goal" | "contest"; title: string; dueDate: string; daysUntil: number };
+    type DeadlineItem = {
+      kind: "promo" | "goal" | "contest" | "study_event" | "timeoff";
+      title: string;
+      dueDate: string;
+      daysUntil: number;
+    };
 
     const promoRows = await db
       .select({
@@ -930,6 +943,26 @@ async function sendDeadlinesAlert() {
       })
       .from(literaryContests)
       .where(eq(literaryContests.userId, userId));
+
+    const studyEventRows = await db
+      .select({
+        titulo: personalStudyEvents.titulo,
+        tipo: personalStudyEvents.tipo,
+        data: personalStudyEvents.data,
+        concluido: personalStudyEvents.concluido,
+        materiaNome: personalStudySubjects.nome,
+      })
+      .from(personalStudyEvents)
+      .leftJoin(personalStudySubjects, eq(personalStudySubjects.id, personalStudyEvents.subjectId))
+      .where(eq(personalStudyEvents.userId, userId));
+
+    const timeOffRows = await db
+      .select({
+        title: plannedTimeOff.title,
+        endDate: plannedTimeOff.endDate,
+      })
+      .from(plannedTimeOff)
+      .where(eq(plannedTimeOff.userId, userId));
 
     const items: DeadlineItem[] = [];
 
@@ -972,6 +1005,34 @@ async function sendDeadlinesAlert() {
       });
     }
 
+    for (const studyEvent of studyEventRows) {
+      if (!studyEvent.data) continue;
+      if (studyEvent.concluido) continue;
+      const daysUntil = calcDaysUntil(String(studyEvent.data));
+      if (daysUntil === null || daysUntil > 7) continue;
+      const eventType = String(studyEvent.tipo || "evento");
+      const subjectName = studyEvent.materiaNome ? ` · ${String(studyEvent.materiaNome)}` : "";
+
+      items.push({
+        kind: "study_event",
+        title: `${eventType.toUpperCase()}: ${String(studyEvent.titulo)}${subjectName}`,
+        dueDate: String(studyEvent.data),
+        daysUntil,
+      });
+    }
+
+    for (const timeOff of timeOffRows) {
+      if (!timeOff.endDate) continue;
+      const daysUntil = calcDaysUntil(String(timeOff.endDate));
+      if (daysUntil === null || daysUntil > 7) continue;
+      items.push({
+        kind: "timeoff",
+        title: String(timeOff.title),
+        dueDate: String(timeOff.endDate),
+        daysUntil,
+      });
+    }
+
     if (items.length === 0) {
       console.log("[CRON] deadlines_alert: nada a reportar hoje");
       return;
@@ -983,6 +1044,8 @@ async function sendDeadlinesAlert() {
       promo: "🎁 Promoção",
       goal: "🎯 Objetivo",
       contest: "✍️ Concurso",
+      study_event: "🎓 Estudos",
+      timeoff: "🏖️ Time Off",
     };
 
     const urgencyLabel = (days: number) => {
