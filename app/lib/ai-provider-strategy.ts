@@ -189,9 +189,12 @@ export async function isProviderAvailable(
  * 3. Se falhar, tenta DeepSeek Paid (último resort, se tiver orçamento)
  */
 export async function selectNextProvider(
-  excludeProviders: ProviderType[] = []
+  excludeProviders: ProviderType[] = [],
+  allowPaidFallback = true,
 ): Promise<StrategyDecision> {
-  const providers: ProviderType[] = ["gemini", "openrouter_free", "deepseek"];
+  const providers: ProviderType[] = allowPaidFallback
+    ? ["gemini", "openrouter_free", "deepseek"]
+    : ["gemini", "openrouter_free"];
 
   for (const provider of providers) {
     if (excludeProviders.includes(provider)) {
@@ -231,8 +234,10 @@ export async function selectNextProvider(
   );
 
   return {
-    provider: "deepseek",
-    reason: "FALLBACK FINAL: DeepSeek (pode exceder orçamento)",
+    provider: allowPaidFallback ? "deepseek" : "openrouter_free",
+    reason: allowPaidFallback
+      ? "FALLBACK FINAL: DeepSeek (pode exceder orçamento)"
+      : "Sem fallback pago: provedores gratuitos indisponíveis",
     isDegraded: true,
   };
 }

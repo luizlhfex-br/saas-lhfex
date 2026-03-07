@@ -46,6 +46,25 @@ interface TelegramUpdate {
   };
 }
 
+const openclawPaidApprovalMap = new Map<number, number>();
+
+function isPaidOverrideMessage(text: string): boolean {
+  return /^\/pago$/i.test(text)
+    || /^\/deepseek$/i.test(text)
+    || /(pode|pode usar|liberado|autorizado).*(deepseek|pago)/i.test(text)
+    || /(deepseek|pago).*(liberado|autorizado|ok)/i.test(text);
+}
+
+function hasPaidApproval(chatId: number): boolean {
+  const exp = openclawPaidApprovalMap.get(chatId);
+  if (!exp) return false;
+  if (Date.now() > exp) {
+    openclawPaidApprovalMap.delete(chatId);
+    return false;
+  }
+  return true;
+}
+
 export async function action({ request }: Route.ActionArgs) {
   const botToken = process.env.OPENCLAW_TELEGRAM_TOKEN;
   const allowedChatId = process.env.OPENCLAW_CHAT_ID ? Number(process.env.OPENCLAW_CHAT_ID) : null;
@@ -146,6 +165,12 @@ export async function action({ request }: Route.ActionArgs) {
 
   // ── Comandos especiais ────────────────────────────────────────────────────
 
+  if (isPaidOverrideMessage(messageText)) {
+    openclawPaidApprovalMap.set(chatId, Date.now() + 10 * 60 * 1000);
+    await sendTelegram(botToken, chatId, "✅ DeepSeek Paid liberado para esta conversa por 10 minutos.");
+    return data({ ok: true });
+  }
+
   // Command: /start
   if (messageText === "/start") {
     await sendTelegram(botToken, chatId,
@@ -241,9 +266,12 @@ export async function action({ request }: Route.ActionArgs) {
   try {
     await sendChatAction(botToken, chatId, "typing");
 
+    const allowPaidFallback = hasPaidApproval(chatId);
+
     const response = await askAgent("openclaw", messageText, `openclaw-${userId}`, {
       restricted: false,
       feature: "openclaw",
+      allowPaidFallback,
     });
 
     // Provider badge

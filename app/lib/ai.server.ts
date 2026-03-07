@@ -43,6 +43,9 @@ DIRETRIZES GERAIS DE COMUNICAÇÃO (aplica a todas as respostas):
 8. Resolva com ownership — não "passe a bola", resolva end-to-end.
 9. Pergunte se a resposta ajudou e se precisa de mais algo.
 10. Responda sempre em português brasileiro.
+11. NUNCA diga que executou algo no sistema se não houve execução real confirmada por resultado.
+12. Se não conseguir executar, diga explicitamente: o que tentou, por que falhou e qual próximo passo recomendado.
+13. NUNCA invente status, números, IDs, confirmações de deploy ou efeitos colaterais não verificados.
 `;
 
 const LIFE_AGENT_SYSTEM_PROMPT = `Você é o Life Agent da LHFEX para automação de vida pessoal.
@@ -523,13 +526,20 @@ export async function askAgent(
   agentId: string,
   message: string,
   _userId: string,
-  options?: { restricted?: boolean; feature?: AIFeature; forceProvider?: "deepseek"; includePersonalLifeContext?: boolean },
+  options?: {
+    restricted?: boolean;
+    feature?: AIFeature;
+    forceProvider?: "deepseek";
+    includePersonalLifeContext?: boolean;
+    allowPaidFallback?: boolean;
+  },
 ): Promise<AIResponse> {
   const startTime = Date.now();
   let systemPrompt = AGENT_PROMPTS[agentId] || AGENT_PROMPTS.airton;
   const context = await loadAgentContext();
   let contextMessage = buildContextMessage(context, options?.restricted);
   const feature = options?.feature || "chat";
+  const allowPaidFallback = options?.allowPaidFallback ?? true;
 
   // Se OpenClaw OU includePersonalLifeContext = true, carregar contexto de vida pessoal
   if ((agentId === "openclaw" || options?.includePersonalLifeContext) && _userId) {
@@ -577,7 +587,7 @@ ${JSON.stringify(lifeContext, null, 2)}`;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       // Get next available provider based on budget and status
-      const decision: StrategyDecision = await selectNextProvider(excludedProviders);
+      const decision: StrategyDecision = await selectNextProvider(excludedProviders, allowPaidFallback);
 
       // Log the decision
       await logProviderDecision(decision, feature, _userId);
@@ -610,7 +620,7 @@ ${JSON.stringify(lifeContext, null, 2)}`;
       return result;
     } catch (error) {
       const latencyMs = Date.now() - startTime;
-      const decision = await selectNextProvider(excludedProviders);
+      const decision = await selectNextProvider(excludedProviders, allowPaidFallback);
 
       console.error(
         `[AI_STRATEGY] ❌ Provider failed (attempt ${attempt + 1}): ${decision.provider}`,
@@ -636,8 +646,21 @@ ${JSON.stringify(lifeContext, null, 2)}`;
   }
 
   // Ultimate fallback — all providers failed
+  const agentName = agentId === "airton" ? "AIrton 🎯"
+    : agentId === "iana" ? "IAna 📦"
+    : agentId === "maria" ? "marIA 💰"
+    : "IAgo 🔧";
+
+  if (!allowPaidFallback) {
+    return {
+      content: `Sou o ${agentName}. Não consegui responder com provedores gratuitos agora (Gemini/OpenRouter Free indisponíveis). Se quiser, posso tentar novamente com DeepSeek Paid nesta próxima mensagem.` ,
+      model: "fallback-free-only",
+      provider: "gemini",
+    };
+  }
+
   return {
-    content: `Olá! Sou o ${agentId === "airton" ? "AIrton 🎯" : agentId === "iana" ? "IAna 📦" : agentId === "maria" ? "marIA 💰" : "IAgo 🔧"}. Estou temporariamente indisponível. Os provedores de IA não estão respondendo no momento. Tente novamente em alguns minutos.`,
+    content: `Olá! Sou o ${agentName}. Estou temporariamente indisponível. Os provedores de IA não estão respondendo no momento. Tente novamente em alguns minutos.`,
     model: "fallback",
     provider: "gemini",
   };

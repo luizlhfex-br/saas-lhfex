@@ -44,6 +44,8 @@ const CHANGELOG: Entry[] = [
       "Webhook OpenClaw: comando /cancelar_processo + linguagem natural para cancelar com justificativa",
       "Webhook SAAS: comandos operacionais admin (criar cliente, abrir processo, cancelar processo) via Telegram",
       "AI fallback SAAS: OpenRouter Free agora seleciona modelo gratuito disponível dinamicamente (evita queda prematura para DeepSeek Paid quando um modelo free sai do ar)",
+      "Bots SAAS/OpenClaw: fallback pago agora exige liberação explícita no Telegram (/pago ou /deepseek), mantendo free-first por padrão",
+      "Agentes SAAS: diretriz de honestidade reforçada (não inventar execução/status; declarar falhas e limites com clareza)",
       "Deploy SAAS da feature de cancelamento concluído (queue 131 finished)",
     ],
   },

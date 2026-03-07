@@ -40,6 +40,24 @@ interface TelegramUpdate {
 
 // Map chatId → current agent
 const chatAgentMap = new Map<number, string>();
+const paidFallbackApprovalMap = new Map<number, number>();
+
+function isPaidOverrideMessage(text: string): boolean {
+  return /^\/pago$/i.test(text)
+    || /^\/deepseek$/i.test(text)
+    || /(pode|pode usar|liberado|autorizado).*(deepseek|pago)/i.test(text)
+    || /(deepseek|pago).*(liberado|autorizado|ok)/i.test(text);
+}
+
+function hasPaidApproval(chatId: number): boolean {
+  const exp = paidFallbackApprovalMap.get(chatId);
+  if (!exp) return false;
+  if (Date.now() > exp) {
+    paidFallbackApprovalMap.delete(chatId);
+    return false;
+  }
+  return true;
+}
 
 // Access control levels
 type AccessLevel = "admin" | "restricted" | "denied";
@@ -145,6 +163,16 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ ok: true });
   }
 
+  if (isPaidOverrideMessage(text)) {
+    paidFallbackApprovalMap.set(chatId, Date.now() + 10 * 60 * 1000);
+    await sendTelegram(
+      botToken,
+      chatId,
+      "✅ DeepSeek Paid liberado para esta conversa por 10 minutos."
+    );
+    return data({ ok: true });
+  }
+
   // Operações no SAAS via Telegram (somente admin)
   const isClientCreateCmd =
     text.startsWith("/cliente") ||
@@ -187,6 +215,7 @@ export async function action({ request }: Route.ActionArgs) {
   // Regular message — send to agent
   const agentId = chatAgentMap.get(chatId) || "airton";
   const isRestricted = accessLevel === "restricted";
+  const allowPaidFallback = hasPaidApproval(chatId);
 
   try {
     // Send "typing" indicator
@@ -207,6 +236,7 @@ export async function action({ request }: Route.ActionArgs) {
       const agentResponse = await askAgent(agentId, `🎤 (áudio transcrito): ${transcription}`, `telegram-${userId}`, {
         restricted: isRestricted,
         feature: "telegram",
+        allowPaidFallback,
       });
       const providerBadge = agentResponse.provider === "gemini" ? "🟢 Gemini"
         : agentResponse.provider === "openrouter_free" ? "🔵 OpenRouter"
@@ -235,6 +265,7 @@ export async function action({ request }: Route.ActionArgs) {
       const agentResponse = await askAgent(agentId, agentInput, `telegram-${userId}`, {
         restricted: isRestricted,
         feature: "telegram",
+        allowPaidFallback,
       });
       const providerBadge = agentResponse.provider === "gemini" ? "🟢 Gemini"
         : agentResponse.provider === "openrouter_free" ? "🔵 OpenRouter"
@@ -250,6 +281,7 @@ export async function action({ request }: Route.ActionArgs) {
     const response = await askAgent(agentId, text, `telegram-${userId}`, {
       restricted: isRestricted,
       feature: "telegram",
+      allowPaidFallback,
     });
 
     // Add provider badge to response
