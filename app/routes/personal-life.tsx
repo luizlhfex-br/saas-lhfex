@@ -5,7 +5,7 @@
 
 import { requireAuth } from "~/lib/auth.server";
 import { requireRole, ROLES } from "~/lib/rbac.server";
-import { useFetcher, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import {
   TrendingUp,
   Heart,
@@ -13,7 +13,6 @@ import {
   Target,
   ArrowRight,
   DollarSign,
-  Zap,
   Receipt,
   ListTodo,
   Bookmark,
@@ -21,33 +20,17 @@ import {
   CheckCircle2,
   Timer,
 } from "lucide-react";
-import { Button } from "~/components/ui/button";
-
-type SummaryCard = {
-  title: string;
-  value: string;
-  change: string;
-  icon: string;
-};
 
 export async function loader({ request }: { request: Request }) {
   const { user } = await requireAuth(request);
   await requireRole(user, [ROLES.LUIZ]);
 
-  // Fetch summary data
-  return {
-    user,
-    summaryCards: [
-      { title: "Saldo Mês", value: "R$ 2.340,50", change: "+12%", icon: "dollar" },
-      { title: "Portfólio", value: "R$ 45.200", change: "+8.5%", icon: "trending" },
-      { title: "Rotinas Ativas", value: "8", change: "100% este mês", icon: "heart" },
-      { title: "Promoções Pendentes", value: "5", change: "Próximo sorteio em 3 dias", icon: "gift" },
-    ],
-  };
+  return { user };
 }
 
 const modules = [
   {
+    group: "finances",
     slug: "finances",
     title: "💰 Finanças Pessoais",
     description: "Módulo completo Firefly para contas, lançamentos, orçamentos e recorrências",
@@ -55,6 +38,7 @@ const modules = [
     color: "bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400",
   },
   {
+    group: "finances",
     slug: "investments",
     title: "📈 Investimentos",
     description: "Portfolio de ações, cripto, bonds e outros ativos",
@@ -62,13 +46,15 @@ const modules = [
     color: "bg-indigo-100 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400",
   },
   {
-    slug: "routines",
-    title: "🩺 Rotinas de Saúde",
-    description: "Acompanhe treino, sono, hidratação, alimentação e autocuidado diário",
+    group: "wellness",
+    slug: "health",
+    title: "🩺 Saúde",
+    description: "Acompanhe peso, medidas corporais e evolução física",
     icon: Heart,
     color: "bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400",
   },
   {
+    group: "planning",
     slug: "goals",
     title: "🎯 Objetivos Pessoais",
     description: "Tarefas de curto/longo prazos com progresso medido",
@@ -76,6 +62,7 @@ const modules = [
     color: "bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400",
   },
   {
+    group: "promotions",
     slug: "promotions",
     title: "🎁 Promoções e Sorteios",
     description: "Rastreie promoções, concursos e sorteios pessoais",
@@ -83,6 +70,7 @@ const modules = [
     color: "bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400",
   },
   {
+    group: "finances",
     slug: "bills",
     title: "📋 Vencimentos",
     description: "Assinaturas, boletos e pagamentos recorrentes com alertas via Telegram",
@@ -90,6 +78,7 @@ const modules = [
     color: "bg-orange-100 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400",
   },
   {
+    group: "planning",
     slug: "tasks",
     title: "✅ TO-DO",
     description: "Tarefas pessoais com prioridades e resumo diário via Telegram",
@@ -97,6 +86,7 @@ const modules = [
     color: "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400",
   },
   {
+    group: "planning",
     slug: "wishlist",
     title: "📚 Wishlist",
     description: "Livros, filmes, séries e discos para ver/ouvir um dia",
@@ -104,6 +94,7 @@ const modules = [
     color: "bg-pink-100 dark:bg-pink-900/20 text-pink-700 dark:text-pink-400",
   },
   {
+    group: "planning",
     slug: "studies",
     title: "🎓 Estudos",
     description: "Faculdades, matérias, provas e prazos com integração ao Google Calendar",
@@ -111,6 +102,7 @@ const modules = [
     color: "bg-violet-100 dark:bg-violet-900/20 text-violet-700 dark:text-violet-400",
   },
   {
+    group: "wellness",
     slug: "clean-days",
     title: "🌱 Dia Limpo",
     description: "Rastreador de streak pessoal — privado",
@@ -118,6 +110,7 @@ const modules = [
     color: "bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400",
   },
   {
+    group: "wellness",
     slug: "productivity",
     title: "⏱️ Produtividade",
     description: "Pomodoro, 3-3-3, Eisenhower, Seinfeld",
@@ -126,46 +119,31 @@ const modules = [
   },
 ];
 
-export default function PersonalLifePage({
-  loaderData,
-}: {
-  loaderData: { summaryCards: SummaryCard[] };
-}) {
+const moduleGroups = [
+  {
+    key: "finances",
+    title: "Finanças e Patrimônio",
+    description: "Finanças pessoais, investimentos e vencimentos",
+  },
+  {
+    key: "promotions",
+    title: "Promoções e Sorteios",
+    description: "Acompanhe oportunidades e sorteios pessoais",
+  },
+  {
+    key: "planning",
+    title: "Planejamento e Evolução",
+    description: "Estudos, objetivos, tarefas e wishlist",
+  },
+  {
+    key: "wellness",
+    title: "Saúde e Consistência",
+    description: "Saúde, dia limpo e produtividade pessoal",
+  },
+] as const;
+
+export default function PersonalLifePage() {
   const navigate = useNavigate();
-  const fetcher = useFetcher();
-  const { summaryCards } = loaderData;
-  const fetcherData = (fetcher.data || {}) as {
-    result?: string;
-    error?: string;
-    code?: string;
-    provider?: string;
-    model?: string;
-  };
-  const isRunning = fetcher.state !== "idle";
-  const quickTasks = [
-    "Planejar minha semana com prioridades e blocos de foco.",
-    "Analisar meus gastos pessoais e sugerir 3 economias práticas.",
-    "Montar rotina de treino semanal para constância e progressão.",
-  ];
-  const lifeErrorMessage = (() => {
-    if (!fetcherData.error) {
-      return "";
-    }
-
-    if (fetcherData.code === "FORBIDDEN_MODULE") {
-      return "Seu usuário não tem permissão para usar este módulo.";
-    }
-
-    if (fetcherData.code === "RATE_LIMITED") {
-      return "Muitas solicitações em sequência. Aguarde alguns segundos e tente de novo.";
-    }
-
-    if (fetcherData.code === "INVALID_INPUT") {
-      return "A tarefa enviada está inválida. Escreva uma solicitação mais clara e tente novamente.";
-    }
-
-    return fetcherData.error;
-  })();
 
   return (
     <div className="space-y-8">
@@ -175,134 +153,49 @@ export default function PersonalLifePage({
           Vida Pessoal
         </h1>
         <p className="mt-2 text-gray-600 dark:text-gray-400">
-          Organize sua vida: finanças, investimentos, rotinas, objetivos e monitoramento pessoal 🎯
+          Organize sua vida em módulos claros de finanças, planejamento e saúde pessoal.
         </p>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {summaryCards.map((card: SummaryCard, idx: number) => (
-          <div
-            key={idx}
-            className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900"
-          >
-            <p className="text-xs font-medium uppercase text-gray-600 dark:text-gray-400">
-              {card.title}
-            </p>
-            <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
-              {card.value}
-            </p>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">
-              {card.change}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      <div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-          Automação Pessoal
-        </h2>
-        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-          Descreva uma tarefa prática para o Life Agent executar.
-        </p>
-
-        <fetcher.Form method="post" action="/api/life-run" className="mt-4 space-y-3">
-          <textarea
-            name="task"
-            rows={4}
-            required
-            minLength={5}
-            maxLength={3000}
-            placeholder="Ex.: Planejar meu orçamento pessoal de março com teto por categoria"
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none ring-indigo-500 placeholder:text-gray-400 focus:ring-2 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-          />
-          <div className="flex flex-wrap gap-2">
-            {quickTasks.map((task) => (
-              <button
-                key={task}
-                type="submit"
-                name="task"
-                value={task}
-                disabled={isRunning}
-                className="rounded-full border border-gray-300 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-              >
-                {task}
-              </button>
-            ))}
-          </div>
-          <Button type="submit" disabled={isRunning}>
-            {isRunning ? "Executando..." : "Executar tarefa"}
-          </Button>
-        </fetcher.Form>
-
-        {lifeErrorMessage && (
-          <p className="mt-4 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-900/20 dark:text-red-300">
-            {lifeErrorMessage}
-          </p>
-        )}
-
-        {fetcherData.result && (
-          <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-950">
-            <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-              <span>Provider: {fetcherData.provider}</span>
-              <span>•</span>
-              <span>Model: {fetcherData.model}</span>
-            </div>
-            <p className="whitespace-pre-wrap text-sm text-gray-800 dark:text-gray-200">
-              {fetcherData.result}
-            </p>
-          </div>
-        )}
       </div>
 
       {/* Modules Grid */}
-      <div>
-        <h2 className="mb-4 text-xl font-semibold text-gray-900 dark:text-white">
-          Escolha um módulo
-        </h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {modules.map((module) => {
-            const Icon = module.icon;
-            return (
-              <button
-                key={module.slug}
-                onClick={() => navigate(`/personal-life/${module.slug}`)}
-                className="group rounded-lg border border-gray-200 bg-white p-6 text-left transition-all hover:border-gray-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700"
-              >
-                <div className={`mb-3 inline-block rounded-lg p-3 ${module.color}`}>
-                  <Icon className="h-6 w-6" />
-                </div>
-                <h3 className="font-semibold text-gray-900 dark:text-white">
-                  {module.title}
-                </h3>
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                  {module.description}
-                </p>
-                <div className="mt-4 flex items-center gap-1 text-sm font-medium text-gray-600 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-gray-200">
-                  Acessar
-                  <ArrowRight className="h-4 w-4" />
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <div className="space-y-6">
+        {moduleGroups.map((group) => {
+          const groupModules = modules.filter((module) => module.group === group.key);
+          if (groupModules.length === 0) return null;
 
-      {/* Quick Stats */}
-      <div className="rounded-lg border border-yellow-300 bg-yellow-50 p-6 dark:border-yellow-900 dark:bg-yellow-900/20">
-        <div className="flex items-start gap-3">
-          <Zap className="h-5 w-5 flex-shrink-0 text-yellow-600 dark:text-yellow-500 mt-0.5" />
-          <div>
-            <h3 className="font-semibold text-yellow-900 dark:text-yellow-200">
-              Agente arIA ativado 🤖
-            </h3>
-            <p className="mt-1 text-sm text-yellow-800 dark:text-yellow-300">
-              Este módulo é gerenciado pelo agente inteligente arIA, que fornece sugestões,
-              lembretes de prazos e análises automáticas de seus dados pessoais.
-            </p>
-          </div>
-        </div>
+          return (
+            <section key={group.key}>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{group.title}</h2>
+              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{group.description}</p>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {groupModules.map((module) => {
+                  const Icon = module.icon;
+                  return (
+                    <button
+                      key={module.slug}
+                      onClick={() => navigate(`/personal-life/${module.slug}`)}
+                      className="group rounded-lg border border-gray-200 bg-white p-6 text-left transition-all hover:border-gray-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700"
+                    >
+                      <div className={`mb-3 inline-block rounded-lg p-3 ${module.color}`}>
+                        <Icon className="h-6 w-6" />
+                      </div>
+                      <h3 className="font-semibold text-gray-900 dark:text-white">
+                        {module.title}
+                      </h3>
+                      <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                        {module.description}
+                      </p>
+                      <div className="mt-4 flex items-center gap-1 text-sm font-medium text-gray-600 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-gray-200">
+                        Acessar
+                        <ArrowRight className="h-4 w-4" />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })}
       </div>
     </div>
   );

@@ -8,7 +8,6 @@ import {
   Calculator,
   Search,
   Bot,
-  Brain,
   Settings,
   LogOut,
   Zap,
@@ -74,7 +73,6 @@ const comexNavItems: NavItem[] = [
 const aiAutomationNavItems: NavItem[] = [
   { labelKey: "automations", icon: Zap, to: "/automations" },
   { label: "IA Agentes", icon: Bot, to: "/agents" },
-  { label: "Conhecimento IA", icon: Brain, to: "/agents?tab=knowledge" },
   { labelKey: "aiUsage", icon: Sparkles, to: "/ai-usage" },
 ];
 

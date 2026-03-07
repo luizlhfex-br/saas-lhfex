@@ -4,53 +4,69 @@ import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
 import { processes, clients } from "../../drizzle/schema";
 import { and, desc, eq, isNotNull, isNull, or } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
 import { ArrowLeft, DollarSign } from "lucide-react";
 import { Badge } from "~/components/ui/badge";
 
 export async function loader({ request }: Route.LoaderArgs) {
   await requireAuth(request);
 
-  const url = new URL(request.url);
-  const onlyEnabled = url.searchParams.get("enabled") !== "false";
+  try {
+    const url = new URL(request.url);
+    const onlyEnabled = url.searchParams.get("enabled") !== "false";
 
-  const conditions = [isNull(processes.deletedAt)];
-  if (onlyEnabled) {
-    conditions.push(eq(processes.costControlEnabled, true));
-  } else {
-    conditions.push(or(isNotNull(processes.estimatedCost), isNotNull(processes.actualCost)));
+    const conditions: SQL[] = [isNull(processes.deletedAt)];
+    if (onlyEnabled) {
+      conditions.push(eq(processes.costControlEnabled, true));
+    } else {
+      conditions.push(or(isNotNull(processes.estimatedCost), isNotNull(processes.actualCost)) || isNotNull(processes.updatedAt));
+    }
+
+    const rows = await db
+      .select({
+        id: processes.id,
+        reference: processes.reference,
+        status: processes.status,
+        processType: processes.processType,
+        clientName: clients.razaoSocial,
+        estimatedCost: processes.estimatedCost,
+        actualCost: processes.actualCost,
+        currency: processes.currency,
+        updatedAt: processes.updatedAt,
+      })
+      .from(processes)
+      .leftJoin(clients, eq(processes.clientId, clients.id))
+      .where(and(...conditions))
+      .orderBy(desc(processes.updatedAt));
+
+    const totalEstimated = rows.reduce((sum, row) => sum + Number(row.estimatedCost || 0), 0);
+    const totalActual = rows.reduce((sum, row) => sum + Number(row.actualCost || 0), 0);
+    const totalVariance = totalActual - totalEstimated;
+
+    return {
+      rows,
+      onlyEnabled,
+      loadError: null,
+      summary: {
+        totalEstimated,
+        totalActual,
+        totalVariance,
+        processCount: rows.length,
+      },
+    };
+  } catch {
+    return {
+      rows: [],
+      onlyEnabled: true,
+      loadError: "Nao foi possivel carregar o relatorio de custos no momento.",
+      summary: {
+        totalEstimated: 0,
+        totalActual: 0,
+        totalVariance: 0,
+        processCount: 0,
+      },
+    };
   }
-
-  const rows = await db
-    .select({
-      id: processes.id,
-      reference: processes.reference,
-      status: processes.status,
-      processType: processes.processType,
-      clientName: clients.razaoSocial,
-      estimatedCost: processes.estimatedCost,
-      actualCost: processes.actualCost,
-      currency: processes.currency,
-      updatedAt: processes.updatedAt,
-    })
-    .from(processes)
-    .leftJoin(clients, eq(processes.clientId, clients.id))
-    .where(and(...conditions))
-    .orderBy(desc(processes.updatedAt));
-
-  const totalEstimated = rows.reduce((sum, row) => sum + Number(row.estimatedCost || 0), 0);
-  const totalActual = rows.reduce((sum, row) => sum + Number(row.actualCost || 0), 0);
-  const totalVariance = totalActual - totalEstimated;
-
-  return {
-    rows,
-    onlyEnabled,
-    summary: {
-      totalEstimated,
-      totalActual,
-      totalVariance,
-      processCount: rows.length,
-    },
-  };
 }
 
 function money(value: number) {
@@ -82,7 +98,7 @@ const statusLabels: Record<string, string> = {
 };
 
 export default function ProcessesCostReportPage({ loaderData }: Route.ComponentProps) {
-  const { rows, summary, onlyEnabled } = loaderData;
+  const { rows, summary, onlyEnabled, loadError } = loaderData;
 
   return (
     <div className="space-y-6">
@@ -112,6 +128,11 @@ export default function ProcessesCostReportPage({ loaderData }: Route.ComponentP
       </div>
 
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        {loadError && (
+          <div className="border-b border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-300">
+            {loadError}
+          </div>
+        )}
         {rows.length === 0 ? (
           <div className="p-8 text-center text-sm text-gray-500 dark:text-gray-400">Nenhum processo com dados de custo encontrado.</div>
         ) : (
@@ -129,7 +150,15 @@ export default function ProcessesCostReportPage({ loaderData }: Route.ComponentP
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => {
+                {rows.map((row: {
+                  id: string;
+                  reference: string;
+                  status: string;
+                  clientName: string | null;
+                  estimatedCost: unknown;
+                  actualCost: unknown;
+                  currency: string | null;
+                }) => {
                   const estimated = Number(row.estimatedCost || 0);
                   const actual = Number(row.actualCost || 0);
                   const variance = actual - estimated;

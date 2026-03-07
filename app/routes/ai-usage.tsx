@@ -90,16 +90,34 @@ export default function AIUsagePage({ loaderData }: Route.ComponentProps) {
     return num.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
-  // Calcular porcentagens por provider
-  const totalCalls = stats.reduce((sum, s) => sum + (s.totalCalls || 0), 0);
-  const totalCost = parseFloat(total.totalCost || "0");
-
   const providerConfig: Record<string, { label: string; color: string; badge: string }> = {
     gemini: { label: "Gemini (Free)", color: "bg-blue-500", badge: "info" },
     openrouter_free: { label: "OpenRouter (Free)", color: "bg-green-500", badge: "success" },
     openrouter_paid: { label: "OpenRouter (Paid)", color: "bg-orange-500", badge: "warning" },
     deepseek: { label: "DeepSeek (Paid)", color: "bg-purple-500", badge: "danger" },
+    deepseek_chat: { label: "DeepSeek (Chat)", color: "bg-purple-500", badge: "danger" },
+    deepseek_reasoner: { label: "DeepSeek (Reasoner)", color: "bg-purple-500", badge: "danger" },
+    groq: { label: "Groq", color: "bg-teal-500", badge: "info" },
   };
+
+  const normalizedStats = (() => {
+    const rows = [...stats];
+    if (!rows.some((row) => String(row.provider || "").startsWith("deepseek"))) {
+      rows.push({
+        provider: "deepseek",
+        totalCalls: 0,
+        totalTokensIn: 0,
+        totalTokensOut: 0,
+        totalCost: "0",
+        successRate: 0,
+      });
+    }
+    return rows;
+  })();
+
+  // Calcular porcentagens por provider
+  const totalCalls = normalizedStats.reduce((sum, s) => sum + (s.totalCalls || 0), 0);
+  const totalCost = parseFloat(total.totalCost || "0");
 
   const featureConfig: Record<string, string> = {
     chat: "Chat",
@@ -154,8 +172,12 @@ export default function AIUsagePage({ loaderData }: Route.ComponentProps) {
             Uso por Provider (Últimos 30 dias)
           </h2>
           <div className="space-y-3">
-            {stats.map((stat) => {
-              const cfg = providerConfig[stat.provider];
+            {normalizedStats.map((stat) => {
+              const cfg = providerConfig[stat.provider] || {
+                label: stat.provider,
+                color: "bg-gray-500",
+                badge: "default",
+              };
               const percentage = totalCalls > 0 ? ((stat.totalCalls || 0) / totalCalls) * 100 : 0;
               const cost = parseFloat(stat.totalCost || "0");
 
@@ -254,7 +276,11 @@ export default function AIUsagePage({ loaderData }: Route.ComponentProps) {
               </thead>
               <tbody>
                 {recentCalls.map((call) => {
-                  const cfg = providerConfig[call.provider];
+                  const cfg = providerConfig[call.provider] || {
+                    label: call.provider,
+                    color: "bg-gray-500",
+                    badge: "default",
+                  };
                   const cost = parseFloat(call.costEstimate || "0");
 
                   return (

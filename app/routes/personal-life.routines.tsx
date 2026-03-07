@@ -65,6 +65,9 @@ type TrackingRow = {
 // ── Constants ──────────────────────────────────────────────────────────────
 
 const ROUTINE_TYPE_LABELS: Record<string, string> = {
+  weight_tracking: "Controle de peso",
+  body_measurements: "Medidas corporais",
+  body_fat: "Percentual de gordura",
   exercise: "Atividade física",
   sleep: "Sono",
   nutrition: "Alimentação",
@@ -80,6 +83,9 @@ const ROUTINE_TYPE_LABELS: Record<string, string> = {
 };
 
 const ROUTINE_TYPE_EMOJIS: Record<string, string> = {
+  weight_tracking: "⚖️",
+  body_measurements: "📏",
+  body_fat: "📉",
   exercise: "🏃",
   sleep: "😴",
   nutrition: "🥗",
@@ -102,6 +108,9 @@ const FREQUENCY_LABELS: Record<string, string> = {
 };
 
 const UNIT_LABELS: Record<string, string> = {
+  kg: "kg",
+  cm: "cm",
+  percent: "%",
   minutes: "minutos",
   steps: "passos",
   ml: "ml",
@@ -464,6 +473,9 @@ function RoutineModal({
               defaultValue={editTarget?.routineType ?? "exercise"}
               className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 transition focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
             >
+              <option value="weight_tracking">⚖️ Controle de peso</option>
+              <option value="body_measurements">📏 Medidas corporais</option>
+              <option value="body_fat">📉 Percentual de gordura</option>
               <option value="exercise">🏃 Atividade física</option>
               <option value="sleep">😴 Sono</option>
               <option value="nutrition">🥗 Alimentação</option>
@@ -513,6 +525,9 @@ function RoutineModal({
                 defaultValue={editTarget?.unit ?? "minutes"}
                 className="w-1/2 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 transition focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
               >
+                <option value="kg">kg</option>
+                <option value="cm">cm</option>
+                <option value="percent">%</option>
                 <option value="minutes">minutos</option>
                 <option value="hours">horas</option>
                 <option value="steps">passos</option>
@@ -971,8 +986,8 @@ function ManageTab({
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-          Gerenciar Rotinas de Saúde
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+            Gerenciar Saúde e Métricas Corporais
         </h2>
         <Button
           type="button"
@@ -1082,10 +1097,10 @@ export default function PersonalLifeRoutinesPage({
           </Link>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              🩺 Rotinas de Saúde
+              🩺 Saúde
             </h1>
             <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
-              Construa saúde com consistência diária — {completedToday}/{routines.length} hoje
+              Peso, medidas corporais e hábitos de constância — {completedToday}/{routines.length} hoje
             </p>
           </div>
         </div>
@@ -1095,7 +1110,7 @@ export default function PersonalLifeRoutinesPage({
           className="bg-green-600 text-white hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-500"
         >
           <Plus className="mr-2 h-4 w-4" />
-          Nova Rotina de Saúde
+          Nova Métrica de Saúde
         </Button>
       </div>
 

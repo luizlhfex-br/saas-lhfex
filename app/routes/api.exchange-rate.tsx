@@ -108,7 +108,7 @@ export async function loader({ request }: { request: Request }) {
     });
   }
 
-  // ── Busca PTAX BCB (fonte primária para importação) ──
+  // ── Busca PTAX BCB (referência oficial complementar) ──
   let ptax: number | null = null;
   try {
     ptax = await fetchPTAX();
@@ -119,7 +119,7 @@ export async function loader({ request }: { request: Request }) {
   // ── Busca taxa de mercado (bid/ask em tempo real) ──
   let bid = 0;
   let ask = 0;
-  let marketSource = "bcb_ptax";
+  let marketSource = "awesomeapi";
 
   try {
     const res = await fetch("https://economia.awesomeapi.com.br/json/last/USD-BRL", {
@@ -131,15 +131,17 @@ export async function loader({ request }: { request: Request }) {
       const usd = data.USDBRL;
       bid = parseFloat(usd.bid);
       ask = parseFloat(usd.ask);
-      marketSource = ptax ? "bcb_ptax" : "awesomeapi";
+      marketSource = "awesomeapi";
     }
   } catch {
     // AwesomeAPI falhou
   }
 
-  // Se conseguiu PTAX, usa como taxa principal (para cálculos aduaneiros)
-  // Se não, usa bid do mercado
-  const rate = ptax ?? bid ?? 5.5;
+  // AwesomeAPI vira fonte primária para dashboard; PTAX fica como referência complementar.
+  const rate = bid || ptax || 5.5;
+  if (!bid && ptax) {
+    marketSource = "bcb_ptax_fallback";
+  }
   const effectiveBid = bid || rate;
   const effectiveAsk = ask || rate;
 

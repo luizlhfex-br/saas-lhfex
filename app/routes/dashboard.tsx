@@ -13,32 +13,39 @@ import {
 } from "recharts";
 
 // Exchange rate cache
-let cachedRate: { rate: number; rateDate: string; timestamp: number } | null = null;
+let cachedRate: { rate: number; rateDate: string; source: string; timestamp: number } | null = null;
 const CACHE_TTL = 5 * 60 * 1000;
 
-async function fetchExchangeRate(): Promise<{ rate: number; rateDate: string }> {
+async function fetchExchangeRate(request: Request): Promise<{ rate: number; rateDate: string; source: string }> {
   const now = Date.now();
   if (cachedRate && now - cachedRate.timestamp < CACHE_TTL) {
-    return { rate: cachedRate.rate, rateDate: cachedRate.rateDate };
+    return { rate: cachedRate.rate, rateDate: cachedRate.rateDate, source: cachedRate.source };
   }
 
   try {
-    // BCB série 10813 = USD Importação (oficial)
+    const origin = new URL(request.url).origin;
     const res = await fetch(
-      "https://api.bcb.gov.br/dados/serie/bcdata.sgs.10813/dados?formato=json",
+      `${origin}/api/exchange-rate`,
       { signal: AbortSignal.timeout(3000) }
     );
     if (!res.ok) throw new Error("API error");
-    const data = await res.json();
-    // BCB retorna array: [{ data: "01/01/2026", valor: "5.2006" }, ...]
-    const latestRate = data[data.length - 1];
-    const rate = parseFloat(latestRate.valor);
-    // BCB data: "DD/MM/YYYY" → convert to "DD/MM/YYYY HHh" display
-    const rateDate = latestRate.data as string; // "DD/MM/YYYY"
-    cachedRate = { rate, rateDate, timestamp: now };
-    return { rate, rateDate };
+    const payload = await res.json();
+    const rate = Number(payload?.rate);
+    if (!Number.isFinite(rate) || rate <= 0) throw new Error("Invalid rate");
+
+    const rateDate = payload?.timestamp
+      ? new Date(payload.timestamp).toLocaleDateString("pt-BR")
+      : "";
+
+    const source = String(payload?.source || "exchange_api");
+    cachedRate = { rate, rateDate, source, timestamp: now };
+    return { rate, rateDate, source };
   } catch {
-    return { rate: cachedRate?.rate ?? 5.2006, rateDate: cachedRate?.rateDate ?? "" };
+    return {
+      rate: cachedRate?.rate ?? 5.2006,
+      rateDate: cachedRate?.rateDate ?? "",
+      source: cachedRate?.source ?? "fallback",
+    };
   }
 }
 
@@ -78,7 +85,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       id: processes.id, reference: processes.reference, status: processes.status,
       processType: processes.processType, eta: processes.eta,
     }).from(processes).where(isNull(processes.deletedAt)).orderBy(desc(processes.createdAt)).limit(5),
-    fetchExchangeRate(),
+    fetchExchangeRate(request),
     // Receivables by period
     db.select({ total: sql<number>`coalesce(sum(total::numeric), 0)` }).from(invoices).where(
       and(eq(invoices.type, "receivable"), notInArray(invoices.status, ["paid", "cancelled"]),
@@ -142,6 +149,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     stats: {
       dollarRate: dollarRate.rate,
       dollarRateDate: dollarRate.rateDate,
+      dollarRateSource: dollarRate.source,
       activeProcesses: processCountResult[0]?.count ?? 0,
       activeClients: clientCountResult[0]?.count ?? 0,
       monthlyRevenue: Number(revenueResult[0]?.total ?? 0),
@@ -174,7 +182,9 @@ export default function DashboardPage({ loaderData }: Route.ComponentProps) {
     {
       label: i18n.dashboard.dollarRate,
       value: `R$ ${stats.dollarRate.toFixed(2)}`,
-      sub: stats.dollarRateDate ? `PTAX BCB · ${stats.dollarRateDate}` : "PTAX BCB",
+      sub: stats.dollarRateDate
+        ? `${String(stats.dollarRateSource || "ptax").toUpperCase()} · ${stats.dollarRateDate}`
+        : String(stats.dollarRateSource || "ptax").toUpperCase(),
       icon: DollarSign,
       color: "text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/20",
     },

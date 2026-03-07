@@ -19,152 +19,174 @@ export async function loader({ request }: Route.LoaderArgs) {
   const localeMatch = cookieHeader.match(/locale=([^;]+)/);
   const locale = (localeMatch ? localeMatch[1] : user.locale) as Locale;
 
-  // Check if user has Google OAuth connected
-  const googleToken = await db.query.googleTokens.findFirst({
-    where: and(eq(googleTokens.userId, user.id), isNull(googleTokens.disconnectedAt)),
-  });
+  try {
+    // Check if user has Google OAuth connected
+    const googleToken = await db.query.googleTokens.findFirst({
+      where: and(eq(googleTokens.userId, user.id), isNull(googleTokens.disconnectedAt)),
+    });
 
-  // Load company profile
-  let profiles = await db.select().from(companyProfile).limit(1);
-  let company = profiles[0] || null;
+    // Load company profile
+    let profiles = await db.select().from(companyProfile).limit(1);
+    let company = profiles[0] || null;
 
-  // Load bank accounts
-  let bankAccounts = [];
-  if (company?.id) {
-    bankAccounts = await db
-      .select()
-      .from(companyBankAccounts)
-      .where(eq(companyBankAccounts.companyId, company.id));
-  }
-
-  // Auto-enrich CNPJ if it's LHFEX and not yet filled
-  if (
-    company &&
-    company.cnpj === "62.180.992/0001-33" &&
-    !company.razaoSocial
-  ) {
-    try {
-      const enrichRes = await fetch(
-        `${new URL(request.url).origin}/api/enrich-cnpj?cnpj=62.180.992/0001-33`,
-        { headers: { Authorization: request.headers.get("cookie") || "" } }
-      );
-      if (enrichRes.ok) {
-        const enrichData = await enrichRes.json();
-        if (enrichData.cnpj) {
-          // Update company with enriched data
-          await db
-            .update(companyProfile)
-            .set({
-              razaoSocial: enrichData.razaoSocial || company.razaoSocial,
-              nomeFantasia: enrichData.nomeFantasia || company.nomeFantasia,
-              city: enrichData.city || company.city,
-              state: enrichData.state || company.state,
-              zipCode: enrichData.zipCode || company.zipCode,
-              cnae: enrichData.cnae || company.cnae,
-              cnaeDescription: enrichData.cnaeDescription || company.cnaeDescription,
-              updatedAt: new Date(),
-            });
-          // Reload from DB
-          profiles = await db.select().from(companyProfile).limit(1);
-          company = profiles[0] || null;
-        }
-      }
-    } catch (err) {
-      console.warn("Auto-enrich CNPJ failed:", err);
-      // Continue with existing company data
+    // Load bank accounts
+    let bankAccounts = [];
+    if (company?.id) {
+      bankAccounts = await db
+        .select()
+        .from(companyBankAccounts)
+        .where(eq(companyBankAccounts.companyId, company.id));
     }
-  }
 
-  return {
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      locale: user.locale,
-      theme: user.theme,
-    },
-    locale,
-    googleConnected: !!googleToken,
-    company,
-    bankAccounts,
-  };
+    // Auto-enrich CNPJ if it's LHFEX and not yet filled
+    if (
+      company &&
+      company.cnpj === "62.180.992/0001-33" &&
+      !company.razaoSocial
+    ) {
+      try {
+        const enrichRes = await fetch(
+          `${new URL(request.url).origin}/api/enrich-cnpj?cnpj=62.180.992/0001-33`,
+          { headers: { Authorization: request.headers.get("cookie") || "" } }
+        );
+        if (enrichRes.ok) {
+          const enrichData = await enrichRes.json();
+          if (enrichData.cnpj) {
+            // Update company with enriched data
+            await db
+              .update(companyProfile)
+              .set({
+                razaoSocial: enrichData.razaoSocial || company.razaoSocial,
+                nomeFantasia: enrichData.nomeFantasia || company.nomeFantasia,
+                city: enrichData.city || company.city,
+                state: enrichData.state || company.state,
+                zipCode: enrichData.zipCode || company.zipCode,
+                cnae: enrichData.cnae || company.cnae,
+                cnaeDescription: enrichData.cnaeDescription || company.cnaeDescription,
+                updatedAt: new Date(),
+              });
+            // Reload from DB
+            profiles = await db.select().from(companyProfile).limit(1);
+            company = profiles[0] || null;
+          }
+        }
+      } catch (err) {
+        console.warn("Auto-enrich CNPJ failed:", err);
+      }
+    }
+
+    return {
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        locale: user.locale,
+        theme: user.theme,
+      },
+      locale,
+      googleConnected: !!googleToken,
+      company,
+      bankAccounts,
+      loadError: null,
+    };
+  } catch {
+    return {
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        locale: user.locale,
+        theme: user.theme,
+      },
+      locale,
+      googleConnected: false,
+      company: null,
+      bankAccounts: [],
+      loadError: "Nao foi possivel carregar as configuracoes no momento.",
+    };
+  }
 }
 
 export async function action({ request }: Route.ActionArgs) {
   const { user } = await requireAuth(request);
-  const formData = await request.formData();
 
-  // Handle Google disconnect
-  const actionIntent = formData.get("action") as string;
-  if (actionIntent === "disconnect_google") {
-    try {
-      await disconnectGoogle(user.id);
-      return data({ success: "Google desconectado com sucesso" });
-    } catch (error) {
-      console.error("Error disconnecting Google:", error);
-      return data({ error: "Erro ao desconectar Google" }, { status: 500 });
-    }
-  }
+  try {
+    const formData = await request.formData();
 
-  // Handle company profile update
-  if (actionIntent === "save_company") {
-    const companyValues = {
-      cnpj: String(formData.get("cnpj") || "").trim() || null,
-      razaoSocial: String(formData.get("razaoSocial") || "").trim() || null,
-      nomeFantasia: String(formData.get("nomeFantasia") || "").trim() || null,
-      address: String(formData.get("address") || "").trim() || null,
-      city: String(formData.get("city") || "").trim() || null,
-      state: String(formData.get("state") || "").trim() || null,
-      zipCode: String(formData.get("zipCode") || "").trim() || null,
-      country: String(formData.get("country") || "Brasil").trim() || "Brasil",
-      phone: String(formData.get("phone") || "").trim() || null,
-      email: String(formData.get("email") || "").trim() || null,
-      website: String(formData.get("website") || "").trim() || null,
-      ie: String(formData.get("ie") || "").trim() || null,
-      im: String(formData.get("im") || "").trim() || null,
-      cnae: String(formData.get("cnae") || "").trim() || null,
-      cnaeDescription: String(formData.get("cnaeDescription") || "").trim() || null,
-      bankName: String(formData.get("bankName") || "").trim() || null,
-      bankAgency: String(formData.get("bankAgency") || "").trim() || null,
-      bankAccount: String(formData.get("bankAccount") || "").trim() || null,
-      bankPix: String(formData.get("bankPix") || "").trim() || null,
-      updatedAt: new Date(),
-    };
-
-    const existing = await db.select({ id: companyProfile.id }).from(companyProfile).limit(1);
-    if (existing.length > 0) {
-      await db.update(companyProfile).set(companyValues);
-    } else {
-      await db.insert(companyProfile).values(companyValues);
+    // Handle Google disconnect
+    const actionIntent = formData.get("action") as string;
+    if (actionIntent === "disconnect_google") {
+      try {
+        await disconnectGoogle(user.id);
+        return data({ success: "Google desconectado com sucesso" });
+      } catch (error) {
+        console.error("Error disconnecting Google:", error);
+        return data({ error: "Erro ao desconectar Google" }, { status: 500 });
+      }
     }
 
-    return data({ success: true, section: "company" });
+    // Handle company profile update
+    if (actionIntent === "save_company") {
+      const companyValues = {
+        cnpj: String(formData.get("cnpj") || "").trim() || null,
+        razaoSocial: String(formData.get("razaoSocial") || "").trim() || null,
+        nomeFantasia: String(formData.get("nomeFantasia") || "").trim() || null,
+        address: String(formData.get("address") || "").trim() || null,
+        city: String(formData.get("city") || "").trim() || null,
+        state: String(formData.get("state") || "").trim() || null,
+        zipCode: String(formData.get("zipCode") || "").trim() || null,
+        country: String(formData.get("country") || "Brasil").trim() || "Brasil",
+        phone: String(formData.get("phone") || "").trim() || null,
+        email: String(formData.get("email") || "").trim() || null,
+        website: String(formData.get("website") || "").trim() || null,
+        ie: String(formData.get("ie") || "").trim() || null,
+        im: String(formData.get("im") || "").trim() || null,
+        cnae: String(formData.get("cnae") || "").trim() || null,
+        cnaeDescription: String(formData.get("cnaeDescription") || "").trim() || null,
+        bankName: String(formData.get("bankName") || "").trim() || null,
+        bankAgency: String(formData.get("bankAgency") || "").trim() || null,
+        bankAccount: String(formData.get("bankAccount") || "").trim() || null,
+        bankPix: String(formData.get("bankPix") || "").trim() || null,
+        updatedAt: new Date(),
+      };
+
+      const existing = await db.select({ id: companyProfile.id }).from(companyProfile).limit(1);
+      if (existing.length > 0) {
+        await db.update(companyProfile).set(companyValues);
+      } else {
+        await db.insert(companyProfile).values(companyValues);
+      }
+
+      return data({ success: true, section: "company" });
+    }
+
+    // Handle profile update
+    const name = formData.get("name") as string;
+    const locale = formData.get("locale") as string;
+    const theme = formData.get("theme") as string;
+
+    if (!name || name.trim().length < 2) {
+      return data({ error: "Nome deve ter pelo menos 2 caracteres" }, { status: 400 });
+    }
+
+    await db
+      .update(users)
+      .set({
+        name: name.trim(),
+        locale: locale || "pt-BR",
+        theme: theme || "light",
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, user.id));
+
+    const headers = new Headers();
+    headers.append("Set-Cookie", `locale=${locale || "pt-BR"}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 24 * 60 * 60}`);
+    headers.append("Set-Cookie", `theme=${theme || "light"}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 24 * 60 * 60}`);
+
+    return data({ success: true }, { headers });
+  } catch {
+    return data({ error: "Nao foi possivel salvar as configuracoes. Tente novamente." }, { status: 500 });
   }
-
-  // Handle profile update
-  const name = formData.get("name") as string;
-  const locale = formData.get("locale") as string;
-  const theme = formData.get("theme") as string;
-
-  if (!name || name.trim().length < 2) {
-    return data({ error: "Nome deve ter pelo menos 2 caracteres" }, { status: 400 });
-  }
-
-  await db
-    .update(users)
-    .set({
-      name: name.trim(),
-      locale: locale || "pt-BR",
-      theme: theme || "light",
-      updatedAt: new Date(),
-    })
-    .where(eq(users.id, user.id));
-
-  const headers = new Headers();
-  headers.append("Set-Cookie", `locale=${locale || "pt-BR"}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 24 * 60 * 60}`);
-  headers.append("Set-Cookie", `theme=${theme || "light"}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 24 * 60 * 60}`);
-
-  return data({ success: true }, { headers });
 }
 
 const changelog: ChangelogEntry[] = VERSION_HISTORY;

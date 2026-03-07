@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.6.2";
+export const APP_VERSION = "2.6.3";
 export const APP_RELEASE_DATE = "2026-03-07";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,21 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.6.3",
+    date: "2026-03-07",
+    title: "Estabilidade em produção + Vida Pessoal limpa + Dólar/IA refinados",
+    items: [
+      { type: "fix", text: "Hardening adicional contra 500 em /automations, /settings e /processes/cost-report" },
+      { type: "improvement", text: "Vida Pessoal: removidos cards de resumo fictícios e bloco de Automação Pessoal da home" },
+      { type: "improvement", text: "Vida Pessoal: módulos reorganizados por grupos e novo acesso de Saúde em /personal-life/health" },
+      { type: "improvement", text: "Saúde: foco reforçado em peso e medidas corporais (tipos e unidades)" },
+      { type: "improvement", text: "Dashboard: cotação passa a consumir /api/exchange-rate com fonte exibida no card" },
+      { type: "improvement", text: "API de câmbio: AwesomeAPI como primária e PTAX como fallback/referência" },
+      { type: "fix", text: "IA Usage: DeepSeek permanece visível no breakdown mesmo com baixo volume e providers desconhecidos não quebram UI" },
+      { type: "improvement", text: "Sidebar: removida duplicidade de 'Conhecimento IA' fora do contexto de IA Agentes" },
+    ],
+  },
   {
     version: "2.6.2",
     date: "2026-03-07",

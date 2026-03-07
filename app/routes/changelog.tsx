@@ -29,6 +29,22 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-07",
+    version: "2.6.3",
+    type: "release",
+    title: "Estabilidade 500 + Vida Pessoal reorganizada + ajuste de dólar/IA",
+    items: [
+      "Fix: hardening extra para reduzir 500 em /automations, /settings e /processes/cost-report",
+      "Vida Pessoal: remoção dos cards fake do topo e remoção do bloco de Automação Pessoal",
+      "Vida Pessoal: reorganização dos módulos por grupos e nova rota /personal-life/health",
+      "Saúde: foco ampliado para controle de peso e medidas corporais (tipos/unidades)",
+      "Dashboard: cotação do dólar agora usa /api/exchange-rate com exibição da fonte",
+      "Câmbio: AwesomeAPI priorizada e PTAX mantida como fallback/referência",
+      "IA Usage: DeepSeek permanece visível no painel mesmo com baixo volume",
+      "Menu lateral: removida duplicidade de 'Conhecimento IA' fora de IA Agentes",
+    ],
+  },
+  {
+    date: "2026-03-07",
     version: "2.6.2",
     type: "release",
     title: "Modelo de custos por processo + relatorio dedicado",

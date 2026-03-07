@@ -178,6 +178,9 @@ export async function action({ request }: Route.ActionArgs) {
     if (intent === "move_task") {
       const taskId = formData.get("taskId") as string;
       const column = formData.get("column") as string;
+      if (!taskId || !column) {
+        return data({ error: "Dados da tarefa inválidos" }, { status: 400 });
+      }
       await db
         .update(missionControlTasks)
         .set({ column, updatedAt: new Date(), ...(column === "done" ? { completedAt: new Date() } : {}) })
@@ -187,6 +190,9 @@ export async function action({ request }: Route.ActionArgs) {
 
     if (intent === "delete_task") {
       const taskId = formData.get("taskId") as string;
+      if (!taskId) {
+        return data({ error: "Tarefa inválida" }, { status: 400 });
+      }
       await db
         .update(missionControlTasks)
         .set({ deletedAt: new Date() })
@@ -207,6 +213,9 @@ export async function action({ request }: Route.ActionArgs) {
 
     if (intent === "toggle_cron") {
       const cronId = formData.get("cronId") as string;
+      if (!cronId) {
+        return data({ error: "Cron inválido" }, { status: 400 });
+      }
       const enabled = formData.get("enabled") === "true";
       await db.update(openclawCrons).set({ enabled }).where(eq(openclawCrons.id, cronId));
       return data({ ok: true, toggledCron: true });
@@ -214,12 +223,18 @@ export async function action({ request }: Route.ActionArgs) {
 
     if (intent === "delete_cron") {
       const cronId = formData.get("cronId") as string;
+      if (!cronId) {
+        return data({ error: "Cron inválido" }, { status: 400 });
+      }
       await db.delete(openclawCrons).where(eq(openclawCrons.id, cronId));
       return data({ ok: true, deletedCron: true });
     }
 
     if (intent === "toggle") {
       const id = formData.get("id") as string;
+      if (!id) {
+        return data({ error: "Automação inválida" }, { status: 400 });
+      }
       const currentlyEnabled = formData.get("enabled") === "true";
       await db.update(automations).set({ enabled: !currentlyEnabled, updatedAt: new Date() }).where(eq(automations.id, id));
       return data({ ok: true });
@@ -227,6 +242,9 @@ export async function action({ request }: Route.ActionArgs) {
 
     if (intent === "delete") {
       const id = formData.get("id") as string;
+      if (!id) {
+        return data({ error: "Automação inválida" }, { status: 400 });
+      }
       await db.delete(automations).where(eq(automations.id, id));
       return data({ ok: true });
     }
@@ -433,6 +451,12 @@ export default function AutomationsPage({ loaderData }: Route.ComponentProps) {
             <span className="hidden sm:block">{label}</span>
           </button>
         ))}
+      </div>
+
+      <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm dark:border-indigo-900/40 dark:bg-indigo-950/20">
+        <p className="text-indigo-900 dark:text-indigo-200">
+          <strong>Automação Pessoal:</strong> o acesso foi centralizado nesta área de IA & Auto. Use os cards de automações e execução manual para fluxos pessoais e operacionais.
+        </p>
       </div>
 
       {/* Create form */}
