@@ -3,10 +3,10 @@ import { Form, Link, useActionData, useFetcher, useNavigation } from "react-rout
 import type { Route } from "./+types/automations";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
-import { automations, automationLogs } from "../../drizzle/schema";
-import { eq, desc, sql, and } from "drizzle-orm";
+import { automations, automationLogs, missionControlTasks, openclawCrons } from "../../drizzle/schema";
+import { eq, desc, sql, and, isNull } from "drizzle-orm";
 import { data, redirect } from "react-router";
-import { Zap, Plus, ToggleLeft, ToggleRight, Trash2, Clock, CheckCircle2, XCircle, SkipForward, ArrowLeft, Play, RotateCcw } from "lucide-react";
+import { Zap, Plus, ToggleLeft, ToggleRight, Trash2, Clock, CheckCircle2, XCircle, SkipForward, Play, RotateCcw, Target, Timer, CircleDot, AlertCircle, RefreshCw, Inbox, ChevronRight } from "lucide-react";
 import { Button } from "~/components/ui/button";
 
 const TRIGGER_LABELS: Record<string, string> = {
@@ -39,127 +39,257 @@ const ACTION_ICONS: Record<string, string> = {
   webhook: "🔗",
 };
 
+const MC_COLUMNS = [
+  { id: "inbox", label: "Inbox", icon: Inbox, color: "text-gray-500" },
+  { id: "todo", label: "Todo", icon: CircleDot, color: "text-blue-500" },
+  { id: "in_progress", label: "Em Progresso", icon: RefreshCw, color: "text-amber-500" },
+  { id: "review", label: "Revisao", icon: AlertCircle, color: "text-purple-500" },
+  { id: "done", label: "Concluido", icon: CheckCircle2, color: "text-green-500" },
+  { id: "blocked", label: "Bloqueado", icon: AlertCircle, color: "text-red-500" },
+] as const;
+
+const PRIORITY_COLORS: Record<string, string> = {
+  low: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+  medium: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  high: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  urgent: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+};
+
+const SOURCE_COLORS: Record<string, string> = {
+  manual: "bg-gray-100 text-gray-500",
+  openclaw: "bg-rose-100 text-rose-600",
+  airton: "bg-blue-100 text-blue-600",
+  maria: "bg-amber-100 text-amber-600",
+  iana: "bg-green-100 text-green-600",
+};
+
+type MCTask = {
+  id: string;
+  title: string;
+  description: string | null;
+  column: string;
+  priority: string;
+  source: string;
+  sourceAgent: string | null;
+  notes: string | null;
+  createdAt: Date;
+};
+
+type CronRow = {
+  id: string;
+  name: string;
+  schedule: string;
+  message: string;
+  channel: string;
+  enabled: boolean;
+  lastRunAt: Date | null;
+  lastRunResult: string | null;
+  recentLogs: Array<{ timestamp: string; result: string; notes?: string }> | null;
+};
+
 export async function loader({ request }: Route.LoaderArgs) {
-  await requireAuth(request);
+  const { user } = await requireAuth(request);
 
-  const allAutomations = await db
-    .select()
-    .from(automations)
-    .orderBy(desc(automations.createdAt));
+  try {
+    const allAutomations = await db
+      .select()
+      .from(automations)
+      .orderBy(desc(automations.createdAt));
 
-  // Get last log for each automation
-  const logs = await db
-    .select({
-      automationId: automationLogs.automationId,
-      lastRun: sql<string>`max(${automationLogs.executedAt})`,
-      totalRuns: sql<number>`count(*)::int`,
-      successCount: sql<number>`count(*) filter (where ${automationLogs.status} = 'success')::int`,
-      errorCount: sql<number>`count(*) filter (where ${automationLogs.status} = 'error')::int`,
-    })
-    .from(automationLogs)
-    .groupBy(automationLogs.automationId);
+    // Get last log for each automation
+    const logs = await db
+      .select({
+        automationId: automationLogs.automationId,
+        lastRun: sql<string>`max(${automationLogs.executedAt})`,
+        totalRuns: sql<number>`count(*)::int`,
+        successCount: sql<number>`count(*) filter (where ${automationLogs.status} = 'success')::int`,
+        errorCount: sql<number>`count(*) filter (where ${automationLogs.status} = 'error')::int`,
+      })
+      .from(automationLogs)
+      .groupBy(automationLogs.automationId);
 
-  const logMap = new Map(logs.map((l) => [l.automationId, l]));
+    const logMap = new Map(logs.map((l) => [l.automationId, l]));
 
-  // Recent logs for the activity feed
-  const recentLogs = await db
-    .select({
-      id: automationLogs.id,
-      automationId: automationLogs.automationId,
-      automationName: automations.name,
-      status: automationLogs.status,
-      input: automationLogs.input,
-      errorMessage: automationLogs.errorMessage,
-      executedAt: automationLogs.executedAt,
-    })
-    .from(automationLogs)
-    .leftJoin(automations, eq(automationLogs.automationId, automations.id))
-    .orderBy(desc(automationLogs.executedAt))
-    .limit(20);
+    // Recent logs for the activity feed
+    const recentLogs = await db
+      .select({
+        id: automationLogs.id,
+        automationId: automationLogs.automationId,
+        automationName: automations.name,
+        status: automationLogs.status,
+        input: automationLogs.input,
+        errorMessage: automationLogs.errorMessage,
+        executedAt: automationLogs.executedAt,
+      })
+      .from(automationLogs)
+      .leftJoin(automations, eq(automationLogs.automationId, automations.id))
+      .orderBy(desc(automationLogs.executedAt))
+      .limit(20);
 
-  return {
-    automations: allAutomations.map((a) => ({
-      ...a,
-      stats: logMap.get(a.id) || null,
-    })),
-    recentLogs,
-  };
+    return {
+      automations: allAutomations.map((a) => ({
+        ...a,
+        stats: logMap.get(a.id) || null,
+      })),
+      recentLogs,
+      tasks: await db
+        .select()
+        .from(missionControlTasks)
+        .where(and(eq(missionControlTasks.userId, user.id), isNull(missionControlTasks.deletedAt)))
+        .orderBy(desc(missionControlTasks.createdAt)),
+      crons: await db.select().from(openclawCrons).orderBy(openclawCrons.name),
+    };
+  } catch {
+    return {
+      automations: [],
+      recentLogs: [],
+      tasks: [],
+      crons: [],
+      loadError: "Nao foi possivel carregar automacoes no momento.",
+    };
+  }
 }
 
 export async function action({ request }: Route.ActionArgs) {
   const { user } = await requireAuth(request);
-  const formData = await request.formData();
-  const intent = formData.get("intent") as string;
 
-  if (intent === "toggle") {
-    const id = formData.get("id") as string;
-    const currentlyEnabled = formData.get("enabled") === "true";
-    await db.update(automations).set({ enabled: !currentlyEnabled, updatedAt: new Date() }).where(eq(automations.id, id));
-    return data({ ok: true });
+  try {
+    const formData = await request.formData();
+    const intent = formData.get("intent") as string;
+
+    if (intent === "create_task") {
+      const title = formData.get("title") as string;
+      const description = (formData.get("description") as string) || null;
+      const priority = (formData.get("priority") as string) || "medium";
+      const column = (formData.get("column") as string) || "todo";
+      if (!title) return data({ error: "Titulo obrigatorio" }, { status: 400 });
+
+      await db.insert(missionControlTasks).values({
+        userId: user.id,
+        title,
+        description,
+        priority: priority as "low" | "medium" | "high" | "urgent",
+        column,
+        source: "manual",
+      });
+      return data({ ok: true, createdTask: true });
+    }
+
+    if (intent === "move_task") {
+      const taskId = formData.get("taskId") as string;
+      const column = formData.get("column") as string;
+      await db
+        .update(missionControlTasks)
+        .set({ column, updatedAt: new Date(), ...(column === "done" ? { completedAt: new Date() } : {}) })
+        .where(eq(missionControlTasks.id, taskId));
+      return data({ ok: true, movedTask: true });
+    }
+
+    if (intent === "delete_task") {
+      const taskId = formData.get("taskId") as string;
+      await db
+        .update(missionControlTasks)
+        .set({ deletedAt: new Date() })
+        .where(eq(missionControlTasks.id, taskId));
+      return data({ ok: true, deletedTask: true });
+    }
+
+    if (intent === "create_cron") {
+      const name = formData.get("name") as string;
+      const schedule = formData.get("schedule") as string;
+      const message = formData.get("message") as string;
+      const channel = (formData.get("channel") as string) || "telegram";
+      if (!name || !schedule || !message) return data({ error: "Campos obrigatorios faltando" }, { status: 400 });
+
+      await db.insert(openclawCrons).values({ name, schedule, message, channel });
+      return data({ ok: true, createdCron: true });
+    }
+
+    if (intent === "toggle_cron") {
+      const cronId = formData.get("cronId") as string;
+      const enabled = formData.get("enabled") === "true";
+      await db.update(openclawCrons).set({ enabled }).where(eq(openclawCrons.id, cronId));
+      return data({ ok: true, toggledCron: true });
+    }
+
+    if (intent === "delete_cron") {
+      const cronId = formData.get("cronId") as string;
+      await db.delete(openclawCrons).where(eq(openclawCrons.id, cronId));
+      return data({ ok: true, deletedCron: true });
+    }
+
+    if (intent === "toggle") {
+      const id = formData.get("id") as string;
+      const currentlyEnabled = formData.get("enabled") === "true";
+      await db.update(automations).set({ enabled: !currentlyEnabled, updatedAt: new Date() }).where(eq(automations.id, id));
+      return data({ ok: true });
+    }
+
+    if (intent === "delete") {
+      const id = formData.get("id") as string;
+      await db.delete(automations).where(eq(automations.id, id));
+      return data({ ok: true });
+    }
+
+    if (intent === "create") {
+      const name = formData.get("name") as string;
+      const triggerType = formData.get("triggerType") as string;
+      const actionType = formData.get("actionType") as string;
+
+      if (!name || !triggerType || !actionType) {
+        return data({ error: "Preencha todos os campos" }, { status: 400 });
+      }
+
+      // Build trigger config based on type
+      const triggerConfig: Record<string, unknown> = {};
+      if (triggerType === "process_status_change") {
+        triggerConfig.targetStatus = formData.get("targetStatus") || undefined;
+      }
+      if (triggerType === "invoice_due_soon") {
+        triggerConfig.daysBeforeDue = parseInt(formData.get("daysBeforeDue") as string) || 3;
+      }
+      if (triggerType === "eta_approaching") {
+        triggerConfig.hoursBeforeEta = parseInt(formData.get("hoursBeforeEta") as string) || 48;
+      }
+
+      // Build action config based on type
+      const actionConfig: Record<string, unknown> = {};
+      if (actionType === "create_notification") {
+        actionConfig.title = formData.get("notifTitle") || name;
+        actionConfig.message = formData.get("notifMessage") || `Automação "${name}" executada.`;
+        actionConfig.userId = user.id;
+      }
+      if (actionType === "send_email") {
+        actionConfig.to = formData.get("emailTo") || "";
+      }
+      if (actionType === "call_agent") {
+        actionConfig.agentId = formData.get("agentId") || "airton";
+        actionConfig.prompt = formData.get("agentPrompt") || "";
+      }
+      if (actionType === "webhook") {
+        actionConfig.url = formData.get("webhookUrl") || "";
+      }
+
+      await db.insert(automations).values({
+        name,
+        triggerType: triggerType as any,
+        triggerConfig,
+        actionType: actionType as any,
+        actionConfig,
+        createdBy: user.id,
+      });
+
+      return data({ ok: true, created: true });
+    }
+
+    return data({ error: "Invalid intent" }, { status: 400 });
+  } catch {
+    return data({ error: "Falha ao processar automacao. Tente novamente." }, { status: 500 });
   }
-
-  if (intent === "delete") {
-    const id = formData.get("id") as string;
-    await db.delete(automations).where(eq(automations.id, id));
-    return data({ ok: true });
-  }
-
-  if (intent === "create") {
-    const name = formData.get("name") as string;
-    const triggerType = formData.get("triggerType") as string;
-    const actionType = formData.get("actionType") as string;
-
-    if (!name || !triggerType || !actionType) {
-      return data({ error: "Preencha todos os campos" }, { status: 400 });
-    }
-
-    // Build trigger config based on type
-    const triggerConfig: Record<string, unknown> = {};
-    if (triggerType === "process_status_change") {
-      triggerConfig.targetStatus = formData.get("targetStatus") || undefined;
-    }
-    if (triggerType === "invoice_due_soon") {
-      triggerConfig.daysBeforeDue = parseInt(formData.get("daysBeforeDue") as string) || 3;
-    }
-    if (triggerType === "eta_approaching") {
-      triggerConfig.hoursBeforeEta = parseInt(formData.get("hoursBeforeEta") as string) || 48;
-    }
-
-    // Build action config based on type
-    const actionConfig: Record<string, unknown> = {};
-    if (actionType === "create_notification") {
-      actionConfig.title = formData.get("notifTitle") || name;
-      actionConfig.message = formData.get("notifMessage") || `Automação "${name}" executada.`;
-      actionConfig.userId = user.id;
-    }
-    if (actionType === "send_email") {
-      actionConfig.to = formData.get("emailTo") || "";
-    }
-    if (actionType === "call_agent") {
-      actionConfig.agentId = formData.get("agentId") || "airton";
-      actionConfig.prompt = formData.get("agentPrompt") || "";
-    }
-    if (actionType === "webhook") {
-      actionConfig.url = formData.get("webhookUrl") || "";
-    }
-
-    await db.insert(automations).values({
-      name,
-      triggerType: triggerType as any,
-      triggerConfig,
-      actionType: actionType as any,
-      actionConfig,
-      createdBy: user.id,
-    });
-
-    return data({ ok: true, created: true });
-  }
-
-  return data({ error: "Invalid intent" }, { status: 400 });
 }
 
 export default function AutomationsPage({ loaderData }: Route.ComponentProps) {
-  const { automations: autoList, recentLogs } = loaderData;
+  const { automations: autoList, recentLogs, tasks, crons } = loaderData;
   const actionData = useActionData<typeof action>();
   const actionError = actionData && "error" in actionData ? actionData.error : undefined;
   const createdOk = Boolean(actionData && "ok" in actionData && actionData.ok);
@@ -168,6 +298,9 @@ export default function AutomationsPage({ loaderData }: Route.ComponentProps) {
   const logsFetcher = useFetcher();
   const cleanupFetcher = useFetcher();
   const [showCreate, setShowCreate] = useState(false);
+  const [activeTab, setActiveTab] = useState<"automations" | "mission" | "crons">("automations");
+  const [showNewTask, setShowNewTask] = useState(false);
+  const [showNewCron, setShowNewCron] = useState(false);
   const [triggerType, setTriggerType] = useState("process_status_change");
   const [actionType, setActionType] = useState("create_notification");
   const [logSearch, setLogSearch] = useState("");
@@ -255,21 +388,55 @@ export default function AutomationsPage({ loaderData }: Route.ComponentProps) {
           <Zap className="h-6 w-6 text-yellow-500" />
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Automações</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Regras "Se-Então" para automatizar o seu fluxo</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Automações, Mission Control e Crons em uma unica central</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Link to="/automations/overview" className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">
             🤖 Visão Geral
           </Link>
-          <Button onClick={() => setShowCreate(!showCreate)}>
-            <Plus className="h-4 w-4" /> Nova Automação
-          </Button>
+          {activeTab === "automations" && (
+            <Button onClick={() => setShowCreate(!showCreate)}>
+              <Plus className="h-4 w-4" /> Nova Automação
+            </Button>
+          )}
+          {activeTab === "mission" && (
+            <Button onClick={() => setShowNewTask(!showNewTask)}>
+              <Plus className="h-4 w-4" /> Nova Tarefa
+            </Button>
+          )}
+          {activeTab === "crons" && (
+            <Button onClick={() => setShowNewCron(!showNewCron)}>
+              <Plus className="h-4 w-4" /> Novo Cron
+            </Button>
+          )}
         </div>
       </div>
 
+      <div className="flex gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1 dark:border-gray-800 dark:bg-gray-900">
+        {[
+          { id: "automations" as const, label: "Automações", icon: Zap },
+          { id: "mission" as const, label: "Mission Control", icon: Target },
+          { id: "crons" as const, label: "Crons", icon: Timer },
+        ].map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setActiveTab(id)}
+            className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
+              activeTab === id
+                ? "bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-gray-100"
+                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+            }`}
+          >
+            <Icon className="h-4 w-4" />
+            <span className="hidden sm:block">{label}</span>
+          </button>
+        ))}
+      </div>
+
       {/* Create form */}
-      {showCreate && (
+      {activeTab === "automations" && showCreate && (
         <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-6 dark:border-yellow-900 dark:bg-yellow-950/30">
           <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">Criar Automação</h2>
           <Form method="post" className="space-y-4" onSubmit={() => { if (createdOk) setShowCreate(false); }}>
@@ -381,6 +548,8 @@ export default function AutomationsPage({ loaderData }: Route.ComponentProps) {
         </div>
       )}
 
+      {activeTab === "automations" && (
+        <>
       {/* Automations list */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {autoList.length === 0 ? (
@@ -701,6 +870,211 @@ export default function AutomationsPage({ loaderData }: Route.ComponentProps) {
                 Próxima
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+        </>
+      )}
+
+      {activeTab === "mission" && (
+        <div className="space-y-4">
+          {showNewTask && (
+            <Form method="post" onSubmit={() => setShowNewTask(false)} className="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20 space-y-3">
+              <input type="hidden" name="intent" value="create_task" />
+              <input
+                name="title"
+                placeholder="Titulo da tarefa"
+                required
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+              />
+              <textarea
+                name="description"
+                placeholder="Descricao (opcional)"
+                rows={2}
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+              />
+              <div className="flex gap-3">
+                <select name="priority" defaultValue="medium" className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
+                  <option value="low">Baixa</option>
+                  <option value="medium">Media</option>
+                  <option value="high">Alta</option>
+                  <option value="urgent">Urgente</option>
+                </select>
+                <select name="column" defaultValue="todo" className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
+                  {MC_COLUMNS.filter((c) => c.id !== "done").map((c) => (
+                    <option key={c.id} value={c.id}>{c.label}</option>
+                  ))}
+                </select>
+                <Button type="submit" className="ml-auto">
+                  Criar
+                </Button>
+              </div>
+            </Form>
+          )}
+
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+            {MC_COLUMNS.map((col) => {
+              const Icon = col.icon;
+              const colTasks = (tasks as MCTask[]).filter((t) => t.column === col.id);
+              return (
+                <div key={col.id} className="rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900/50">
+                  <div className="flex items-center gap-2 border-b border-gray-200 p-3 dark:border-gray-800">
+                    <Icon className={`h-4 w-4 ${col.color}`} />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{col.label}</span>
+                    <span className="ml-auto rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-400">
+                      {colTasks.length}
+                    </span>
+                  </div>
+                  <div className="space-y-2 p-2 min-h-[80px]">
+                    {colTasks.map((task) => (
+                      <div key={task.id} className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100 leading-tight">{task.title}</p>
+                          <Form method="post">
+                            <input type="hidden" name="intent" value="delete_task" />
+                            <input type="hidden" name="taskId" value={task.id} />
+                            <button type="submit" className="shrink-0 text-gray-300 hover:text-red-500 dark:text-gray-600">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </Form>
+                        </div>
+                        {task.description && <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{task.description}</p>}
+                        <div className="mt-2 flex flex-wrap items-center gap-1">
+                          <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${PRIORITY_COLORS[task.priority] || PRIORITY_COLORS.medium}`}>
+                            {task.priority}
+                          </span>
+                          {task.source !== "manual" && (
+                            <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${SOURCE_COLORS[task.source] || SOURCE_COLORS.manual}`}>
+                              {task.source}
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-2 flex gap-1">
+                          {MC_COLUMNS.filter((c) => c.id !== col.id).slice(0, 2).map((dest) => (
+                            <Form key={dest.id} method="post">
+                              <input type="hidden" name="intent" value="move_task" />
+                              <input type="hidden" name="taskId" value={task.id} />
+                              <input type="hidden" name="column" value={dest.id} />
+                              <button
+                                type="submit"
+                                title={`Mover para ${dest.label}`}
+                                className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+                              >
+                                <ChevronRight className="h-3 w-3" />
+                                {dest.label}
+                              </button>
+                            </Form>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {activeTab === "crons" && (
+        <div className="space-y-4">
+          {showNewCron && (
+            <Form method="post" onSubmit={() => setShowNewCron(false)} className="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20 space-y-3">
+              <input type="hidden" name="intent" value="create_cron" />
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  name="name"
+                  placeholder="Nome (ex: weekly_report)"
+                  required
+                  className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                />
+                <input
+                  name="schedule"
+                  placeholder="Schedule (ex: 0 8 * * *)"
+                  required
+                  className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-mono dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                />
+              </div>
+              <textarea
+                name="message"
+                placeholder="Mensagem/instrucao para o OpenClaw"
+                required
+                rows={2}
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+              />
+              <div className="flex items-center gap-3">
+                <select name="channel" defaultValue="telegram" className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
+                  <option value="telegram">Telegram</option>
+                  <option value="slack">Slack</option>
+                </select>
+                <Button type="submit" className="ml-auto">Criar</Button>
+              </div>
+            </Form>
+          )}
+
+          <div className="space-y-3">
+            {(crons as CronRow[]).length === 0 && (
+              <div className="rounded-xl border border-dashed border-gray-200 p-8 text-center dark:border-gray-700">
+                <Timer className="mx-auto h-8 w-8 text-gray-300 dark:text-gray-600" />
+                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Nenhum cron cadastrado ainda.</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500">Os crons aparecem aqui apos a primeira execucao.</p>
+              </div>
+            )}
+            {(crons as CronRow[]).map((cron) => {
+              const statusColor = !cron.lastRunAt
+                ? "bg-gray-200 dark:bg-gray-700"
+                : cron.lastRunResult === "ok"
+                  ? "bg-green-500"
+                  : "bg-red-500";
+
+              return (
+                <div key={cron.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-1 flex items-center gap-2">
+                      <span className={`h-2.5 w-2.5 rounded-full ${statusColor}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-gray-900 dark:text-gray-100 text-sm">{cron.name}</span>
+                        <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-mono text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                          {cron.schedule}
+                        </span>
+                        <span className="rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+                          {cron.channel}
+                        </span>
+                        {!cron.enabled && (
+                          <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-500 dark:bg-gray-800">desativado</span>
+                        )}
+                      </div>
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{cron.message}</p>
+                      {cron.lastRunAt && (
+                        <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                          Ultima execucao: {new Date(cron.lastRunAt).toLocaleString("pt-BR")}
+                          {cron.lastRunResult && ` - ${cron.lastRunResult}`}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Form method="post">
+                        <input type="hidden" name="intent" value="toggle_cron" />
+                        <input type="hidden" name="cronId" value={cron.id} />
+                        <input type="hidden" name="enabled" value={String(!cron.enabled)} />
+                        <button type="submit" title={cron.enabled ? "Desativar" : "Ativar"} className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800">
+                          {cron.enabled ? <ToggleRight className="h-5 w-5 text-green-500" /> : <ToggleLeft className="h-5 w-5" />}
+                        </button>
+                      </Form>
+                      <Form method="post">
+                        <input type="hidden" name="intent" value="delete_cron" />
+                        <input type="hidden" name="cronId" value={cron.id} />
+                        <button type="submit" title="Excluir" className="rounded p-1.5 text-gray-300 hover:bg-gray-100 hover:text-red-500 dark:text-gray-600 dark:hover:bg-gray-800">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </Form>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

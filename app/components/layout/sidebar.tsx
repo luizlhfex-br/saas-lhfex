@@ -8,6 +8,7 @@ import {
   Calculator,
   Search,
   Bot,
+  Brain,
   Settings,
   LogOut,
   Zap,
@@ -16,10 +17,10 @@ import {
   Heart,
   Briefcase,
   Globe,
+  Package,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ScrollText,
 } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { t, type Locale } from "~/i18n";
@@ -61,28 +62,31 @@ const mainNavItems: NavItem[] = [
 const otherBusinessNavItems: NavItem[] = [
   { labelKey: "publicProcurement", icon: Briefcase, to: "/public-procurement", requiredEmail: "luiz@lhfex.com.br" },
   { labelKey: "internetBusiness", icon: Globe, to: "/other-business/internet", requiredEmail: "luiz@lhfex.com.br" },
+  { label: "Criar/Publicar Apps", icon: Package, to: "/other-business/apps", requiredEmail: "luiz@lhfex.com.br" },
 ];
 
 const comexNavItems: NavItem[] = [
   { labelKey: "calculator", icon: Calculator, to: "/calculator" },
   { labelKey: "ncm", icon: Search, to: "/ncm" },
+  { label: "Ex-Tarifarios", icon: FileText, to: "/ex-tarifarios" },
 ];
 
 const aiAutomationNavItems: NavItem[] = [
   { labelKey: "automations", icon: Zap, to: "/automations" },
-  { labelKey: "agents", icon: Bot, to: "/agents" },
+  { label: "IA Agentes", icon: Bot, to: "/agents" },
+  { label: "Conhecimento IA", icon: Brain, to: "/agents?tab=knowledge" },
   { labelKey: "aiUsage", icon: Sparkles, to: "/ai-usage" },
-  { label: "Changelog", icon: ScrollText, to: "/changelog" },
 ];
 
 export function Sidebar({ user, locale, currentPath, collapsed, onToggle }: SidebarProps) {
   const i18n = t(locale);
   const [openGroups, setOpenGroups] = useState({
-    comex: currentPath.startsWith("/calculator") || currentPath.startsWith("/ncm"),
+    comex: currentPath.startsWith("/calculator") || currentPath.startsWith("/ncm") || currentPath.startsWith("/ex-tarifarios"),
     aiAutomation:
       currentPath.startsWith("/automations") ||
       currentPath.startsWith("/agents") ||
-      currentPath.startsWith("/ai-usage"),
+      currentPath.startsWith("/ai-usage") ||
+      currentPath.startsWith("/changelog"),
     otherBusiness:
       currentPath.startsWith("/public-procurement") ||
       currentPath.startsWith("/other-business"),

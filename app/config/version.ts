@@ -3,8 +3,8 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.5.0";
-export const APP_RELEASE_DATE = "2026-03-05";
+export const APP_VERSION = "2.6.2";
+export const APP_RELEASE_DATE = "2026-03-07";
 export const APP_NAME = "LHFEX SaaS";
 
 export type ChangelogItemType = "feature" | "improvement" | "fix" | "infra";
@@ -20,6 +20,33 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.6.2",
+    date: "2026-03-07",
+    title: "Modelo de Custos por Processo + Relatorio Operacional",
+    items: [
+      { type: "feature", text: "Processos: novo controle de custos por processo (habilitar, custo estimado, custo real e observacoes)" },
+      { type: "feature", text: "Processos: novo relatorio /processes/cost-report com consolidado de custos e variacao" },
+      { type: "improvement", text: "Criacao de processos sem etapa de aprovacao manual obrigatoria (fluxo inicia em rascunho)" },
+      { type: "infra", text: "Migration 0006_process_costs.sql aplicada com campos de custo na tabela processes" },
+      { type: "fix", text: "Validador de processos ajustado para parse correto de costControlEnabled em formularios" },
+    ],
+  },
+  {
+    version: "2.6.1",
+    date: "2026-03-07",
+    title: "Estabilidade 500 + Reorganizacao IA/Automacoes + Loterias + Ex-Tarifarios",
+    items: [
+      { type: "fix", text: "Hardening contra 500 em promotions/automations/api.promotions com tratamento de erro controlado" },
+      { type: "improvement", text: "Automações agora concentra Mission Control + Crons; Agents focado em Agentes + Conhecimento" },
+      { type: "improvement", text: "Settings: Changelog acima de Audit Logs e remoção do Prompt Guide duplicado" },
+      { type: "feature", text: "Promoções: nova aba Loterias com fluxo manual (cadastrar, conferir, ganhar/encerrar sem ganho)" },
+      { type: "feature", text: "Comex: nova página Ex-Tarifarios com consulta da fonte oficial do MDIC" },
+      { type: "feature", text: "Outros: nova área Criar/Publicar Apps com gravação de ideias no IDEAS.md" },
+      { type: "improvement", text: "Settings APIs: links operacionais adicionados para Groq e AwesomeAPI" },
+      { type: "infra", text: "Migration 0005_personal_lotteries.sql adicionada para suporte às loterias" },
+    ],
+  },
   {
     version: "2.3.0",
     date: "2026-03-03",

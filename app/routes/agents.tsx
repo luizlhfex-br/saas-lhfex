@@ -2,8 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import type { Route } from "./+types/agents";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
-import { chatConversations, missionControlTasks, openclawCrons } from "drizzle/schema";
-import { eq, desc, isNull, and } from "drizzle-orm";
+import { chatConversations } from "drizzle/schema";
+import { eq, desc } from "drizzle-orm";
 import { t, type Locale } from "~/i18n";
 import {
   Bot,
@@ -13,23 +13,12 @@ import {
   Clock,
   ArrowLeft,
   Sparkles,
-  Target,
-  Timer,
   Brain,
-  ChevronRight,
-  Trash2,
-  ToggleLeft,
-  ToggleRight,
   Zap,
   CheckCircle2,
-  CircleDot,
-  AlertCircle,
-  RefreshCw,
-  Inbox,
 } from "lucide-react";
-import { Link, useFetcher } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { ChatMessage, TypingIndicator } from "~/components/chat/chat-message";
-import { data } from "react-router";
 
 const agents = [
   {
@@ -84,29 +73,6 @@ const agents = [
   },
 ];
 
-const MC_COLUMNS = [
-  { id: "inbox", label: "Inbox", icon: Inbox, color: "text-gray-500" },
-  { id: "todo", label: "Todo", icon: CircleDot, color: "text-blue-500" },
-  { id: "in_progress", label: "Em Progresso", icon: RefreshCw, color: "text-amber-500" },
-  { id: "review", label: "Revisão", icon: AlertCircle, color: "text-purple-500" },
-  { id: "done", label: "Concluído", icon: CheckCircle2, color: "text-green-500" },
-  { id: "blocked", label: "Bloqueado", icon: AlertCircle, color: "text-red-500" },
-] as const;
-
-const PRIORITY_COLORS: Record<string, string> = {
-  low: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
-  medium: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  high: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  urgent: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-};
-
-const SOURCE_COLORS: Record<string, string> = {
-  manual: "bg-gray-100 text-gray-500",
-  openclaw: "bg-rose-100 text-rose-600",
-  airton: "bg-blue-100 text-blue-600",
-  maria: "bg-amber-100 text-amber-600",
-  iana: "bg-green-100 text-green-600",
-};
 
 interface MessageData {
   id: string;
@@ -116,30 +82,6 @@ interface MessageData {
   timestamp?: string;
 }
 
-type MCTask = {
-  id: string;
-  title: string;
-  description: string | null;
-  column: string;
-  priority: string;
-  source: string;
-  sourceAgent: string | null;
-  notes: string | null;
-  createdAt: Date;
-};
-
-type CronRow = {
-  id: string;
-  name: string;
-  schedule: string;
-  message: string;
-  channel: string;
-  enabled: boolean;
-  lastRunAt: Date | null;
-  lastRunResult: string | null;
-  recentLogs: Array<{ timestamp: string; result: string; notes?: string }> | null;
-};
-
 export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
 
@@ -147,114 +89,37 @@ export async function loader({ request }: Route.LoaderArgs) {
   const localeMatch = cookieHeader.match(/locale=([^;]+)/);
   const locale = (localeMatch ? localeMatch[1] : user.locale) as Locale;
 
-  const [conversations, tasks, crons] = await Promise.all([
-    db
-      .select({
-        id: chatConversations.id,
-        agentId: chatConversations.agentId,
-        title: chatConversations.title,
-        updatedAt: chatConversations.updatedAt,
-      })
-      .from(chatConversations)
-      .where(eq(chatConversations.userId, user.id))
-      .orderBy(desc(chatConversations.updatedAt))
-      .limit(20),
-
-    db
-      .select()
-      .from(missionControlTasks)
-      .where(and(eq(missionControlTasks.userId, user.id), isNull(missionControlTasks.deletedAt)))
-      .orderBy(desc(missionControlTasks.createdAt)),
-
-    db.select().from(openclawCrons).orderBy(openclawCrons.name),
-  ]);
+  const conversations = await db
+    .select({
+      id: chatConversations.id,
+      agentId: chatConversations.agentId,
+      title: chatConversations.title,
+      updatedAt: chatConversations.updatedAt,
+    })
+    .from(chatConversations)
+    .where(eq(chatConversations.userId, user.id))
+    .orderBy(desc(chatConversations.updatedAt))
+    .limit(20);
 
   return {
     user: { id: user.id, name: user.name, email: user.email, locale: user.locale, theme: user.theme },
     locale,
     conversations,
-    tasks,
-    crons,
   };
 }
 
-export async function action({ request }: Route.ActionArgs) {
-  const { user } = await requireAuth(request);
-  const formData = await request.formData();
-  const intent = formData.get("intent") as string;
-
-  // Mission Control actions
-  if (intent === "create_task") {
-    const title = formData.get("title") as string;
-    const description = (formData.get("description") as string) || null;
-    const priority = (formData.get("priority") as string) || "medium";
-    const column = (formData.get("column") as string) || "todo";
-    if (!title) return data({ error: "Título obrigatório" });
-
-    await db.insert(missionControlTasks).values({
-      userId: user.id,
-      title,
-      description,
-      priority: priority as "low" | "medium" | "high" | "urgent",
-      column,
-      source: "manual",
-    });
-    return data({ success: true });
-  }
-
-  if (intent === "move_task") {
-    const taskId = formData.get("taskId") as string;
-    const column = formData.get("column") as string;
-    await db
-      .update(missionControlTasks)
-      .set({ column, updatedAt: new Date(), ...(column === "done" ? { completedAt: new Date() } : {}) })
-      .where(eq(missionControlTasks.id, taskId));
-    return data({ success: true });
-  }
-
-  if (intent === "delete_task") {
-    const taskId = formData.get("taskId") as string;
-    await db
-      .update(missionControlTasks)
-      .set({ deletedAt: new Date() })
-      .where(eq(missionControlTasks.id, taskId));
-    return data({ success: true });
-  }
-
-  // Cron actions
-  if (intent === "create_cron") {
-    const name = formData.get("name") as string;
-    const schedule = formData.get("schedule") as string;
-    const message = formData.get("message") as string;
-    const channel = (formData.get("channel") as string) || "telegram";
-    if (!name || !schedule || !message) return data({ error: "Campos obrigatórios faltando" });
-
-    await db.insert(openclawCrons).values({ name, schedule, message, channel });
-    return data({ success: true });
-  }
-
-  if (intent === "toggle_cron") {
-    const cronId = formData.get("cronId") as string;
-    const enabled = formData.get("enabled") === "true";
-    await db.update(openclawCrons).set({ enabled }).where(eq(openclawCrons.id, cronId));
-    return data({ success: true });
-  }
-
-  if (intent === "delete_cron") {
-    const cronId = formData.get("cronId") as string;
-    await db.delete(openclawCrons).where(eq(openclawCrons.id, cronId));
-    return data({ success: true });
-  }
-
-  return data({ error: "Unknown intent" });
+export async function action() {
+  return null;
 }
 
 export default function AgentsPage({ loaderData }: Route.ComponentProps) {
-  const { user, locale, conversations, tasks, crons } = loaderData;
+  const { user, locale, conversations } = loaderData;
   const i18n = t(locale);
-  const fetcher = useFetcher();
 
-  const [activeTab, setActiveTab] = useState<"agents" | "mission" | "crons" | "knowledge">("agents");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab") === "knowledge" ? "knowledge" : "agents";
+
+  const [activeTab, setActiveTab] = useState<"agents" | "knowledge">(initialTab);
   const [activeAgent, setActiveAgent] = useState<string | null>(null);
   const [messages, setMessages] = useState<MessageData[]>([]);
   const [input, setInput] = useState("");
@@ -262,16 +127,6 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  // New task form state
-  const [showNewTask, setShowNewTask] = useState(false);
-  const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [newTaskDesc, setNewTaskDesc] = useState("");
-  const [newTaskPriority, setNewTaskPriority] = useState("medium");
-  const [newTaskColumn, setNewTaskColumn] = useState("todo");
-
-  // New cron form state
-  const [showNewCron, setShowNewCron] = useState(false);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -282,6 +137,12 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
       inputRef.current.focus();
     }
   }, [activeAgent]);
+
+  useEffect(() => {
+    if (searchParams.get("tab") === "knowledge") {
+      setActiveTab("knowledge");
+    }
+  }, [searchParams]);
 
   const handleStartChat = (agentId: string) => {
     setActiveAgent(agentId);
@@ -333,7 +194,7 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
       });
 
       if (!res.ok) {
-        let errorMessage = "Não foi possível processar sua mensagem agora. Tente novamente.";
+        let errorMessage = "Nao foi possivel processar sua mensagem agora. Tente novamente.";
         try {
           const ep = await res.json();
           if (typeof ep?.error === "string" && ep.error.trim()) errorMessage = ep.error;
@@ -469,20 +330,21 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{i18n.nav.agents}</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">Agentes de IA + Mission Control + Crons</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Agentes de IA e base de conhecimento</p>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1 dark:border-gray-800 dark:bg-gray-900">
         {[
           { id: "agents" as const, label: "Agentes", icon: Bot },
-          { id: "mission" as const, label: "Mission Control", icon: Target },
-          { id: "crons" as const, label: "Crons", icon: Timer },
           { id: "knowledge" as const, label: "Conhecimento IA", icon: Brain },
         ].map(({ id, label, icon: Icon }) => (
           <button
             key={id}
-            onClick={() => setActiveTab(id)}
+            onClick={() => {
+              setActiveTab(id);
+              setSearchParams(id === "knowledge" ? { tab: "knowledge" } : {});
+            }}
             className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
               activeTab === id
                 ? "bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-gray-100"
@@ -568,242 +430,6 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
         </div>
       )}
 
-      {/* ── MISSION CONTROL TAB ─────────────────────────────────────────────── */}
-      {activeTab === "mission" && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Mission Control 🎯</h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Kanban compartilhado com o OpenClaw</p>
-            </div>
-            <button
-              onClick={() => setShowNewTask(!showNewTask)}
-              className="flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-            >
-              <Plus className="h-4 w-4" />
-              Nova tarefa
-            </button>
-          </div>
-
-          {showNewTask && (
-            <fetcher.Form method="post" onSubmit={() => setShowNewTask(false)} className="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20 space-y-3">
-              <input type="hidden" name="intent" value="create_task" />
-              <input
-                name="title"
-                placeholder="Título da tarefa"
-                required
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-              />
-              <textarea
-                name="description"
-                placeholder="Descrição (opcional)"
-                rows={2}
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-              />
-              <div className="flex gap-3">
-                <select name="priority" defaultValue="medium" className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
-                  <option value="low">Baixa</option>
-                  <option value="medium">Média</option>
-                  <option value="high">Alta</option>
-                  <option value="urgent">Urgente</option>
-                </select>
-                <select name="column" defaultValue="todo" className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
-                  {MC_COLUMNS.filter((c) => c.id !== "done").map((c) => (
-                    <option key={c.id} value={c.id}>{c.label}</option>
-                  ))}
-                </select>
-                <button type="submit" className="ml-auto rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
-                  Criar
-                </button>
-              </div>
-            </fetcher.Form>
-          )}
-
-          {/* Kanban */}
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-            {MC_COLUMNS.map((col) => {
-              const Icon = col.icon;
-              const colTasks = (tasks as MCTask[]).filter((t) => t.column === col.id);
-              return (
-                <div key={col.id} className="rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900/50">
-                  <div className="flex items-center gap-2 border-b border-gray-200 p-3 dark:border-gray-800">
-                    <Icon className={`h-4 w-4 ${col.color}`} />
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{col.label}</span>
-                    <span className="ml-auto rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-400">
-                      {colTasks.length}
-                    </span>
-                  </div>
-                  <div className="space-y-2 p-2 min-h-[80px]">
-                    {colTasks.map((task) => (
-                      <div key={task.id} className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100 leading-tight">{task.title}</p>
-                          <fetcher.Form method="post">
-                            <input type="hidden" name="intent" value="delete_task" />
-                            <input type="hidden" name="taskId" value={task.id} />
-                            <button type="submit" className="shrink-0 text-gray-300 hover:text-red-500 dark:text-gray-600">
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </fetcher.Form>
-                        </div>
-                        {task.description && <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{task.description}</p>}
-                        <div className="mt-2 flex flex-wrap items-center gap-1">
-                          <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${PRIORITY_COLORS[task.priority] || PRIORITY_COLORS.medium}`}>
-                            {task.priority}
-                          </span>
-                          {task.source !== "manual" && (
-                            <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${SOURCE_COLORS[task.source] || SOURCE_COLORS.manual}`}>
-                              {task.source}
-                            </span>
-                          )}
-                        </div>
-                        {/* Move buttons */}
-                        <div className="mt-2 flex gap-1">
-                          {MC_COLUMNS.filter((c) => c.id !== col.id).slice(0, 2).map((dest) => (
-                            <fetcher.Form key={dest.id} method="post">
-                              <input type="hidden" name="intent" value="move_task" />
-                              <input type="hidden" name="taskId" value={task.id} />
-                              <input type="hidden" name="column" value={dest.id} />
-                              <button
-                                type="submit"
-                                title={`Mover para ${dest.label}`}
-                                className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-300"
-                              >
-                                <ChevronRight className="h-3 w-3" />
-                                {dest.label}
-                              </button>
-                            </fetcher.Form>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── CRONS TAB ────────────────────────────────────────────────────────── */}
-      {activeTab === "crons" && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Crons OpenClaw ⏰</h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Tarefas agendadas do openclaw.ai</p>
-            </div>
-            <button
-              onClick={() => setShowNewCron(!showNewCron)}
-              className="flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-            >
-              <Plus className="h-4 w-4" />
-              Novo cron
-            </button>
-          </div>
-
-          {showNewCron && (
-            <fetcher.Form method="post" onSubmit={() => setShowNewCron(false)} className="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20 space-y-3">
-              <input type="hidden" name="intent" value="create_cron" />
-              <div className="grid grid-cols-2 gap-3">
-                <input
-                  name="name"
-                  placeholder="Nome (ex: weekly_report)"
-                  required
-                  className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                />
-                <input
-                  name="schedule"
-                  placeholder="Schedule (ex: 0 8 * * *)"
-                  required
-                  className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-mono dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                />
-              </div>
-              <textarea
-                name="message"
-                placeholder="Mensagem/instrução para o OpenClaw"
-                required
-                rows={2}
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-              />
-              <div className="flex items-center gap-3">
-                <select name="channel" defaultValue="telegram" className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
-                  <option value="telegram">Telegram</option>
-                  <option value="slack">Slack</option>
-                </select>
-                <button type="submit" className="ml-auto rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
-                  Criar
-                </button>
-              </div>
-            </fetcher.Form>
-          )}
-
-          <div className="space-y-3">
-            {(crons as CronRow[]).length === 0 && (
-              <div className="rounded-xl border border-dashed border-gray-200 p-8 text-center dark:border-gray-700">
-                <Timer className="mx-auto h-8 w-8 text-gray-300 dark:text-gray-600" />
-                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Nenhum cron cadastrado ainda.</p>
-                <p className="text-xs text-gray-400 dark:text-gray-500">Os crons do openclaw.json aparecem aqui após a primeira execução.</p>
-              </div>
-            )}
-            {(crons as CronRow[]).map((cron) => {
-              const statusColor = !cron.lastRunAt
-                ? "bg-gray-200 dark:bg-gray-700"
-                : cron.lastRunResult === "ok"
-                  ? "bg-green-500"
-                  : "bg-red-500";
-
-              return (
-                <div key={cron.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-                  <div className="flex items-start gap-3">
-                    <div className="mt-1 flex items-center gap-2">
-                      <span className={`h-2.5 w-2.5 rounded-full ${statusColor}`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium text-gray-900 dark:text-gray-100 text-sm">{cron.name}</span>
-                        <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-mono text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-                          {cron.schedule}
-                        </span>
-                        <span className="rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
-                          {cron.channel}
-                        </span>
-                        {!cron.enabled && (
-                          <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-500 dark:bg-gray-800">desativado</span>
-                        )}
-                      </div>
-                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{cron.message}</p>
-                      {cron.lastRunAt && (
-                        <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                          Última execução: {new Date(cron.lastRunAt).toLocaleString("pt-BR")}
-                          {cron.lastRunResult && ` — ${cron.lastRunResult}`}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <fetcher.Form method="post">
-                        <input type="hidden" name="intent" value="toggle_cron" />
-                        <input type="hidden" name="cronId" value={cron.id} />
-                        <input type="hidden" name="enabled" value={String(!cron.enabled)} />
-                        <button type="submit" title={cron.enabled ? "Desativar" : "Ativar"} className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800">
-                          {cron.enabled ? <ToggleRight className="h-5 w-5 text-green-500" /> : <ToggleLeft className="h-5 w-5" />}
-                        </button>
-                      </fetcher.Form>
-                      <fetcher.Form method="post">
-                        <input type="hidden" name="intent" value="delete_cron" />
-                        <input type="hidden" name="cronId" value={cron.id} />
-                        <button type="submit" title="Excluir" className="rounded p-1.5 text-gray-300 hover:bg-gray-100 hover:text-red-500 dark:text-gray-600 dark:hover:bg-gray-800">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </fetcher.Form>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* ── KNOWLEDGE TAB ────────────────────────────────────────────────────── */}
       {activeTab === "knowledge" && (
@@ -883,29 +509,6 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
             </div>
           </div>
 
-          {/* Crons summary */}
-          <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <div className="mb-3 flex items-center gap-2">
-              <Timer className="h-5 w-5 text-amber-500" />
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100">Crons Padrão (openclaw.json)</h3>
-            </div>
-            <div className="space-y-2">
-              {[
-                { name: "heartbeat", schedule: "*/15 * * * *", desc: "Verifica WORKING.md + @mentions + urgências", model: "gemini-flash-lite" },
-                { name: "morning_brief", schedule: "0 8 * * *", desc: "Standup matinal + briefing completo", channel: "telegram" },
-                { name: "process_alerts", schedule: "0 18 * * 1-5", desc: "Alertas de processos inativos e vencimentos", channel: "telegram" },
-                { name: "api_limits_check", schedule: "0 12 * * *", desc: "Checa limites de API (notifica se < 20%)", channel: "telegram" },
-              ].map((c) => (
-                <div key={c.name} className="flex items-center gap-3 rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800">
-                  <span className="w-32 shrink-0 font-mono text-xs text-gray-500 dark:text-gray-400">{c.schedule}</span>
-                  <div className="flex-1 min-w-0">
-                    <span className="text-xs font-medium text-gray-900 dark:text-gray-100">{c.name}</span>
-                    <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">— {c.desc}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       )}
     </div>

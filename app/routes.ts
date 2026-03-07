@@ -18,10 +18,12 @@ export default [
     route("processes", "routes/processes.tsx"),
     route("processes/kanban", "routes/processes-kanban.tsx"),
     route("processes/new", "routes/processes-new.tsx"),
+    route("processes/cost-report", "routes/processes-cost-report.tsx"),
     route("processes/:id", "routes/processes-detail.tsx"),
     route("processes/:id/edit", "routes/processes-edit.tsx"),
     route("calculator", "routes/calculator.tsx"),
     route("ncm", "routes/ncm.tsx"),
+    route("ex-tarifarios", "routes/ex-tarifarios.tsx"),
     route("financial", "routes/financial.tsx"),
     route("financial/new", "routes/financial-new.tsx"),
     route("financial/:id", "routes/financial-detail.tsx"),
@@ -61,6 +63,7 @@ export default [
     route("changelog", "routes/changelog.tsx"),
     route("other-business", "routes/other-business.tsx"),
     route("other-business/internet", "routes/other-business.internet.tsx"),
+    route("other-business/apps", "routes/other-business.apps.tsx"),
   ]),
 
   // API routes

@@ -74,8 +74,11 @@ export const processSchema = z.object({
   diNumber: z.string().max(50).optional(),
   googleDriveUrl: z.string().url().optional().or(z.literal("")),
   notes: z.string().max(5000).optional(),
-  status: z.enum(["draft", "in_progress", "awaiting_docs", "customs_clearance", "in_transit", "delivered", "completed", "cancelled", "pending_approval"]).optional(),
-  requiresApproval: z.boolean().optional(),
+  status: z.enum(["draft", "in_progress", "awaiting_docs", "customs_clearance", "in_transit", "delivered", "completed", "cancelled"]).optional(),
+  costControlEnabled: z.preprocess((value) => value === true || value === "true", z.boolean()).optional(),
+  estimatedCost: z.string().optional(),
+  actualCost: z.string().optional(),
+  costNotes: z.string().max(5000).optional(),
 });
 
 export const ncmClassificationSchema = z.object({

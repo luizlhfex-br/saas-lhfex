@@ -367,6 +367,35 @@ export default function ProcessesDetailPage({ loaderData, actionData }: Route.Co
           <InfoRow label={i18n.processes.actualArrival} value={proc.actualArrival ? new Date(proc.actualArrival).toLocaleDateString("pt-BR") : "-"} />
         </Card>
 
+        <Card title="Custos por Processo" icon={<DollarSign className="h-5 w-5" />}>
+          <InfoRow label="Controle ativo" value={proc.costControlEnabled ? "Sim" : "Nao"} />
+          <InfoRow
+            label="Custo estimado"
+            value={
+              proc.estimatedCost
+                ? `${proc.currency || "USD"} ${Number(proc.estimatedCost).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+                : "-"
+            }
+          />
+          <InfoRow
+            label="Custo real"
+            value={
+              proc.actualCost
+                ? `${proc.currency || "USD"} ${Number(proc.actualCost).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+                : "-"
+            }
+          />
+          <InfoRow
+            label="Variacao"
+            value={
+              proc.actualCost != null || proc.estimatedCost != null
+                ? `${proc.currency || "USD"} ${(Number(proc.actualCost || 0) - Number(proc.estimatedCost || 0)).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+                : "-"
+            }
+          />
+          <InfoRow label="Observacoes" value={proc.costNotes || "-"} />
+        </Card>
+
         {/* Timeline */}
         <Card title={i18n.processes.timeline} icon={<Clock className="h-5 w-5" />}>
           {timeline.length === 0 ? (

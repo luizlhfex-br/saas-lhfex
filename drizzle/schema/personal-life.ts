@@ -320,3 +320,31 @@ export const promotionSites = pgTable(
     activeIdx: index("promotion_sites_active_idx").on(table.isActive),
   })
 );
+
+// ── Loterias (controle manual) ──
+export const personalLotteries = pgTable(
+  "personal_lotteries",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    gameType: varchar("game_type", { length: 50 }).notNull(), // "mega_sena" | "lotofacil" | ...
+    gameName: varchar("game_name", { length: 255 }).notNull(),
+    drawDate: date("draw_date"),
+    betNumbers: text("bet_numbers"),
+    drawResults: text("draw_results"),
+    isChecked: boolean("is_checked").notNull().default(false),
+    hasWon: boolean("has_won").notNull().default(false),
+    winAmount: decimal("win_amount", { precision: 12, scale: 2 }),
+    status: varchar("status", { length: 50 }).notNull().default("pending"), // "pending" | "closed_no_win" | "won"
+    notes: text("notes"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at"),
+  },
+  (table) => ({
+    userIdIdx: index("personal_lotteries_user_id_idx").on(table.userId),
+    gameTypeIdx: index("personal_lotteries_game_type_idx").on(table.gameType),
+    drawDateIdx: index("personal_lotteries_draw_date_idx").on(table.drawDate),
+    statusIdx: index("personal_lotteries_status_idx").on(table.status),
+  })
+);

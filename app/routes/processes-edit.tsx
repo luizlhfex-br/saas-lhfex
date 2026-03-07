@@ -72,6 +72,10 @@ export async function action({ request, params }: Route.ActionArgs) {
     customsBroker: values.customsBroker || null,
     diNumber: values.diNumber || null,
     googleDriveUrl: values.googleDriveUrl || null,
+    costControlEnabled: formData.get("costControlEnabled") === "true",
+    estimatedCost: formData.get("costControlEnabled") === "true" ? values.estimatedCost || null : null,
+    actualCost: formData.get("costControlEnabled") === "true" ? values.actualCost || null : null,
+    costNotes: formData.get("costControlEnabled") === "true" ? values.costNotes || null : null,
     notes: values.notes || null,
     updatedAt: new Date(),
   }).where(eq(processes.id, params.id));
@@ -204,6 +208,29 @@ export default function ProcessesEditPage({ loaderData }: Route.ComponentProps) 
         </Sec>
         <Sec title="Observações">
           <textarea name="notes" rows={3} defaultValue={val("notes")} className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
+        </Sec>
+        <Sec title="Custos por Processo">
+          <label className="flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              name="costControlEnabled"
+              value="true"
+              defaultChecked={Boolean(proc.costControlEnabled)}
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <div>
+              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Controle de custos ativo</span>
+              <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Quando ativo, mantenha custo estimado, custo real e observações.</p>
+            </div>
+          </label>
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Inp label="Custo Estimado" name="estimatedCost" type="number" value={val("estimatedCost")} />
+            <Inp label="Custo Real" name="actualCost" type="number" value={val("actualCost")} />
+          </div>
+          <div className="mt-4">
+            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Observações de custos</label>
+            <textarea name="costNotes" rows={3} defaultValue={val("costNotes")} className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
+          </div>
         </Sec>
         <div className="flex items-center justify-end gap-3">
           <Link to={`/processes/${proc.id}`}><Button type="button" variant="outline">{i18n.common.cancel}</Button></Link>

@@ -693,54 +693,6 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
       {/* Company Profile - Compact + Expandable */}
       <CompanyProfileSection company={company} isSubmitting={isSubmitting} bankAccounts={bankAccounts} />
 
-
-        {/* Prompting Best Practices */}
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <div className="mb-4 flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-blue-500" />
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Boas praticas de prompt
-            </h2>
-          </div>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            Guia rapido para extrair respostas mais precisas da IA.
-          </p>
-          <div className="mt-4 grid gap-3 text-sm text-gray-700 dark:text-gray-300 sm:grid-cols-2">
-            <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-gray-800/60">
-              <p className="font-semibold">5 principios</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Tarefa, Contexto, Referencias, Avaliacao, Iteracao.
-              </p>
-            </div>
-            <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-gray-800/60">
-              <p className="font-semibold">Estrutura</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Prompt dividido, restricoes e exemplos reais.
-              </p>
-            </div>
-            <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-gray-800/60">
-              <p className="font-semibold">Fluxo</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Encadeamento, avaliacao e iteracao sistematica.
-              </p>
-            </div>
-            <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-gray-800/60">
-              <p className="font-semibold">Seguranca</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Humano no controle e verifique fatos criticos.
-              </p>
-            </div>
-          </div>
-          <div className="mt-4">
-            <Link
-              to="/knowledge/prompting"
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-            >
-              Abrir guia completo
-            </Link>
-          </div>
-        </div>
-
       {/* APIs & Consumo */}
       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <div className="mb-4 flex items-center gap-2">
@@ -758,6 +710,8 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
             { name: "DeepSeek", url: "https://platform.deepseek.com/usage", color: "text-blue-600 dark:text-blue-400" },
             { name: "Gemini", url: "https://aistudio.google.com/app/usage", color: "text-green-600 dark:text-green-400" },
             { name: "Anthropic", url: "https://console.anthropic.com/usage", color: "text-orange-600 dark:text-orange-400" },
+            { name: "Groq", url: "https://console.groq.com/usage", color: "text-emerald-600 dark:text-emerald-400" },
+            { name: "AwesomeAPI", url: "https://docs.awesomeapi.com.br/api-de-moedas", color: "text-cyan-600 dark:text-cyan-400" },
           ].map(({ name, url, color }) => (
             <a
               key={name}
@@ -770,6 +724,57 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
               <ExternalLink className="h-3.5 w-3.5 text-gray-400" />
             </a>
           ))}
+        </div>
+      </div>
+
+      {/* Changelog */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
+              <Clock className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <div>
+              <h2 className="text-base font-semibold text-gray-900 dark:text-white">Changelog</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Ultimas entregas e melhorias por data</p>
+            </div>
+          </div>
+          <Link
+            to="/changelog"
+            className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+          >
+            Ver completo
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+
+        <div className="space-y-4">
+          {changelog.slice(0, 3).map((entry) => {
+            const cfg = typeConfig[entry.type];
+            const Icon = cfg.icon;
+            return (
+              <div key={entry.version} className="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${cfg.color}`}>
+                      <Icon className="h-3.5 w-3.5" />
+                      {cfg.label}
+                    </span>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{entry.title}</span>
+                  </div>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">v{entry.version}</span>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(entry.date).toLocaleDateString("pt-BR")}</p>
+                {entry.items?.length > 0 && (
+                  <ul className="mt-2 space-y-1 text-sm text-gray-700 dark:text-gray-300">
+                    {entry.items.slice(0, 3).map((item, idx) => (
+                      <li key={`${entry.version}-${idx}`}>- {item}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 

@@ -11,7 +11,7 @@ import { useEffect, useState, useRef } from "react";
 import { requireAuth } from "~/lib/auth.server";
 import { requireRole, ROLES } from "~/lib/rbac.server";
 import { db } from "~/lib/db.server";
-import { promotions, pessoas, promotionSites, literaryContests } from "../../drizzle/schema/personal-life";
+import { promotions, pessoas, promotionSites, literaryContests, personalLotteries } from "../../drizzle/schema/personal-life";
 import { and, asc, desc, eq, isNull, ilike, or } from "drizzle-orm";
 import { data } from "react-router";
 import {
@@ -58,6 +58,7 @@ type Promotion = typeof promotions.$inferSelect;
 type Pessoa = typeof pessoas.$inferSelect;
 type PromoSite = typeof promotionSites.$inferSelect;
 type LiteraryContest = typeof literaryContests.$inferSelect;
+type PersonalLottery = typeof personalLotteries.$inferSelect;
 type SenhaEntry = { label: string; login: string; password: string };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -170,84 +171,111 @@ export async function loader({ request }: { request: Request }) {
   const statusFilter = url.searchParams.get("status") ?? "active";
   const pessoaSearch = url.searchParams.get("q") ?? "";
 
-  // Promoções
-  const allPromotions = await db
-    .select()
-    .from(promotions)
-    .where(and(eq(promotions.userId, user.id), isNull(promotions.deletedAt)))
-    .orderBy(desc(promotions.endDate));
+  try {
+    // Promoções
+    const allPromotions = await db
+      .select()
+      .from(promotions)
+      .where(and(eq(promotions.userId, user.id), isNull(promotions.deletedAt)))
+      .orderBy(desc(promotions.endDate));
 
-  const active = allPromotions.filter(
-    (p) => p.participationStatus === "pending" || p.participationStatus === "participated"
-  );
-  const won = allPromotions.filter((p) => p.participationStatus === "won");
-  const expiringSoon = active.filter((p) => {
-    const days = daysUntilEnd(p.endDate);
-    return days >= 0 && days <= 7;
-  });
+    const active = allPromotions.filter(
+      (p) => p.participationStatus === "pending" || p.participationStatus === "participated"
+    );
+    const won = allPromotions.filter((p) => p.participationStatus === "won");
+    const expiringSoon = active.filter((p) => {
+      const days = daysUntilEnd(p.endDate);
+      return days >= 0 && days <= 7;
+    });
 
-  const filtered =
-    statusFilter === "active"
-      ? active
-      : statusFilter === "won"
-      ? won
-      : statusFilter === "lost"
-      ? allPromotions.filter((p) => p.participationStatus === "lost")
-      : allPromotions;
+    const filtered =
+      statusFilter === "active"
+        ? active
+        : statusFilter === "won"
+        ? won
+        : statusFilter === "lost"
+        ? allPromotions.filter((p) => p.participationStatus === "lost")
+        : allPromotions;
 
-  // Pessoas
-  const pessoasQuery = pessoaSearch
-    ? db
-        .select()
-        .from(pessoas)
-        .where(
-          and(
-            eq(pessoas.userId, user.id),
-            isNull(pessoas.deletedAt),
-            or(
-              ilike(pessoas.nomeCompleto, `%${pessoaSearch}%`),
-              ilike(pessoas.celular ?? "", `%${pessoaSearch}%`),
-              ilike(pessoas.email ?? "", `%${pessoaSearch}%`)
+    // Pessoas
+    const pessoasQuery = pessoaSearch
+      ? db
+          .select()
+          .from(pessoas)
+          .where(
+            and(
+              eq(pessoas.userId, user.id),
+              isNull(pessoas.deletedAt),
+              or(
+                ilike(pessoas.nomeCompleto, `%${pessoaSearch}%`),
+                ilike(pessoas.celular ?? "", `%${pessoaSearch}%`),
+                ilike(pessoas.email ?? "", `%${pessoaSearch}%`)
+              )
             )
           )
-        )
-        .orderBy(asc(pessoas.nomeCompleto))
-    : db
-        .select()
-        .from(pessoas)
-        .where(and(eq(pessoas.userId, user.id), isNull(pessoas.deletedAt)))
-        .orderBy(asc(pessoas.nomeCompleto));
+          .orderBy(asc(pessoas.nomeCompleto))
+      : db
+          .select()
+          .from(pessoas)
+          .where(and(eq(pessoas.userId, user.id), isNull(pessoas.deletedAt)))
+          .orderBy(asc(pessoas.nomeCompleto));
 
-  const pessoasList = await pessoasQuery;
+    const pessoasList = await pessoasQuery;
 
-  // Sites de Promoções
-  const sitesList = await db
-    .select()
-    .from(promotionSites)
-    .where(eq(promotionSites.userId, user.id))
-    .orderBy(asc(promotionSites.name));
+    // Sites de Promoções
+    const sitesList = await db
+      .select()
+      .from(promotionSites)
+      .where(eq(promotionSites.userId, user.id))
+      .orderBy(asc(promotionSites.name));
 
-  // Concursos Literários
-  const contestsList = await db
-    .select()
-    .from(literaryContests)
-    .where(eq(literaryContests.userId, user.id))
-    .orderBy(asc(literaryContests.deadline));
+    // Concursos Literários
+    const contestsList = await db
+      .select()
+      .from(literaryContests)
+      .where(eq(literaryContests.userId, user.id))
+      .orderBy(asc(literaryContests.deadline));
 
-  return {
-    promotions: filtered as Promotion[],
-    kpis: {
-      active: active.length,
-      won: won.length,
-      expiringSoon: expiringSoon.length,
-      total: allPromotions.length,
-    },
-    statusFilter,
-    pessoasList: pessoasList as Pessoa[],
-    pessoaSearch,
-    sitesList: sitesList as PromoSite[],
-    contestsList: contestsList as LiteraryContest[],
-  };
+    // Loterias
+    const lotteriesList = await db
+      .select()
+      .from(personalLotteries)
+      .where(and(eq(personalLotteries.userId, user.id), isNull(personalLotteries.deletedAt)))
+      .orderBy(desc(personalLotteries.createdAt));
+
+    return {
+      promotions: filtered as Promotion[],
+      kpis: {
+        active: active.length,
+        won: won.length,
+        expiringSoon: expiringSoon.length,
+        total: allPromotions.length,
+      },
+      statusFilter,
+      pessoasList: pessoasList as Pessoa[],
+      pessoaSearch,
+      sitesList: sitesList as PromoSite[],
+      contestsList: contestsList as LiteraryContest[],
+      lotteriesList: lotteriesList as PersonalLottery[],
+    };
+  } catch {
+    return {
+      promotions: [] as Promotion[],
+      kpis: {
+        active: 0,
+        won: 0,
+        expiringSoon: 0,
+        total: 0,
+      },
+      statusFilter,
+      pessoasList: [] as Pessoa[],
+      pessoaSearch,
+      sitesList: [] as PromoSite[],
+      contestsList: [] as LiteraryContest[],
+      lotteriesList: [] as PersonalLottery[],
+      loadError: "Nao foi possivel carregar as promocoes no momento.",
+    };
+  }
 }
 
 // ── Action ─────────────────────────────────────────────────────────────────
@@ -256,8 +284,9 @@ export async function action({ request }: { request: Request }) {
   const { user } = await requireAuth(request);
   await requireRole(user, [ROLES.LUIZ]);
 
-  const formData = await request.formData();
-  const intent = formData.get("_intent") as string;
+  try {
+    const formData = await request.formData();
+    const intent = formData.get("_intent") as string;
 
   // ── Promoções ──
   if (intent === "create") {
@@ -517,7 +546,71 @@ export async function action({ request }: { request: Request }) {
     return data({ success: true, imported: true });
   }
 
-  return data({ error: "Ação inválida" }, { status: 400 });
+  // ── Loterias (manual) ──
+  if (intent === "create_lottery") {
+    const gameType = (formData.get("gameType") as string | null)?.trim() || "other";
+    const gameName = (formData.get("gameName") as string | null)?.trim();
+    const drawDate = (formData.get("drawDate") as string | null) || null;
+    const betNumbers = (formData.get("betNumbers") as string | null)?.trim() || null;
+    const notes = (formData.get("notes") as string | null)?.trim() || null;
+
+    if (!gameName) {
+      return data({ error: "Nome da loteria é obrigatório" }, { status: 400 });
+    }
+
+    await db.insert(personalLotteries).values({
+      userId: user.id,
+      gameType,
+      gameName,
+      drawDate,
+      betNumbers,
+      notes,
+      status: "pending",
+      isChecked: false,
+      hasWon: false,
+    });
+
+    return data({ success: true });
+  }
+
+  if (intent === "update_lottery_status") {
+    const lotteryId = formData.get("lotteryId") as string;
+    const status = (formData.get("status") as string | null)?.trim() || "pending";
+    const drawResults = (formData.get("drawResults") as string | null)?.trim() || null;
+    const winAmountRaw = (formData.get("winAmount") as string | null)?.trim() || "";
+    const winAmount = winAmountRaw ? winAmountRaw : null;
+    const hasWon = status === "won";
+    const isChecked = status !== "pending";
+
+    await db
+      .update(personalLotteries)
+      .set({
+        status,
+        drawResults,
+        hasWon,
+        isChecked,
+        winAmount,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(personalLotteries.id, lotteryId), eq(personalLotteries.userId, user.id)));
+
+    return data({ success: true });
+  }
+
+  if (intent === "delete_lottery") {
+    const lotteryId = formData.get("lotteryId") as string;
+    await db
+      .update(personalLotteries)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(and(eq(personalLotteries.id, lotteryId), eq(personalLotteries.userId, user.id)));
+
+    return data({ success: true });
+  }
+
+    return data({ error: "Ação inválida" }, { status: 400 });
+  } catch {
+    return data({ error: "Falha ao processar a solicitacao. Tente novamente." }, { status: 500 });
+  }
 }
 
 // ── Sub-componentes ─────────────────────────────────────────────────────────
@@ -954,12 +1047,12 @@ export default function PromotionsPage({
 }: {
   loaderData: Awaited<ReturnType<typeof loader>>;
 }) {
-  const { promotions: promo, kpis, statusFilter, pessoasList, pessoaSearch, sitesList, contestsList } = loaderData;
+  const { promotions: promo, kpis, statusFilter, pessoasList, pessoaSearch, sitesList, contestsList, lotteriesList } = loaderData;
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
 
   // Tabs
-  const [activeTab, setActiveTab] = useState<"promocoes" | "pessoas" | "sites" | "literario" | "radio">("promocoes");
+  const [activeTab, setActiveTab] = useState<"promocoes" | "loterias" | "pessoas" | "sites" | "literario" | "radio">("promocoes");
 
   // Sites state
   const [showSiteForm, setShowSiteForm] = useState(false);
@@ -978,6 +1071,9 @@ export default function PromotionsPage({
 
   // Concursos state
   const [showContestForm, setShowContestForm] = useState(false);
+
+  // Loterias state
+  const [showLotteryForm, setShowLotteryForm] = useState(false);
 
   // SCPC state
   const scpcFetcher = useFetcher<{ results?: ScpcPromoMapeada[]; total?: number; showing?: number; error?: string }>();
@@ -1139,6 +1235,23 @@ export default function PromotionsPage({
           {pessoasList.length > 0 && (
             <span className="rounded-full bg-gray-200 px-1.5 py-0.5 text-xs font-semibold text-gray-600 dark:bg-gray-700 dark:text-gray-300">
               {pessoasList.length}
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("loterias")}
+          className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === "loterias"
+              ? "bg-white text-indigo-700 shadow-sm dark:bg-gray-800 dark:text-indigo-400"
+              : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          }`}
+        >
+          <Trophy className="h-4 w-4" />
+          Loterias
+          {lotteriesList.length > 0 && (
+            <span className="rounded-full bg-gray-200 px-1.5 py-0.5 text-xs font-semibold text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+              {lotteriesList.length}
             </span>
           )}
         </button>
@@ -1777,6 +1890,165 @@ export default function PromotionsPage({
                   </div>
                 );
               })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── ABA LOTERIAS ── */}
+      {activeTab === "loterias" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Controle manual: cadastrar aposta, conferir resultado e fechar com/sem ganho.
+            </p>
+            <Button size="sm" onClick={() => setShowLotteryForm((v) => !v)}>
+              <Plus className="mr-1 h-4 w-4" />
+              {showLotteryForm ? "Fechar" : "Nova Aposta"}
+            </Button>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-4">
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900/50 dark:bg-blue-900/20">
+              <p className="text-xs text-blue-700 dark:text-blue-400">Pendentes</p>
+              <p className="text-xl font-bold text-blue-900 dark:text-blue-200">{lotteriesList.filter((l) => l.status === "pending").length}</p>
+            </div>
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-900">
+              <p className="text-xs text-gray-600 dark:text-gray-400">Conferidas</p>
+              <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{lotteriesList.filter((l) => l.isChecked).length}</p>
+            </div>
+            <div className="rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-900/50 dark:bg-green-900/20">
+              <p className="text-xs text-green-700 dark:text-green-400">Ganhas</p>
+              <p className="text-xl font-bold text-green-900 dark:text-green-200">{lotteriesList.filter((l) => l.hasWon).length}</p>
+            </div>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-900/20">
+              <p className="text-xs text-amber-700 dark:text-amber-400">Valor ganho</p>
+              <p className="text-xl font-bold text-amber-900 dark:text-amber-200">
+                R$ {lotteriesList.reduce((sum, l) => sum + Number(l.winAmount || 0), 0).toFixed(2)}
+              </p>
+            </div>
+          </div>
+
+          {showLotteryForm && (
+            <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 dark:border-indigo-900 dark:bg-indigo-900/10">
+              <Form method="post" className="space-y-3" onSubmit={() => setShowLotteryForm(false)}>
+                <input type="hidden" name="_intent" value="create_lottery" />
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <select
+                    name="gameType"
+                    defaultValue="mega_sena"
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                  >
+                    <option value="mega_sena">Mega-Sena</option>
+                    <option value="lotofacil">Lotofácil</option>
+                    <option value="quina">Quina</option>
+                    <option value="lotomania">Lotomania</option>
+                    <option value="other">Outra</option>
+                  </select>
+                  <input
+                    type="text"
+                    name="gameName"
+                    required
+                    placeholder="Nome da aposta *"
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                  />
+                  <input
+                    type="date"
+                    name="drawDate"
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                  />
+                </div>
+                <textarea
+                  name="betNumbers"
+                  rows={2}
+                  placeholder="Numeros apostados (ex: 05 10 22 31 44 60)"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                />
+                <textarea
+                  name="notes"
+                  rows={2}
+                  placeholder="Observacoes"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                />
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => setShowLotteryForm(false)}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" size="sm" disabled={isSubmitting}>Salvar</Button>
+                </div>
+              </Form>
+            </div>
+          )}
+
+          {lotteriesList.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-gray-300 p-10 text-center dark:border-gray-700">
+              <Trophy className="mx-auto mb-3 h-8 w-8 text-gray-400" />
+              <p className="text-sm text-gray-500 dark:text-gray-400">Nenhuma loteria cadastrada.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {lotteriesList.map((lottery) => (
+                <div key={lottery.id} className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="font-semibold text-gray-900 dark:text-gray-100">{lottery.gameName}</h4>
+                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-300">{lottery.gameType}</span>
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${lottery.status === "won" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" : lottery.status === "closed_no_win" ? "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300" : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"}`}>
+                          {lottery.status === "won" ? "Ganhou" : lottery.status === "closed_no_win" ? "Encerrada sem ganho" : "Pendente"}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        {lottery.drawDate ? `Sorteio: ${formatDate(lottery.drawDate)}` : "Sorteio sem data"}
+                      </p>
+                      {lottery.betNumbers && <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">🎟️ {lottery.betNumbers}</p>}
+                      {lottery.drawResults && <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">🏁 Resultado: {lottery.drawResults}</p>}
+                      {lottery.winAmount && <p className="mt-1 text-sm font-medium text-green-700 dark:text-green-300">💰 Premio: R$ {Number(lottery.winAmount).toFixed(2)}</p>}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 sm:flex-col sm:items-end">
+                      <Form method="post" className="flex gap-1">
+                        <input type="hidden" name="_intent" value="update_lottery_status" />
+                        <input type="hidden" name="lotteryId" value={lottery.id} />
+                        <select
+                          name="status"
+                          defaultValue={lottery.status}
+                          className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                        >
+                          <option value="pending">Pendente</option>
+                          <option value="closed_no_win">Encerrar sem ganho</option>
+                          <option value="won">Ganhei</option>
+                        </select>
+                        <input
+                          name="drawResults"
+                          defaultValue={lottery.drawResults ?? ""}
+                          placeholder="Resultado"
+                          className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                        />
+                        <input
+                          name="winAmount"
+                          defaultValue={lottery.winAmount ?? ""}
+                          placeholder="Valor (R$)"
+                          className="w-24 rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                        />
+                        <Button type="submit" size="sm" variant="outline">Salvar</Button>
+                      </Form>
+
+                      <Form method="post" onSubmit={(e) => !confirm("Remover esta aposta?") && e.preventDefault()}>
+                        <input type="hidden" name="_intent" value="delete_lottery" />
+                        <input type="hidden" name="lotteryId" value={lottery.id} />
+                        <button
+                          type="submit"
+                          className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-red-500 dark:hover:bg-gray-800"
+                          title="Remover"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </Form>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

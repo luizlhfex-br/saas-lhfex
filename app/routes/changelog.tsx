@@ -29,6 +29,35 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-07",
+    version: "2.6.2",
+    type: "release",
+    title: "Modelo de custos por processo + relatorio dedicado",
+    items: [
+      "Processos: criacao/edicao com controle de custos por processo (estimado, real e observacoes)",
+      "Processos: fluxo de criacao simplificado sem aprovacao manual obrigatoria",
+      "Processos: nova tela /processes/cost-report com consolidado e variacao por processo",
+      "Processos: card de custos exibido no detalhe de cada processo",
+      "Infra: migration 0006_process_costs.sql adicionada para campos de custo na tabela processes",
+      "Fix: parser de checkbox costControlEnabled normalizado no validator para evitar falhas de submissao",
+    ],
+  },
+  {
+    date: "2026-03-07",
+    version: "2.6.1",
+    type: "release",
+    title: "Estabilidade 500 + IA/AUTOMAÇÕES reestruturado + Loterias + Ex-Tarifarios",
+    items: [
+      "Fix: hardening de erro em /personal-life/promotions, /automations e /api/promotions para reduzir 500 em produção",
+      "IA/AUTOMAÇÕES: Mission Control e Crons movidos para /automations; /agents mantido com Agentes + Conhecimento",
+      "Settings: changelog incorporado acima dos logs de auditoria; prompt guide removido da settings para evitar duplicidade",
+      "Promoções: nova aba Loterias com fluxo manual de cadastro, conferência, ganho e encerramento sem ganho",
+      "Comex: nova página /ex-tarifarios com leitura da fonte oficial do MDIC",
+      "Outros: nova página /other-business/apps para salvar ideias diretamente no IDEAS.md",
+      "Settings/APIs: links de monitoramento adicionados para Groq e AwesomeAPI",
+    ],
+  },
+  {
+    date: "2026-03-07",
     version: "2.6.0",
     commit: "b4261b7",
     type: "release",
