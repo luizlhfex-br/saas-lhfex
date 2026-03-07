@@ -115,6 +115,11 @@ const jobs: CronJob[] = [
     handler: sendTasksReminder,
   },
   {
+    name: "deadlines_alert",
+    cronExpression: "0 8 * * *", // Todo dia às 8h — prazos de promoções/objetivos/concursos
+    handler: sendDeadlinesAlert,
+  },
+  {
     name: "vps_weekly_report",
     cronExpression: "0 9 * * 0", // Todo domingo às 9h
     handler: sendVpsWeeklyReport,
@@ -865,6 +870,164 @@ async function sendTasksReminder() {
     console.log(`[CRON] tasks_reminder: enviado — ${overdue.length} atrasadas, ${dueToday.length} hoje, ${dueTomorrow.length} amanhã`);
   } catch (error) {
     console.error("[CRON] tasks_reminder error:", error);
+  }
+}
+
+/**
+ * Alerta diário de prazos (Promoções, Objetivos e Concursos Literários)
+ * Janela: atrasados, hoje, amanhã e próximos 7 dias.
+ * Silencioso se não houver nada relevante.
+ */
+async function sendDeadlinesAlert() {
+  const botToken = process.env.OPENCLAW_TELEGRAM_TOKEN || process.env.MONITOR_BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.OPENCLAW_CHAT_ID || process.env.MONITOR_BOT_CHAT_ID;
+  const userId = process.env.OPENCLAW_USER_ID;
+
+  if (!botToken || !chatId || !userId) {
+    console.log("[CRON] deadlines_alert: env vars não configuradas — pulando");
+    return;
+  }
+
+  try {
+    const { promotions, personalGoals, literaryContests } = await import("../../drizzle/schema");
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const calcDaysUntil = (dateStr?: string | null) => {
+      if (!dateStr) return null;
+      const target = new Date(`${dateStr}T00:00:00`);
+      if (Number.isNaN(target.getTime())) return null;
+      const diff = target.getTime() - today.getTime();
+      return Math.round(diff / (1000 * 60 * 60 * 24));
+    };
+
+    type DeadlineItem = { kind: "promo" | "goal" | "contest"; title: string; dueDate: string; daysUntil: number };
+
+    const promoRows = await db
+      .select({
+        name: promotions.name,
+        endDate: promotions.endDate,
+        participationStatus: promotions.participationStatus,
+      })
+      .from(promotions)
+      .where(and(eq(promotions.userId, userId), isNull(promotions.deletedAt)));
+
+    const goalRows = await db
+      .select({
+        title: personalGoals.title,
+        deadline: personalGoals.deadline,
+        status: personalGoals.status,
+      })
+      .from(personalGoals)
+      .where(eq(personalGoals.userId, userId));
+
+    const contestRows = await db
+      .select({
+        name: literaryContests.name,
+        deadline: literaryContests.deadline,
+        status: literaryContests.status,
+      })
+      .from(literaryContests)
+      .where(eq(literaryContests.userId, userId));
+
+    const items: DeadlineItem[] = [];
+
+    for (const promo of promoRows) {
+      if (!promo.endDate) continue;
+      if (!["pending", "participated"].includes(String(promo.participationStatus ?? ""))) continue;
+      const daysUntil = calcDaysUntil(String(promo.endDate));
+      if (daysUntil === null || daysUntil > 7) continue;
+      items.push({
+        kind: "promo",
+        title: String(promo.name),
+        dueDate: String(promo.endDate),
+        daysUntil,
+      });
+    }
+
+    for (const goal of goalRows) {
+      if (!goal.deadline) continue;
+      if (String(goal.status ?? "") !== "in_progress") continue;
+      const daysUntil = calcDaysUntil(String(goal.deadline));
+      if (daysUntil === null || daysUntil > 7) continue;
+      items.push({
+        kind: "goal",
+        title: String(goal.title),
+        dueDate: String(goal.deadline),
+        daysUntil,
+      });
+    }
+
+    for (const contest of contestRows) {
+      if (!contest.deadline) continue;
+      if (!["rascunho", "enviado"].includes(String(contest.status ?? ""))) continue;
+      const daysUntil = calcDaysUntil(String(contest.deadline));
+      if (daysUntil === null || daysUntil > 7) continue;
+      items.push({
+        kind: "contest",
+        title: String(contest.name),
+        dueDate: String(contest.deadline),
+        daysUntil,
+      });
+    }
+
+    if (items.length === 0) {
+      console.log("[CRON] deadlines_alert: nada a reportar hoje");
+      return;
+    }
+
+    items.sort((a, b) => a.daysUntil - b.daysUntil || a.dueDate.localeCompare(b.dueDate));
+
+    const kindLabel: Record<DeadlineItem["kind"], string> = {
+      promo: "🎁 Promoção",
+      goal: "🎯 Objetivo",
+      contest: "✍️ Concurso",
+    };
+
+    const urgencyLabel = (days: number) => {
+      if (days < 0) return `🔴 ATRASADO (${Math.abs(days)}d)`;
+      if (days === 0) return "🔴 HOJE";
+      if (days === 1) return "🟡 AMANHÃ";
+      return `⚪ Em ${days} dias`;
+    };
+
+    const lines = items.map((item) =>
+      `${urgencyLabel(item.daysUntil)} — ${kindLabel[item.kind]}: *${item.title}* (${item.dueDate})`
+    );
+
+    const overdueCount = items.filter((i) => i.daysUntil < 0).length;
+    const todayCount = items.filter((i) => i.daysUntil === 0).length;
+    const tomorrowCount = items.filter((i) => i.daysUntil === 1).length;
+    const nextDaysCount = items.filter((i) => i.daysUntil >= 2).length;
+
+    const dateFormatted = new Date().toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+
+    const msg =
+      `⏰ *ALERTA DE PRAZOS — ${dateFormatted}*\n` +
+      `━━━━━━━━━━━━━━━━\n` +
+      lines.join("\n") + "\n" +
+      `━━━━━━━━━━━━━━━━\n` +
+      `Resumo: ${overdueCount} atrasado(s), ${todayCount} hoje, ${tomorrowCount} amanhã, ${nextDaysCount} próximos`;
+
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: Number(chatId),
+        text: msg,
+        parse_mode: "Markdown",
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+
+    console.log(`[CRON] deadlines_alert: enviado — ${items.length} prazo(s)`);
+  } catch (error) {
+    console.error("[CRON] deadlines_alert error:", error);
   }
 }
 
