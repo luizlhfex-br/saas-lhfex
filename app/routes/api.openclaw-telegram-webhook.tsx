@@ -489,6 +489,67 @@ async function analyzeImageWithGemini(botToken: string, fileId: string, caption:
     }
   }
 
+  const openRouterResult = await analyzeImageWithOpenRouter(prompt, mimeType, base64);
+  if (openRouterResult) return openRouterResult;
+
+  return null;
+}
+
+async function analyzeImageWithOpenRouter(prompt: string, mimeType: string, base64: string): Promise<string | null> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) return null;
+
+  const candidateModels = [
+    process.env.OPENROUTER_VISION_MODEL?.trim(),
+    "qwen/qwen2.5-vl-72b-instruct:free",
+    "meta-llama/llama-3.2-11b-vision-instruct:free",
+    "google/gemma-3-27b-it:free",
+  ].filter((v): v is string => !!v);
+
+  const dataUrl = `data:${mimeType};base64,${base64}`;
+
+  for (const model of candidateModels) {
+    try {
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": process.env.COOLIFY_URL || process.env.SAAS_URL || "https://saas.lhfex.com.br",
+          "X-Title": "OpenClaw Telegram Vision",
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: prompt },
+                { type: "image_url", image_url: { url: dataUrl } },
+              ],
+            },
+          ],
+          max_tokens: 800,
+          temperature: 0.2,
+        }),
+        signal: AbortSignal.timeout(35000),
+      });
+
+      if (!res.ok) {
+        console.error("[OPENCLAW] OpenRouter vision failed:", model, res.status, await res.text());
+        continue;
+      }
+
+      const json = await res.json() as {
+        choices?: Array<{ message?: { content?: string } }>;
+      };
+      const text = json.choices?.[0]?.message?.content?.trim();
+      if (text) return text;
+    } catch (error) {
+      console.error("[OPENCLAW] OpenRouter vision error:", model, error);
+    }
+  }
+
   return null;
 }
 
