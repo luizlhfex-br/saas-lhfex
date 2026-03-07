@@ -3,6 +3,19 @@ import type { Route } from "./+types/api.promotion-extract";
 import { requireAuth } from "~/lib/auth.server";
 import { parsePromotionText } from "~/lib/ai.server";
 
+async function extractTextFromPdf(file: File): Promise<string> {
+  const { PDFParse } = await import("pdf-parse");
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const parser = new PDFParse({ data: buffer });
+
+  try {
+    const result = await parser.getText();
+    return result.text ?? "";
+  } finally {
+    await parser.destroy().catch(() => undefined);
+  }
+}
+
 export async function action({ request }: Route.ActionArgs) {
   const { checkRateLimit, RATE_LIMITS } = await import("~/lib/rate-limit.server");
   const { user } = await requireAuth(request);
@@ -38,13 +51,7 @@ export async function action({ request }: Route.ActionArgs) {
     let text = "";
 
     if (file.type === "application/pdf") {
-      const pdfParseModule = await import("pdf-parse");
-      const pdfParse = (pdfParseModule.default ?? pdfParseModule) as unknown as (
-        buffer: Buffer
-      ) => Promise<{ text: string }>;
-      const buffer = Buffer.from(await file.arrayBuffer());
-      const pdfData = await pdfParse(buffer);
-      text = pdfData.text; // atribui ao let externo (bug fix: era const redeclarando)
+      text = await extractTextFromPdf(file);
     } else {
       // Texto plano ou HTML
       text = await file.text();
@@ -55,7 +62,7 @@ export async function action({ request }: Route.ActionArgs) {
     }
 
     const fields = await parsePromotionText(text, user.id);
-    return data({ success: true, fields });
+    return data({ success: true, fields, extractedText: text.slice(0, 20000) });
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     console.error("[Promotion Extract] Error:", msg);

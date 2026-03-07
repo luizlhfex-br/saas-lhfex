@@ -752,6 +752,8 @@ Campos a extrair:
 - endDate (string, YYYY-MM-DD) — data de encerramento ou sorteio
 - link (string ou null) — URL para participar, se mencionada
 - rules (string) — resumo das principais regras em no máximo 3 linhas
+- inferredLuckyNumber (string ou null) — número da sorte inferido pelas regras, quando possível
+- luckyNumberRule (string ou null) — regra resumida de cálculo do número da sorte em até 1 linha
 
 Se um campo não for encontrado, use null. Todas as datas DEVEM estar no formato YYYY-MM-DD.
 Retorne SOMENTE o objeto JSON, nada mais.`;
@@ -772,6 +774,10 @@ Retorne SOMENTE o objeto JSON, nada mais.`;
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
       if (Object.keys(parsed).length > 0) {
+        const allowedTypes = new Set(["raffle", "contest", "cashback", "lucky_draw", "giveaway", "other"]);
+        if (parsed.type && !allowedTypes.has(parsed.type)) {
+          parsed.type = "other";
+        }
         return parsed;
       }
     }

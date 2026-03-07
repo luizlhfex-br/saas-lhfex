@@ -129,6 +129,9 @@ export const promotions = pgTable(
     link: varchar("link", { length: 500 }), // Link para promoção
     proofOfParticipation: text("proof_of_participation"), // JSON or markdown with evidence
     notes: text("notes"),
+    userLuckyNumbers: text("user_lucky_numbers"), // números informados pelo usuário (texto livre/lista)
+    officialLuckyNumber: varchar("official_lucky_number", { length: 120 }), // número oficial sorteado
+    inferredLuckyNumber: varchar("inferred_lucky_number", { length: 120 }), // número inferido via regra
     externalId: varchar("external_id", { length: 100 }), // ID externo (ex: numeroCA do SCPC)
     source: varchar("source", { length: 50 }).default("manual"), // "manual" | "scpc"
     createdAt: timestamp("created_at").defaultNow().notNull(),

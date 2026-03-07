@@ -3,6 +3,19 @@ import type { Route } from "./+types/api.ocr-extract";
 import { requireAuth } from "~/lib/auth.server";
 import { parseInvoiceText } from "~/lib/ai.server";
 
+async function extractTextFromPdf(file: File): Promise<string> {
+  const { PDFParse } = await import("pdf-parse");
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const parser = new PDFParse({ data: buffer });
+
+  try {
+    const result = await parser.getText();
+    return result.text ?? "";
+  } finally {
+    await parser.destroy().catch(() => undefined);
+  }
+}
+
 export async function action({ request }: Route.ActionArgs) {
   const { checkRateLimit, RATE_LIMITS } = await import("~/lib/rate-limit.server");
   const { user } = await requireAuth(request);
@@ -38,10 +51,7 @@ export async function action({ request }: Route.ActionArgs) {
     let text = "";
 
     if (file.type === "application/pdf") {
-      const pdfParse = (await import("pdf-parse")) as unknown as (buffer: Buffer) => Promise<{ text: string }>;
-      const buffer = Buffer.from(await file.arrayBuffer());
-      const pdfData = await pdfParse(buffer);
-      text = pdfData.text;
+      text = await extractTextFromPdf(file);
     } else {
       // For text-based files, read directly
       text = await file.text();

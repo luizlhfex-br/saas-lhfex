@@ -7,7 +7,7 @@
  */
 
 import { Form, useLoaderData, useNavigation, useFetcher } from "react-router";
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { requireAuth } from "~/lib/auth.server";
 import { requireRole, ROLES } from "~/lib/rbac.server";
 import { db } from "~/lib/db.server";
@@ -103,6 +103,52 @@ function daysUntilEnd(dateStr: string): number {
   today.setHours(0, 0, 0, 0);
   const end = new Date(dateStr + "T00:00:00");
   return Math.round((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function normalizeLuckyNumber(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const groups = raw.match(/\d+/g);
+  if (!groups || groups.length === 0) return null;
+  const preferred = groups.findLast((g) => g.length >= 4) ?? groups[groups.length - 1];
+  return preferred ?? null;
+}
+
+function parseLuckyNumbers(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  return raw
+    .split(/[\n,;]+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
+}
+
+function calculateLuckyDistance(userNumbersRaw: string | null | undefined, officialRaw: string | null | undefined): { nearest: string; distance: number } | null {
+  const officialNorm = normalizeLuckyNumber(officialRaw);
+  if (!officialNorm) return null;
+
+  const officialNum = Number(officialNorm);
+  if (!Number.isFinite(officialNum)) return null;
+
+  const candidates = parseLuckyNumbers(userNumbersRaw)
+    .map((original) => ({ original, normalized: normalizeLuckyNumber(original) }))
+    .filter((item): item is { original: string; normalized: string } => !!item.normalized)
+    .map((item) => ({ ...item, value: Number(item.normalized) }))
+    .filter((item) => Number.isFinite(item.value));
+
+  if (candidates.length === 0) return null;
+
+  let winner = candidates[0]!;
+  let bestDistance = Math.abs(candidates[0]!.value - officialNum);
+
+  for (let i = 1; i < candidates.length; i++) {
+    const candidate = candidates[i]!;
+    const distance = Math.abs(candidate.value - officialNum);
+    if (distance < bestDistance) {
+      winner = candidate;
+      bestDistance = distance;
+    }
+  }
+
+  return { nearest: winner.original, distance: bestDistance };
 }
 
 function parseSenhas(senhasStr: string | null): SenhaEntry[] {
@@ -224,6 +270,9 @@ export async function action({ request }: { request: Request }) {
     const link = formData.get("link") as string | null;
     const rules = formData.get("rules") as string | null;
     const notes = formData.get("notes") as string | null;
+    const userLuckyNumbers = (formData.get("userLuckyNumbers") as string | null)?.trim() || null;
+    const officialLuckyNumber = (formData.get("officialLuckyNumber") as string | null)?.trim() || null;
+    const inferredLuckyNumber = (formData.get("inferredLuckyNumber") as string | null)?.trim() || null;
 
     if (!name || !company || !startDate || !endDate) {
       return data({ error: "Campos obrigatórios faltando" }, { status: 400 });
@@ -238,8 +287,11 @@ export async function action({ request }: { request: Request }) {
       endDate,
       prize: prize || null,
       link: link || null,
-      rules: rules || null,
+      rules: rules || notes || null,
       notes: notes || null,
+      userLuckyNumbers,
+      officialLuckyNumber,
+      inferredLuckyNumber,
       participationStatus: "pending",
     });
 
@@ -352,6 +404,19 @@ export async function action({ request }: { request: Request }) {
     const description = (formData.get("description") as string | null)?.trim() || null;
     if (!name || !url) return data({ error: "Nome e URL são obrigatórios" }, { status: 400 });
     await db.insert(promotionSites).values({ userId: user.id, name, url, description });
+    return data({ success: true });
+  }
+
+  if (intent === "edit_site") {
+    const id = formData.get("id") as string;
+    const name = (formData.get("name") as string | null)?.trim();
+    const url = (formData.get("url") as string | null)?.trim();
+    const description = (formData.get("description") as string | null)?.trim() || null;
+    if (!id || !name || !url) return data({ error: "Nome e URL são obrigatórios" }, { status: 400 });
+    await db
+      .update(promotionSites)
+      .set({ name, url, description, updatedAt: new Date() })
+      .where(and(eq(promotionSites.id, id), eq(promotionSites.userId, user.id)));
     return data({ success: true });
   }
 
@@ -894,10 +959,11 @@ export default function PromotionsPage({
   const isSubmitting = navigation.state === "submitting";
 
   // Tabs
-  const [activeTab, setActiveTab] = useState<"promocoes" | "pessoas" | "sites" | "concursos">("promocoes");
+  const [activeTab, setActiveTab] = useState<"promocoes" | "pessoas" | "sites" | "literario" | "radio">("promocoes");
 
   // Sites state
   const [showSiteForm, setShowSiteForm] = useState(false);
+  const [editingSite, setEditingSite] = useState<PromoSite | null>(null);
 
   // Promoções state
   const [showForm, setShowForm] = useState(false);
@@ -922,6 +988,7 @@ export default function PromotionsPage({
   const [scpcModalidade, setScpcModalidade] = useState("");
   const [scpcNome, setScpcNome] = useState("");
   const [importedIds, setImportedIds] = useState<Set<string>>(new Set());
+  const [pendingImportExternalId, setPendingImportExternalId] = useState<string | null>(null);
 
   // Refs para auto-fill via IA
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -933,8 +1000,21 @@ export default function PromotionsPage({
   const endDateRef = useRef<HTMLInputElement>(null);
   const linkRef = useRef<HTMLInputElement>(null);
   const notesRef = useRef<HTMLTextAreaElement>(null);
+  const userLuckyNumbersRef = useRef<HTMLInputElement>(null);
+  const officialLuckyNumberRef = useRef<HTMLInputElement>(null);
+  const inferredLuckyNumberRef = useRef<HTMLInputElement>(null);
 
   const today = new Date().toISOString().split("T")[0];
+
+  useEffect(() => {
+    if (importFetcher.state !== "idle" || !pendingImportExternalId) return;
+
+    if (importFetcher.data?.success || importFetcher.data?.alreadyImported) {
+      setImportedIds((prev) => new Set([...prev, pendingImportExternalId]));
+    }
+
+    setPendingImportExternalId(null);
+  }, [importFetcher.state, importFetcher.data, pendingImportExternalId]);
 
   async function handlePdfExtract(file: File) {
     setExtracting(true);
@@ -958,6 +1038,14 @@ export default function PromotionsPage({
       if (endDateRef.current && f.endDate)     endDateRef.current.value = f.endDate;
       if (linkRef.current && f.link)           linkRef.current.value = f.link;
       if (notesRef.current && f.rules)         notesRef.current.value = f.rules;
+      if (inferredLuckyNumberRef.current && f.inferredLuckyNumber) {
+        inferredLuckyNumberRef.current.value = f.inferredLuckyNumber;
+      }
+
+      if (notesRef.current && f.luckyNumberRule && !notesRef.current.value.includes("Regra número da sorte:")) {
+        notesRef.current.value = `${notesRef.current.value ? `${notesRef.current.value}\n\n` : ""}Regra número da sorte: ${f.luckyNumberRule}`;
+      }
+
       setLastExtractedText(json.extractedText ?? null);
     } catch {
       setExtractError("Falha ao conectar com o servidor");
@@ -980,6 +1068,9 @@ export default function PromotionsPage({
           endDate: endDateRef.current?.value || "",
           rules: notesRef.current?.value || "",
           extractedText: lastExtractedText || "",
+          userLuckyNumbers: userLuckyNumbersRef.current?.value || "",
+          officialLuckyNumber: officialLuckyNumberRef.current?.value || "",
+          inferredLuckyNumber: inferredLuckyNumberRef.current?.value || "",
         }),
       });
       if (res.ok) {
@@ -1070,20 +1161,32 @@ export default function PromotionsPage({
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab("concursos")}
+          onClick={() => setActiveTab("literario")}
           className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-            activeTab === "concursos"
+            activeTab === "literario"
               ? "bg-white text-indigo-700 shadow-sm dark:bg-gray-800 dark:text-indigo-400"
               : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
           }`}
         >
           <BookOpen className="h-4 w-4" />
-          Concursos
+          Literário
           {contestsList.length > 0 && (
             <span className="rounded-full bg-violet-100 px-1.5 py-0.5 text-xs font-semibold text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">
               {contestsList.length}
             </span>
           )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("radio")}
+          className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === "radio"
+              ? "bg-white text-indigo-700 shadow-sm dark:bg-gray-800 dark:text-indigo-400"
+              : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          }`}
+        >
+          <Globe className="h-4 w-4" />
+          Rádio
         </button>
       </div>
 
@@ -1150,7 +1253,7 @@ export default function PromotionsPage({
                   >
                     <option value="">Todas</option>
                     <option value="Sorteio">Sorteio</option>
-                    <option value="Concurso">Concurso</option>
+                    <option value="Concurso">Literário</option>
                     <option value="Vale-Brinde">Vale-Brinde</option>
                     <option value="Assemelhado">Assemelhado</option>
                   </select>
@@ -1172,6 +1275,7 @@ export default function PromotionsPage({
                         : <Search className="h-4 w-4" />
                       }
                     </Button>
+                  </div>
                   </div>
                 </div>
               </div>
@@ -1239,7 +1343,7 @@ export default function PromotionsPage({
                                   <input type="hidden" name="notes" value={`Situação: ${item.situacao}${item.abrangencia ? ` · Abrangência: ${item.abrangencia}` : ""}`} />
                                   <button
                                     type="submit"
-                                    onClick={() => setImportedIds((prev) => new Set([...prev, item.externalId]))}
+                                    onClick={() => setPendingImportExternalId(item.externalId)}
                                     className="inline-flex shrink-0 items-center gap-1 rounded-full bg-indigo-600 px-3 py-1 text-xs text-white transition-colors hover:bg-indigo-700"
                                   >
                                     <Plus className="h-3 w-3" />
@@ -1380,6 +1484,45 @@ export default function PromotionsPage({
 
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                      Meus números da sorte
+                    </label>
+                    <input
+                      ref={userLuckyNumbersRef}
+                      type="text"
+                      name="userLuckyNumbers"
+                      placeholder="Ex: 00-12345, 03-77881, 88420"
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                      Número oficial sorteado
+                    </label>
+                    <input
+                      ref={officialLuckyNumberRef}
+                      type="text"
+                      name="officialLuckyNumber"
+                      placeholder="Ex: 07-54321"
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                      Número inferido pela IA
+                    </label>
+                    <input
+                      ref={inferredLuckyNumberRef}
+                      type="text"
+                      name="inferredLuckyNumber"
+                      placeholder="Preenchido via regulamento"
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div>
                     <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Tipo</label>
                     <select
                       ref={typeRef}
@@ -1508,6 +1651,7 @@ export default function PromotionsPage({
                 const days = daysUntilEnd(p.endDate);
                 const statusCfg = STATUS_CONFIG[p.participationStatus ?? "pending"] ?? STATUS_CONFIG.pending;
                 const isExpired = days < 0;
+                const luckyDistance = calculateLuckyDistance(p.userLuckyNumbers, p.officialLuckyNumber);
 
                 return (
                   <div
@@ -1571,6 +1715,31 @@ export default function PromotionsPage({
                         {p.notes && (
                           <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{p.notes}</p>
                         )}
+
+                        {(p.userLuckyNumbers || p.officialLuckyNumber || p.inferredLuckyNumber) && (
+                          <div className="mt-2 space-y-1 text-xs text-gray-600 dark:text-gray-300">
+                            {p.userLuckyNumbers && (
+                              <p>
+                                <span className="font-medium">🎟️ Meus números:</span> {p.userLuckyNumbers}
+                              </p>
+                            )}
+                            {p.officialLuckyNumber && (
+                              <p>
+                                <span className="font-medium">🏁 Oficial:</span> {p.officialLuckyNumber}
+                              </p>
+                            )}
+                            {p.inferredLuckyNumber && (
+                              <p>
+                                <span className="font-medium">🤖 IA inferiu:</span> {p.inferredLuckyNumber}
+                              </p>
+                            )}
+                            {luckyDistance && (
+                              <p>
+                                <span className="font-medium">📏 Mais próximo:</span> {luckyDistance.nearest} (distância {luckyDistance.distance})
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2 sm:flex-col sm:items-end">
@@ -1631,13 +1800,22 @@ export default function PromotionsPage({
           {/* Form de adição */}
           {showSiteForm && (
             <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 dark:border-indigo-900 dark:bg-indigo-900/10">
-              <Form method="post" className="space-y-3" onSubmit={() => setShowSiteForm(false)}>
-                <input type="hidden" name="_intent" value="create_site" />
+              <Form
+                method="post"
+                className="space-y-3"
+                onSubmit={() => {
+                  setShowSiteForm(false);
+                  setEditingSite(null);
+                }}
+              >
+                <input type="hidden" name="_intent" value={editingSite ? "edit_site" : "create_site"} />
+                {editingSite && <input type="hidden" name="id" value={editingSite.id} />}
                 <div className="grid gap-3 sm:grid-cols-2">
                   <input
                     type="text"
                     name="name"
                     placeholder="Nome do site *"
+                    defaultValue={editingSite?.name ?? ""}
                     required
                     className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
                   />
@@ -1645,6 +1823,7 @@ export default function PromotionsPage({
                     type="url"
                     name="url"
                     placeholder="https://www.pelando.com.br *"
+                    defaultValue={editingSite?.url ?? ""}
                     required
                     className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
                   />
@@ -1653,11 +1832,24 @@ export default function PromotionsPage({
                   type="text"
                   name="description"
                   placeholder="Descrição (ex: Ofertas relâmpago de eletrônicos, cupons, etc.)"
+                  defaultValue={editingSite?.description ?? ""}
                   className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
                 />
                 <div className="flex gap-2">
-                  <Button type="submit" size="sm" disabled={isSubmitting}>Salvar</Button>
-                  <Button type="button" variant="outline" size="sm" onClick={() => setShowSiteForm(false)}>Cancelar</Button>
+                  <Button type="submit" size="sm" disabled={isSubmitting}>
+                    {editingSite ? "Salvar alterações" : "Salvar"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setShowSiteForm(false);
+                      setEditingSite(null);
+                    }}
+                  >
+                    Cancelar
+                  </Button>
                 </div>
               </Form>
             </div>
@@ -1738,6 +1930,19 @@ export default function PromotionsPage({
                       </button>
                     </Form>
 
+                    {/* Editar */}
+                    <button
+                      type="button"
+                      title="Editar"
+                      onClick={() => {
+                        setEditingSite(site);
+                        setShowSiteForm(true);
+                      }}
+                      className="rounded-lg p-1.5 text-gray-400 hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-900/20"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+
                     {/* Deletar */}
                     <Form method="post" onSubmit={(e) => { if (!confirm(`Excluir "${site.name}"?`)) e.preventDefault(); }}>
                       <input type="hidden" name="_intent" value="delete_site" />
@@ -1815,15 +2020,36 @@ export default function PromotionsPage({
         </div>
       )}
 
-      {/* ── ABA CONCURSOS LITERÁRIOS ── */}
-      {activeTab === "concursos" && (
+      {/* ── ABA RÁDIO ── */}
+      {activeTab === "radio" && (
+        <div className="space-y-4 rounded-xl border border-indigo-200 bg-indigo-50 p-5 dark:border-indigo-900/40 dark:bg-indigo-900/10">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold text-indigo-800 dark:text-indigo-300">📻 Rádio Monitor</h3>
+              <p className="mt-1 text-xs text-indigo-700 dark:text-indigo-400">
+                Monitoramento de palavras-chave em transmissões de rádio para oportunidades e alertas.
+              </p>
+            </div>
+            <a
+              href="/personal-life/radio-monitor"
+              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700"
+            >
+              Abrir módulo Rádio
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          </div>
+        </div>
+      )}
+
+      {/* ── ABA LITERÁRIO ── */}
+      {activeTab === "literario" && (
         <div className="space-y-6">
 
           {/* Sites de acompanhamento */}
           <div className="rounded-xl border border-violet-200 bg-violet-50 p-4 dark:border-violet-900/50 dark:bg-violet-900/10">
             <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-violet-800 dark:text-violet-300">
               <Globe className="h-4 w-4" />
-              Sites de Concursos — Inscrições Abertas
+              Sites Literários — Inscrições Abertas
             </h3>
             <div className="grid gap-2 sm:grid-cols-2">
               {[
@@ -1881,7 +2107,7 @@ export default function PromotionsPage({
             <div className="flex items-center justify-between">
               <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-200">
                 <Award className="h-4 w-4 text-violet-500" />
-                Meus Concursos ({contestsList.length})
+                Meus Literários ({contestsList.length})
               </h3>
               <Button size="sm" onClick={() => setShowContestForm((v) => !v)}>
                 <Plus className="mr-1 h-4 w-4" />
@@ -1889,7 +2115,7 @@ export default function PromotionsPage({
               </Button>
             </div>
 
-            {/* Formulário de novo concurso */}
+            {/* Formulário de novo literário */}
             {showContestForm && (
               <div className="rounded-xl border border-violet-200 bg-violet-50 p-4 dark:border-violet-900 dark:bg-violet-900/10">
                 <Form method="post" className="space-y-3" onSubmit={() => setShowContestForm(false)}>
@@ -1898,7 +2124,7 @@ export default function PromotionsPage({
                     <input
                       type="text"
                       name="name"
-                      placeholder="Nome do concurso *"
+                      placeholder="Nome do literário *"
                       required
                       className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
                     />
@@ -1961,14 +2187,14 @@ export default function PromotionsPage({
               </div>
             )}
 
-            {/* Lista de concursos */}
+            {/* Lista de literários */}
             {contestsList.length === 0 ? (
               <div className="rounded-xl border border-dashed border-gray-300 py-12 text-center dark:border-gray-700">
                 <BookOpen className="mx-auto mb-3 h-10 w-10 text-gray-300 dark:text-gray-600" />
-                <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum concurso registrado ainda.</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum literário registrado ainda.</p>
                 <Button className="mt-4" size="sm" onClick={() => setShowContestForm(true)}>
                   <Plus className="mr-2 h-4 w-4" />
-                  Registrar concurso
+                  Registrar literário
                 </Button>
               </div>
             ) : (

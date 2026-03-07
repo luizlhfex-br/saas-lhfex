@@ -33,6 +33,9 @@ export async function action({ request }: Route.ActionArgs) {
     endDate?: string;
     rules?: string;
     extractedText?: string;
+    userLuckyNumbers?: string;
+    officialLuckyNumber?: string;
+    inferredLuckyNumber?: string;
   };
 
   try {
@@ -41,7 +44,7 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ error: "Corpo da requisição inválido" }, { status: 400 });
   }
 
-  const { promotionName, company, prize, endDate, rules, extractedText } = body;
+  const { promotionName, company, prize, endDate, rules, extractedText, userLuckyNumbers, officialLuckyNumber, inferredLuckyNumber } = body;
 
   if (!promotionName && !extractedText) {
     return data({ error: "Dados insuficientes para análise" }, { status: 400 });
@@ -57,6 +60,9 @@ DADOS DA PROMOÇÃO:
 - Prêmio: ${prize || "Não identificado"}
 - Encerramento: ${endDate || "Não identificado"}
 - Regras resumidas: ${rules || "Não disponível"}
+- Meus números da sorte: ${userLuckyNumbers || "Não informado"}
+- Número oficial sorteado: ${officialLuckyNumber || "Não informado"}
+- Número inferido pela IA: ${inferredLuckyNumber || "Não inferido"}
 
 ${extractedText ? `TEXTO COMPLETO DO REGULAMENTO:\n${extractedText.slice(0, 3000)}` : ""}
 
@@ -66,6 +72,7 @@ Por favor, faça uma análise completa:
 3. ⏰ Datas importantes e frequência ideal de participação
 4. 🤔 Perguntas para alinhar a abordagem (ex: há indicação de amigos? Limite de participações?)
 5. ⚠️ Pontos de atenção ou restrições relevantes
+6. 🔢 Número da sorte: inferir pela regra (se possível) e comparar com meus números + número oficial (se informado), mostrando a menor distância numérica
 
 Seja objetivo e prático. Responda em português.`;
 
