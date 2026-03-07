@@ -71,6 +71,7 @@ export default [
   route("api/document/:id/download", "routes/api.document-download.tsx"),
   route("api/chat", "routes/api.chat.tsx"),
   route("api/enrich-cnpj", "routes/api.enrich-cnpj.tsx"),
+  route("api/google-calendar-event", "routes/api.google-calendar-event.tsx"),
   route("api/ncm-taxes", "routes/api.ncm-taxes.tsx"),
   route("api/health", "routes/api.health.tsx"),
   route("api/notifications", "routes/api.notifications.tsx"),

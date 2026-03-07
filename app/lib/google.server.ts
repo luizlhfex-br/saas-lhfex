@@ -21,6 +21,7 @@ export function getAuthorizationUrl(): string {
     "https://www.googleapis.com/auth/drive",
     "https://www.googleapis.com/auth/drive.file",
     "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/calendar.events",
   ];
 
   return oauth2Client.generateAuthUrl({
@@ -159,6 +160,74 @@ export async function getAuthenticatedDriveClient(userId: string) {
   });
 
   return google.drive({ version: "v3", auth: oauth2Client });
+}
+
+/**
+ * Cria Google Calendar API client autenticado
+ */
+export async function getAuthenticatedCalendarClient(userId: string) {
+  const token = await getValidGoogleToken(userId);
+  if (!token) return null;
+
+  oauth2Client.setCredentials({
+    access_token: token.accessToken,
+    refresh_token: token.refreshToken,
+  });
+
+  return google.calendar({ version: "v3", auth: oauth2Client });
+}
+
+type CalendarEventInput = {
+  title: string;
+  description?: string;
+  location?: string;
+  startDateTime: string;
+  endDateTime: string;
+  timeZone?: string;
+  remindersMinutes?: number[];
+};
+
+/**
+ * Cria evento no Google Calendar principal do usuário
+ */
+export async function createGoogleCalendarEvent(userId: string, input: CalendarEventInput) {
+  const calendarClient = await getAuthenticatedCalendarClient(userId);
+  if (!calendarClient) return null;
+
+  try {
+    const reminders = (input.remindersMinutes ?? [])
+      .filter((minutes) => Number.isFinite(minutes) && minutes >= 0)
+      .map((minutes) => ({ method: "popup" as const, minutes }));
+
+    const event = await calendarClient.events.insert({
+      calendarId: "primary",
+      requestBody: {
+        summary: input.title,
+        description: input.description,
+        location: input.location,
+        start: {
+          dateTime: input.startDateTime,
+          timeZone: input.timeZone || "America/Sao_Paulo",
+        },
+        end: {
+          dateTime: input.endDateTime,
+          timeZone: input.timeZone || "America/Sao_Paulo",
+        },
+        reminders: reminders.length > 0
+          ? { useDefault: false, overrides: reminders }
+          : { useDefault: true },
+      },
+    });
+
+    return {
+      id: event.data.id,
+      htmlLink: event.data.htmlLink,
+      status: event.data.status,
+    };
+  } catch (error) {
+    console.error("❌ Error creating Google Calendar event:", error);
+    return null;
+  }
 }
 
 /**
