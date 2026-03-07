@@ -16,6 +16,11 @@
 import { data } from "react-router";
 import type { Route } from "./+types/api.telegram-webhook";
 import { askAgent } from "~/lib/ai.server";
+import {
+  handleNovoCliente,
+  handleAbrirProcesso,
+  handleCancelarProcesso,
+} from "~/lib/openclaw-telegram-actions.server";
 
 interface TelegramUpdate {
   update_id: number;
@@ -109,6 +114,10 @@ export async function action({ request }: Route.ActionArgs) {
       "📦 /iana — Especialista Comex\n" +
       "💰 /maria — Gestora Financeira\n" +
       "🔧 /iago — Engenheiro de Infra\n\n" +
+      "*Comandos operacionais (admin):*\n" +
+      "/cliente CNPJ..., Razão Social...\n" +
+      "/processo importação, cliente..., produto...\n" +
+      "/cancelar_processo IMP-2026-0001 motivo: ...\n\n" +
       `Agente atual: *AIrton* 🎯\nBasta digitar sua pergunta!`,
       "Markdown"
     );
@@ -133,6 +142,45 @@ export async function action({ request }: Route.ActionArgs) {
       iago: "IAgo 🔧 (Infra)",
     };
     await sendTelegram(botToken, chatId, `✅ Agente trocado para: *${agentNames[agentId]}*\n\nDigite sua pergunta!`, "Markdown");
+    return data({ ok: true });
+  }
+
+  // Operações no SAAS via Telegram (somente admin)
+  const isClientCreateCmd =
+    text.startsWith("/cliente") ||
+    /novo\s+cliente/i.test(text) ||
+    /cadastrar\s+cliente/i.test(text);
+
+  const isProcessCreateCmd =
+    text.startsWith("/processo") ||
+    /abrir\s+processo/i.test(text) ||
+    /novo\s+processo/i.test(text);
+
+  const isProcessCancelCmd =
+    text.startsWith("/cancelar_processo") ||
+    /cancelar\s+processo/i.test(text);
+
+  if (isClientCreateCmd || isProcessCreateCmd || isProcessCancelCmd) {
+    if (accessLevel !== "admin") {
+      await sendTelegram(
+        botToken,
+        chatId,
+        "⛔ Este comando operacional exige perfil admin."
+      );
+      return data({ ok: true });
+    }
+
+    if (isClientCreateCmd) {
+      await handleNovoCliente(text, chatId, botToken);
+      return data({ ok: true });
+    }
+
+    if (isProcessCreateCmd) {
+      await handleAbrirProcesso(text, chatId, botToken);
+      return data({ ok: true });
+    }
+
+    await handleCancelarProcesso(text, chatId, botToken);
     return data({ ok: true });
   }
 

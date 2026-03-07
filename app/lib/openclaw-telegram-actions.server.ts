@@ -302,3 +302,89 @@ export async function handleAbrirProcesso(text: string, chatId: number, botToken
     await sendTg(botToken, chatId, "❌ Erro ao abrir processo. Verifique os dados e tente novamente.");
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 4. Cancelar Processo LHFEX (com justificativa)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function handleCancelarProcesso(text: string, chatId: number, botToken: string) {
+  const referenceMatch = text.match(/\b(?:IMP|EXP|SRV)-\d{4}-\d{4}\b/i);
+  const reference = referenceMatch?.[0]?.toUpperCase() ?? "";
+
+  const justificationMatch = text.match(/(?:justificativa|motivo)\s*[:\-]\s*(.+)$/i);
+  let justification = (justificationMatch?.[1] ?? "").trim();
+
+  if (!justification) {
+    const cleaned = text
+      .replace(/^\/cancelar(?:_processo)?\s*/i, "")
+      .replace(/cancelar\s+processo\s*/i, "")
+      .replace(reference, "")
+      .replace(/^[-,:\s]+/, "")
+      .trim();
+    justification = cleaned;
+  }
+
+  if (!reference) {
+    await sendTg(botToken, chatId,
+      "❌ Não encontrei a referência do processo.\n\nUse: `/cancelar_processo IMP-2026-0001 motivo: cliente desistiu`",
+      "Markdown"
+    );
+    return;
+  }
+
+  if (!justification) {
+    await sendTg(botToken, chatId,
+      "❌ Informe uma justificativa do cancelamento.\n\nExemplo: `/cancelar_processo IMP-2026-0001 motivo: documentação incompleta`",
+      "Markdown"
+    );
+    return;
+  }
+
+  const [proc] = await db.select({
+    id: processes.id,
+    status: processes.status,
+    reference: processes.reference,
+  })
+    .from(processes)
+    .where(and(eq(processes.reference, reference), isNull(processes.deletedAt)))
+    .limit(1);
+
+  if (!proc) {
+    await sendTg(botToken, chatId, `❌ Processo *${reference}* não encontrado.`, "Markdown");
+    return;
+  }
+
+  if (proc.status === "cancelled") {
+    await sendTg(botToken, chatId, `ℹ️ O processo *${reference}* já está cancelado.`, "Markdown");
+    return;
+  }
+
+  if (proc.status === "completed") {
+    await sendTg(botToken, chatId, `⚠️ Processo *${reference}* está concluído e não pode ser cancelado.`, "Markdown");
+    return;
+  }
+
+  const userId = process.env.OPENCLAW_USER_ID;
+
+  try {
+    await db.update(processes)
+      .set({ status: "cancelled", updatedAt: new Date() })
+      .where(eq(processes.id, proc.id));
+
+    await db.insert(processTimeline).values({
+      processId: proc.id,
+      status: "cancelled",
+      title: "Processo cancelado via Telegram",
+      description: `Justificativa: ${justification}`,
+      createdBy: userId ?? null,
+    });
+
+    await sendTg(botToken, chatId,
+      `✅ Processo *${reference}* cancelado com sucesso.\n📝 Justificativa: ${justification}\n\nEle permanece no histórico como inativo.`,
+      "Markdown"
+    );
+  } catch (error) {
+    console.error("[OpenClaw Actions] handleCancelarProcesso error:", error);
+    await sendTg(botToken, chatId, "❌ Erro ao cancelar processo. Tente novamente.");
+  }
+}

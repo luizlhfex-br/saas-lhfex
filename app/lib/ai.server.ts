@@ -337,44 +337,103 @@ async function callOpenRouterFree(
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error("OPENROUTER_API_KEY not configured");
 
-  // Use a free model on OpenRouter
-  const model = "google/gemini-2.0-flash-exp:free";
+  const preferredFallbacks = [
+    "google/gemini-2.0-flash-exp:free",
+    "qwen/qwen-2.5-72b-instruct:free",
+    "mistralai/mistral-small-3.1-24b-instruct:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+  ];
 
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": process.env.APP_URL || "https://saas.lhfex.com.br",
-      "X-Title": "LHFEX SaaS",
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: "system", content: `${systemPrompt}\n\n${contextMessage}` },
-        { role: "user", content: userMessage },
-      ],
-      max_tokens: maxOutputTokens,
-      temperature: 0.7,
-    }),
-    signal: AbortSignal.timeout(30000),
-  });
+  const envModel = process.env.OPENROUTER_FREE_MODEL?.trim();
+  const cachedModel = await getCache<string>("openrouter:free-model");
 
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`OpenRouter Free error ${response.status}: ${err}`);
+  let dynamicModel: string | null = null;
+  try {
+    const modelsRes = await fetch("https://openrouter.ai/api/v1/models", {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (modelsRes.ok) {
+      const modelsData = await modelsRes.json() as { data?: Array<{ id?: string }> };
+      const freeIds = (modelsData.data || [])
+        .map((m) => m.id || "")
+        .filter((id) => id.endsWith(":free"));
+
+      dynamicModel =
+        freeIds.find((id) => id.includes("google/gemini")) ||
+        freeIds.find((id) => id.includes("qwen")) ||
+        freeIds.find((id) => id.includes("mistral")) ||
+        freeIds.find((id) => id.includes("llama")) ||
+        freeIds[0] ||
+        null;
+
+      if (dynamicModel) {
+        await setCache("openrouter:free-model", dynamicModel, 3600);
+      }
+    }
+  } catch {
+    // best effort only
   }
 
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content || "";
-  if (!content) throw new Error("OpenRouter Free returned empty response");
+  const tried = new Set<string>();
+  const candidateModels = [envModel, cachedModel, dynamicModel, ...preferredFallbacks]
+    .filter((m): m is string => !!m && m.length > 0)
+    .filter((m) => {
+      if (tried.has(m)) return false;
+      tried.add(m);
+      return true;
+    });
 
-  return {
-    content,
-    model: data.model || model,
-    provider: "openrouter_free",
-    tokensUsed: data.usage?.total_tokens,
-  };
+  let lastError = "OpenRouter Free failed";
+
+  for (const model of candidateModels) {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": process.env.APP_URL || "https://saas.lhfex.com.br",
+        "X-Title": "LHFEX SaaS",
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: `${systemPrompt}\n\n${contextMessage}` },
+          { role: "user", content: userMessage },
+        ],
+        max_tokens: maxOutputTokens,
+        temperature: 0.7,
+      }),
+      signal: AbortSignal.timeout(30000),
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      lastError = `model=${model} status=${response.status} err=${err}`;
+      continue;
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || "";
+    if (!content) {
+      lastError = `model=${model} empty-response`;
+      continue;
+    }
+
+    if (data.model) {
+      await setCache("openrouter:free-model", data.model, 3600);
+    }
+
+    return {
+      content,
+      model: data.model || model,
+      provider: "openrouter_free",
+      tokensUsed: data.usage?.total_tokens,
+    };
+  }
+
+  throw new Error(`OpenRouter Free error: ${lastError}`);
 }
 
 // --- Provider 3: DeepSeek Paid (via OpenRouter or Direct) ---

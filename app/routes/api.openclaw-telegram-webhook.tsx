@@ -18,6 +18,7 @@ import {
   handleCadastrarPessoa,
   handleNovoCliente,
   handleAbrirProcesso,
+  handleCancelarProcesso,
 } from "~/lib/openclaw-telegram-actions.server";
 
 interface TelegramFile {
@@ -159,7 +160,8 @@ export async function action({ request }: Route.ActionArgs) {
       `*Comandos de cadastro:*\n` +
       `/pessoa — Cadastrar contato pessoal\n` +
       `/cliente — Cadastrar cliente LHFEX\n` +
-      `/processo — Abrir processo de importação/exportação\n\n` +
+      `/processo — Abrir processo de importação/exportação\n` +
+      `/cancelar_processo — Cancelar processo com justificativa\n\n` +
       `*Exemplos de perguntas:*\n` +
       `"Como estão meus gastos este mês?"\n` +
       `"Qual foi o ROI das promoções do ano?"\n` +
@@ -180,7 +182,8 @@ export async function action({ request }: Route.ActionArgs) {
       `*Comandos de cadastro:*\n` +
       `/pessoa Nome, CPF, celular, email — Cadastrar contato\n` +
       `/cliente CNPJ, Razão Social, contato — Cadastrar cliente LHFEX\n` +
-      `/processo tipo, cliente, produto — Abrir processo comex\n\n` +
+      `/processo tipo, cliente, produto — Abrir processo comex\n` +
+      `/cancelar_processo IMP-2026-0001 motivo: texto — Cancelar processo\n\n` +
       `*Exemplos:*\n` +
       `\`/pessoa João Silva, 31999990000, joao@gmail.com\`\n` +
       `\`/cliente 12.345.678/0001-90, Empresa ABC, contato: Maria\`\n` +
@@ -222,6 +225,14 @@ export async function action({ request }: Route.ActionArgs) {
     /novo\s+processo/i.test(messageText)
   ) {
     await handleAbrirProcesso(messageText, chatId, botToken);
+    return data({ ok: true });
+  }
+
+  if (
+    messageText.startsWith("/cancelar_processo") ||
+    /cancelar\s+processo/i.test(messageText)
+  ) {
+    await handleCancelarProcesso(messageText, chatId, botToken);
     return data({ ok: true });
   }
   // ── Fim comandos de cadastro ─────────────────────────────────────────────

@@ -28,6 +28,26 @@ type Entry = {
 
 const CHANGELOG: Entry[] = [
   {
+    date: "2026-03-06",
+    version: "2.5.1",
+    commit: "c55b167",
+    type: "fix",
+    title: "Estabilização OpenClaw + Cancelamento de Processos + Webhooks Operacionais",
+    items: [
+      "OpenClaw: queue 114 validada (estado error, sem travamento pendente)",
+      "OpenClaw: Dockerfile alinhado para openclaw@2026.3.2 e redeploy monitorado até status finished",
+      "OpenClaw: correção de runtime para openclaw.json ausente no container após rotação",
+      "OpenClaw: skill SAAS sincronizada em /root/.openclaw/workspace/skills e /root/.openclaw/prompts/skills",
+      "SAAS: tela de processos agora abre com filtro padrão 'Em andamento' (todos os status via seleção manual)",
+      "SAAS: novo fluxo de cancelamento de processo com justificativa obrigatória, mantendo histórico e numeração contínua",
+      "SAAS: cancelamento grava timeline e auditoria (status alterado para cancelled, sem deleção)",
+      "Webhook OpenClaw: comando /cancelar_processo + linguagem natural para cancelar com justificativa",
+      "Webhook SAAS: comandos operacionais admin (criar cliente, abrir processo, cancelar processo) via Telegram",
+      "AI fallback SAAS: OpenRouter Free agora seleciona modelo gratuito disponível dinamicamente (evita queda prematura para DeepSeek Paid quando um modelo free sai do ar)",
+      "Deploy SAAS da feature de cancelamento concluído (queue 131 finished)",
+    ],
+  },
+  {
     date: "2026-03-05",
     version: "2.5.0",
     commit: "020ec0a",

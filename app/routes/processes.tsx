@@ -40,14 +40,14 @@ export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const page = Math.max(1, parseInt(url.searchParams.get("page") || "1"));
   const search = url.searchParams.get("search") || "";
-  const statusFilter = url.searchParams.get("status") || "";
+  const statusFilter = url.searchParams.get("status") || "in_progress";
   const typeFilter = url.searchParams.get("type") || "";
 
   const conditions = [isNull(processes.deletedAt)];
   if (search) {
     conditions.push(like(processes.reference, `%${search}%`));
   }
-  if (statusFilter && isValidStatus(statusFilter)) {
+  if (statusFilter !== "all" && isValidStatus(statusFilter)) {
     conditions.push(eq(processes.status, statusFilter));
   }
   if (typeFilter && isValidType(typeFilter)) {
@@ -89,9 +89,9 @@ export default function ProcessesPage({ loaderData }: Route.ComponentProps) {
   const i18n = t(locale);
 
   const currentSearch = searchParams.get("search") || "";
-  const currentStatus = searchParams.get("status") || "";
+  const currentStatus = searchParams.get("status") || "in_progress";
   const currentType = searchParams.get("type") || "";
-  const hasFilters = currentSearch || currentStatus || currentType;
+  const hasFilters = currentSearch || currentType || (currentStatus && currentStatus !== "in_progress");
 
   const statusLabels: Record<string, string> = {
     draft: i18n.processes.draft, in_progress: i18n.processes.inProgress,
@@ -147,7 +147,7 @@ export default function ProcessesPage({ loaderData }: Route.ComponentProps) {
           onChange={(e) => updateFilter("status", e.target.value)}
           className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-400 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
         >
-          <option value="">Todos os status</option>
+          <option value="all">Todos os status</option>
           {Object.entries(statusLabels).map(([key, label]) => (
             <option key={key} value={key}>{label}</option>
           ))}
