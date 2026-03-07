@@ -336,6 +336,15 @@ function formatDate(dateStr: string) {
 }
 
 export default function ChangelogPage() {
+  const groupedByDate = CHANGELOG.reduce<Record<string, Entry[]>>((acc, entry) => {
+    if (!acc[entry.date]) acc[entry.date] = [];
+    acc[entry.date].push(entry);
+    return acc;
+  }, {});
+
+  const groupedEntries = Object.entries(groupedByDate)
+    .sort(([a], [b]) => (a > b ? -1 : 1));
+
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       {/* Header */}
@@ -356,57 +365,60 @@ export default function ChangelogPage() {
         </div>
       </div>
 
-      {/* Entries */}
-      <div className="relative">
-        {/* Timeline line */}
-        <div className="absolute left-[18px] top-0 bottom-0 w-px bg-gray-200 dark:bg-gray-700" />
+      {/* Entries grouped by day */}
+      <div className="space-y-10">
+        {groupedEntries.map(([date, entries]) => (
+          <section key={date} className="space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-200 pb-2 dark:border-gray-800">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{formatDate(date)}</h2>
+              <span className="text-xs text-gray-500 dark:text-gray-400">{entries.length} atualização(ões)</span>
+            </div>
 
-        <div className="space-y-8">
-          {CHANGELOG.map((entry, idx) => {
-            const cfg = TYPE_CONFIG[entry.type];
-            const Icon = cfg.icon;
-            return (
-              <div key={idx} className="relative pl-12">
-                {/* Dot */}
-                <div className="absolute left-0 top-1 flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-white shadow-sm ring-1 ring-gray-200 dark:border-gray-900 dark:bg-gray-900 dark:ring-gray-700">
-                  <Icon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                </div>
+            <div className="relative">
+              <div className="absolute left-[18px] top-0 bottom-0 w-px bg-gray-200 dark:bg-gray-700" />
 
-                <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-                  {/* Meta */}
-                  <div className="mb-3 flex flex-wrap items-center gap-2">
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${cfg.color}`}>
-                      {entry.version ?? cfg.label}
-                    </span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {formatDate(entry.date)}
-                    </span>
-                    {entry.commit && (
-                      <span className="font-mono text-xs text-gray-400 dark:text-gray-500">
-                        #{entry.commit}
-                      </span>
-                    )}
-                  </div>
+              <div className="space-y-6">
+                {entries.map((entry, idx) => {
+                  const cfg = TYPE_CONFIG[entry.type];
+                  const Icon = cfg.icon;
+                  return (
+                    <div key={`${date}-${idx}`} className="relative pl-12">
+                      <div className="absolute left-0 top-1 flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-white shadow-sm ring-1 ring-gray-200 dark:border-gray-900 dark:bg-gray-900 dark:ring-gray-700">
+                        <Icon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                      </div>
 
-                  {/* Title */}
-                  <h2 className="text-base font-semibold text-gray-900 dark:text-white">
-                    {entry.title}
-                  </h2>
+                      <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                        <div className="mb-3 flex flex-wrap items-center gap-2">
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${cfg.color}`}>
+                            {entry.version ?? cfg.label}
+                          </span>
+                          {entry.commit && (
+                            <span className="font-mono text-xs text-gray-400 dark:text-gray-500">
+                              #{entry.commit}
+                            </span>
+                          )}
+                        </div>
 
-                  {/* Items */}
-                  <ul className="mt-3 space-y-1.5">
-                    {entry.items.map((item, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
-                        <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-gray-400 dark:bg-gray-600" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                        <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                          {entry.title}
+                        </h3>
+
+                        <ul className="mt-3 space-y-1.5">
+                          {entry.items.map((item, i) => (
+                            <li key={i} className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
+                              <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-gray-400 dark:bg-gray-600" />
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
-        </div>
+            </div>
+          </section>
+        ))}
       </div>
     </div>
   );

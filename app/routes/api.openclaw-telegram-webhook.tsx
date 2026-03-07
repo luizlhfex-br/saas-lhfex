@@ -98,7 +98,7 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   // ── Determinar o tipo de mensagem e obter o texto ────────────────────────
-  let messageText = message.text?.trim() ?? "";
+  let messageText = message.text?.trim() ?? message.caption?.trim() ?? "";
   let mediaContext = ""; // contexto adicional sobre o tipo de mídia processada
 
   // ── ÁUDIO / VOZ → Groq Whisper ───────────────────────────────────────────
@@ -106,14 +106,16 @@ export async function action({ request }: Route.ActionArgs) {
   const isAudioDoc = message.document?.mime_type?.startsWith("audio/");
   const audioToProcess = audioFile ?? (isAudioDoc ? message.document : null);
 
-  if (audioToProcess && !messageText) {
+  if (audioToProcess) {
     try {
       await sendChatAction(botToken, chatId, "typing");
       console.log("[OPENCLAW] Transcribing audio:", audioToProcess.file_id);
 
-      const transcription = await transcribeAudioWithGroq(botToken, audioToProcess.file_id);
+      const transcription = await transcribeAudioWithGroq(botToken, audioToProcess.file_id, audioToProcess.mime_type);
       if (transcription) {
-        messageText = transcription;
+        messageText = messageText
+          ? `${messageText}\n\nTranscrição do áudio: ${transcription}`
+          : transcription;
         mediaContext = "🎤 _(áudio transcrito)_ ";
         console.log("[OPENCLAW] Transcription:", transcription.slice(0, 100));
       } else {
@@ -132,32 +134,39 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   // ── FOTO / IMAGEM → Gemini Vision ────────────────────────────────────────
-  if (message.photo && message.photo.length > 0) {
+  const isImageDoc = message.document?.mime_type?.startsWith("image/") ?? false;
+  if ((message.photo && message.photo.length > 0) || isImageDoc) {
     try {
       await sendChatAction(botToken, chatId, "typing");
 
-      // Pegar a foto com maior resolução (último item do array)
-      const largestPhoto = message.photo[message.photo.length - 1];
+      const imageFileId = message.photo && message.photo.length > 0
+        ? message.photo[message.photo.length - 1].file_id
+        : message.document!.file_id;
       const caption = message.caption?.trim() ?? "";
 
-      console.log("[OPENCLAW] Analyzing image:", largestPhoto.file_id);
-      const analysis = await analyzeImageWithGemini(botToken, largestPhoto.file_id, caption);
+      console.log("[OPENCLAW] Analyzing image:", imageFileId);
+      const analysis = await analyzeImageWithGemini(botToken, imageFileId, caption, message.document?.mime_type);
 
       if (analysis) {
-        const responseText = `🖼️ *Análise da imagem:*\n\n${analysis}`;
-        await sendTelegram(botToken, chatId, responseText, "Markdown");
+        messageText = messageText
+          ? `${messageText}\n\nAnálise da imagem: ${analysis}`
+          : `Análise da imagem: ${analysis}`;
+        mediaContext = mediaContext
+          ? `${mediaContext}🖼️ _(imagem analisada)_ `
+          : "🖼️ _(imagem analisada)_ ";
       } else {
         await sendTelegram(botToken, chatId,
           "❌ Não consegui analisar a imagem. Tente novamente com uma imagem diferente."
         );
+        return data({ ok: true });
       }
     } catch (err) {
       console.error("[OPENCLAW] Image analysis error:", err);
       await sendTelegram(botToken, chatId,
         "❌ Erro ao analisar a imagem. Tente novamente."
       );
+      return data({ ok: true });
     }
-    return data({ ok: true });
   }
 
   // Se ainda não há texto para processar, ignorar silenciosamente
@@ -328,7 +337,7 @@ async function getTelegramFileUrl(token: string, fileId: string): Promise<string
   }
 }
 
-async function transcribeAudioWithGroq(botToken: string, fileId: string): Promise<string | null> {
+async function transcribeAudioWithGroq(botToken: string, fileId: string, mimeTypeHint?: string): Promise<string | null> {
   const groqApiKey = process.env.GROQ_API_KEY;
   if (!groqApiKey) {
     console.error("[OPENCLAW] GROQ_API_KEY not configured");
@@ -362,7 +371,7 @@ async function transcribeAudioWithGroq(botToken: string, fileId: string): Promis
     webm: "audio/webm",
     flac: "audio/flac",
   };
-  const mimeType = mimeMap[ext] ?? "audio/ogg";
+  const mimeType = mimeTypeHint ?? mimeMap[ext] ?? "audio/ogg";
   const fileName = `audio.${ext}`;
 
   // 4. Send to Groq Whisper
@@ -389,7 +398,7 @@ async function transcribeAudioWithGroq(botToken: string, fileId: string): Promis
   return transcription.trim() || null;
 }
 
-async function analyzeImageWithGemini(botToken: string, fileId: string, caption: string): Promise<string | null> {
+async function analyzeImageWithGemini(botToken: string, fileId: string, caption: string, mimeTypeHint?: string): Promise<string | null> {
   const geminiApiKey = process.env.GEMINI_API_KEY;
   if (!geminiApiKey) {
     console.error("[OPENCLAW] GEMINI_API_KEY not configured");
@@ -418,7 +427,7 @@ async function analyzeImageWithGemini(botToken: string, fileId: string, caption:
     jpg: "image/jpeg", jpeg: "image/jpeg",
     png: "image/png", webp: "image/webp", gif: "image/gif",
   };
-  const mimeType = mimeMap[ext] ?? "image/jpeg";
+  const mimeType = mimeTypeHint ?? mimeMap[ext] ?? "image/jpeg";
 
   // 3. Send to Gemini Vision
   const prompt = caption

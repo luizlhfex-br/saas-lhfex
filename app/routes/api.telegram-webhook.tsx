@@ -99,8 +99,8 @@ export async function action({ request }: Route.ActionArgs) {
   const message = update.message;
   if (!message) return data({ ok: true });
 
-  // Only process text, voice, audio, photo messages
-  const hasContent = message.text || message.voice || message.audio || message.photo;
+  // Only process supported message content (text/media)
+  const hasContent = message.text || message.caption || message.voice || message.audio || message.photo || message.document;
   if (!hasContent) return data({ ok: true });
 
   const chatId = message.chat.id;
@@ -116,7 +116,7 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ ok: true });
   }
 
-  const text = message.text?.trim() ?? "";
+  const text = message.text?.trim() ?? message.caption?.trim() ?? "";
 
   // Command: /start
   if (text === "/start") {
@@ -230,9 +230,11 @@ export async function action({ request }: Route.ActionArgs) {
     });
 
     // Handle audio/voice messages — transcribe with Groq Whisper
-    if (message.voice || message.audio) {
-      const fileId = (message.voice ?? message.audio)!.file_id;
-      const transcription = await transcribeAudioWithGroq(botToken, fileId);
+    const isAudioDocument = !!message.document?.mime_type?.startsWith("audio/");
+    if (message.voice || message.audio || isAudioDocument) {
+      const sourceAudio = message.voice ?? message.audio ?? message.document;
+      const fileId = sourceAudio!.file_id;
+      const transcription = await transcribeAudioWithGroq(botToken, fileId, sourceAudio?.mime_type);
       if (!transcription) {
         await sendTelegram(botToken, chatId, "❌ Não consegui transcrever o áudio. Tente novamente ou envie o texto.");
         return data({ ok: true });
@@ -254,10 +256,13 @@ export async function action({ request }: Route.ActionArgs) {
     }
 
     // Handle image messages — analyze with Gemini Vision
-    if (message.photo) {
-      const largestPhoto = message.photo[message.photo.length - 1];
+    const isImageDocument = !!message.document?.mime_type?.startsWith("image/");
+    if (message.photo || isImageDocument) {
+      const imageFileId = message.photo
+        ? message.photo[message.photo.length - 1].file_id
+        : message.document!.file_id;
       const caption = message.caption ?? "";
-      const analysis = await analyzeImageWithGemini(botToken, largestPhoto.file_id, caption);
+      const analysis = await analyzeImageWithGemini(botToken, imageFileId, caption, message.document?.mime_type);
       if (!analysis) {
         await sendTelegram(botToken, chatId, "❌ Não consegui analisar a imagem. Tente novamente.");
         return data({ ok: true });
@@ -279,6 +284,11 @@ export async function action({ request }: Route.ActionArgs) {
       if (responseText.length > 3950) responseText = responseText.slice(0, 3940) + "...\n_(truncado)_";
       responseText += `\n\n${providerBadge} · _${agentResponse.model}_`;
       await sendTelegram(botToken, chatId, responseText, "Markdown");
+      return data({ ok: true });
+    }
+
+    if (message.document && !message.text && !message.caption) {
+      await sendTelegram(botToken, chatId, "📎 Tipo de arquivo ainda não suportado. Envie texto, áudio (voz/documento) ou imagem.");
       return data({ ok: true });
     }
 
@@ -324,7 +334,7 @@ async function getTelegramFileUrl(token: string, fileId: string): Promise<string
   }
 }
 
-async function transcribeAudioWithGroq(botToken: string, fileId: string): Promise<string | null> {
+async function transcribeAudioWithGroq(botToken: string, fileId: string, mimeTypeHint?: string): Promise<string | null> {
   const groqApiKey = process.env.GROQ_API_KEY;
   if (!groqApiKey) {
     console.error("[TELEGRAM] GROQ_API_KEY not configured");
@@ -343,7 +353,7 @@ async function transcribeAudioWithGroq(botToken: string, fileId: string): Promis
     mp4: "audio/mp4", m4a: "audio/mp4", wav: "audio/wav",
     webm: "audio/webm", flac: "audio/flac",
   };
-  const mimeType = mimeMap[ext] ?? "audio/ogg";
+  const mimeType = mimeTypeHint ?? mimeMap[ext] ?? "audio/ogg";
 
   const formData = new FormData();
   formData.append("file", new Blob([audioBuffer], { type: mimeType }), `audio.${ext}`);
@@ -364,7 +374,7 @@ async function transcribeAudioWithGroq(botToken: string, fileId: string): Promis
   return (await groqRes.text()).trim() || null;
 }
 
-async function analyzeImageWithGemini(botToken: string, fileId: string, caption: string): Promise<string | null> {
+async function analyzeImageWithGemini(botToken: string, fileId: string, caption: string, mimeTypeHint?: string): Promise<string | null> {
   const geminiApiKey = process.env.GEMINI_API_KEY;
   if (!geminiApiKey) {
     console.error("[TELEGRAM] GEMINI_API_KEY not configured");
@@ -383,7 +393,7 @@ async function analyzeImageWithGemini(botToken: string, fileId: string, caption:
     jpg: "image/jpeg", jpeg: "image/jpeg",
     png: "image/png", webp: "image/webp", gif: "image/gif",
   };
-  const mimeType = mimeMap[ext] ?? "image/jpeg";
+  const mimeType = mimeTypeHint ?? mimeMap[ext] ?? "image/jpeg";
 
   const prompt = caption
     ? `Analise esta imagem. O usuário enviou com a legenda: "${caption}". Responda em português, seja direto e útil.`
