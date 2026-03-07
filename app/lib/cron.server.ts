@@ -58,6 +58,7 @@ function parseEnvInt(name: string, fallback: number, min: number, max: number): 
 const AUTOMATION_LOG_RETENTION_ENABLED = process.env.AUTOMATION_LOG_RETENTION_ENABLED !== "false";
 const AUTOMATION_LOG_RETENTION_DAYS = parseEnvInt("AUTOMATION_LOG_RETENTION_DAYS", 90, 1, 3650);
 const AUTOMATION_LOG_RETENTION_INTERVAL_HOURS = parseEnvInt("AUTOMATION_LOG_RETENTION_INTERVAL_HOURS", 24, 1, 168);
+const UNIFIED_DEADLINE_ALERTS = process.env.UNIFIED_DEADLINE_ALERTS !== "false";
 
 interface CronJob {
   name: string;
@@ -104,16 +105,16 @@ const jobs: CronJob[] = [
     cronExpression: "0 8 * * 1", // Toda segunda às 8h
     handler: sendWeeklyPersonalFinanceSummary,
   },
-  {
+  ...(!UNIFIED_DEADLINE_ALERTS ? [{
     name: "bills_alert",
     cronExpression: "0 8 * * *", // Todo dia às 8h
     handler: sendBillsAlert,
-  },
-  {
+  }] : []),
+  ...(!UNIFIED_DEADLINE_ALERTS ? [{
     name: "tasks_reminder",
     cronExpression: "0 8 * * *", // Todo dia às 8h — junto com bills_alert
     handler: sendTasksReminder,
-  },
+  }] : []),
   {
     name: "deadlines_alert",
     cronExpression: "0 8 * * *", // Todo dia às 8h — prazos de promoções/objetivos/concursos
@@ -897,6 +898,7 @@ async function sendDeadlinesAlert() {
       personalStudyEvents,
       personalStudySubjects,
       plannedTimeOff,
+      personalTasks,
     } = await import("../../drizzle/schema");
 
     const today = new Date();
@@ -911,10 +913,11 @@ async function sendDeadlinesAlert() {
     };
 
     type DeadlineItem = {
-      kind: "promo" | "goal" | "contest" | "study_event" | "timeoff";
+      kind: "promo" | "goal" | "contest" | "study_event" | "timeoff" | "task" | "bill";
       title: string;
       dueDate: string;
       daysUntil: number;
+      extra?: string;
     };
 
     const promoRows = await db
@@ -963,6 +966,30 @@ async function sendDeadlinesAlert() {
       })
       .from(plannedTimeOff)
       .where(eq(plannedTimeOff.userId, userId));
+
+    const taskRows = await db
+      .select({
+        title: personalTasks.title,
+        dueDate: personalTasks.dueDate,
+        status: personalTasks.status,
+        notifyTelegram: personalTasks.notifyTelegram,
+        notifyDaysBefore: personalTasks.notifyDaysBefore,
+      })
+      .from(personalTasks)
+      .where(and(eq(personalTasks.userId, userId), isNull(personalTasks.deletedAt)));
+
+    const billRows = await db
+      .select({
+        name: bills.name,
+        amount: bills.amount,
+        nextDueDate: bills.nextDueDate,
+        alertDaysBefore: bills.alertDaysBefore,
+        alertOneDayBefore: bills.alertOneDayBefore,
+        isAutoDebit: bills.isAutoDebit,
+        status: bills.status,
+      })
+      .from(bills)
+      .where(and(eq(bills.userId, userId), isNull(bills.deletedAt)));
 
     const items: DeadlineItem[] = [];
 
@@ -1033,6 +1060,55 @@ async function sendDeadlinesAlert() {
       });
     }
 
+    for (const task of taskRows) {
+      if (!task.dueDate) continue;
+      if (!["pending", "in_progress"].includes(String(task.status ?? ""))) continue;
+      if (task.notifyTelegram === false) continue;
+
+      const daysUntil = calcDaysUntil(String(task.dueDate));
+      if (daysUntil === null) continue;
+
+      const notifyDays = task.notifyDaysBefore ?? 1;
+      const shouldAlert = daysUntil < 0 || daysUntil <= notifyDays;
+      if (!shouldAlert) continue;
+
+      items.push({
+        kind: "task",
+        title: String(task.title),
+        dueDate: String(task.dueDate),
+        daysUntil,
+      });
+    }
+
+    for (const bill of billRows) {
+      if (String(bill.status ?? "") !== "active") continue;
+      if (!bill.nextDueDate) continue;
+
+      const daysUntil = calcDaysUntil(String(bill.nextDueDate));
+      if (daysUntil === null) continue;
+
+      const alertDays = bill.alertDaysBefore ?? 3;
+      const shouldAlert =
+        daysUntil < 0 ||
+        daysUntil <= alertDays ||
+        (daysUntil === 1 && (bill.alertOneDayBefore ?? true));
+
+      if (!shouldAlert) continue;
+
+      const amountNum = Number.parseFloat(String(bill.amount ?? 0));
+      const amountText = Number.isFinite(amountNum)
+        ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(amountNum)
+        : String(bill.amount ?? "");
+
+      items.push({
+        kind: "bill",
+        title: String(bill.name),
+        dueDate: String(bill.nextDueDate),
+        daysUntil,
+        extra: `${amountText}${bill.isAutoDebit ? " · auto" : ""}`,
+      });
+    }
+
     if (items.length === 0) {
       console.log("[CRON] deadlines_alert: nada a reportar hoje");
       return;
@@ -1046,6 +1122,8 @@ async function sendDeadlinesAlert() {
       contest: "✍️ Concurso",
       study_event: "🎓 Estudos",
       timeoff: "🏖️ Time Off",
+      task: "✅ Tarefa",
+      bill: "💳 Vencimento",
     };
 
     const urgencyLabel = (days: number) => {
@@ -1055,9 +1133,10 @@ async function sendDeadlinesAlert() {
       return `⚪ Em ${days} dias`;
     };
 
-    const lines = items.map((item) =>
-      `${urgencyLabel(item.daysUntil)} — ${kindLabel[item.kind]}: *${item.title}* (${item.dueDate})`
-    );
+    const lines = items.map((item) => {
+      const suffix = item.extra ? ` · ${item.extra}` : "";
+      return `${urgencyLabel(item.daysUntil)} — ${kindLabel[item.kind]}: *${item.title}* (${item.dueDate})${suffix}`;
+    });
 
     const overdueCount = items.filter((i) => i.daysUntil < 0).length;
     const todayCount = items.filter((i) => i.daysUntil === 0).length;
