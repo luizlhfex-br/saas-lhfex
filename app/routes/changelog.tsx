@@ -28,6 +28,29 @@ type Entry = {
 
 const CHANGELOG: Entry[] = [
   {
+    date: "2026-03-07",
+    version: "2.6.0",
+    commit: "b4261b7",
+    type: "release",
+    title: "Promoções + Bots + Google Calendar + Alertas Unificados + Rotinas de Saúde",
+    items: [
+      "Promoções: correção da extração de PDF com compatibilidade pdf-parse v2 (api.promotion-extract e api.ocr-extract)",
+      "Promoções: edição pós-criação na aba Sites implementada",
+      "Promoções: números da sorte adicionados (informado, oficial e inferido) com comparação por distância",
+      "Promoções: importação SCPC corrigida para evitar falso 'Já cadastrada' antes da resposta da API",
+      "Promoções: reorganização de abas (Rádio integrado e aba Concurso renomeada para Literário)",
+      "Vida Pessoal: card duplicado de Pessoas removido da home",
+      "Fix de build: JSX da tela de Promoções corrigido (bloco SCPC/Nome), liberando deploy SAAS",
+      "Telegram SAAS/OpenClaw: cadastro de cliente com CNPJ agora exige confirmação explícita (sim/não, expira em 10 min)",
+      "Google: integração inicial com Calendar via API /api/google-calendar-event, com suporte a texto natural",
+      "Google OAuth: escopo calendar.events adicionado no fluxo existente",
+      "Alertas de prazo: cron deadlines_alert expandido para promoções, objetivos, concursos, estudos (provas/trabalhos) e time off",
+      "Alertas: unificação em resumo diário único incluindo também tarefas e vencimentos (evita mensagens duplicadas)",
+      "Rotinas: módulo reformulado para foco em saúde (tipos e linguagem de bem-estar, autocuidado e prevenção)",
+      "Produção: múltiplos deploys concluídos em sequência com validação de SOURCE_COMMIT nos containers",
+    ],
+  },
+  {
     date: "2026-03-06",
     version: "2.5.1",
     commit: "c55b167",
