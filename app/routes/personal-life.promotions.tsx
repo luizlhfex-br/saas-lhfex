@@ -228,14 +228,35 @@ export async function loader({ request }: { request: Request }) {
           .where(eq(pessoas.userId, user.id))
           .orderBy(asc(pessoas.nomeCompleto));
 
-    const pessoasList = await pessoasQuery;
+    let pessoasList = await pessoasQuery;
+
+    // Recovery fallback: if user-scoped data is empty, load legacy rows.
+    if (pessoasList.length === 0) {
+      pessoasList = pessoaSearch
+        ? await db
+            .select()
+            .from(pessoas)
+            .where(
+              or(
+                ilike(pessoas.nomeCompleto, `%${pessoaSearch}%`),
+                ilike(pessoas.celular ?? "", `%${pessoaSearch}%`),
+                ilike(pessoas.email ?? "", `%${pessoaSearch}%`)
+              )
+            )
+            .orderBy(asc(pessoas.nomeCompleto))
+        : await db.select().from(pessoas).orderBy(asc(pessoas.nomeCompleto));
+    }
 
     // Sites de Promoções
-    const sitesList = await db
+    let sitesList = await db
       .select()
       .from(promotionSites)
       .where(eq(promotionSites.userId, user.id))
       .orderBy(asc(promotionSites.name));
+
+    if (sitesList.length === 0) {
+      sitesList = await db.select().from(promotionSites).orderBy(asc(promotionSites.name));
+    }
 
     // Concursos Literários
     const contestsList = await db

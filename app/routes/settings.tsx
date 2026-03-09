@@ -775,7 +775,8 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
 
         <div className="space-y-4">
           {changelog.slice(0, 3).map((entry) => {
-            const cfg = typeConfig[entry.type];
+            const fallbackType = entry.items?.[0]?.type ?? "improvement";
+            const cfg = typeConfig[fallbackType] ?? typeConfig.improvement;
             const Icon = cfg.icon;
             return (
               <div key={entry.version} className="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
@@ -793,7 +794,7 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
                 {entry.items?.length > 0 && (
                   <ul className="mt-2 space-y-1 text-sm text-gray-700 dark:text-gray-300">
                     {entry.items.slice(0, 3).map((item, idx) => (
-                      <li key={`${entry.version}-${idx}`}>- {item}</li>
+                      <li key={`${entry.version}-${idx}`}>- {item.text}</li>
                     ))}
                   </ul>
                 )}
