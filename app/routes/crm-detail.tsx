@@ -102,19 +102,6 @@ export default function CrmDetailPage({ loaderData }: Route.ComponentProps) {
     );
   };
 
-  const typeBadge = (type: string) => {
-    const labels: Record<string, string> = {
-      importer: i18n.crm.importer,
-      exporter: i18n.crm.exporter,
-      both: i18n.crm.both,
-    };
-    return (
-      <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
-        {labels[type] || type}
-      </span>
-    );
-  };
-
   return (
     <div className="space-y-6">
       <Breadcrumb
@@ -185,7 +172,6 @@ export default function CrmDetailPage({ loaderData }: Route.ComponentProps) {
             </h2>
             <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <InfoItem label={i18n.crm.cnpj} value={formatCNPJ(client.cnpj)} />
-              <InfoItem label={i18n.crm.clientType} value={typeBadge(client.clientType)} isNode />
               <InfoItem label={i18n.common.status} value={statusBadge(client.status)} isNode />
               {client.cnaeCode && (
                 <InfoItem label={i18n.crm.cnaeCode} value={client.cnaeCode} />

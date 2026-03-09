@@ -40,16 +40,13 @@ describe("Validators", () => {
         cnpj: "12345678901234",
         razaoSocial: "Test Company LTDA",
         nomeFantasia: "Test Company",
-        clientType: "importer",
       });
       expect(result.success).toBe(true);
     });
 
-    it("should reject invalid client type", () => {
+    it("should reject missing required fields", () => {
       const result = clientSchema.safeParse({
-        cnpj: "12345678901234",
-        razaoSocial: "Test Company",
-        clientType: "invalid-type",
+        cnpj: "",
       });
       expect(result.success).toBe(false);
     });
@@ -58,7 +55,6 @@ describe("Validators", () => {
       const result = clientSchema.safeParse({
         cnpj: "12345678901234",
         razaoSocial: "Test Company",
-        clientType: "exporter",
         address: "Rua Test, 123",
         city: "São Paulo",
         state: "SP",

@@ -181,7 +181,7 @@ export default function DashboardPage({ loaderData }: Route.ComponentProps) {
   const statCards = [
     {
       label: i18n.dashboard.dollarRate,
-      value: `R$ ${stats.dollarRate.toFixed(2)}`,
+      value: `R$ ${stats.dollarRate.toFixed(4)}`,
       sub: stats.dollarRateDate
         ? `${String(stats.dollarRateSource || "ptax").toUpperCase()} · ${stats.dollarRateDate}`
         : String(stats.dollarRateSource || "ptax").toUpperCase(),

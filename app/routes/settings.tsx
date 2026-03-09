@@ -89,7 +89,8 @@ export async function loader({ request }: Route.LoaderArgs) {
       bankAccounts,
       loadError: null,
     };
-  } catch {
+  } catch (error) {
+    console.error("[settings.loader] failed", error);
     return {
       user: {
         id: user.id,
@@ -184,8 +185,10 @@ export async function action({ request }: Route.ActionArgs) {
     headers.append("Set-Cookie", `theme=${theme || "light"}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 24 * 60 * 60}`);
 
     return data({ success: true }, { headers });
-  } catch {
-    return data({ error: "Nao foi possivel salvar as configuracoes. Tente novamente." }, { status: 500 });
+  } catch (error) {
+    console.error("[settings.action] failed", error);
+    const message = error instanceof Error ? error.message : "Nao foi possivel salvar as configuracoes. Tente novamente.";
+    return data({ error: message }, { status: 500 });
   }
 }
 

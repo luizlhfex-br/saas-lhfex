@@ -35,7 +35,6 @@ export const clientSchema = z.object({
   city: z.string().max(255).optional(),
   state: z.string().max(2).optional(),
   zipCode: z.string().max(10).optional(),
-  clientType: z.enum(["importer", "exporter", "both"]).default("importer"),
   status: z.enum(["active", "inactive", "prospect"]).default("active"),
   notes: z.string().max(2000).optional(),
 });

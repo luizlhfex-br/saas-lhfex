@@ -49,6 +49,8 @@ export default [
     route("personal-life/finances", "routes/personal-life.finances.tsx"),
     route("personal-life/finances/analytics", "routes/personal-life.finances.analytics.tsx"),
     route("personal-life/investments", "routes/personal-life.investments.tsx"),
+    route("personal-life/clean-days", "routes/personal-life.clean-days.tsx"),
+    route("personal-life/productivity", "routes/personal-life.productivity.tsx"),
     route("personal-life/health", "routes/personal-life.health.tsx"),
     route("personal-life/routines", "routes/personal-life.routines.tsx"),
     route("personal-life/goals", "routes/personal-life.goals.tsx"),

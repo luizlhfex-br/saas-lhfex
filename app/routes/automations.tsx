@@ -139,7 +139,8 @@ export async function loader({ request }: Route.LoaderArgs) {
         .orderBy(desc(missionControlTasks.createdAt)),
       crons: await db.select().from(openclawCrons).orderBy(openclawCrons.name),
     };
-  } catch {
+  } catch (error) {
+    console.error("[automations.loader] failed", error);
     return {
       automations: [],
       recentLogs: [],
@@ -301,8 +302,10 @@ export async function action({ request }: Route.ActionArgs) {
     }
 
     return data({ error: "Invalid intent" }, { status: 400 });
-  } catch {
-    return data({ error: "Falha ao processar automacao. Tente novamente." }, { status: 500 });
+  } catch (error) {
+    console.error("[automations.action] failed", error);
+    const message = error instanceof Error ? error.message : "Falha ao processar automacao. Tente novamente.";
+    return data({ error: message }, { status: 500 });
   }
 }
 

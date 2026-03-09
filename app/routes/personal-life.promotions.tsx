@@ -161,6 +161,15 @@ function parseSenhas(senhasStr: string | null): SenhaEntry[] {
   }
 }
 
+function normalizeDateInput(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const parsed = new Date(`${trimmed}T12:00:00`);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toISOString().slice(0, 10);
+}
+
 // ── Loader ─────────────────────────────────────────────────────────────────
 
 export async function loader({ request }: { request: Request }) {
@@ -205,7 +214,6 @@ export async function loader({ request }: { request: Request }) {
           .where(
             and(
               eq(pessoas.userId, user.id),
-              isNull(pessoas.deletedAt),
               or(
                 ilike(pessoas.nomeCompleto, `%${pessoaSearch}%`),
                 ilike(pessoas.celular ?? "", `%${pessoaSearch}%`),
@@ -217,7 +225,7 @@ export async function loader({ request }: { request: Request }) {
       : db
           .select()
           .from(pessoas)
-          .where(and(eq(pessoas.userId, user.id), isNull(pessoas.deletedAt)))
+          .where(eq(pessoas.userId, user.id))
           .orderBy(asc(pessoas.nomeCompleto));
 
     const pessoasList = await pessoasQuery;
@@ -293,8 +301,8 @@ export async function action({ request }: { request: Request }) {
     const name = formData.get("name") as string;
     const company = formData.get("company") as string;
     const type = (formData.get("type") as string) || "raffle";
-    const startDate = formData.get("startDate") as string;
-    const endDate = formData.get("endDate") as string;
+    const startDateRaw = formData.get("startDate") as string;
+    const endDateRaw = formData.get("endDate") as string;
     const prize = formData.get("prize") as string | null;
     const link = formData.get("link") as string | null;
     const rules = formData.get("rules") as string | null;
@@ -303,8 +311,15 @@ export async function action({ request }: { request: Request }) {
     const officialLuckyNumber = (formData.get("officialLuckyNumber") as string | null)?.trim() || null;
     const inferredLuckyNumber = (formData.get("inferredLuckyNumber") as string | null)?.trim() || null;
 
+    const startDate = normalizeDateInput(startDateRaw);
+    const endDate = normalizeDateInput(endDateRaw);
+
     if (!name || !company || !startDate || !endDate) {
       return data({ error: "Campos obrigatórios faltando" }, { status: 400 });
+    }
+
+    if (new Date(`${endDate}T12:00:00`) < new Date(`${startDate}T12:00:00`)) {
+      return data({ error: "Data final não pode ser menor que a data inicial" }, { status: 400 });
     }
 
     await db.insert(promotions).values({
@@ -394,6 +409,7 @@ export async function action({ request }: { request: Request }) {
           endereco,
           senhas: senhasJson,
           notas,
+          deletedAt: null,
           updatedAt: new Date(),
         })
         .where(and(eq(pessoas.id, id), eq(pessoas.userId, user.id)));
@@ -432,7 +448,22 @@ export async function action({ request }: { request: Request }) {
     const url = (formData.get("url") as string | null)?.trim();
     const description = (formData.get("description") as string | null)?.trim() || null;
     if (!name || !url) return data({ error: "Nome e URL são obrigatórios" }, { status: 400 });
-    await db.insert(promotionSites).values({ userId: user.id, name, url, description });
+
+    const [existingSite] = await db
+      .select({ id: promotionSites.id })
+      .from(promotionSites)
+      .where(and(eq(promotionSites.userId, user.id), eq(promotionSites.url, url)))
+      .limit(1);
+
+    if (existingSite) {
+      await db
+        .update(promotionSites)
+        .set({ name, description, isActive: true, updatedAt: new Date() })
+        .where(and(eq(promotionSites.id, existingSite.id), eq(promotionSites.userId, user.id)));
+    } else {
+      await db.insert(promotionSites).values({ userId: user.id, name, url, description, isActive: true });
+    }
+
     return data({ success: true });
   }
 
@@ -462,7 +493,8 @@ export async function action({ request }: { request: Request }) {
   if (intent === "delete_site") {
     const id = formData.get("id") as string;
     await db
-      .delete(promotionSites)
+      .update(promotionSites)
+      .set({ isActive: false, updatedAt: new Date() })
       .where(and(eq(promotionSites.id, id), eq(promotionSites.userId, user.id)));
     return data({ success: true });
   }
@@ -608,8 +640,10 @@ export async function action({ request }: { request: Request }) {
   }
 
     return data({ error: "Ação inválida" }, { status: 400 });
-  } catch {
-    return data({ error: "Falha ao processar a solicitacao. Tente novamente." }, { status: 500 });
+  } catch (error) {
+    console.error("[personal-life.promotions] action failed", error);
+    const message = error instanceof Error ? error.message : "Falha ao processar a solicitacao. Tente novamente.";
+    return data({ error: message }, { status: 500 });
   }
 }
 
