@@ -180,13 +180,19 @@ export async function loader({ request }: { request: Request }) {
   const statusFilter = url.searchParams.get("status") ?? "active";
   const pessoaSearch = url.searchParams.get("q") ?? "";
 
+  const warnings: string[] = [];
+
+  let allPromotions: Promotion[] = [];
   try {
-    // Promoções
-    const allPromotions = await db
+    allPromotions = (await db
       .select()
       .from(promotions)
       .where(and(eq(promotions.userId, user.id), isNull(promotions.deletedAt)))
-      .orderBy(desc(promotions.endDate));
+      .orderBy(desc(promotions.endDate))) as Promotion[];
+  } catch (error) {
+    console.error("[personal-life.promotions.loader] promotions failed", error);
+    warnings.push("Falha ao carregar promoções.");
+  }
 
     const active = allPromotions.filter(
       (p) => p.participationStatus === "pending" || p.participationStatus === "participated"
@@ -206,7 +212,8 @@ export async function loader({ request }: { request: Request }) {
         ? allPromotions.filter((p) => p.participationStatus === "lost")
         : allPromotions;
 
-    // Pessoas
+  let pessoasList: Pessoa[] = [];
+  try {
     const pessoasQuery = pessoaSearch
       ? db
           .select()
@@ -228,11 +235,11 @@ export async function loader({ request }: { request: Request }) {
           .where(eq(pessoas.userId, user.id))
           .orderBy(asc(pessoas.nomeCompleto));
 
-    let pessoasList = await pessoasQuery;
+    pessoasList = (await pessoasQuery) as Pessoa[];
 
     // Recovery fallback: if user-scoped data is empty, load legacy rows.
     if (pessoasList.length === 0) {
-      pessoasList = pessoaSearch
+      pessoasList = (pessoaSearch
         ? await db
             .select()
             .from(pessoas)
@@ -244,67 +251,69 @@ export async function loader({ request }: { request: Request }) {
               )
             )
             .orderBy(asc(pessoas.nomeCompleto))
-        : await db.select().from(pessoas).orderBy(asc(pessoas.nomeCompleto));
+        : await db.select().from(pessoas).orderBy(asc(pessoas.nomeCompleto))) as Pessoa[];
     }
+  } catch (error) {
+    console.error("[personal-life.promotions.loader] pessoas failed", error);
+    warnings.push("Falha ao carregar pessoas.");
+  }
 
-    // Sites de Promoções
-    let sitesList = await db
+  let sitesList: PromoSite[] = [];
+  try {
+    sitesList = (await db
       .select()
       .from(promotionSites)
       .where(eq(promotionSites.userId, user.id))
-      .orderBy(asc(promotionSites.name));
+      .orderBy(asc(promotionSites.name))) as PromoSite[];
 
     if (sitesList.length === 0) {
-      sitesList = await db.select().from(promotionSites).orderBy(asc(promotionSites.name));
+      sitesList = (await db.select().from(promotionSites).orderBy(asc(promotionSites.name))) as PromoSite[];
     }
+  } catch (error) {
+    console.error("[personal-life.promotions.loader] sites failed", error);
+    warnings.push("Falha ao carregar sites.");
+  }
 
-    // Concursos Literários
-    const contestsList = await db
+  let contestsList: LiteraryContest[] = [];
+  try {
+    contestsList = (await db
       .select()
       .from(literaryContests)
       .where(eq(literaryContests.userId, user.id))
-      .orderBy(asc(literaryContests.deadline));
+      .orderBy(asc(literaryContests.deadline))) as LiteraryContest[];
+  } catch (error) {
+    console.error("[personal-life.promotions.loader] contests failed", error);
+    warnings.push("Falha ao carregar concursos literários.");
+  }
 
-    // Loterias
-    const lotteriesList = await db
+  let lotteriesList: PersonalLottery[] = [];
+  try {
+    lotteriesList = (await db
       .select()
       .from(personalLotteries)
       .where(and(eq(personalLotteries.userId, user.id), isNull(personalLotteries.deletedAt)))
-      .orderBy(desc(personalLotteries.createdAt));
-
-    return {
-      promotions: filtered as Promotion[],
-      kpis: {
-        active: active.length,
-        won: won.length,
-        expiringSoon: expiringSoon.length,
-        total: allPromotions.length,
-      },
-      statusFilter,
-      pessoasList: pessoasList as Pessoa[],
-      pessoaSearch,
-      sitesList: sitesList as PromoSite[],
-      contestsList: contestsList as LiteraryContest[],
-      lotteriesList: lotteriesList as PersonalLottery[],
-    };
-  } catch {
-    return {
-      promotions: [] as Promotion[],
-      kpis: {
-        active: 0,
-        won: 0,
-        expiringSoon: 0,
-        total: 0,
-      },
-      statusFilter,
-      pessoasList: [] as Pessoa[],
-      pessoaSearch,
-      sitesList: [] as PromoSite[],
-      contestsList: [] as LiteraryContest[],
-      lotteriesList: [] as PersonalLottery[],
-      loadError: "Nao foi possivel carregar as promocoes no momento.",
-    };
+      .orderBy(desc(personalLotteries.createdAt))) as PersonalLottery[];
+  } catch (error) {
+    console.error("[personal-life.promotions.loader] lotteries failed", error);
+    warnings.push("Falha ao carregar loterias.");
   }
+
+  return {
+    promotions: filtered as Promotion[],
+    kpis: {
+      active: active.length,
+      won: won.length,
+      expiringSoon: expiringSoon.length,
+      total: allPromotions.length,
+    },
+    statusFilter,
+    pessoasList,
+    pessoaSearch,
+    sitesList,
+    contestsList,
+    lotteriesList,
+    loadError: warnings.length > 0 ? warnings.join(" ") : null,
+  };
 }
 
 // ── Action ─────────────────────────────────────────────────────────────────
@@ -1102,7 +1111,7 @@ export default function PromotionsPage({
 }: {
   loaderData: Awaited<ReturnType<typeof loader>>;
 }) {
-  const { promotions: promo, kpis, statusFilter, pessoasList, pessoaSearch, sitesList, contestsList, lotteriesList } = loaderData;
+  const { promotions: promo, kpis, statusFilter, pessoasList, pessoaSearch, sitesList, contestsList, lotteriesList, loadError } = loaderData;
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
 
@@ -1256,6 +1265,12 @@ export default function PromotionsPage({
           Concursos, sorteios e promoções — com cadastro de pessoas para participação
         </p>
       </div>
+
+      {loadError && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-300">
+          {loadError}
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1 dark:border-gray-800 dark:bg-gray-900">
