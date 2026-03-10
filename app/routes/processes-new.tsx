@@ -68,11 +68,22 @@ export async function action({ request }: Route.ActionArgs) {
     const year = new Date().getFullYear();
     const prefix = values.processType === "import" ? "IMP" : values.processType === "export" ? "EXP" : "SRV";
 
-    const countResult = await db.execute(
-      sql`SELECT COUNT(*) as cnt FROM processes WHERE reference LIKE ${prefix + "-" + year + "-%"}`
-    );
-    const count = Number(countResult[0]?.cnt || 0) + 1;
-    const reference = `${prefix}-${year}-${String(count).padStart(4, "0")}`;
+    const sequenceResult = await db.execute(sql`
+      SELECT COALESCE(
+        MAX(
+          CASE
+            WHEN split_part(reference, '-', 3) ~ '^[0-9]+$'
+              THEN split_part(reference, '-', 3)::int
+            ELSE 0
+          END
+        ),
+        0
+      ) AS last_seq
+      FROM processes
+      WHERE reference LIKE ${prefix + "-" + year + "-%"}
+    `);
+    const nextSequence = Number(sequenceResult[0]?.last_seq || 0) + 1;
+    const reference = `${prefix}-${year}-${String(nextSequence).padStart(4, "0")}`;
 
     const initialStatus = "draft";
     const costControlEnabled = formData.get("costControlEnabled") === "true";
