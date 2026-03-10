@@ -132,8 +132,11 @@ export async function action({ request }: Route.ActionArgs) {
       userAgent: request.headers.get("user-agent") || "unknown",
     });
 
-    throw redirect(`/processes/${newProcess.id}`);
+    return redirect(`/processes/${newProcess.id}`);
   } catch (error) {
+    if (error instanceof Response) {
+      throw error;
+    }
     console.error("[processes-new.action] failed to create process", error);
     return data(
       { error: "Nao foi possivel salvar o processo. Revise os campos numéricos e tente novamente.", fields: raw as Record<string, string> },
