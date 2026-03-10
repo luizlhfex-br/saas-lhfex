@@ -91,13 +91,13 @@ export async function loader({ request }: { request: Request }) {
   }
 
   const now = Date.now();
-  const cacheKey = "exchange-rate:usd-brl-ptax";
+  const cacheKey = "exchange-rate:usd-brl-ptax:v2";
 
   // Try Redis cache first (1 hour TTL)
   const cached = await getCache<ExchangeRateResponse>(cacheKey);
   if (cached) {
     return Response.json({ ...cached, cached: true }, {
-      headers: { "Cache-Control": "public, max-age=3600" },
+      headers: { "Cache-Control": "public, max-age=300" },
     });
   }
 
@@ -161,6 +161,6 @@ export async function loader({ request }: { request: Request }) {
   cachedRate = result;
 
   return Response.json(result, {
-    headers: { "Cache-Control": "public, max-age=3600" },
+    headers: { "Cache-Control": "public, max-age=300" },
   });
 }

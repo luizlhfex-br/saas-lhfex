@@ -164,7 +164,7 @@ export async function deleteCachePattern(pattern: string): Promise<number> {
  * Cache presets with recommended TTLs
  */
 export const CACHE_TTL = {
-  exchangeRate: 60 * 60,         // 1 hour (cotações mudam frequentemente)
+  exchangeRate: 5 * 60,          // 5 minutes (evita cotação defasada no dashboard)
   cnpjData: 24 * 60 * 60,        // 24 hours (dados cadastrais mudam raramente)
   ncmDescription: 7 * 24 * 60 * 60, // 7 days (nomenclaturas são estáticas)
 } as const;
