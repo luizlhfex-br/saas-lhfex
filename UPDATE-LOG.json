@@ -159,5 +159,28 @@
       "controlUi.allowedOrigins configurado com FQDN público do Coolify",
       "novo ciclo de apply config + update OpenClaw para 2026.3.2"
     ]
+  },
+  "session_2026_03_09_automations_hotfix": {
+    "date": "2026-03-09",
+    "objective": "Eliminar erro 500 da tela /automations em produção",
+    "commits": [
+      {
+        "sha": "pending",
+        "message": "hotfix(automations): tornar loader resiliente e serializavel"
+      }
+    ],
+    "files_changed": [
+      "app/routes/automations.tsx"
+    ],
+    "changes": [
+      "agregacao de lastRun convertida para texto seguro na consulta SQL",
+      "falhas de consulta isoladas por secao (automations, stats, recentLogs, tasks, crons)",
+      "sanitizacao de recentLogs de crons com fallback para array vazio",
+      "retorno do loader preserva dados parciais em vez de quebrar a tela inteira"
+    ],
+    "verification": [
+      "build local concluido com sucesso",
+      "rota /automations preparada para fallback sem 500 por falha parcial"
+    ]
   }
 }

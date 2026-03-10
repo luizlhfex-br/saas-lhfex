@@ -91,26 +91,37 @@ export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
 
   try {
+    const loadWarnings: string[] = [];
+
     const allAutomations = await db
       .select()
       .from(automations)
-      .orderBy(desc(automations.createdAt));
+      .orderBy(desc(automations.createdAt))
+      .catch((error) => {
+        console.error("[automations.loader] failed to load automations", error);
+        loadWarnings.push("automations");
+        return [];
+      });
 
-    // Get last log for each automation
+    // Keep aggregated timestamps serializable and avoid dropping the entire page on partial failures.
     const logs = await db
       .select({
         automationId: automationLogs.automationId,
-        lastRun: sql<string>`max(${automationLogs.executedAt})`,
+        lastRun: sql<string | null>`max(${automationLogs.executedAt})::text`,
         totalRuns: sql<number>`count(*)::int`,
         successCount: sql<number>`count(*) filter (where ${automationLogs.status} = 'success')::int`,
         errorCount: sql<number>`count(*) filter (where ${automationLogs.status} = 'error')::int`,
       })
       .from(automationLogs)
-      .groupBy(automationLogs.automationId);
+      .groupBy(automationLogs.automationId)
+      .catch((error) => {
+        console.error("[automations.loader] failed to load automation stats", error);
+        loadWarnings.push("stats");
+        return [];
+      });
 
     const logMap = new Map(logs.map((l) => [l.automationId, l]));
 
-    // Recent logs for the activity feed
     const recentLogs = await db
       .select({
         id: automationLogs.id,
@@ -124,7 +135,38 @@ export async function loader({ request }: Route.LoaderArgs) {
       .from(automationLogs)
       .leftJoin(automations, eq(automationLogs.automationId, automations.id))
       .orderBy(desc(automationLogs.executedAt))
-      .limit(20);
+      .limit(20)
+      .catch((error) => {
+        console.error("[automations.loader] failed to load recent logs", error);
+        loadWarnings.push("recentLogs");
+        return [];
+      });
+
+    const tasks = await db
+      .select()
+      .from(missionControlTasks)
+      .where(and(eq(missionControlTasks.userId, user.id), isNull(missionControlTasks.deletedAt)))
+      .orderBy(desc(missionControlTasks.createdAt))
+      .catch((error) => {
+        console.error("[automations.loader] failed to load mission tasks", error);
+        loadWarnings.push("tasks");
+        return [];
+      });
+
+    const crons = await db
+      .select()
+      .from(openclawCrons)
+      .orderBy(openclawCrons.name)
+      .catch((error) => {
+        console.error("[automations.loader] failed to load crons", error);
+        loadWarnings.push("crons");
+        return [];
+      });
+
+    const sanitizedCrons = crons.map((cron) => ({
+      ...cron,
+      recentLogs: Array.isArray(cron.recentLogs) ? cron.recentLogs : [],
+    }));
 
     return {
       automations: allAutomations.map((a) => ({
@@ -132,12 +174,9 @@ export async function loader({ request }: Route.LoaderArgs) {
         stats: logMap.get(a.id) || null,
       })),
       recentLogs,
-      tasks: await db
-        .select()
-        .from(missionControlTasks)
-        .where(and(eq(missionControlTasks.userId, user.id), isNull(missionControlTasks.deletedAt)))
-        .orderBy(desc(missionControlTasks.createdAt)),
-      crons: await db.select().from(openclawCrons).orderBy(openclawCrons.name),
+      tasks,
+      crons: sanitizedCrons,
+      loadError: loadWarnings.length ? `Algumas secoes nao carregaram (${loadWarnings.join(", ")}).` : undefined,
     };
   } catch (error) {
     console.error("[automations.loader] failed", error);
