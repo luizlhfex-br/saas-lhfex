@@ -65,25 +65,30 @@ export async function action({ request }: Route.ActionArgs) {
 
   try {
     const values = result.data;
-    const year = new Date().getFullYear();
-    const prefix = values.processType === "import" ? "IMP" : values.processType === "export" ? "EXP" : "SRV";
+    const modalReference = (formData.get("referenceModal") as string | null) ?? "sea";
+    const modalPrefixMap: Record<string, string> = {
+      air: "A",
+      sea: "M",
+      other: "C",
+    };
+    const modalPrefix = modalPrefixMap[modalReference] ?? "C";
+    const yearShort = String(new Date().getFullYear()).slice(-2);
 
     const sequenceResult = await db.execute(sql`
       SELECT COALESCE(
         MAX(
           CASE
-            WHEN split_part(reference, '-', 3) ~ '^[0-9]+$'
-              THEN split_part(reference, '-', 3)::int
+            WHEN substring(reference from '([0-9]+)$') IS NOT NULL
+              THEN substring(reference from '([0-9]+)$')::int
             ELSE 0
           END
         ),
         0
       ) AS last_seq
       FROM processes
-      WHERE reference LIKE ${prefix + "-" + year + "-%"}
     `);
     const nextSequence = Number(sequenceResult[0]?.last_seq || 0) + 1;
-    const reference = `${prefix}-${year}-${String(nextSequence).padStart(4, "0")}`;
+    const reference = `${modalPrefix}-${yearShort}-${String(nextSequence).padStart(3, "0")}`;
 
     const initialStatus = "draft";
     const costControlEnabled = formData.get("costControlEnabled") === "true";
@@ -189,6 +194,14 @@ export default function ProcessesNewPage({ loaderData }: Route.ComponentProps) {
                 <option value="import">{i18n.processes.import}</option>
                 <option value="export">{i18n.processes.export}</option>
                 <option value="services">{i18n.processes.services}</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Modal para Referência</label>
+              <select name="referenceModal" defaultValue={fields.referenceModal || "sea"} className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
+                <option value="air">Aéreo (A)</option>
+                <option value="sea">Marítimo (M)</option>
+                <option value="other">Outro (C)</option>
               </select>
             </div>
             <div>

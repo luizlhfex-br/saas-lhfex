@@ -87,6 +87,22 @@ type CronRow = {
   recentLogs: Array<{ timestamp: string; result: string; notes?: string }> | null;
 };
 
+function isJsonSerializable(value: unknown): boolean {
+  try {
+    JSON.stringify(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function formatDateTime(value: unknown): string {
+  if (!value) return "nunca";
+  const date = value instanceof Date ? value : new Date(String(value));
+  if (Number.isNaN(date.getTime())) return "data inválida";
+  return date.toLocaleString("pt-BR");
+}
+
 export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
 
@@ -120,7 +136,18 @@ export async function loader({ request }: Route.LoaderArgs) {
         return [];
       });
 
-    const logMap = new Map(logs.map((l) => [l.automationId, l]));
+    const logMap = new Map(
+      logs.map((l) => {
+        const parsedLastRun = l.lastRun ? new Date(l.lastRun) : null;
+        return [
+          l.automationId,
+          {
+            ...l,
+            lastRun: parsedLastRun && !Number.isNaN(parsedLastRun.getTime()) ? parsedLastRun.toISOString() : null,
+          },
+        ];
+      })
+    );
 
     const recentLogs = await db
       .select({
@@ -163,17 +190,31 @@ export async function loader({ request }: Route.LoaderArgs) {
         return [];
       });
 
-    const sanitizedCrons = crons.map((cron) => ({
-      ...cron,
-      recentLogs: Array.isArray(cron.recentLogs) ? cron.recentLogs : [],
+    const sanitizedRecentLogs = recentLogs.map((log) => ({
+      ...log,
+      input: isJsonSerializable(log.input) ? log.input : null,
+      errorMessage: typeof log.errorMessage === "string" ? log.errorMessage : null,
     }));
+
+    const sanitizedCrons = crons.map((cron) => {
+      const logsCandidate = Array.isArray(cron.recentLogs) ? cron.recentLogs : [];
+      const safeLogs = logsCandidate.filter((entry) => {
+        if (!entry || typeof entry !== "object") return false;
+        return isJsonSerializable(entry);
+      });
+
+      return {
+        ...cron,
+        recentLogs: safeLogs,
+      };
+    });
 
     return {
       automations: allAutomations.map((a) => ({
         ...a,
         stats: logMap.get(a.id) || null,
       })),
-      recentLogs,
+      recentLogs: sanitizedRecentLogs,
       tasks,
       crons: sanitizedCrons,
       loadError: loadWarnings.length ? `Algumas secoes nao carregaram (${loadWarnings.join(", ")}).` : undefined,
@@ -349,7 +390,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function AutomationsPage({ loaderData }: Route.ComponentProps) {
-  const { automations: autoList, recentLogs, tasks, crons } = loaderData;
+  const { automations: autoList, recentLogs, tasks, crons, loadError } = loaderData;
   const actionData = useActionData<typeof action>();
   const actionError = actionData && "error" in actionData ? actionData.error : undefined;
   const createdOk = Boolean(actionData && "ok" in actionData && actionData.ok);
@@ -500,6 +541,12 @@ export default function AutomationsPage({ loaderData }: Route.ComponentProps) {
           <strong>Automação Pessoal:</strong> o acesso foi centralizado nesta área de IA & Auto. Use os cards de automações e execução manual para fluxos pessoais e operacionais.
         </p>
       </div>
+
+      {loadError && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-300">
+          {loadError}
+        </div>
+      )}
 
       {/* Create form */}
       {activeTab === "automations" && showCreate && (
@@ -686,7 +733,7 @@ export default function AutomationsPage({ loaderData }: Route.ComponentProps) {
                 <div className="mt-3 flex items-center gap-4 text-xs text-gray-400">
                   <span className="flex items-center gap-1">
                     <Clock className="h-3 w-3" />
-                    Última: {auto.stats.lastRun ? new Date(auto.stats.lastRun).toLocaleString("pt-BR") : "nunca"}
+                    Última: {formatDateTime(auto.stats.lastRun)}
                   </span>
                   <span className="flex items-center gap-1 text-green-500">
                     <CheckCircle2 className="h-3 w-3" /> {auto.stats.successCount}
@@ -903,7 +950,7 @@ export default function AutomationsPage({ loaderData }: Route.ComponentProps) {
                       </button>
                     </runFetcher.Form>
                   )}
-                  <span className="text-xs text-gray-400">{new Date(log.executedAt).toLocaleString("pt-BR")}</span>
+                  <span className="text-xs text-gray-400">{formatDateTime(log.executedAt)}</span>
                 </div>
               </div>
             ))}
@@ -1115,7 +1162,7 @@ export default function AutomationsPage({ loaderData }: Route.ComponentProps) {
                       <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{cron.message}</p>
                       {cron.lastRunAt && (
                         <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                          Ultima execucao: {new Date(cron.lastRunAt).toLocaleString("pt-BR")}
+                          Ultima execucao: {formatDateTime(cron.lastRunAt)}
                           {cron.lastRunResult && ` - ${cron.lastRunResult}`}
                         </p>
                       )}
