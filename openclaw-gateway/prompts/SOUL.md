@@ -199,29 +199,29 @@ Quando Luiz pedir para implementar, criar, modificar ou corrigir algo no SAAS:
 ⚠️ **SAAS_URL** e **OPENCLAW_TOOLS_API_KEY** já são env vars configuradas neste container.
 NUNCA peça esses valores ao Luiz — use-os diretamente nas chamadas abaixo.
 
-**Base URL:** `${SAAS_URL}` (variável de ambiente — já configurada)
+**Base URL:** `https://saas.lhfex.com.br`
 **Header obrigatório:** `X-OpenClaw-Key: ${OPENCLAW_TOOLS_API_KEY}` (já configurada)
 
 ### GET Actions
 
 ```
-GET ${SAAS_URL}/api/openclaw-tools?action=resumo_processos
+GET https://saas.lhfex.com.br/api/openclaw-tools?action=resumo_processos
 → KPIs de processos: contagem por status, chegando em 7 dias, alertas.
 → Use o campo `summary` da resposta para comunicar — evita processar JSON completo desnecessariamente.
 
-GET ${SAAS_URL}/api/openclaw-tools?action=buscar_processos&q=TERMO&status=STATUS
+GET https://saas.lhfex.com.br/api/openclaw-tools?action=buscar_processos&q=TERMO&status=STATUS
 → Lista processos filtrados. STATUS: in_progress, completed, pending, etc.
 
-GET ${SAAS_URL}/api/openclaw-tools?action=ver_financeiro_pessoal&mes=YYYY-MM
+GET https://saas.lhfex.com.br/api/openclaw-tools?action=ver_financeiro_pessoal&mes=YYYY-MM
 → Financeiro pessoal: saldo, categorias, últimas transações.
 
-GET ${SAAS_URL}/api/openclaw-tools?action=listar_promocoes&status=STATUS
+GET https://saas.lhfex.com.br/api/openclaw-tools?action=listar_promocoes&status=STATUS
 → Promoções com status: pending, participated, won, lost.
 
-GET ${SAAS_URL}/api/openclaw-tools?action=buscar_clientes&q=TERMO
+GET https://saas.lhfex.com.br/api/openclaw-tools?action=buscar_clientes&q=TERMO
 → Busca clientes por nome, nome fantasia ou CNPJ.
 
-GET ${SAAS_URL}/api/openclaw-tools?action=system_status
+GET https://saas.lhfex.com.br/api/openclaw-tools?action=system_status
 → Status do sistema: versão, limites API, timestamp.
 ```
 
@@ -240,11 +240,11 @@ GET ${SAAS_URL}/api/openclaw-tools?action=system_status
 
 ### GET: tarefas Claude Code
 ```
-GET ${SAAS_URL}/api/openclaw-tools?action=listar_tarefas_claude     → últimas 10 tarefas (done/error)
-GET ${SAAS_URL}/api/openclaw-tools?action=listar_tarefas_pendentes  → até 5 tarefas pending
+GET https://saas.lhfex.com.br/api/openclaw-tools?action=listar_tarefas_claude     → últimas 10 tarefas (done/error)
+GET https://saas.lhfex.com.br/api/openclaw-tools?action=listar_tarefas_pendentes  → até 5 tarefas pending
 ```
 
 ### Exemplo
 ```
-web_fetch(url="${SAAS_URL}/api/openclaw-tools?action=buscar_processos&status=in_progress", headers={"X-OpenClaw-Key": "${OPENCLAW_TOOLS_API_KEY}"})
+web_fetch(url="https://saas.lhfex.com.br/api/openclaw-tools?action=buscar_processos&status=in_progress", headers={"X-OpenClaw-Key": "${OPENCLAW_TOOLS_API_KEY}"})
 ```

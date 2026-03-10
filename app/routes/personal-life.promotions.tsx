@@ -6,7 +6,7 @@
  * Aba 2 — Pessoas: cadastro de contatos pessoais com documentos e senhas (para sorteios)
  */
 
-import { Form, useLoaderData, useNavigation, useFetcher } from "react-router";
+import { Form, useLoaderData, useNavigation, useFetcher, useActionData } from "react-router";
 import { useEffect, useState, useRef } from "react";
 import { requireAuth } from "~/lib/auth.server";
 import { requireRole, ROLES } from "~/lib/rbac.server";
@@ -110,7 +110,15 @@ function normalizeLuckyNumber(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const groups = raw.match(/\d+/g);
   if (!groups || groups.length === 0) return null;
-  const preferred = groups.findLast((g) => g.length >= 4) ?? groups[groups.length - 1];
+  let preferred: string | undefined;
+  for (let i = groups.length - 1; i >= 0; i--) {
+    const group = groups[i];
+    if (group && group.length >= 4) {
+      preferred = group;
+      break;
+    }
+  }
+  if (!preferred) preferred = groups[groups.length - 1];
   return preferred ?? null;
 }
 
@@ -369,7 +377,7 @@ export async function action({ request }: { request: Request }) {
       participationStatus: "pending",
     });
 
-    return data({ success: true });
+    return data({ success: true, intent });
   }
 
   if (intent === "update_status") {
@@ -381,7 +389,7 @@ export async function action({ request }: { request: Request }) {
       .set({ participationStatus: status, updatedAt: new Date() })
       .where(and(eq(promotions.id, promotionId), eq(promotions.userId, user.id)));
 
-    return data({ success: true });
+    return data({ success: true, intent });
   }
 
   if (intent === "delete") {
@@ -391,7 +399,7 @@ export async function action({ request }: { request: Request }) {
       .set({ deletedAt: new Date() })
       .where(and(eq(promotions.id, promotionId), eq(promotions.userId, user.id)));
 
-    return data({ success: true });
+    return data({ success: true, intent });
   }
 
   // ── Pessoas ──
@@ -459,7 +467,7 @@ export async function action({ request }: { request: Request }) {
       });
     }
 
-    return data({ success: true });
+    return data({ success: true, intent });
   }
 
   if (intent === "delete_pessoa") {
@@ -469,7 +477,7 @@ export async function action({ request }: { request: Request }) {
       .set({ deletedAt: new Date() })
       .where(and(eq(pessoas.id, id), eq(pessoas.userId, user.id)));
 
-    return data({ success: true });
+    return data({ success: true, intent });
   }
 
   // ── Sites de Promoções ──
@@ -494,7 +502,7 @@ export async function action({ request }: { request: Request }) {
       await db.insert(promotionSites).values({ userId: user.id, name, url, description, isActive: true });
     }
 
-    return data({ success: true });
+    return data({ success: true, intent });
   }
 
   if (intent === "edit_site") {
@@ -507,7 +515,7 @@ export async function action({ request }: { request: Request }) {
       .update(promotionSites)
       .set({ name, url, description, updatedAt: new Date() })
       .where(and(eq(promotionSites.id, id), eq(promotionSites.userId, user.id)));
-    return data({ success: true });
+    return data({ success: true, intent });
   }
 
   if (intent === "toggle_site") {
@@ -517,7 +525,7 @@ export async function action({ request }: { request: Request }) {
       .update(promotionSites)
       .set({ isActive: !currentActive, updatedAt: new Date() })
       .where(and(eq(promotionSites.id, id), eq(promotionSites.userId, user.id)));
-    return data({ success: true });
+    return data({ success: true, intent });
   }
 
   if (intent === "delete_site") {
@@ -526,7 +534,7 @@ export async function action({ request }: { request: Request }) {
       .update(promotionSites)
       .set({ isActive: false, updatedAt: new Date() })
       .where(and(eq(promotionSites.id, id), eq(promotionSites.userId, user.id)));
-    return data({ success: true });
+    return data({ success: true, intent });
   }
 
   // ── Concursos Literários ──
@@ -541,14 +549,14 @@ export async function action({ request }: { request: Request }) {
     const notes = (formData.get("notes") as string | null)?.trim() || null;
     if (!name) return data({ error: "Nome é obrigatório" }, { status: 400 });
     await db.insert(literaryContests).values({ userId: user.id, name, organizer, theme, modality, deadline, link, prize, notes });
-    return data({ success: true });
+    return data({ success: true, intent });
   }
 
   if (intent === "update_contest_status") {
     const id = formData.get("id") as string;
     const status = formData.get("status") as string;
     await db.update(literaryContests).set({ status, updatedAt: new Date() }).where(and(eq(literaryContests.id, id), eq(literaryContests.userId, user.id)));
-    return data({ success: true });
+    return data({ success: true, intent });
   }
 
   if (intent === "delete_contest") {
@@ -605,7 +613,7 @@ export async function action({ request }: { request: Request }) {
       source: "scpc",
     });
 
-    return data({ success: true, imported: true });
+    return data({ success: true, imported: true, intent });
   }
 
   // ── Loterias (manual) ──
@@ -632,11 +640,14 @@ export async function action({ request }: { request: Request }) {
       hasWon: false,
     });
 
-    return data({ success: true });
+    return data({ success: true, intent });
   }
 
   if (intent === "update_lottery_status") {
     const lotteryId = formData.get("lotteryId") as string;
+    if (!lotteryId) {
+      return data({ error: "Loteria inválida" }, { status: 400 });
+    }
     const status = (formData.get("status") as string | null)?.trim() || "pending";
     const drawResults = (formData.get("drawResults") as string | null)?.trim() || null;
     const winAmountRaw = (formData.get("winAmount") as string | null)?.trim() || "";
@@ -656,17 +667,20 @@ export async function action({ request }: { request: Request }) {
       })
       .where(and(eq(personalLotteries.id, lotteryId), eq(personalLotteries.userId, user.id)));
 
-    return data({ success: true });
+    return data({ success: true, intent });
   }
 
   if (intent === "delete_lottery") {
     const lotteryId = formData.get("lotteryId") as string;
+    if (!lotteryId) {
+      return data({ error: "Loteria inválida" }, { status: 400 });
+    }
     await db
       .update(personalLotteries)
       .set({ deletedAt: new Date(), updatedAt: new Date() })
       .where(and(eq(personalLotteries.id, lotteryId), eq(personalLotteries.userId, user.id)));
 
-    return data({ success: true });
+    return data({ success: true, intent });
   }
 
     return data({ error: "Ação inválida" }, { status: 400 });
@@ -1111,6 +1125,8 @@ export default function PromotionsPage({
 }: {
   loaderData: Awaited<ReturnType<typeof loader>>;
 }) {
+  const actionData = useActionData<typeof action>();
+  const actionPayload = actionData as { success?: boolean; intent?: string; error?: string } | undefined;
   const { promotions: promo, kpis, statusFilter, pessoasList, pessoaSearch, sitesList, contestsList, lotteriesList, loadError } = loaderData;
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
@@ -1165,6 +1181,13 @@ export default function PromotionsPage({
   const inferredLuckyNumberRef = useRef<HTMLInputElement>(null);
 
   const today = new Date().toISOString().split("T")[0];
+
+  useEffect(() => {
+    if (!actionPayload?.success) return;
+    if (actionPayload.intent === "create") setShowForm(false);
+    if (actionPayload.intent === "create_lottery") setShowLotteryForm(false);
+    if (actionPayload.intent === "create_contest") setShowContestForm(false);
+  }, [actionPayload?.intent, actionPayload?.success]);
 
   useEffect(() => {
     if (importFetcher.state !== "idle" || !pendingImportExternalId) return;
@@ -1269,6 +1292,12 @@ export default function PromotionsPage({
       {loadError && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-300">
           {loadError}
+        </div>
+      )}
+
+      {actionPayload?.error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">
+          {actionPayload.error}
         </div>
       )}
 
@@ -1572,7 +1601,7 @@ export default function PromotionsPage({
           {showForm && (
             <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-6 dark:border-indigo-900 dark:bg-indigo-950/30">
               <h3 className="mb-4 font-semibold text-gray-900 dark:text-white">Nova Promoção / Sorteio</h3>
-              <Form method="post" className="space-y-4" onSubmit={() => setShowForm(false)}>
+              <Form method="post" className="space-y-4">
                 <input type="hidden" name="_intent" value="create" />
 
                 {/* Upload de regulamento PDF */}
@@ -2001,7 +2030,7 @@ export default function PromotionsPage({
 
           {showLotteryForm && (
             <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 dark:border-indigo-900 dark:bg-indigo-900/10">
-              <Form method="post" className="space-y-3" onSubmit={() => setShowLotteryForm(false)}>
+              <Form method="post" className="space-y-3">
                 <input type="hidden" name="_intent" value="create_lottery" />
                 <div className="grid gap-3 sm:grid-cols-3">
                   <select
@@ -2459,7 +2488,7 @@ export default function PromotionsPage({
             {/* Formulário de novo literário */}
             {showContestForm && (
               <div className="rounded-xl border border-violet-200 bg-violet-50 p-4 dark:border-violet-900 dark:bg-violet-900/10">
-                <Form method="post" className="space-y-3" onSubmit={() => setShowContestForm(false)}>
+                <Form method="post" className="space-y-3">
                   <input type="hidden" name="_intent" value="create_contest" />
                   <div className="grid gap-3 sm:grid-cols-2">
                     <input

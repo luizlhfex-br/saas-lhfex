@@ -15,6 +15,7 @@ export default [
     route("crm/:id", "routes/crm-detail.tsx"),
     route("crm/:id/edit", "routes/crm-edit.tsx"),
     route("crm/:id/contacts/new", "routes/crm-contacts-new.tsx"),
+    route("crm/:id/contacts/:contactId/edit", "routes/crm-contacts-edit.tsx"),
     route("processes", "routes/processes.tsx"),
     route("processes/kanban", "routes/processes-kanban.tsx"),
     route("processes/new", "routes/processes-new.tsx"),

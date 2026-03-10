@@ -265,6 +265,15 @@ export default function CrmDetailPage({ loaderData }: Route.ComponentProps) {
                         )}
                       </div>
                     </div>
+                    <div className="mt-2 flex justify-end">
+                      <Link
+                        to={`/crm/${client.id}/contacts/${contact.id}/edit`}
+                        className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                      >
+                        <Edit className="h-3 w-3" />
+                        Editar
+                      </Link>
+                    </div>
                     <div className="mt-2 space-y-1">
                       {contact.email && (
                         <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">

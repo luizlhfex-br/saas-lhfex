@@ -29,6 +29,25 @@ export async function action({ request }: Route.ActionArgs) {
   const { user } = await requireAuth(request);
   const formData = await request.formData();
 
+  const normalizeNumericInput = (raw: unknown): string | null => {
+    if (typeof raw !== "string") return null;
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+    const normalized = trimmed.replace(/\./g, "").replace(",", ".");
+    const parsed = Number(normalized);
+    if (!Number.isFinite(parsed)) return null;
+    return String(parsed);
+  };
+
+  const normalizeIntegerInput = (raw: unknown): number | null => {
+    if (typeof raw !== "string") return null;
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+    const parsed = Number.parseInt(trimmed, 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) return null;
+    return parsed;
+  };
+
   const raw: Record<string, unknown> = {};
   for (const [key, value] of formData.entries()) {
     raw[key] = value === "" ? undefined : value;
@@ -44,69 +63,83 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ errors, fields: raw as Record<string, string> }, { status: 400 });
   }
 
-  const values = result.data;
-  const year = new Date().getFullYear();
-  const prefix = values.processType === "import" ? "IMP" : values.processType === "export" ? "EXP" : "SRV";
+  try {
+    const values = result.data;
+    const year = new Date().getFullYear();
+    const prefix = values.processType === "import" ? "IMP" : values.processType === "export" ? "EXP" : "SRV";
 
-  const countResult = await db.execute(
-    sql`SELECT COUNT(*) as cnt FROM processes WHERE reference LIKE ${prefix + "-" + year + "-%"}`
-  );
-  const count = Number(countResult[0]?.cnt || 0) + 1;
-  const reference = `${prefix}-${year}-${String(count).padStart(4, "0")}`;
+    const countResult = await db.execute(
+      sql`SELECT COUNT(*) as cnt FROM processes WHERE reference LIKE ${prefix + "-" + year + "-%"}`
+    );
+    const count = Number(countResult[0]?.cnt || 0) + 1;
+    const reference = `${prefix}-${year}-${String(count).padStart(4, "0")}`;
 
-  const initialStatus = "draft";
-  const costControlEnabled = formData.get("costControlEnabled") === "true";
+    const initialStatus = "draft";
+    const costControlEnabled = formData.get("costControlEnabled") === "true";
 
-  const [newProcess] = await db.insert(processes).values({
-    reference,
-    processType: values.processType,
-    status: initialStatus,
-    requiresApproval: false,
-    clientId: values.clientId,
-    description: values.description || null,
-    hsCode: values.hsCode || null,
-    hsDescription: values.hsDescription || null,
-    incoterm: values.incoterm || null,
-    originCountry: values.originCountry || null,
-    destinationCountry: values.destinationCountry || "Brasil",
-    currency: values.currency || "USD",
-    totalValue: values.totalValue || null,
-    totalWeight: values.totalWeight || null,
-    containerCount: values.containerCount ? parseInt(values.containerCount) : null,
-    containerType: values.containerType || null,
-    vessel: values.vessel || null,
-    bl: values.bl || null,
-    etd: values.etd ? new Date(values.etd) : null,
-    eta: values.eta ? new Date(values.eta) : null,
-    portOfOrigin: values.portOfOrigin || null,
-    portOfDestination: values.portOfDestination || null,
-    customsBroker: values.customsBroker || null,
-    diNumber: values.diNumber || null,
-    googleDriveUrl: values.googleDriveUrl || null,
-    costControlEnabled,
-    estimatedCost: costControlEnabled ? values.estimatedCost || null : null,
-    actualCost: costControlEnabled ? values.actualCost || null : null,
-    costNotes: costControlEnabled ? values.costNotes || null : null,
-    notes: values.notes || null,
-    createdBy: user.id,
-  }).returning({ id: processes.id });
+    const totalValue = normalizeNumericInput(values.totalValue);
+    const totalWeight = normalizeNumericInput(values.totalWeight);
+    const estimatedCost = normalizeNumericInput(values.estimatedCost);
+    const actualCost = normalizeNumericInput(values.actualCost);
+    const containerCount = normalizeIntegerInput(values.containerCount);
 
-  await db.insert(processTimeline).values({
-    processId: newProcess.id,
-    status: initialStatus,
-    title: "Processo criado",
-    description: `Referência: ${reference}`,
-    createdBy: user.id,
-  });
+    const [newProcess] = await db.insert(processes).values({
+      reference,
+      processType: values.processType,
+      status: initialStatus,
+      requiresApproval: false,
+      clientId: values.clientId,
+      description: values.description || null,
+      hsCode: values.hsCode || null,
+      hsDescription: values.hsDescription || null,
+      incoterm: values.incoterm || null,
+      originCountry: values.originCountry || null,
+      destinationCountry: values.destinationCountry || "Brasil",
+      currency: values.currency || "USD",
+      totalValue,
+      totalWeight,
+      containerCount,
+      containerType: values.containerType || null,
+      vessel: values.vessel || null,
+      bl: values.bl || null,
+      etd: values.etd ? new Date(values.etd) : null,
+      eta: values.eta ? new Date(values.eta) : null,
+      portOfOrigin: values.portOfOrigin || null,
+      portOfDestination: values.portOfDestination || null,
+      customsBroker: values.customsBroker || null,
+      diNumber: values.diNumber || null,
+      googleDriveUrl: values.googleDriveUrl || null,
+      costControlEnabled,
+      estimatedCost: costControlEnabled ? estimatedCost : null,
+      actualCost: costControlEnabled ? actualCost : null,
+      costNotes: costControlEnabled ? values.costNotes || null : null,
+      notes: values.notes || null,
+      createdBy: user.id,
+    }).returning({ id: processes.id });
 
-  await db.insert(auditLogs).values({
-    userId: user.id, action: "create", entity: "process", entityId: newProcess.id,
-    changes: { reference, ...values },
-    ipAddress: request.headers.get("x-forwarded-for") || "unknown",
-    userAgent: request.headers.get("user-agent") || "unknown",
-  });
+    await db.insert(processTimeline).values({
+      processId: newProcess.id,
+      status: initialStatus,
+      title: "Processo criado",
+      description: `Referência: ${reference}`,
+      createdBy: user.id,
+    });
 
-  throw redirect(`/processes/${newProcess.id}`);
+    await db.insert(auditLogs).values({
+      userId: user.id, action: "create", entity: "process", entityId: newProcess.id,
+      changes: { reference, ...values },
+      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      userAgent: request.headers.get("user-agent") || "unknown",
+    });
+
+    throw redirect(`/processes/${newProcess.id}`);
+  } catch (error) {
+    console.error("[processes-new.action] failed to create process", error);
+    return data(
+      { error: "Nao foi possivel salvar o processo. Revise os campos numéricos e tente novamente.", fields: raw as Record<string, string> },
+      { status: 500 }
+    );
+  }
 }
 
 export default function ProcessesNewPage({ loaderData }: Route.ComponentProps) {
@@ -117,6 +150,7 @@ export default function ProcessesNewPage({ loaderData }: Route.ComponentProps) {
   const i18n = t(locale);
   const errors = actionData?.errors || {};
   const fields = actionData?.fields || {};
+  const genericError = actionData && "error" in actionData ? actionData.error : null;
 
   return (
     <div className="space-y-6">
@@ -128,6 +162,11 @@ export default function ProcessesNewPage({ loaderData }: Route.ComponentProps) {
       </div>
 
       <Form method="post" className="space-y-8">
+        {genericError && (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">
+            {genericError}
+          </div>
+        )}
         <Section title="Dados Gerais">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>

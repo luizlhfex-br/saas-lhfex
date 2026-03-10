@@ -29,6 +29,16 @@ export async function loader({ request }: Route.LoaderArgs) {
 const fmt = (v: number) =>
   v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+type NcmAllocation = {
+  id: number;
+  code: string;
+  merchandiseValueUsd: number;
+  iiRate: number;
+  ipiRate: number;
+  pisRate: number;
+  cofinsRate: number;
+};
+
 // ─── Tipos de Modalidade ────────────────────────────────────────────────────
 type ModalType = "air_formal" | "courier" | "sea_lcl" | "sea_fcl";
 
@@ -216,6 +226,8 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
   const [pisRate, setPisRate] = useState(2.10);
   const [cofinsRate, setCofinsRate] = useState(9.65);
   const [icmsRate, setIcmsRate] = useState(currentModal.icmsRate);
+  const [ncmAllocations, setNcmAllocations] = useState<NcmAllocation[]>([]);
+  const [nextNcmAllocationId, setNextNcmAllocationId] = useState(1);
 
   // Modal-specific values
   // Aéreo Formal
@@ -266,6 +278,30 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
   const removeExtraCost = (id: number) => setExtraCosts((prev) => prev.filter((e) => e.id !== id));
   const updateExtraCost = (id: number, field: "label" | "value", val: string | number) =>
     setExtraCosts((prev) => prev.map((e) => (e.id === id ? { ...e, [field]: val } : e)));
+
+  const addNcmAllocation = () => {
+    setNcmAllocations((prev) => [
+      ...prev,
+      {
+        id: nextNcmAllocationId,
+        code: ncm || "",
+        merchandiseValueUsd: 0,
+        iiRate,
+        ipiRate,
+        pisRate,
+        cofinsRate,
+      },
+    ]);
+    setNextNcmAllocationId((v) => v + 1);
+  };
+
+  const removeNcmAllocation = (id: number) => {
+    setNcmAllocations((prev) => prev.filter((row) => row.id !== id));
+  };
+
+  const updateNcmAllocation = (id: number, patch: Partial<NcmAllocation>) => {
+    setNcmAllocations((prev) => prev.map((row) => (row.id === id ? { ...row, ...patch } : row)));
+  };
 
   // ─── Cálculos por modalidade ─────────────────────────────────────────────
   const calcResult = (() => {
@@ -327,10 +363,35 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
     const cif = fob + freight + insurance;
     const cifBrl = cif * exchangeRate;
 
-    const ii = cifBrl * (iiRate / 100);
-    const ipi = (cifBrl + ii) * (ipiRate / 100);
-    const pis = cifBrl * (pisRate / 100);
-    const cofins = cifBrl * (cofinsRate / 100);
+    const validAllocations = ncmAllocations.filter((row) => row.merchandiseValueUsd > 0);
+    const totalAllocationUsd = validAllocations.reduce((sum, row) => sum + row.merchandiseValueUsd, 0);
+
+    let ii = cifBrl * (iiRate / 100);
+    let ipi = (cifBrl + ii) * (ipiRate / 100);
+    let pis = cifBrl * (pisRate / 100);
+    let cofins = cifBrl * (cofinsRate / 100);
+
+    if (validAllocations.length > 0 && totalAllocationUsd > 0) {
+      let iiAcc = 0;
+      let ipiAcc = 0;
+      let pisAcc = 0;
+      let cofinsAcc = 0;
+
+      for (const row of validAllocations) {
+        const share = row.merchandiseValueUsd / totalAllocationUsd;
+        const baseShare = cifBrl * share;
+        const iiShare = baseShare * (row.iiRate / 100);
+        iiAcc += iiShare;
+        ipiAcc += (baseShare + iiShare) * (row.ipiRate / 100);
+        pisAcc += baseShare * (row.pisRate / 100);
+        cofinsAcc += baseShare * (row.cofinsRate / 100);
+      }
+
+      ii = iiAcc;
+      ipi = ipiAcc;
+      pis = pisAcc;
+      cofins = cofinsAcc;
+    }
 
     // ICMS MG por dentro
     const icmsSomaTributos = cifBrl + ii + ipi + pis + cofins;
@@ -353,6 +414,7 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
       totalCost,
       freight,
       extraDetails,
+      hasNcmAllocation: validAllocations.length > 0,
     };
   })();
 
@@ -367,6 +429,8 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
     setIpiRate(0);
     setPisRate(2.10);
     setCofinsRate(9.65);
+    setNcmAllocations([]);
+    setNextNcmAllocationId(1);
     setIcmsRate(currentModal.icmsRate);
     setNcm("");
     setNcmDescription("");
@@ -832,6 +896,89 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
               </Button>
             </div>
           </div>
+
+          <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Distribuição por NCM</h2>
+              <Button type="button" variant="outline" size="sm" onClick={addNcmAllocation}>
+                <Plus className="h-4 w-4" />
+                Adicionar NCM
+              </Button>
+            </div>
+            <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
+              Use quando houver embarque com vários NCMs. Informe o valor de mercadoria por NCM e as alíquotas II/IPI/PIS/COFINS de cada item.
+            </p>
+            {ncmAllocations.length === 0 ? (
+              <p className="text-xs text-gray-400 dark:text-gray-500">Sem distribuição ativa. O cálculo usa as alíquotas globais acima.</p>
+            ) : (
+              <div className="space-y-2">
+                {ncmAllocations.map((row) => (
+                  <div key={row.id} className="grid grid-cols-2 gap-2 rounded-lg border border-gray-200 p-2 dark:border-gray-700 sm:grid-cols-7">
+                    <input
+                      type="text"
+                      value={row.code}
+                      onChange={(e) => updateNcmAllocation(row.id, { code: e.target.value })}
+                      placeholder="NCM"
+                      className="rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={row.merchandiseValueUsd || ""}
+                      onChange={(e) => updateNcmAllocation(row.id, { merchandiseValueUsd: parseFloat(e.target.value) || 0 })}
+                      placeholder="Valor USD"
+                      className="rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={row.iiRate || ""}
+                      onChange={(e) => updateNcmAllocation(row.id, { iiRate: parseFloat(e.target.value) || 0 })}
+                      placeholder="II %"
+                      className="rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={row.ipiRate || ""}
+                      onChange={(e) => updateNcmAllocation(row.id, { ipiRate: parseFloat(e.target.value) || 0 })}
+                      placeholder="IPI %"
+                      className="rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={row.pisRate || ""}
+                      onChange={(e) => updateNcmAllocation(row.id, { pisRate: parseFloat(e.target.value) || 0 })}
+                      placeholder="PIS %"
+                      className="rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={row.cofinsRate || ""}
+                      onChange={(e) => updateNcmAllocation(row.id, { cofinsRate: parseFloat(e.target.value) || 0 })}
+                      placeholder="COFINS %"
+                      className="rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeNcmAllocation(row.id)}
+                      className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                      title="Remover NCM"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* ── Coluna Direita: Resultado (sticky) ── */}
@@ -854,6 +1001,11 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
             {ncm && (
               <span className="inline-flex items-center rounded-full bg-purple-100 px-3 py-1 text-xs font-medium font-mono text-purple-700 dark:bg-purple-900/20 dark:text-purple-400">
                 NCM {ncm}
+              </span>
+            )}
+            {calcResult.hasNcmAllocation && (
+              <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300">
+                Multi-NCM ativo
               </span>
             )}
             {modal === "sea_fcl" && (

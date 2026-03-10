@@ -165,7 +165,7 @@
     "objective": "Eliminar erro 500 da tela /automations em produção",
     "commits": [
       {
-        "sha": "pending",
+        "sha": "79ffc8e",
         "message": "hotfix(automations): tornar loader resiliente e serializavel"
       }
     ],
@@ -181,6 +181,40 @@
     "verification": [
       "build local concluido com sucesso",
       "rota /automations preparada para fallback sem 500 por falha parcial"
+    ]
+  },
+  "session_2026_03_09_full_package": {
+    "date": "2026-03-09",
+    "objective": "Pacote unico com correcoes criticas + melhorias funcionais solicitadas",
+    "commits": [
+      {
+        "sha": "pending",
+        "message": "release(2.6.4): processes/promotions/crm/calculator/openclaw + changelog sync"
+      }
+    ],
+    "files_changed": [
+      "app/routes/processes-new.tsx",
+      "app/routes/personal-life.promotions.tsx",
+      "app/routes/crm-detail.tsx",
+      "app/routes/crm-contacts-edit.tsx",
+      "app/routes/calculator.tsx",
+      "app/routes/changelog.tsx",
+      "app/config/version.ts",
+      "app/routes.ts",
+      "openclaw-gateway/openclaw.json",
+      "openclaw-gateway/prompts/SOUL.md"
+    ],
+    "changes": [
+      "Processos: normalizacao de campos numericos e tratamento de erro amigavel no cadastro",
+      "Promocoes/Loterias: feedback de erro visivel e fechamento de formularios somente apos sucesso",
+      "CRM: nova rota de edicao de contato e botao Editar no detalhe do cliente",
+      "Calculadora COMEX: bloco Multi-NCM com valor por NCM e aliquotas II/IPI/PIS/COFINS por item",
+      "Changelog interno: nova release 2.6.4 documentada em /changelog e version history",
+      "OpenClaw: removido fallback com modelo invalido e exemplos com URL fixa do SAAS para evitar Invalid URL"
+    ],
+    "verification": [
+      "build local concluido com sucesso",
+      "sem erros de compilacao nos arquivos alterados"
     ]
   }
 }

@@ -28,6 +28,21 @@ type Entry = {
 
 const CHANGELOG: Entry[] = [
   {
+    date: "2026-03-09",
+    version: "2.6.4",
+    type: "release",
+    title: "Pacote único de correções críticas: Automações, Processos, Promoções/Loterias e CRM",
+    items: [
+      "Fix: /automations com loader resiliente (falhas parciais não derrubam mais a página)",
+      "Fix: /processes/new com normalização de campos numéricos e tratamento explícito de erro de persistência",
+      "Fix: Promoções/Loterias com feedback de erro em tela e fechamento de formulário apenas após sucesso",
+      "CRM: adicionada edição de contatos após cadastro (rota dedicada de edição)",
+      "Calculadora COMEX: novo bloco de distribuição Multi-NCM com alíquotas por NCM (II, IPI, PIS e COFINS)",
+      "OpenClaw: removido fallback com modelo inválido que gerava erro 400 de model ID",
+      "Câmbio: endpoint /api/exchange-rate validado com taxa do dia em 4 casas decimais",
+    ],
+  },
+  {
     date: "2026-03-07",
     version: "2.6.3",
     type: "release",

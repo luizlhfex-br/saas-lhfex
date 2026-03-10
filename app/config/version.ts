@@ -3,8 +3,8 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.6.3";
-export const APP_RELEASE_DATE = "2026-03-07";
+export const APP_VERSION = "2.6.4";
+export const APP_RELEASE_DATE = "2026-03-09";
 export const APP_NAME = "LHFEX SaaS";
 
 export type ChangelogItemType = "feature" | "improvement" | "fix" | "infra";
@@ -20,6 +20,19 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.6.4",
+    date: "2026-03-09",
+    title: "Pacote único de correções críticas e melhorias operacionais",
+    items: [
+      { type: "fix", text: "Automações: loader resiliente com fallback por seção para eliminar 500 total da página" },
+      { type: "fix", text: "Processos: criação com normalização de campos numéricos e mensagem de erro explícita ao usuário" },
+      { type: "fix", text: "Promoções/Loterias: feedback de erro visível e fechamento de formulário somente após sucesso" },
+      { type: "feature", text: "CRM: edição de contato disponível após cadastro, direto na tela do cliente" },
+      { type: "feature", text: "Calculadora COMEX: distribuição Multi-NCM com alíquotas individuais de II, IPI, PIS e COFINS" },
+      { type: "improvement", text: "OpenClaw: removida referência a modelo inválido e exemplos com URL real do SAAS" },
+    ],
+  },
   {
     version: "2.6.3",
     date: "2026-03-07",
