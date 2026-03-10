@@ -1408,13 +1408,14 @@ export default function PromotionsPage({
           {/* Botões */}
           <div className="flex gap-2 justify-end">
             <Button
+              type="button"
               variant="outline"
               onClick={() => { setShowScpc((v) => !v); setShowForm(false); }}
             >
               <Search className="mr-2 h-4 w-4" />
               {showScpc ? "Fechar SCPC" : "🏛️ Buscar no SCPC"}
             </Button>
-            <Button onClick={() => { setShowForm((v) => !v); setShowScpc(false); }}>
+            <Button type="button" onClick={() => { setShowForm((v) => !v); setShowScpc(false); }}>
               <Plus className="mr-2 h-4 w-4" />
               {showForm ? "Fechar" : "Nova Promoção"}
             </Button>
@@ -1601,7 +1602,7 @@ export default function PromotionsPage({
           {showForm && (
             <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-6 dark:border-indigo-900 dark:bg-indigo-950/30">
               <h3 className="mb-4 font-semibold text-gray-900 dark:text-white">Nova Promoção / Sorteio</h3>
-              <Form method="post" className="space-y-4">
+              <Form method="post" action="/personal-life/promotions" className="space-y-4">
                 <input type="hidden" name="_intent" value="create" />
 
                 {/* Upload de regulamento PDF */}
@@ -1851,7 +1852,7 @@ export default function PromotionsPage({
                   ? "Nenhuma promoção ativa. Adicione uma!"
                   : "Nenhuma promoção nesta categoria."}
               </p>
-              <Button className="mt-4" onClick={() => setShowForm(true)}>
+              <Button type="button" className="mt-4" onClick={() => setShowForm(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Adicionar promoção
               </Button>
@@ -2001,7 +2002,7 @@ export default function PromotionsPage({
             <p className="text-sm text-gray-500 dark:text-gray-400">
               Controle manual: cadastrar aposta, conferir resultado e fechar com/sem ganho.
             </p>
-            <Button size="sm" onClick={() => setShowLotteryForm((v) => !v)}>
+            <Button type="button" size="sm" onClick={() => setShowLotteryForm((v) => !v)}>
               <Plus className="mr-1 h-4 w-4" />
               {showLotteryForm ? "Fechar" : "Nova Aposta"}
             </Button>
@@ -2030,7 +2031,7 @@ export default function PromotionsPage({
 
           {showLotteryForm && (
             <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 dark:border-indigo-900 dark:bg-indigo-900/10">
-              <Form method="post" className="space-y-3">
+              <Form method="post" action="/personal-life/promotions" className="space-y-3">
                 <input type="hidden" name="_intent" value="create_lottery" />
                 <div className="grid gap-3 sm:grid-cols-3">
                   <select
