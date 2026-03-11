@@ -2,7 +2,7 @@ import { Link, useFetcher } from "react-router";
 import type { Route } from "./+types/financial-detail";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
-import { invoices, clients, invoiceItems, companyProfile, companyBankAccounts } from "drizzle/schema";
+import { invoices, clients, contacts, invoiceItems, companyProfile, companyBankAccounts } from "drizzle/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { t, type Locale } from "~/i18n";
 import { ArrowLeft, FileText, DollarSign, Printer, Mail, CheckCircle2, AlertCircle } from "lucide-react";
@@ -28,7 +28,15 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const invoice = invoiceResult[0];
 
   const [clientResult, items] = await Promise.all([
-    db.select({ razaoSocial: clients.razaoSocial, email: clients.email }).from(clients).where(eq(clients.id, invoice.clientId)).limit(1),
+    db
+      .select({ razaoSocial: clients.razaoSocial, email: contacts.email })
+      .from(clients)
+      .leftJoin(
+        contacts,
+        and(eq(contacts.clientId, clients.id), eq(contacts.isPrimary, true), isNull(contacts.deletedAt))
+      )
+      .where(eq(clients.id, invoice.clientId))
+      .limit(1),
     db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, invoice.id)),
   ]);
 
@@ -64,7 +72,15 @@ export async function action({ request, params }: Route.ActionArgs) {
     const company = companyResult[0] || null;
 
     const [clientResult, items] = await Promise.all([
-      db.select({ razaoSocial: clients.razaoSocial, email: clients.email }).from(clients).where(eq(clients.id, invoice.clientId)).limit(1),
+      db
+        .select({ razaoSocial: clients.razaoSocial, email: contacts.email })
+        .from(clients)
+        .leftJoin(
+          contacts,
+          and(eq(contacts.clientId, clients.id), eq(contacts.isPrimary, true), isNull(contacts.deletedAt))
+        )
+        .where(eq(clients.id, invoice.clientId))
+        .limit(1),
       db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, invoice.id)),
     ]);
 

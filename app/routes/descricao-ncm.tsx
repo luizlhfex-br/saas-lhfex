@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Form, useNavigation } from "react-router";
-import type { Route } from "./+types/descricao-ncm";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
 import { descriptionNcmItems } from "drizzle/schema";
@@ -15,7 +14,7 @@ import { data } from "react-router";
 import { eq, desc } from "drizzle-orm";
 import { buildApiError } from "~/lib/api-error";
 
-export async function loader({ request }: Route.LoaderArgs) {
+export async function loader({ request }: { request: Request }) {
   const { user } = await requireAuth(request);
   const cookieHeader = request.headers.get("cookie") || "";
   const localeMatch = cookieHeader.match(/locale=([^;]+)/);
@@ -31,7 +30,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   return { locale, history, userId: user.id };
 }
 
-export async function action({ request }: Route.ActionArgs) {
+export async function action({ request }: { request: Request }) {
   const { user } = await requireAuth(request);
   const formData = await request.formData();
   const intent = formData.get("intent") as string;
@@ -124,7 +123,13 @@ export async function action({ request }: Route.ActionArgs) {
   return null;
 }
 
-export default function DescricaoNcmPage({ loaderData, actionData }: Route.ComponentProps) {
+export default function DescricaoNcmPage({
+  loaderData,
+  actionData,
+}: {
+  loaderData: Awaited<ReturnType<typeof loader>>;
+  actionData?: unknown;
+}) {
   const { history } = loaderData;
   const navigation = useNavigation();
   const isClassifying = navigation.state === "submitting" && navigation.formData?.get("intent") === "classify";
@@ -317,7 +322,7 @@ export default function DescricaoNcmPage({ loaderData, actionData }: Route.Compo
           </div>
 
           <div className="divide-y divide-gray-100 dark:divide-gray-800">
-            {history.map((item) => (
+            {history.map((item: (typeof history)[number]) => (
               <div key={item.id} className="py-4 first:pt-0 last:pb-0">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">

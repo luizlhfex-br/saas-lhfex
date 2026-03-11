@@ -28,6 +28,17 @@ type Entry = {
 
 const CHANGELOG: Entry[] = [
   {
+    date: "2026-03-11",
+    type: "fix",
+    title: "Estabilidade de build: Descrição/NCM e detalhe financeiro",
+    items: [
+      "Fix: descricao-ncm removido import de tipo gerado ausente (+types/descricao-ncm), eliminando erro de compilação",
+      "Fix: descricao-ncm tipagem explícita no map do histórico para remover any implícito",
+      "Fix: financial-detail deixou de usar clients.email (campo inexistente) e passou a buscar e-mail via contato primário",
+      "Stability: fluxo de envio de fatura por e-mail mantido com fallback quando cliente não possui contato com e-mail",
+    ],
+  },
+  {
     date: "2026-03-10",
     version: "2.7.0",
     type: "release",
