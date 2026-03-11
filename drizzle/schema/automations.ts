@@ -1,5 +1,5 @@
 import { pgTable, uuid, varchar, text, timestamp, boolean, jsonb, pgEnum, index } from "drizzle-orm/pg-core";
-import { users } from "./auth";
+import { users, companies } from "./auth";
 
 export const triggerTypeEnum = pgEnum("trigger_type", [
   "process_status_change",
@@ -20,6 +20,7 @@ export const automationStatusEnum = pgEnum("automation_log_status", ["success", 
 
 export const automations = pgTable("automations", {
   id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
   name: varchar("name", { length: 200 }).notNull(),
   description: text("description"),
   triggerType: triggerTypeEnum("trigger_type").notNull(),
@@ -31,6 +32,7 @@ export const automations = pgTable("automations", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
+  index("automations_company_id_idx").on(table.companyId),
   index("automations_enabled_idx").on(table.enabled),
 ]);
 

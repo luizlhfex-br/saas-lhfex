@@ -1,5 +1,5 @@
 import { pgTable, uuid, varchar, text, timestamp, integer, numeric, boolean, pgEnum, index } from "drizzle-orm/pg-core";
-import { users } from "./auth";
+import { users, companies } from "./auth";
 import { clients } from "./crm";
 
 export const processTypeEnum = pgEnum("process_type", ["import", "export", "services"]);
@@ -10,6 +10,7 @@ export const processStatusEnum = pgEnum("process_status", [
 
 export const processes = pgTable("processes", {
   id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
   reference: varchar("reference", { length: 50 }).notNull().unique(),
   processType: processTypeEnum("process_type").notNull(),
   status: processStatusEnum("status").notNull().default("draft"),
@@ -51,6 +52,7 @@ export const processes = pgTable("processes", {
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 }, (table) => [
   index("processes_client_id_idx").on(table.clientId),
+  index("processes_company_id_idx").on(table.companyId),
   index("processes_status_idx").on(table.status),
   index("processes_created_by_idx").on(table.createdBy),
 ]);

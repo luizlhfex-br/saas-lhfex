@@ -1,5 +1,5 @@
 import { pgTable, uuid, varchar, text, timestamp, numeric, date, pgEnum, index } from "drizzle-orm/pg-core";
-import { users } from "./auth";
+import { users, companies } from "./auth";
 import { clients } from "./crm";
 import { processes } from "./processes";
 
@@ -8,6 +8,7 @@ export const transactionTypeEnum = pgEnum("transaction_type", ["receivable", "pa
 
 export const invoices = pgTable("invoices", {
   id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
   number: varchar("number", { length: 50 }).notNull().unique(),
   clientId: uuid("client_id").notNull().references(() => clients.id, { onDelete: "restrict" }),
   processId: uuid("process_id").references(() => processes.id, { onDelete: "set null" }),
@@ -30,6 +31,7 @@ export const invoices = pgTable("invoices", {
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 }, (table) => [
   index("invoices_client_id_idx").on(table.clientId),
+  index("invoices_company_id_idx").on(table.companyId),
   index("invoices_process_id_idx").on(table.processId),
   index("invoices_status_idx").on(table.status),
 ]);

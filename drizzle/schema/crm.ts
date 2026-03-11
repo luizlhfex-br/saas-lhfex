@@ -1,11 +1,12 @@
 import { pgTable, uuid, varchar, text, timestamp, boolean, pgEnum, index } from "drizzle-orm/pg-core";
-import { users } from "./auth";
+import { users, companies } from "./auth";
 
 export const clientTypeEnum = pgEnum("client_type", ["importer", "exporter", "both"]);
 export const clientStatusEnum = pgEnum("client_status", ["active", "inactive", "prospect"]);
 
 export const clients = pgTable("clients", {
   id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
   cnpj: text("cnpj").notNull(),
   razaoSocial: varchar("razao_social", { length: 500 }).notNull(),
   nomeFantasia: varchar("nome_fantasia", { length: 500 }),
@@ -24,6 +25,7 @@ export const clients = pgTable("clients", {
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 }, (table) => [
   index("clients_cnpj_idx").on(table.cnpj),
+  index("clients_company_idx").on(table.companyId),
   index("clients_status_idx").on(table.status),
 ]);
 

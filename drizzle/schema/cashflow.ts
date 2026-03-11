@@ -6,10 +6,11 @@
  */
 
 import { pgTable, uuid, date, varchar, text, numeric, timestamp, index } from "drizzle-orm/pg-core";
-import { users } from "./auth";
+import { users, companies } from "./auth";
 
 export const cashMovements = pgTable("cash_movements", {
   id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
   date: date("date").notNull(), // Data do lançamento
   type: varchar("type", { length: 10 }).notNull(), // "income" | "expense"
   category: varchar("category", { length: 100 }).notNull(), // Categoria (ex: "Vendas", "Salários", "Marketing")
@@ -25,6 +26,7 @@ export const cashMovements = pgTable("cash_movements", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
   index("cash_movements_date_idx").on(table.date),
+  index("cash_movements_company_id_idx").on(table.companyId),
   index("cash_movements_type_idx").on(table.type),
   index("cash_movements_category_idx").on(table.category),
   index("cash_movements_created_by_idx").on(table.createdBy),
