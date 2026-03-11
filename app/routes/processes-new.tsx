@@ -88,7 +88,7 @@ export async function action({ request }: Route.ActionArgs) {
       FROM processes
     `);
     const nextSequence = Number(sequenceResult[0]?.last_seq || 0) + 1;
-    const reference = `${modalPrefix}-${yearShort}-${String(nextSequence).padStart(3, "0")}`;
+    const reference = `${modalPrefix}${yearShort}${String(nextSequence).padStart(3, "0")}`;
 
     const initialStatus = "draft";
     const costControlEnabled = formData.get("costControlEnabled") === "true";
@@ -154,8 +154,9 @@ export async function action({ request }: Route.ActionArgs) {
       throw error;
     }
     console.error("[processes-new.action] failed to create process", error);
+    const msg = error instanceof Error ? error.message : "Erro desconhecido";
     return data(
-      { error: "Nao foi possivel salvar o processo. Revise os campos numéricos e tente novamente.", fields: raw as Record<string, string> },
+      { error: `Não foi possível salvar o processo: ${msg}`, fields: raw as Record<string, string> },
       { status: 500 }
     );
   }
@@ -197,7 +198,7 @@ export default function ProcessesNewPage({ loaderData }: Route.ComponentProps) {
               </select>
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Modal para Referência</label>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Referência</label>
               <select name="referenceModal" defaultValue={fields.referenceModal || "sea"} className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
                 <option value="air">Aéreo (A)</option>
                 <option value="sea">Marítimo (M)</option>

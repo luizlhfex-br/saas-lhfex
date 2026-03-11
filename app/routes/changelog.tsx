@@ -28,6 +28,24 @@ type Entry = {
 
 const CHANGELOG: Entry[] = [
   {
+    date: "2026-03-10",
+    version: "2.7.0",
+    type: "release",
+    title: "Módulo Descrição/NCM + PTAX Venda + Referência sem traços + Migrations pendentes",
+    items: [
+      "COMEX: novo módulo Descrição/NCM — IA gera descrição robusta (DI/DUIMP) + sugere NCM com justificativa",
+      "COMEX: módulo Descrição/NCM com workflow de aprovação/revisão e histórico completo",
+      "Câmbio: dólar agora usa PTAX Venda do BCB (taxa oficial de importação) em vez de média compra/venda",
+      "Câmbio: PTAX Venda é a taxa primária no Dashboard; AwesomeAPI é fallback",
+      "Processos: referência sem traços — formato A26001, M26002, C26003 (aéreo/marítimo/outro)",
+      "Processos: label 'Modal para Referência' renomeado para 'Referência'",
+      "Processos: mensagem de erro ao salvar agora exibe causa real do banco",
+      "Promoções/Loterias: mensagem de erro humanizada (sem exibir SQL bruto)",
+      "Infra: migrations 0004-0007 aplicadas (lucky numbers, loterias, custos por processo, descrição/NCM)",
+      "Fix: /automations — API de logs agora com try/catch (evita 500 do fetcher) + ErrorBoundary dedicado na rota",
+    ],
+  },
+  {
     date: "2026-03-09",
     version: "2.6.4",
     type: "release",

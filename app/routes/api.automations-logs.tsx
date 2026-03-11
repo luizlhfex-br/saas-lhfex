@@ -14,6 +14,7 @@ function escapeCsv(value: unknown): string {
 export async function loader({ request }: Route.LoaderArgs) {
   await requireAuth(request);
 
+  try {
   const url = new URL(request.url);
   const q = (url.searchParams.get("q") || "").trim();
   const mode = (url.searchParams.get("mode") || "all").toLowerCase();
@@ -168,4 +169,21 @@ export async function loader({ request }: Route.LoaderArgs) {
     },
     topErrorAutomations,
   });
+  } catch (error) {
+    console.error("[api.automations-logs] loader failed", error);
+    return data({
+      logs: [],
+      page: 1,
+      pageSize: 10,
+      hasPrev: false,
+      hasNext: false,
+      mode: "all",
+      status: "all",
+      period: "7d",
+      q: "",
+      metrics: null,
+      topErrorAutomations: [],
+      error: error instanceof Error ? error.message : "Falha ao carregar logs",
+    });
+  }
 }

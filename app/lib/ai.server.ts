@@ -1061,6 +1061,76 @@ Responda em JSON com as chaves: "ncm", "description", "justification"`;
   };
 }
 
+/**
+ * Gera descrição robusta + classifica NCM a partir de dados do item.
+ * Módulo COMEX Descrição/NCM — usa DeepSeek para classificação técnica.
+ */
+export async function classifyDescriptionNCM(
+  inputDescription: string,
+  supplier: string | null,
+  referenceNumber: string | null,
+  userId: string,
+): Promise<{ ncm: string; description: string; justification: string }> {
+  const context = [
+    inputDescription,
+    supplier ? `Fornecedor: ${supplier}` : "",
+    referenceNumber ? `Referência: ${referenceNumber}` : "",
+  ].filter(Boolean).join("\n");
+
+  const systemPrompt = `Você é um Especialista Sênior em Classificação Fiscal e Engenharia Aduaneira para importações brasileiras.
+
+Sua tarefa é analisar a descrição do item/produto fornecida pelo usuário e:
+
+1. GERAR uma DESCRIÇÃO ROBUSTA em PT-BR, usando o formato abaixo (Prompt Blindado 2.0):
+
+FORMATO OBRIGATÓRIO:
+[NOME DO PRODUTO EM MAIÚSCULAS]
+
+FUNÇÃO: [descrever ação física principal com verbos no infinitivo];
+APLICAÇÃO: [ambiente operacional e finalidade logística/industrial];
+CARACTERÍSTICAS TÉCNICAS E COMPOSIÇÃO: [motorização, capacidade nominal, fonte de energia, componentes essenciais, material, dimensões quando aplicável. Incluir OBRIGATORIAMENTE: "Acompanha carregador e bateria essenciais para seu pleno funcionamento" quando aplicável];
+MODELO: [Descrição em inglês + código do modelo se fornecido];
+ENQUADRAMENTO TÉCNICO-LEGAL: [Justificativa NCM usando RGI 1 e 6 + atributos de risco].
+
+2. SUGERIR a NCM (Nomenclatura Comum do Mercosul) mais adequada com 8 dígitos
+
+3. JUSTIFICAR a classificação NCM usando as Regras Gerais Interpretativas (RGI) 1 e 6
+
+REGRAS:
+- Use termos NESH quando aplicável (autopropulsado, contrabalançada, etc)
+- Evite termos genéricos — seja PRECISO e TÉCNICO
+- Se a descrição for vaga, faça a melhor inferência possível e indique incerteza na justificativa
+- O fornecedor e referência são opcionais, use se disponíveis para enriquecer contexto
+- A descrição gerada deve ser robusta o suficiente para DI/DUIMP
+
+Responda SOMENTE em JSON com as chaves: "ncm", "description", "justification"`;
+
+  const result = await askAgent("iana", `${systemPrompt}\n\n---\n\n${context}`, userId, {
+    feature: "description_ncm",
+    forceProvider: "deepseek",
+  });
+
+  try {
+    const jsonMatch = result.content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      return {
+        ncm: parsed.ncm || "",
+        description: parsed.description || "",
+        justification: parsed.justification || "",
+      };
+    }
+  } catch {
+    console.error("[DescriptionNCM] Failed to parse AI response");
+  }
+
+  return {
+    ncm: "",
+    description: result.content,
+    justification: "",
+  };
+}
+
 // --- CNPJ Enrichment via BrasilAPI ---
 
 interface CNPJData {

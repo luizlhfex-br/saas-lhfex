@@ -26,3 +26,4 @@ export * from "./personal-studies";
 export * from "./clean-days";
 export * from "./claude-tasks";
 export * from "./productivity";
+export * from "./description-ncm";

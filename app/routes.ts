@@ -25,6 +25,7 @@ export default [
     route("calculator", "routes/calculator.tsx"),
     route("ncm", "routes/ncm.tsx"),
     route("ex-tarifarios", "routes/ex-tarifarios.tsx"),
+    route("descricao-ncm", "routes/descricao-ncm.tsx"),
     route("financial", "routes/financial.tsx"),
     route("financial/new", "routes/financial-new.tsx"),
     route("financial/:id", "routes/financial-detail.tsx"),

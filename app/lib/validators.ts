@@ -89,6 +89,13 @@ export const ncmClassificationSchema = z.object({
 
 export type NcmClassificationInput = z.infer<typeof ncmClassificationSchema>;
 
+export const descricaoNcmSchema = z.object({
+  inputDescription: z
+    .string()
+    .min(5, "Descrição deve ter pelo menos 5 caracteres")
+    .max(5000, "Descrição muito longa"),
+});
+
 export const invoiceSchema = z.object({
   clientId: z.string().min(1, "Cliente é obrigatório"),
   processId: z.string().optional(),

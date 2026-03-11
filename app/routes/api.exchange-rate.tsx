@@ -17,7 +17,7 @@ interface ExchangeRateResponse {
 }
 
 /**
- * Busca PTAX do Banco Central do Brasil (média diária dólar comercial).
+ * Busca PTAX Venda do Banco Central do Brasil (cotação de venda do dólar comercial).
  * Usado para cálculos aduaneiros — base legal para importação.
  * API pública: https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata
  */
@@ -53,9 +53,9 @@ async function fetchPTAX(): Promise<number | null> {
       if (values && values.length > 0) {
         const compra = parseFloat(values[0].cotacaoCompra);
         const venda = parseFloat(values[0].cotacaoVenda);
-        if (!isNaN(compra) && !isNaN(venda)) {
-          // PTAX médio (compra + venda) / 2
-          return Math.round(((compra + venda) / 2) * 10000) / 10000;
+        if (!isNaN(venda)) {
+          // PTAX Venda (taxa oficial de importação)
+          return Math.round(venda * 10000) / 10000;
         }
       }
     } catch {
@@ -137,10 +137,12 @@ export async function loader({ request }: { request: Request }) {
     // AwesomeAPI falhou
   }
 
-  // AwesomeAPI vira fonte primária para dashboard; PTAX fica como referência complementar.
-  const rate = bid || ptax || 5.5;
-  if (!bid && ptax) {
-    marketSource = "bcb_ptax_fallback";
+  // PTAX Venda é a referência oficial para importação; AwesomeAPI é fallback.
+  const rate = ptax || ask || bid || 5.5;
+  if (ptax) {
+    marketSource = "bcb_ptax_venda";
+  } else if (!bid && !ask) {
+    marketSource = "fallback";
   }
   const effectiveBid = bid || rate;
   const effectiveAsk = ask || rate;

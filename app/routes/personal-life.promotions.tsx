@@ -686,7 +686,24 @@ export async function action({ request }: { request: Request }) {
     return data({ error: "Ação inválida" }, { status: 400 });
   } catch (error) {
     console.error("[personal-life.promotions] action failed", error);
-    const message = error instanceof Error ? error.message : "Falha ao processar a solicitacao. Tente novamente.";
+    let message = "Falha ao processar a solicitação. Tente novamente.";
+    if (error instanceof Error) {
+      // Strip raw SQL from user-facing message
+      const raw = error.message;
+      if (raw.includes("Failed query:")) {
+        const relation = raw.match(/relation "([^"]+)" does not exist/)?.[1];
+        const column = raw.match(/column "([^"]+)" .* does not exist/)?.[1];
+        if (relation) {
+          message = `Tabela "${relation}" não encontrada no banco. Verifique se as migrations estão aplicadas.`;
+        } else if (column) {
+          message = `Coluna "${column}" não encontrada. Verifique se as migrations estão aplicadas.`;
+        } else {
+          message = "Erro ao salvar no banco de dados. Verifique os campos e tente novamente.";
+        }
+      } else {
+        message = raw;
+      }
+    }
     return data({ error: message }, { status: 500 });
   }
 }

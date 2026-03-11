@@ -67,6 +67,7 @@ const otherBusinessNavItems: NavItem[] = [
 const comexNavItems: NavItem[] = [
   { labelKey: "calculator", icon: Calculator, to: "/calculator" },
   { labelKey: "ncm", icon: Search, to: "/ncm" },
+  { label: "Descrição/NCM", icon: FileText, to: "/descricao-ncm" },
   { label: "Ex-Tarifarios", icon: FileText, to: "/ex-tarifarios" },
 ];
 
@@ -79,7 +80,7 @@ const aiAutomationNavItems: NavItem[] = [
 export function Sidebar({ user, locale, currentPath, collapsed, onToggle }: SidebarProps) {
   const i18n = t(locale);
   const [openGroups, setOpenGroups] = useState({
-    comex: currentPath.startsWith("/calculator") || currentPath.startsWith("/ncm") || currentPath.startsWith("/ex-tarifarios"),
+    comex: currentPath.startsWith("/calculator") || currentPath.startsWith("/ncm") || currentPath.startsWith("/ex-tarifarios") || currentPath.startsWith("/descricao-ncm"),
     aiAutomation:
       currentPath.startsWith("/automations") ||
       currentPath.startsWith("/agents") ||
