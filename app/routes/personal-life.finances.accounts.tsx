@@ -2,7 +2,8 @@ import { Form, Link, redirect, useLoaderData, useNavigation } from "react-router
 import { and, desc, eq } from "drizzle-orm";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
-import { companyProfile, fireflyAccounts } from "../../drizzle/schema";
+import { getOrCreatePrimaryCompanyProfile } from "~/lib/company-profile.server";
+import { fireflyAccounts } from "../../drizzle/schema";
 
 const accountTypeLabel: Record<string, string> = {
 	asset: "Ativo",
@@ -14,9 +15,7 @@ const accountTypeLabel: Record<string, string> = {
 
 export async function loader({ request }: { request: Request }) {
 	await requireAuth(request);
-	const [company] = await db.select().from(companyProfile).limit(1);
-
-	if (!company) return { company: null, accounts: [] };
+	const company = await getOrCreatePrimaryCompanyProfile();
 
 	const accounts = await db
 		.select()
@@ -31,9 +30,7 @@ export async function action({ request }: { request: Request }) {
 	await requireAuth(request);
 	const formData = await request.formData();
 	const intent = String(formData.get("intent") || "");
-	const [company] = await db.select().from(companyProfile).limit(1);
-
-	if (!company) return redirect("/settings");
+	const company = await getOrCreatePrimaryCompanyProfile();
 
 	if (intent === "create") {
 		const name = String(formData.get("name") || "").trim();
@@ -76,10 +73,6 @@ export async function action({ request }: { request: Request }) {
 export default function PersonalLifeFinancesAccountsPage() {
 	const { company, accounts } = useLoaderData<typeof loader>();
 	const navigation = useNavigation();
-
-	if (!company) {
-		return <div className="rounded-xl border border-gray-200 bg-white p-6 text-sm dark:border-gray-800 dark:bg-gray-900">Configure a empresa em Configurações para usar o Firefly.</div>;
-	}
 
 	return (
 		<div className="mx-auto max-w-6xl space-y-6">

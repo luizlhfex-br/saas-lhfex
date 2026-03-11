@@ -7,8 +7,8 @@ import { Link, useLoaderData } from "react-router";
 import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
+import { getOrCreatePrimaryCompanyProfile } from "~/lib/company-profile.server";
 import {
-  companyProfile,
   fireflyAccounts,
   fireflyTransactions,
 } from "../../drizzle/schema";
@@ -35,9 +35,7 @@ const PIE_COLORS = [
 
 export async function loader({ request }: { request: Request }) {
   await requireAuth(request);
-
-  const [company] = await db.select().from(companyProfile).limit(1);
-  if (!company) return { company: null, monthly: [], categories: [], accounts: [], totalBalance: 0 };
+  const company = await getOrCreatePrimaryCompanyProfile();
 
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
@@ -130,16 +128,6 @@ const fmtBRL = (v: number) =>
 export default function FinancesAnalyticsPage() {
   const { company, monthly, categories, accounts, totalBalance, totalLiability, netWorth } =
     useLoaderData<typeof loader>();
-
-  if (!company) {
-    return (
-      <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          Configure o perfil da empresa em Configurações para ativar as finanças.
-        </p>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">

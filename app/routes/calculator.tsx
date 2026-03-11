@@ -5,6 +5,7 @@ import { t, type Locale } from "~/i18n";
 import {
   Calculator,
   RotateCcw,
+  Copy,
   Search,
   Ship,
   Plane,
@@ -270,6 +271,7 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
   type ExtraCost = { id: number; label: string; value: number };
   const [extraCosts, setExtraCosts] = useState<ExtraCost[]>([]);
   const [nextExtraId, setNextExtraId] = useState(1);
+  const [copyFeedback, setCopyFeedback] = useState(false);
 
   const addExtraCost = () => {
     setExtraCosts((prev) => [...prev, { id: nextExtraId, label: "", value: 0 }]);
@@ -501,6 +503,33 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
   };
 
   const colors = colorClasses[currentModal.color as keyof typeof colorClasses];
+
+  const simulationSummary = [
+    "Simulacao Comex",
+    `Modalidade: ${currentModal.label}`,
+    `NCM: ${ncm || "nao informado"}`,
+    `Cambio (BRL/USD): ${exchangeRate.toFixed(4)}`,
+    `CIF USD: ${fmt(calcResult.cif)}`,
+    `CIF BRL: ${fmt(calcResult.cifBrl)}`,
+    `II: ${fmt(calcResult.ii)}`,
+    `IPI: ${fmt(calcResult.ipi)}`,
+    `PIS: ${fmt(calcResult.pis)}`,
+    `COFINS: ${fmt(calcResult.cofins)}`,
+    `ICMS: ${fmt(calcResult.icms)}`,
+    `Impostos Totais: ${fmt(calcResult.totalTaxes)}`,
+    `Custos Nacionais: ${fmt(calcResult.custosBrasileiros)}`,
+    `Custo Total: ${fmt(calcResult.totalCost)}`,
+  ].join("\n");
+
+  const handleCopySummary = async () => {
+    try {
+      await navigator.clipboard.writeText(simulationSummary);
+      setCopyFeedback(true);
+      setTimeout(() => setCopyFeedback(false), 1500);
+    } catch {
+      setCopyFeedback(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -1114,6 +1143,13 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
             * Simulação estimada. ICMS calculado por dentro (MG). Consulte um despachante para valores
             oficiais.
           </p>
+
+          <div className="mt-3">
+            <Button type="button" variant="outline" size="sm" onClick={handleCopySummary}>
+              <Copy className="h-4 w-4" />
+              {copyFeedback ? "Resumo copiado" : "Copiar resumo"}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

@@ -2,8 +2,8 @@ import { Form, Link, redirect, useLoaderData } from "react-router";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
+import { getOrCreatePrimaryCompanyProfile } from "~/lib/company-profile.server";
 import {
-	companyProfile,
 	fireflyAccounts,
 	fireflyTransactions,
 	fireflyBudgets,
@@ -12,28 +12,7 @@ import {
 
 export async function loader({ request }: { request: Request }) {
 	await requireAuth(request);
-
-	const [company] = await db.select().from(companyProfile).limit(1);
-
-	if (!company) {
-		return {
-			company: null,
-			kpis: {
-				accountsTotal: 0,
-				activeAccounts: 0,
-				transactionsTotal: 0,
-				unreconciledTotal: 0,
-				budgetsTotal: 0,
-				activeBudgets: 0,
-				recurringTotal: 0,
-				activeRecurring: 0,
-				totalBalance: 0,
-			},
-			recentTransactions: [],
-			recentBudgets: [],
-			upcomingRecurring: [],
-		};
-	}
+	const company = await getOrCreatePrimaryCompanyProfile();
 
 	const [accounts, txRows, budgetRows, recurringRows, recentTransactions, recentBudgets, upcomingRecurring] = await Promise.all([
 		db.select().from(fireflyAccounts).where(eq(fireflyAccounts.companyId, company.id)),
@@ -115,9 +94,7 @@ export async function action({ request }: { request: Request }) {
 	await requireAuth(request);
 	const formData = await request.formData();
 	const intent = String(formData.get("intent") || "");
-
-	const [company] = await db.select().from(companyProfile).limit(1);
-	if (!company) return redirect("/settings");
+	const company = await getOrCreatePrimaryCompanyProfile();
 
 	if (intent === "toggle_reconciled") {
 		const transactionId = String(formData.get("transactionId") || "");
@@ -139,17 +116,6 @@ export async function action({ request }: { request: Request }) {
 
 export default function PersonalLifeFinancesPage() {
 	const { company, kpis, recentTransactions, recentBudgets, upcomingRecurring } = useLoaderData<typeof loader>();
-
-	if (!company) {
-		return (
-			<div className="mx-auto max-w-4xl rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-				<h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Firefly Accounting</h1>
-				<p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-					Configure primeiro o perfil da empresa em Configurações para ativar o módulo contábil.
-				</p>
-			</div>
-		);
-	}
 
 	return (
 		<div className="mx-auto max-w-7xl space-y-6">

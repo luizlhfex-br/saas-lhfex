@@ -29,6 +29,18 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-11",
+    type: "feat",
+    title: "Fases internas: Finanças pessoais destravadas + Compras públicas em produção + Comex resumo rápido",
+    items: [
+      "Firefly/Finanças pessoais: bootstrap automático de company_profile, removendo bloqueio por ausência de configuração inicial",
+      "Firefly: rotas filhas registradas em /personal-life/finances (accounts, transactions, budgets, recurring)",
+      "Compras públicas: /public-procurement/:noticeId agora carrega dados reais do banco (edital, itens e histórico)",
+      "Compras públicas: ações de alteração de status, inclusão de item e cancelamento registram trilha em public_procurement_history",
+      "Comex/Calculadora: botão para copiar resumo técnico-financeiro da simulação (CIF, tributos e custo total)",
+    ],
+  },
+  {
+    date: "2026-03-11",
     type: "fix",
     title: "Estabilidade de build: Descrição/NCM e detalhe financeiro",
     items: [
