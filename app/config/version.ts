@@ -3,8 +3,8 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.6.4";
-export const APP_RELEASE_DATE = "2026-03-09";
+export const APP_VERSION = "2.8.0";
+export const APP_RELEASE_DATE = "2026-03-12";
 export const APP_NAME = "LHFEX SaaS";
 
 export type ChangelogItemType = "feature" | "improvement" | "fix" | "infra";
@@ -20,6 +20,16 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.8.0",
+    date: "2026-03-12",
+    title: "Novo formato de referencia de processos por modal",
+    items: [
+      { type: "feature", text: "Processos: referencias agora seguem o formato A26-001, M26-001 e C26-001" },
+      { type: "improvement", text: "Processos: sequencia reinicia por modal dentro do ano corrente" },
+      { type: "fix", text: "Processos: remocao dos registros de teste IMP-2026-0001 e A26002 da base" },
+    ],
+  },
   {
     version: "2.6.4",
     date: "2026-03-09",

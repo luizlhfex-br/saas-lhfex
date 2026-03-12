@@ -75,21 +75,25 @@ export async function action({ request }: Route.ActionArgs) {
     const modalPrefix = modalPrefixMap[modalReference] ?? "C";
     const yearShort = String(new Date().getFullYear()).slice(-2);
 
+    // Sequência independente por modal: A26-001, M26-001, C26-001
+    // Filtra processos do mesmo prefixo (ex: 'A') e ano (ex: '26')
+    const prefixPattern = `${modalPrefix}${yearShort}%`;
     const sequenceResult = await db.execute(sql`
       SELECT COALESCE(
         MAX(
           CASE
-            WHEN substring(reference from '([0-9]+)$') IS NOT NULL
-              THEN substring(reference from '([0-9]+)$')::int
+            WHEN reference ~ ${`^${modalPrefix}${yearShort}-[0-9]+$`}
+              THEN substring(reference from '-([0-9]+)$')::int
             ELSE 0
           END
         ),
         0
       ) AS last_seq
       FROM processes
+      WHERE reference LIKE ${prefixPattern}
     `);
     const nextSequence = Number(sequenceResult[0]?.last_seq || 0) + 1;
-    const reference = `${modalPrefix}${yearShort}${String(nextSequence).padStart(3, "0")}`;
+    const reference = `${modalPrefix}${yearShort}-${String(nextSequence).padStart(3, "0")}`;
 
     const initialStatus = "draft";
     const costControlEnabled = formData.get("costControlEnabled") === "true";
@@ -170,8 +174,8 @@ export default function ProcessesNewPage({ loaderData }: Route.ComponentProps) {
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
   const i18n = t(locale);
-  const errors = actionData?.errors || {};
-  const fields = actionData?.fields || {};
+  const errors = actionData && "errors" in actionData ? actionData.errors : {};
+  const fields = actionData?.fields ?? {};
   const genericError = actionData && "error" in actionData ? actionData.error : null;
 
   return (

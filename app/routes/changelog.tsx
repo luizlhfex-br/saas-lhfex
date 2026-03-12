@@ -28,6 +28,19 @@ type Entry = {
 
 const CHANGELOG: Entry[] = [
   {
+    date: "2026-03-12",
+    version: "2.8.0",
+    type: "release",
+    title: "Formato A26-001 com sequencia por modal",
+    items: [
+      "Processos: referencia passou a usar o padrao A26-001, M26-001 e C26-001 conforme o modal",
+      "Processos: proxima numeracao agora e calculada por prefixo e ano, evitando colisao entre modais",
+      "Banco: registros de teste IMP-2026-0001 e A26002 removidos da tabela processes",
+      "Infra: .env.codex ignorado pelo Git para proteger credenciais locais",
+      "Documentacao: backlog IDEAS.md atualizado com Edge-TTS e notas do SandeClaw",
+    ],
+  },
+  {
     date: "2026-03-11",
     commit: "8268979",
     type: "fix",

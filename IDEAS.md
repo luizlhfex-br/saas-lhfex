@@ -1,55 +1,67 @@
 # IDEAS — Backlog de Ideias Futuras LHFEX
-> Alimentado continuamente. Última atualização: 2026-03-05
+> Alimentado continuamente. Ultima atualizacao: 2026-03-11
 
 ---
 
 ## 🤖 OpenClaw / AI
 
+### Edge-TTS — Respostas em Audio no Telegram ⭐ PRIORIDADE
+- Fonte: analise do projeto SandeClaw (github.com/sandeco/prompts/SandeClaw)
+- Microsoft Edge TTS gratuito, qualidade natural, multiplas vozes pt-BR
+- Permitiria o bot OpenClaw responder com audio alem de texto
+- Implementacao: skill customizada ou exec que chama edge-tts CLI
+- Instalacao: `pip install edge-tts` no container + script wrapper
+- Vozes recomendadas: `pt-BR-AntonioNeural` (masc), `pt-BR-FranciscaNeural` (fem)
+- Caso de uso: resumos longos, relatorios, briefings matinais em audio
+- Referencia: SandeClaw usava edge-tts + Whisper STT para loop completo voz-a-voz
+
+### Ideias Aproveitadas do SandeClaw (NAO criar projeto, roubar ideias)
+- **Hot-reload de skills YAML**: ClawhHub ja faz isso, mas formato YAML do SandeClaw e mais limpo para skills customizadas
+- **ReAct pattern explicito**: OpenClaw ja implementa internamente, mas documentar como referencia para Skills 2.0
+- **Memory window (N ultimas msgs)**: OpenClaw ja tem compaction + contextPruning configurados
+- **Factory pattern para LLMs**: ja implementado em ai.server.ts com providerCallMap
+- **Decisao final**: SandeClaw NAO vale criar — OpenClaw ja faz tudo e mais (crons, browser, 50+ skills, multi-agente)
+
 ### Camoufox (Anti-bot Browser)
 - https://github.com/daijro/camoufox
-- Fork do Firefox com fingerprint anti-detecção
+- Fork do Firefox com fingerprint anti-detecao
 - Usar se OpenClaw bater CAPTCHA em SISCOMEX, RF, MDIC
 - Config: `browser.executablePath` no openclaw.json
 
-### OpenClaw Update (v2026.2.26 → v2026.3.x)
-- Atualizar via terminal do container: `openclaw update`
-- OU atualizar base image no Dockerfile e redeploy
-- Verificar changelog antes (possíveis breaking changes)
-
 ### Groq Whisper para Audio no OpenClaw
-- OpenClaw gateway recebe voice do Telegram mas não transcreve
+- OpenClaw gateway recebe voice do Telegram mas nao transcreve
 - Fix: skill customizada que chama Groq Whisper via exec/web_fetch
-- GROQ_API_KEY já existe no container
+- GROQ_API_KEY ja existe no container
 - Endpoint: POST https://api.groq.com/openai/v1/audio/transcriptions
 
-### Gemini Flash Lite (Otimização de Custo)
+### Gemini Flash Lite (Otimizacao de Custo)
 - Flash-Lite 2.0: 25% mais barato no tier pago, mesma velocidade no free
-- Usar para AIrton/IAgo (queries simples) e manter Flash 2.0 para IAna/marIA
-- Mudança: alterar model ID em ai.server.ts + openclaw.json
+- Usar para queries simples (heartbeat, status) e manter Flash 2.0 para analises complexas
+- Mudanca: alterar model ID em ai.server.ts + openclaw.json
 
 ### DeepSeek Reasoner para NCM Complexo
 - deepseek/deepseek-reasoner (via OpenRouter)
-- Para classificações NCM ambíguas com raciocínio multi-etapas
-- Adicionar como opção `forceProvider: "deepseek-reasoner"` no askAgent
+- Para classificacoes NCM ambiguas com raciocinio multi-etapas
+- Adicionar como opcao `forceProvider: "deepseek-reasoner"` no askAgent
 
 ### Skills ClawhHub — Considerar Depois
-- **Proactive Agent** (55k downloads) — autonomia total + WAL Protocol + crons próprios
-- **Gog** (82k) — Gmail, Calendar, Drive, Sheets para automação de email de comex
-- **Agent Browser** (67k) — browser Rust ultra-rápido, alternativa ao Playwright
-- **ByteRover** (24k) — banco de conhecimento persistente para contexto histórico
-- **Nano PDF** (36k) — edição de PDFs com linguagem natural
-- **API Gateway** (33k, 59 versões) — conecta 100+ APIs (HubSpot, Airtable, LinkedIn)
+- **Proactive Agent** (55k downloads) — autonomia total + WAL Protocol + crons proprios
+- **Gog** (82k) — Gmail, Calendar, Drive, Sheets para automacao de email de comex
+- **Agent Browser** (67k) — browser Rust ultra-rapido, alternativa ao Playwright
+- **ByteRover** (24k) — banco de conhecimento persistente para contexto historico
+- **Nano PDF** (36k) — edicao de PDFs com linguagem natural
+- **API Gateway** (33k, 59 versoes) — conecta 100+ APIs (HubSpot, Airtable, LinkedIn)
 - **Skill Creator** (24k) — criar skills personalizadas para LHFEX
-- **YouTube Watcher** (23k) — transcrever vídeos de treinamento/regulatório
+- **YouTube Watcher** (23k) — transcrever videos de treinamento/regulatorio
 
 ### Jina AI MCP Server
 - https://github.com/jina-ai/MCP
-- Alternativa à chamada direta via web_fetch
+- Alternativa a chamada direta via web_fetch
 - Instalar via mcporter skill: mais integrado ao OpenClaw
 
 ### Tavily MCP Server
 - https://mcp.tavily.com/mcp/?tavilyApiKey=API_KEY
-- Remote MCP server, alternativa à skill ClawhHub
+- Remote MCP server, alternativa a skill ClawhHub
 - Instalar via mcporter para ter tool nativa `tavily_search`
 
 ---
