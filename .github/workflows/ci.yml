@@ -152,18 +152,60 @@ jobs:
     needs: [build, e2e-tests]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
-      - name: Validate Coolify webhook secret
+      - name: Validate Coolify deploy secrets
         env:
-          COOLIFY_WEBHOOK_URL: ${{ secrets.COOLIFY_WEBHOOK_URL }}
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+          COOLIFY_APP_UUID: ${{ secrets.COOLIFY_APP_UUID }}
+          COOLIFY_BASE_URL: ${{ secrets.COOLIFY_BASE_URL }}
         run: |
-          if [ -z "$COOLIFY_WEBHOOK_URL" ]; then
-            echo "Missing required secret: COOLIFY_WEBHOOK_URL"
+          for secret_name in COOLIFY_API_TOKEN COOLIFY_APP_UUID COOLIFY_BASE_URL; do
+            if [ -z "${!secret_name}" ]; then
+              echo "Missing required secret: $secret_name"
+              exit 1
+            fi
+          done
+
+      - name: Trigger Coolify deployment
+        id: coolify_deploy
+        env:
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+          COOLIFY_APP_UUID: ${{ secrets.COOLIFY_APP_UUID }}
+          COOLIFY_BASE_URL: ${{ secrets.COOLIFY_BASE_URL }}
+        run: |
+          RESPONSE=$(curl -fsS -X POST \
+            -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
+            "${COOLIFY_BASE_URL}/api/v1/applications/${COOLIFY_APP_UUID}/start?force=true")
+          echo "$RESPONSE"
+          DEPLOYMENT_UUID=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("deployment_uuid",""))' "$RESPONSE")
+          if [ -z "$DEPLOYMENT_UUID" ]; then
+            echo "Coolify API did not return deployment_uuid"
             exit 1
           fi
+          echo "deployment_uuid=$DEPLOYMENT_UUID" >> "$GITHUB_OUTPUT"
 
-      - name: Trigger Coolify webhook
+      - name: Wait for Coolify deployment
         env:
-          COOLIFY_WEBHOOK_URL: ${{ secrets.COOLIFY_WEBHOOK_URL }}
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+          COOLIFY_BASE_URL: ${{ secrets.COOLIFY_BASE_URL }}
+          DEPLOYMENT_UUID: ${{ steps.coolify_deploy.outputs.deployment_uuid }}
         run: |
-          curl -fsS -X POST "$COOLIFY_WEBHOOK_URL"
-          echo "Coolify deploy webhook triggered successfully"
+          echo "Monitoring deployment $DEPLOYMENT_UUID"
+          for attempt in $(seq 1 30); do
+            RESPONSE=$(curl -fsS \
+              -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
+              "${COOLIFY_BASE_URL}/api/v1/deployments/${DEPLOYMENT_UUID}")
+            STATUS=$(python3 -c 'import json,sys; print(str(json.loads(sys.argv[1]).get("status","unknown")).lower())' "$RESPONSE")
+            echo "Attempt $attempt/30: status=$STATUS"
+            case "$STATUS" in
+              finished|success|successful|completed)
+                exit 0
+                ;;
+              failed|failure|error|canceled|cancelled)
+                echo "$RESPONSE"
+                exit 1
+                ;;
+            esac
+            sleep 10
+          done
+          echo "Timed out waiting for Coolify deployment to finish"
+          exit 1
