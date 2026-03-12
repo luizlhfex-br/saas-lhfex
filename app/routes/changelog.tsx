@@ -29,6 +29,19 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-11",
+    commit: "8268979",
+    type: "fix",
+    title: "Hardening multi-tenant em finanças e vida pessoal",
+    items: [
+      "Segurança: filtro obrigatório por companyId em financial-detail (loader e action), bloqueando acesso cruzado entre empresas",
+      "Segurança: cashflow server passou a exigir companyId e aplicar isolamento por tenant em consultas de movimentos",
+      "Segurança: rota financial-cashflow agora resolve companyId do usuário autenticado antes de carregar dados",
+      "Infra: correção de sintaxe em routes.ts para manter registro e typegen de rotas estáveis",
+      "Deploy: pacote publicado em main para atualização automática do SAAS no Coolify",
+    ],
+  },
+  {
+    date: "2026-03-11",
     commit: "8970386",
     type: "feat",
     title: "Fases internas concluídas (F0-F4): finanças pessoais, compras públicas e comex operacional",
