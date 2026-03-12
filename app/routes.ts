@@ -123,7 +123,6 @@ export default [
   route("api/radio-monitor-song", "routes/api.radio-monitor-song.tsx"),
   route("api/scpc-search", "routes/api.scpc-search.tsx"),
   route("api/personal-studies", "routes/api.personal-studies.tsx"),
-  route("api/migrate-8", "routes/api.migrate-8.tsx"),
 
   // Catch-all 404
   route("*", "routes/$.tsx"),
