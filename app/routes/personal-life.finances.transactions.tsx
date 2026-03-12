@@ -1,12 +1,14 @@
 import { Form, Link, redirect, useLoaderData, useNavigation } from "react-router";
 import { and, desc, eq } from "drizzle-orm";
 import { requireAuth } from "~/lib/auth.server";
+import { requireRole, ROLES } from "~/lib/rbac.server";
 import { db } from "~/lib/db.server";
 import { getOrCreatePrimaryCompanyProfile } from "~/lib/company-profile.server";
 import { fireflyAccounts, fireflyTransactions } from "../../drizzle/schema";
 
 export async function loader({ request }: { request: Request }) {
-	await requireAuth(request);
+	const { user } = await requireAuth(request);
+	await requireRole(user, [ROLES.LUIZ]);
 	const company = await getOrCreatePrimaryCompanyProfile();
 
 	const [accounts, transactions] = await Promise.all([
@@ -28,7 +30,8 @@ export async function loader({ request }: { request: Request }) {
 }
 
 export async function action({ request }: { request: Request }) {
-	await requireAuth(request);
+	const { user } = await requireAuth(request);
+	await requireRole(user, [ROLES.LUIZ]);
 	const formData = await request.formData();
 	const intent = String(formData.get("intent") || "");
 	const company = await getOrCreatePrimaryCompanyProfile();

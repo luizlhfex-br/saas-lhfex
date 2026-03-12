@@ -6,6 +6,7 @@
 import { Link, useLoaderData } from "react-router";
 import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { requireAuth } from "~/lib/auth.server";
+import { requireRole, ROLES } from "~/lib/rbac.server";
 import { db } from "~/lib/db.server";
 import { getOrCreatePrimaryCompanyProfile } from "~/lib/company-profile.server";
 import {
@@ -34,7 +35,8 @@ const PIE_COLORS = [
 ];
 
 export async function loader({ request }: { request: Request }) {
-  await requireAuth(request);
+  const { user } = await requireAuth(request);
+  await requireRole(user, [ROLES.LUIZ]);
   const company = await getOrCreatePrimaryCompanyProfile();
 
   const sixMonthsAgo = new Date();

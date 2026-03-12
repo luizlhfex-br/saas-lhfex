@@ -2,7 +2,7 @@ import { randomBytes } from "crypto";
 import { hash, compare } from "bcryptjs";
 import { eq, and, gt } from "drizzle-orm";
 import { db } from "./db.server";
-import { users, sessions } from "../../drizzle/schema";
+import { users, sessions, userCompanies } from "../../drizzle/schema";
 import { hashToken } from "./crypto.server";
 
 const SESSION_COOKIE = "__session";
@@ -21,8 +21,15 @@ export async function createSession(userId: string, request: Request): Promise<s
   const tokenHashed = hashToken(token);
   const expiresAt = new Date(Date.now() + SESSION_MAX_AGE * 1000);
 
+  const [primaryCompany] = await db
+    .select({ companyId: userCompanies.companyId })
+    .from(userCompanies)
+    .where(and(eq(userCompanies.userId, userId), eq(userCompanies.isPrimary, true)))
+    .limit(1);
+
   await db.insert(sessions).values({
     userId,
+    companyId: primaryCompany?.companyId ?? null,
     tokenHash: tokenHashed,
     expiresAt,
     ipAddress: request.headers.get("x-forwarded-for") || "unknown",

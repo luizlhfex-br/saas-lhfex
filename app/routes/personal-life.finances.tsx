@@ -1,6 +1,7 @@
 import { Form, Link, redirect, useLoaderData } from "react-router";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { requireAuth } from "~/lib/auth.server";
+import { requireRole, ROLES } from "~/lib/rbac.server";
 import { db } from "~/lib/db.server";
 import { getOrCreatePrimaryCompanyProfile } from "~/lib/company-profile.server";
 import {
@@ -11,7 +12,8 @@ import {
 } from "../../drizzle/schema";
 
 export async function loader({ request }: { request: Request }) {
-	await requireAuth(request);
+	const { user } = await requireAuth(request);
+	await requireRole(user, [ROLES.LUIZ]);
 	const company = await getOrCreatePrimaryCompanyProfile();
 
 	const [accounts, txRows, budgetRows, recurringRows, recentTransactions, recentBudgets, upcomingRecurring] = await Promise.all([
@@ -91,7 +93,8 @@ export async function loader({ request }: { request: Request }) {
 }
 
 export async function action({ request }: { request: Request }) {
-	await requireAuth(request);
+	const { user } = await requireAuth(request);
+	await requireRole(user, [ROLES.LUIZ]);
 	const formData = await request.formData();
 	const intent = String(formData.get("intent") || "");
 	const company = await getOrCreatePrimaryCompanyProfile();
@@ -121,7 +124,7 @@ export default function PersonalLifeFinancesPage() {
 		<div className="mx-auto max-w-7xl space-y-6">
 			<div className="flex items-center justify-between">
 				<div>
-					<h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Firefly Accounting</h1>
+					<h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Finanças Pessoais</h1>
 					<p className="text-sm text-gray-500 dark:text-gray-400">Dashboard contábil completo: contas, lançamentos, orçamentos e recorrências</p>
 				</div>
 				<Link

@@ -5,6 +5,7 @@ import { getUserLocale } from "~/lib/i18n.server";
 import { t } from "~/i18n";
 import { ChevronLeft, ChevronRight, Plus, Upload, TrendingUp, TrendingDown, DollarSign, ArrowDownCircle, ArrowUpCircle, LayoutDashboard } from "lucide-react";
 import { Button } from "~/components/ui/button";
+import { getPrimaryCompanyId } from "~/lib/company-context.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { getCashFlowForMonth } = await import("~/lib/cashflow.server");
@@ -18,8 +19,10 @@ export async function loader({ request }: Route.LoaderArgs) {
   const period = url.searchParams.get("period") || "this_month";
   const startDate = url.searchParams.get("startDate") || undefined;
   const endDate = url.searchParams.get("endDate") || undefined;
+  const companyId = await getPrimaryCompanyId(user.id);
 
   const cashflow = await getCashFlowForMonth(year, month, {
+    companyId,
     userId: user.id,
     period: period as "this_month" | "last_month" | "this_year" | "custom",
     startDate,

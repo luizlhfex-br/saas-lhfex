@@ -6,6 +6,7 @@ import { db } from "~/lib/db.server";
 import { automations, automationLogs, missionControlTasks, openclawCrons } from "../../drizzle/schema";
 import { eq, desc, sql, and, isNull } from "drizzle-orm";
 import { data, redirect } from "react-router";
+import { getPrimaryCompanyId } from "~/lib/company-context.server";
 import { Zap, Plus, ToggleLeft, ToggleRight, Trash2, Clock, CheckCircle2, XCircle, SkipForward, Play, RotateCcw, Target, Timer, CircleDot, AlertCircle, RefreshCw, Inbox, ChevronRight } from "lucide-react";
 import { Button } from "~/components/ui/button";
 
@@ -317,7 +318,7 @@ export async function action({ request }: Route.ActionArgs) {
         return data({ error: "Automação inválida" }, { status: 400 });
       }
       const currentlyEnabled = formData.get("enabled") === "true";
-      await db.update(automations).set({ enabled: !currentlyEnabled, updatedAt: new Date() }).where(eq(automations.id, id));
+      await db.update(automations).set({ enabled: !currentlyEnabled, updatedAt: new Date() }).where(and(eq(automations.id, id), eq(automations.companyId, await getPrimaryCompanyId(user.id))));
       return data({ ok: true });
     }
 
@@ -326,7 +327,7 @@ export async function action({ request }: Route.ActionArgs) {
       if (!id) {
         return data({ error: "Automação inválida" }, { status: 400 });
       }
-      await db.delete(automations).where(eq(automations.id, id));
+      await db.delete(automations).where(and(eq(automations.id, id), eq(automations.companyId, await getPrimaryCompanyId(user.id))));
       return data({ ok: true });
     }
 
@@ -370,6 +371,7 @@ export async function action({ request }: Route.ActionArgs) {
       }
 
       await db.insert(automations).values({
+        companyId: await getPrimaryCompanyId(user.id),
         name,
         triggerType: triggerType as any,
         triggerConfig,

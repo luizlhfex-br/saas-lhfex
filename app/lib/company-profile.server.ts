@@ -15,5 +15,6 @@ export async function getOrCreatePrimaryCompanyProfile() {
     })
     .returning();
 
+  if (!created) throw new Error("Failed to create company profile");
   return created;
 }

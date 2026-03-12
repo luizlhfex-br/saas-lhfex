@@ -9,6 +9,7 @@ import { Button } from "~/components/ui/button";
 import { Plus, Search, Users, Eye, Edit, Building2, X } from "lucide-react";
 import { formatCNPJ } from "~/lib/utils";
 import { Pagination } from "~/components/ui/pagination";
+import { getPrimaryCompanyId } from "~/lib/company-context.server";
 
 const ITEMS_PER_PAGE = 20;
 
@@ -25,7 +26,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const locale = (localeMatch ? localeMatch[1] : user.locale) as Locale;
 
   // Build where conditions
-  const conditions = [isNull(clients.deletedAt)];
+  const conditions = [isNull(clients.deletedAt), eq(clients.companyId, await getPrimaryCompanyId(user.id))];
 
   if (statusFilter !== "all") {
     conditions.push(eq(clients.status, statusFilter as "active" | "inactive" | "prospect"));

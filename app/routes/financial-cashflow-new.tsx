@@ -11,6 +11,7 @@ import { data } from "react-router";
 import { ChevronLeft } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { and, eq } from "drizzle-orm";
+import { getPrimaryCompanyId } from "~/lib/company-context.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
@@ -90,6 +91,7 @@ export async function action({ request }: Route.ActionArgs) {
 
   // Insert into DB
   await db.insert(cashMovements).values({
+    companyId: await getPrimaryCompanyId(user.id),
     date,
     type,
     category,

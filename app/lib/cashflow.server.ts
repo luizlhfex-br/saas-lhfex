@@ -47,6 +47,7 @@ export interface CashFlowSummary {
 export type CashflowQuickPeriod = "this_month" | "last_month" | "this_year" | "custom";
 
 interface CashFlowFilters {
+  companyId: string;
   userId?: string;
   period?: CashflowQuickPeriod;
   startDate?: string;
@@ -127,6 +128,10 @@ function getRangeForFilters(year: number, month: number, filters?: CashFlowFilte
  * @returns Resumo com lançamentos, totais e agrupamento por categoria
  */
 export async function getCashFlowForMonth(year: number, month: number, filters?: CashFlowFilters): Promise<CashFlowSummary> {
+  if (!filters?.companyId) {
+    throw new Error("companyId is required for cashflow queries");
+  }
+
   const { startISO, endISO, year: resolvedYear, month: resolvedMonth } = getRangeForFilters(year, month, filters);
 
   // Buscar todos os lançamentos do mês
@@ -147,6 +152,7 @@ export async function getCashFlowForMonth(year: number, month: number, filters?:
     .from(cashMovements)
     .where(and(
       sql`${cashMovements.date} >= ${startISO} AND ${cashMovements.date} <= ${endISO}`,
+      eq(cashMovements.companyId, filters.companyId),
       filters?.userId ? eq(cashMovements.createdBy, filters.userId) : undefined,
     ))
     .orderBy(cashMovements.date, cashMovements.createdAt);

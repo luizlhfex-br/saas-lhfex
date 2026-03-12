@@ -73,6 +73,8 @@ export default [
     route("other-business", "routes/other-business.tsx"),
     route("other-business/internet", "routes/other-business.internet.tsx"),
     route("other-business/apps", "routes/other-business.apps.tsx"),
+    route("notifications", "routes/notifications.tsx"),
+    route("financial/fatura-print", "routes/financial-fatura-print.tsx"),
   ]),
 
   // API routes
@@ -87,6 +89,14 @@ export default [
   route("api/ncm-taxes", "routes/api.ncm-taxes.tsx"),
   route("api/health", "routes/api.health.tsx"),
   route("api/notifications", "routes/api.notifications.tsx"),
+  route("api/google/auth", "routes/api.google-auth.tsx"),
+  route("api/google/callback", "routes/api.google-callback.tsx"),
+  route("api/cron", "routes/api.cron.tsx"),
+  route("api/ai-diagnostics", "routes/api.ai-diagnostics.tsx"),
+  route("api/chat-health", "routes/api.chat-health.tsx"),
+  route("api/export-financial-sheets", "routes/api.export-financial-sheets.tsx"),
+  route("api/monitor-openclaw", "routes/api.monitor-openclaw.tsx"),
+  route("api/openclaw-announce", "routes/api.openclaw-announce.tsx"),
   route("api/telegram-webhook", "routes/api.telegram-webhook.tsx"),
   route("api/ocr-extract", "routes/api.ocr-extract.tsx"),
   route("api/promotion-extract", "routes/api.promotion-extract.tsx"),

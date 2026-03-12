@@ -8,9 +8,11 @@ import { t, type Locale } from "~/i18n";
 import { ArrowLeft, FileText, DollarSign, Printer, Mail, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { data } from "react-router";
+import { getPrimaryCompanyId } from "~/lib/company-context.server";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
+  const companyId = await getPrimaryCompanyId(user.id);
   const cookieHeader = request.headers.get("cookie") || "";
   const localeMatch = cookieHeader.match(/locale=([^;]+)/);
   const locale = (localeMatch ? localeMatch[1] : user.locale) as Locale;
@@ -18,7 +20,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const invoiceResult = await db
     .select()
     .from(invoices)
-    .where(and(eq(invoices.id, params.id), isNull(invoices.deletedAt)))
+    .where(and(eq(invoices.id, params.id), eq(invoices.companyId, companyId), isNull(invoices.deletedAt)))
     .limit(1);
 
   if (invoiceResult.length === 0) {
@@ -35,7 +37,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         contacts,
         and(eq(contacts.clientId, clients.id), eq(contacts.isPrimary, true), isNull(contacts.deletedAt))
       )
-      .where(eq(clients.id, invoice.clientId))
+      .where(and(eq(clients.id, invoice.clientId), eq(clients.companyId, companyId), isNull(clients.deletedAt)))
       .limit(1),
     db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, invoice.id)),
   ]);
@@ -50,7 +52,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
-  await requireAuth(request);
+  const { user } = await requireAuth(request);
+  const companyId = await getPrimaryCompanyId(user.id);
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");
 
@@ -59,9 +62,13 @@ export async function action({ request, params }: Route.ActionArgs) {
 
     // Fetch invoice, client, company, and bank data
     const [invoiceResult, companyResult, bankAccounts] = await Promise.all([
-      db.select().from(invoices).where(and(eq(invoices.id, params.id), isNull(invoices.deletedAt))).limit(1),
-      db.select().from(companyProfile).limit(1),
-      db.select().from(companyBankAccounts).limit(3),
+      db
+        .select()
+        .from(invoices)
+        .where(and(eq(invoices.id, params.id), eq(invoices.companyId, companyId), isNull(invoices.deletedAt)))
+        .limit(1),
+      db.select().from(companyProfile).where(eq(companyProfile.id, companyId)).limit(1),
+      db.select().from(companyBankAccounts).where(eq(companyBankAccounts.companyId, companyId)).limit(3),
     ]);
 
     if (invoiceResult.length === 0) {
@@ -79,7 +86,7 @@ export async function action({ request, params }: Route.ActionArgs) {
           contacts,
           and(eq(contacts.clientId, clients.id), eq(contacts.isPrimary, true), isNull(contacts.deletedAt))
         )
-        .where(eq(clients.id, invoice.clientId))
+        .where(and(eq(clients.id, invoice.clientId), eq(clients.companyId, companyId), isNull(clients.deletedAt)))
         .limit(1),
       db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, invoice.id)),
     ]);

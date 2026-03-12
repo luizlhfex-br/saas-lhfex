@@ -6,6 +6,7 @@ import { db } from "~/lib/db.server";
 import { auditLogs, clients, contacts } from "../../drizzle/schema";
 import { clientSchema } from "~/lib/validators";
 import { t, type Locale } from "~/i18n";
+import { getPrimaryCompanyId } from "~/lib/company-context.server";
 import { Button } from "~/components/ui/button";
 import { ArrowLeft, Bot, Loader2, Plus, Save, Star, Trash2 } from "lucide-react";
 import { and, eq, isNull } from "drizzle-orm";
@@ -140,7 +141,7 @@ export async function action({ request }: Route.ActionArgs) {
   const [existingClient] = await db
     .select({ id: clients.id })
     .from(clients)
-    .where(and(eq(clients.cnpj, cleanCnpj), isNull(clients.deletedAt)))
+    .where(and(eq(clients.cnpj, cleanCnpj), eq(clients.companyId, await getPrimaryCompanyId(user.id)), isNull(clients.deletedAt)))
     .limit(1);
 
   if (existingClient) {
@@ -157,6 +158,7 @@ export async function action({ request }: Route.ActionArgs) {
   const [newClient] = await db
     .insert(clients)
     .values({
+      companyId: await getPrimaryCompanyId(user.id),
       cnpj: cleanCnpj,
       razaoSocial: values.razaoSocial,
       nomeFantasia: values.nomeFantasia || null,

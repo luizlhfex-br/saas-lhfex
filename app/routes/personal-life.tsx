@@ -33,7 +33,7 @@ const modules = [
     group: "finances",
     slug: "finances",
     title: "💰 Finanças Pessoais",
-    description: "Módulo completo Firefly para contas, lançamentos, orçamentos e recorrências",
+    description: "Módulo completo de finanças pessoais: contas, lançamentos, orçamentos e recorrências",
     icon: DollarSign,
     color: "bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400",
   },

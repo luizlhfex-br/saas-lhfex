@@ -9,6 +9,7 @@ import { Badge } from "~/components/ui/badge";
 import { Pagination } from "~/components/ui/pagination";
 import { Plus, Eye, Edit, FileText, Search, X, LayoutGrid, DollarSign } from "lucide-react";
 import { eq, isNull, desc, and, like, sql } from "drizzle-orm";
+import { getPrimaryCompanyId } from "~/lib/company-context.server";
 
 const ITEMS_PER_PAGE = 20;
 
@@ -43,7 +44,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const statusFilter = url.searchParams.get("status") || "in_progress";
   const typeFilter = url.searchParams.get("type") || "";
 
-  const conditions = [isNull(processes.deletedAt)];
+  const conditions = [isNull(processes.deletedAt), eq(processes.companyId, await getPrimaryCompanyId(user.id))];
   if (search) {
     conditions.push(like(processes.reference, `%${search}%`));
   }

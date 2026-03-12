@@ -9,6 +9,7 @@ import { Button } from "~/components/ui/button";
 import { ArrowLeft, Save } from "lucide-react";
 import { data } from "react-router";
 import { isNull, eq, sql } from "drizzle-orm";
+import { getPrimaryCompanyId } from "~/lib/company-context.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
@@ -100,6 +101,7 @@ export async function action({ request }: Route.ActionArgs) {
     const containerCount = normalizeIntegerInput(values.containerCount);
 
     const [newProcess] = await db.insert(processes).values({
+      companyId: await getPrimaryCompanyId(user.id),
       reference,
       processType: values.processType,
       status: initialStatus,

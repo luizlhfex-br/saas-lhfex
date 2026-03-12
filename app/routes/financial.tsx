@@ -8,6 +8,7 @@ import { t, type Locale } from "~/i18n";
 import { Plus, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Search, X, ArrowDownCircle, ArrowUpCircle, LayoutDashboard } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Pagination } from "~/components/ui/pagination";
+import { getPrimaryCompanyId } from "~/lib/company-context.server";
 
 const ITEMS_PER_PAGE = 20;
 
@@ -32,6 +33,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   const typeFilter = url.searchParams.get("type") || "";
 
   // Summary via SQL aggregation (not loading all rows into memory)
+  const companyId = await getPrimaryCompanyId(user.id);
+
   const [summary] = await db
     .select({
       totalReceivable: sql<number>`COALESCE(SUM(CASE WHEN type = 'receivable' AND status NOT IN ('cancelled', 'paid') THEN total::numeric ELSE 0 END), 0)`,
@@ -39,14 +42,14 @@ export async function loader({ request }: Route.LoaderArgs) {
       overdueCount: sql<number>`COALESCE(SUM(CASE WHEN status = 'overdue' THEN 1 ELSE 0 END)::int, 0)`,
     })
     .from(invoices)
-    .where(isNull(invoices.deletedAt));
+    .where(and(isNull(invoices.deletedAt), eq(invoices.companyId, companyId)));
 
   const totalReceivable = Number(summary.totalReceivable);
   const totalPayable = Number(summary.totalPayable);
   const overdueCount = Number(summary.overdueCount);
 
   // Filtered list
-  const conditions = [isNull(invoices.deletedAt)];
+  const conditions = [isNull(invoices.deletedAt), eq(invoices.companyId, companyId)];
   if (search) conditions.push(like(invoices.number, `%${search}%`));
   if (statusFilter && isValidStatus(statusFilter)) conditions.push(eq(invoices.status, statusFilter));
   if (typeFilter && isValidType(typeFilter)) conditions.push(eq(invoices.type, typeFilter));

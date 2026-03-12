@@ -10,6 +10,7 @@ import { logAudit } from "~/lib/audit.server";
 import { Button } from "~/components/ui/button";
 import { Link } from "react-router";
 import { ArrowLeft } from "lucide-react";
+import { getPrimaryCompanyId } from "~/lib/company-context.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
@@ -46,6 +47,7 @@ export async function action({ request }: Route.ActionArgs) {
   const number = `FAT-${year}-${seq}`;
 
   await db.insert(invoices).values({
+    companyId: await getPrimaryCompanyId(user.id),
     number,
     clientId: data.clientId,
     processId: data.processId || null,

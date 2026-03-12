@@ -1,12 +1,12 @@
 import { Link } from "react-router";
 import type { Route } from "./+types/dashboard";
-import { requireAuth } from "~/lib/auth.server";
-import { db } from "~/lib/db.server";
+import { requireAuth } from "~/lib/auth.server";import { db } from "~/lib/db.server";
 import { clients, processes, invoices, notifications } from "../../drizzle/schema";
 import { isNull, eq, sql, and, notInArray, desc } from "drizzle-orm";
 import { t, type Locale } from "~/i18n";
 import { DollarSign, FileText, Users, TrendingUp, Bot, Bell, Clock, BarChart3, Server, ExternalLink } from "lucide-react";
 import { Badge } from "~/components/ui/badge";
+import { getPrimaryCompanyId } from "~/lib/company-context.server";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, Legend,
@@ -56,6 +56,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   const localeMatch = cookieHeader.match(/locale=([^;]+)/);
   const locale = (localeMatch ? localeMatch[1] : user.locale) as Locale;
 
+  const companyId = await getPrimaryCompanyId(user.id);
+
   // Parallel queries
   const [
     clientCountResult,
@@ -73,43 +75,43 @@ export async function loader({ request }: Route.LoaderArgs) {
     unreadNotifCount,
     cashflowData,
   ] = await Promise.all([
-    db.select({ count: sql<number>`count(*)::int` }).from(clients).where(isNull(clients.deletedAt)),
+    db.select({ count: sql<number>`count(*)::int` }).from(clients).where(and(isNull(clients.deletedAt), eq(clients.companyId, companyId))),
     db.select({ count: sql<number>`count(*)::int` }).from(processes).where(
-      and(isNull(processes.deletedAt), notInArray(processes.status, ["completed", "cancelled"]))
+      and(isNull(processes.deletedAt), eq(processes.companyId, companyId), notInArray(processes.status, ["completed", "cancelled"]))
     ),
     db.select({ total: sql<number>`coalesce(sum(total::numeric), 0)` }).from(invoices).where(
-      and(eq(invoices.type, "receivable"), eq(invoices.status, "paid"),
+      and(eq(invoices.type, "receivable"), eq(invoices.status, "paid"), eq(invoices.companyId, companyId),
         sql`date_trunc('month', ${invoices.paidDate}::date) = date_trunc('month', current_date)`)
     ),
     db.select({
       id: processes.id, reference: processes.reference, status: processes.status,
       processType: processes.processType, eta: processes.eta,
-    }).from(processes).where(isNull(processes.deletedAt)).orderBy(desc(processes.createdAt)).limit(5),
+    }).from(processes).where(and(isNull(processes.deletedAt), eq(processes.companyId, companyId))).orderBy(desc(processes.createdAt)).limit(5),
     fetchExchangeRate(request),
     // Receivables by period
     db.select({ total: sql<number>`coalesce(sum(total::numeric), 0)` }).from(invoices).where(
-      and(eq(invoices.type, "receivable"), notInArray(invoices.status, ["paid", "cancelled"]),
+      and(eq(invoices.type, "receivable"), eq(invoices.companyId, companyId), notInArray(invoices.status, ["paid", "cancelled"]),
         sql`${invoices.dueDate}::date <= current_date + interval '30 days'`)
     ),
     db.select({ total: sql<number>`coalesce(sum(total::numeric), 0)` }).from(invoices).where(
-      and(eq(invoices.type, "receivable"), notInArray(invoices.status, ["paid", "cancelled"]),
+      and(eq(invoices.type, "receivable"), eq(invoices.companyId, companyId), notInArray(invoices.status, ["paid", "cancelled"]),
         sql`${invoices.dueDate}::date > current_date + interval '30 days' AND ${invoices.dueDate}::date <= current_date + interval '60 days'`)
     ),
     db.select({ total: sql<number>`coalesce(sum(total::numeric), 0)` }).from(invoices).where(
-      and(eq(invoices.type, "receivable"), notInArray(invoices.status, ["paid", "cancelled"]),
+      and(eq(invoices.type, "receivable"), eq(invoices.companyId, companyId), notInArray(invoices.status, ["paid", "cancelled"]),
         sql`${invoices.dueDate}::date > current_date + interval '60 days' AND ${invoices.dueDate}::date <= current_date + interval '90 days'`)
     ),
     // Payables by period
     db.select({ total: sql<number>`coalesce(sum(total::numeric), 0)` }).from(invoices).where(
-      and(eq(invoices.type, "payable"), notInArray(invoices.status, ["paid", "cancelled"]),
+      and(eq(invoices.type, "payable"), eq(invoices.companyId, companyId), notInArray(invoices.status, ["paid", "cancelled"]),
         sql`${invoices.dueDate}::date <= current_date + interval '30 days'`)
     ),
     db.select({ total: sql<number>`coalesce(sum(total::numeric), 0)` }).from(invoices).where(
-      and(eq(invoices.type, "payable"), notInArray(invoices.status, ["paid", "cancelled"]),
+      and(eq(invoices.type, "payable"), eq(invoices.companyId, companyId), notInArray(invoices.status, ["paid", "cancelled"]),
         sql`${invoices.dueDate}::date > current_date + interval '30 days' AND ${invoices.dueDate}::date <= current_date + interval '60 days'`)
     ),
     db.select({ total: sql<number>`coalesce(sum(total::numeric), 0)` }).from(invoices).where(
-      and(eq(invoices.type, "payable"), notInArray(invoices.status, ["paid", "cancelled"]),
+      and(eq(invoices.type, "payable"), eq(invoices.companyId, companyId), notInArray(invoices.status, ["paid", "cancelled"]),
         sql`${invoices.dueDate}::date > current_date + interval '60 days' AND ${invoices.dueDate}::date <= current_date + interval '90 days'`)
     ),
     // Recent notifications
@@ -123,7 +125,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       receivable: sql<number>`coalesce(sum(case when ${invoices.type} = 'receivable' then ${invoices.total}::numeric else 0 end), 0)`,
       payable: sql<number>`coalesce(sum(case when ${invoices.type} = 'payable' then ${invoices.total}::numeric else 0 end), 0)`,
     }).from(invoices).where(
-      and(notInArray(invoices.status, ["cancelled"]),
+      and(eq(invoices.companyId, companyId), notInArray(invoices.status, ["cancelled"]),
         sql`${invoices.dueDate}::date >= current_date - interval '30 days'`,
         sql`${invoices.dueDate}::date <= current_date + interval '30 days'`)
     ).groupBy(sql`date_trunc('week', ${invoices.dueDate}::date)`)

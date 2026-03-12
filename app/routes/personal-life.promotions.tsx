@@ -244,23 +244,6 @@ export async function loader({ request }: { request: Request }) {
           .orderBy(asc(pessoas.nomeCompleto));
 
     pessoasList = (await pessoasQuery) as Pessoa[];
-
-    // Recovery fallback: if user-scoped data is empty, load legacy rows.
-    if (pessoasList.length === 0) {
-      pessoasList = (pessoaSearch
-        ? await db
-            .select()
-            .from(pessoas)
-            .where(
-              or(
-                ilike(pessoas.nomeCompleto, `%${pessoaSearch}%`),
-                ilike(pessoas.celular ?? "", `%${pessoaSearch}%`),
-                ilike(pessoas.email ?? "", `%${pessoaSearch}%`)
-              )
-            )
-            .orderBy(asc(pessoas.nomeCompleto))
-        : await db.select().from(pessoas).orderBy(asc(pessoas.nomeCompleto))) as Pessoa[];
-    }
   } catch (error) {
     console.error("[personal-life.promotions.loader] pessoas failed", error);
     warnings.push("Falha ao carregar pessoas.");
@@ -273,10 +256,6 @@ export async function loader({ request }: { request: Request }) {
       .from(promotionSites)
       .where(eq(promotionSites.userId, user.id))
       .orderBy(asc(promotionSites.name))) as PromoSite[];
-
-    if (sitesList.length === 0) {
-      sitesList = (await db.select().from(promotionSites).orderBy(asc(promotionSites.name))) as PromoSite[];
-    }
   } catch (error) {
     console.error("[personal-life.promotions.loader] sites failed", error);
     warnings.push("Falha ao carregar sites.");
