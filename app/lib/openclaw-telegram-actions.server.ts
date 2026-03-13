@@ -11,13 +11,14 @@
 
 import { db } from "./db.server";
 import { pessoas, clients, contacts, processes, processTimeline } from "../../drizzle/schema";
-import { eq, isNull, ilike, or, and, count } from "drizzle-orm";
+import { eq, isNull, ilike, or, and, sql } from "drizzle-orm";
 import {
   parsePessoaFromTelegram,
   parseClienteFromTelegram,
   parseProcessoFromTelegram,
   enrichCNPJ,
 } from "./ai.server";
+import { getPrimaryCompanyId } from "./company-context.server";
 
 function normalizeCnpj(input: string): string {
   const digits = input.replace(/\D/g, "");
@@ -29,6 +30,23 @@ function extractCnpjFromText(text: string): string {
   const m = text.match(/\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/);
   if (!m) return "";
   return normalizeCnpj(m[0]);
+}
+
+async function getOpenClawContext() {
+  const userId = process.env.OPENCLAW_USER_ID;
+  if (!userId) {
+    throw new Error("OPENCLAW_USER_ID not configured");
+  }
+
+  const companyId = await getPrimaryCompanyId(userId);
+  return { userId, companyId };
+}
+
+function getReferenceModalPrefix(text: string) {
+  const normalized = text.toLowerCase();
+  if (/(aere|air|awb|voo)/.test(normalized)) return "A";
+  if (/(marit|sea|navio|container|bl)/.test(normalized)) return "M";
+  return "C";
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -164,14 +182,14 @@ export async function handleNovoCliente(text: string, chatId: number, botToken: 
     return;
   }
 
-  const userId = process.env.OPENCLAW_USER_ID;
   const contact = (fields.contact as Record<string, string> | null) ?? {};
+  const { userId, companyId } = await getOpenClawContext();
 
   // Verifica CNPJ duplicado
   if (cnpj) {
     const existing = await db.select({ id: clients.id, razaoSocial: clients.razaoSocial })
       .from(clients)
-      .where(and(eq(clients.cnpj, cnpj), isNull(clients.deletedAt)))
+      .where(and(eq(clients.companyId, companyId), eq(clients.cnpj, cnpj), isNull(clients.deletedAt)))
       .limit(1);
 
     if (existing.length > 0) {
@@ -187,6 +205,7 @@ export async function handleNovoCliente(text: string, chatId: number, botToken: 
     const clientType = (fields.clientType as "importer" | "exporter" | "both") || "importer";
 
     const [newClient] = await db.insert(clients).values({
+      companyId,
       cnpj: cnpj || "00.000.000/0000-00",
       razaoSocial,
       nomeFantasia,
@@ -195,7 +214,7 @@ export async function handleNovoCliente(text: string, chatId: number, botToken: 
       state,
       notes,
       status: "active",
-      createdBy: userId ?? null,
+      createdBy: userId,
     }).returning();
 
     // Insere contato principal
@@ -244,6 +263,7 @@ export async function handleAbrirProcesso(text: string, chatId: number, botToken
   }
 
   const search = fields.clientSearch as string;
+  const { userId, companyId } = await getOpenClawContext();
 
   // Busca cliente por nome ou CNPJ
   const found = await db.select({
@@ -253,6 +273,7 @@ export async function handleAbrirProcesso(text: string, chatId: number, botToken
   })
     .from(clients)
     .where(and(
+      eq(clients.companyId, companyId),
       isNull(clients.deletedAt),
       or(
         ilike(clients.razaoSocial, `%${search}%`),
@@ -281,18 +302,33 @@ export async function handleAbrirProcesso(text: string, chatId: number, botToken
   }
 
   const client = found[0];
-  const userId = process.env.OPENCLAW_USER_ID;
   const processType = (fields.processType as "import" | "export" | "services") || "import";
 
   // Gera referência única: IMP/EXP/SRV-ANO-NNNN
-  const prefix = processType === "import" ? "IMP" : processType === "export" ? "EXP" : "SRV";
-  const year = new Date().getFullYear();
-  const [countResult] = await db.select({ total: count() }).from(processes);
-  const nextNum = String((countResult?.total ?? 0) + 1).padStart(4, "0");
-  const reference = `${prefix}-${year}-${nextNum}`;
+  const modalPrefix = getReferenceModalPrefix(text);
+  const yearShort = String(new Date().getFullYear()).slice(-2);
+  const prefixPattern = `${modalPrefix}${yearShort}%`;
+  const sequenceResult = await db.execute(sql`
+    SELECT COALESCE(
+      MAX(
+        CASE
+          WHEN reference ~ ${`^${modalPrefix}${yearShort}-[0-9]+$`}
+            THEN substring(reference from '-([0-9]+)$')::int
+          ELSE 0
+        END
+      ),
+      0
+    ) AS last_seq
+    FROM processes
+    WHERE company_id = ${companyId}
+      AND reference LIKE ${prefixPattern}
+  `);
+  const nextNum = String(Number(sequenceResult[0]?.last_seq || 0) + 1).padStart(3, "0");
+  const reference = `${modalPrefix}${yearShort}-${nextNum}`;
 
   try {
     const [newProcess] = await db.insert(processes).values({
+      companyId,
       reference,
       processType,
       clientId: client.id,
@@ -306,7 +342,7 @@ export async function handleAbrirProcesso(text: string, chatId: number, botToken
       hsCode: (fields.hsCode as string | null) ?? null,
       notes: (fields.notes as string | null) ?? null,
       requiresApproval: false,
-      createdBy: userId ?? null,
+      createdBy: userId,
     }).returning();
 
     await db.insert(processTimeline).values({
@@ -314,7 +350,7 @@ export async function handleAbrirProcesso(text: string, chatId: number, botToken
       status: "draft",
       title: "Processo criado via Telegram",
       description: `Referência ${reference} criada pelo OpenClaw`,
-      createdBy: userId ?? null,
+      createdBy: userId,
     });
 
     const typeLabel = processType === "import" ? "Importação" : processType === "export" ? "Exportação" : "Serviços";
@@ -342,8 +378,9 @@ export async function handleAbrirProcesso(text: string, chatId: number, botToken
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function handleCancelarProcesso(text: string, chatId: number, botToken: string) {
-  const referenceMatch = text.match(/\b(?:IMP|EXP|SRV)-\d{4}-\d{4}\b/i);
+  const referenceMatch = text.match(/\b(?:[AMC]\d{2}-\d{3}|(?:IMP|EXP|SRV)-\d{4}-\d{4})\b/i);
   const reference = referenceMatch?.[0]?.toUpperCase() ?? "";
+  const { userId, companyId } = await getOpenClawContext();
 
   const justificationMatch = text.match(/(?:justificativa|motivo)\s*[:\-]\s*(.+)$/i);
   let justification = (justificationMatch?.[1] ?? "").trim();
@@ -380,7 +417,7 @@ export async function handleCancelarProcesso(text: string, chatId: number, botTo
     reference: processes.reference,
   })
     .from(processes)
-    .where(and(eq(processes.reference, reference), isNull(processes.deletedAt)))
+    .where(and(eq(processes.companyId, companyId), eq(processes.reference, reference), isNull(processes.deletedAt)))
     .limit(1);
 
   if (!proc) {
@@ -397,8 +434,6 @@ export async function handleCancelarProcesso(text: string, chatId: number, botTo
     await sendTg(botToken, chatId, `⚠️ Processo *${reference}* está concluído e não pode ser cancelado.`, "Markdown");
     return;
   }
-
-  const userId = process.env.OPENCLAW_USER_ID;
 
   try {
     await db.update(processes)

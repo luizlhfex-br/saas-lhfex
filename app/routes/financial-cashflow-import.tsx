@@ -9,6 +9,7 @@ import { parseBrazilianCurrency } from "~/lib/cashflow.server";
 import { data } from "react-router";
 import { ChevronLeft, Upload, AlertCircle } from "lucide-react";
 import { Button } from "~/components/ui/button";
+import { getPrimaryCompanyId } from "~/lib/company-context.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
@@ -18,6 +19,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export async function action({ request }: Route.ActionArgs) {
   const { user } = await requireAuth(request);
+  const companyId = await getPrimaryCompanyId(user.id);
 
   const formData = await request.formData();
   const file = formData.get("file") as File | null;
@@ -66,6 +68,7 @@ export async function action({ request }: Route.ActionArgs) {
 
   const errors: string[] = [];
   const validMovements: Array<{
+    companyId: string;
     date: string;
     type: string;
     category: string;
@@ -136,6 +139,7 @@ export async function action({ request }: Route.ActionArgs) {
     }
 
     validMovements.push({
+      companyId,
       date: normalizedDate,
       type,
       category,

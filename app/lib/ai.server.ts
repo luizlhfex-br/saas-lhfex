@@ -1106,7 +1106,7 @@ REGRAS:
 Responda SOMENTE em JSON com as chaves: "ncm", "description", "justification"`;
 
   const result = await askAgent("iana", `${systemPrompt}\n\n---\n\n${context}`, userId, {
-    feature: "description_ncm",
+    feature: "ncm_classification",
     forceProvider: "deepseek",
   });
 

@@ -8,8 +8,8 @@
 import type { Route } from "./+types/financial-fatura-print";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
-import { invoices, invoiceItems, clients, companyProfile, companyBankAccounts } from "../../drizzle/schema";
-import { eq, and, isNull } from "drizzle-orm";
+import { invoices, invoiceItems, clients, contacts, companyProfile, companyBankAccounts } from "../../drizzle/schema";
+import { eq, and, isNull, desc } from "drizzle-orm";
 import { Printer, ArrowLeft } from "lucide-react";
 import { Link } from "react-router";
 
@@ -34,15 +34,22 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   const invoice = invoiceResult[0];
 
-  const [clientResult, items] = await Promise.all([
+  const [clientResult, contactResult, items] = await Promise.all([
     db.select().from(clients).where(eq(clients.id, invoice.clientId)).limit(1),
+    db
+      .select()
+      .from(contacts)
+      .where(and(eq(contacts.clientId, invoice.clientId), isNull(contacts.deletedAt)))
+      .orderBy(desc(contacts.isPrimary), contacts.createdAt)
+      .limit(1),
     db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, invoice.id)),
   ]);
 
   const client = clientResult[0] || null;
+  const contact = contactResult[0] || null;
   const co = company[0] || null;
 
-  return { invoice, client, items, company: co, bankAccounts };
+  return { invoice, client, contact, items, company: co, bankAccounts };
 }
 
 function fmt(v: number | string) {
@@ -58,7 +65,7 @@ function fmtDate(iso: string | null): string {
 }
 
 export default function FaturaPrintPage({ loaderData }: Route.ComponentProps) {
-  const { invoice, client, items, company, bankAccounts } = loaderData;
+  const { invoice, client, contact, items, company, bankAccounts } = loaderData;
 
   // LHFEX defaults (hardcoded as fallback per plan)
   const razaoSocial = company?.razaoSocial || "FREITAS E FREITAS CONSULTORIA E SERVICOS LTDA";
@@ -192,8 +199,9 @@ export default function FaturaPrintPage({ loaderData }: Route.ComponentProps) {
             <div style={{ fontSize: "12px", color: "#555" }}>{client.nomeFantasia}</div>
           )}
           {client?.cnpj && <div style={{ fontSize: "12px", color: "#555" }}>CNPJ: {client.cnpj}</div>}
-          {client?.email && <div style={{ fontSize: "12px", color: "#555" }}>E-mail: {client.email}</div>}
-          {client?.phone && <div style={{ fontSize: "12px", color: "#555" }}>Tel: {client.phone}</div>}
+          {contact?.name && <div style={{ fontSize: "12px", color: "#555" }}>Contato: {contact.name}</div>}
+          {contact?.email && <div style={{ fontSize: "12px", color: "#555" }}>E-mail: {contact.email}</div>}
+          {contact?.phone && <div style={{ fontSize: "12px", color: "#555" }}>Tel: {contact.phone}</div>}
         </div>
 
         {/* ── DESCRIPTION ── */}

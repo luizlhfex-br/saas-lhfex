@@ -216,5 +216,51 @@
       "build local concluido com sucesso",
       "sem erros de compilacao nos arquivos alterados"
     ]
+  },
+  "session_2026_03_12_ci_stabilization": {
+    "date": "2026-03-12",
+    "objective": "Destravar CI, auto-deploy do Coolify e consolidar memoria operacional sem segredos",
+    "commits": [
+      {
+        "sha": "7270035",
+        "message": "feat(processos): implementar formato A26-001 com sequência por modal"
+      },
+      {
+        "sha": "2b9e438",
+        "message": "chore(ci): configurar deploy do Coolify via API"
+      },
+      {
+        "sha": "pending",
+        "message": "fix(ci): estabilizar typecheck, seeds e integrações auxiliares"
+      }
+    ],
+    "files_changed": [
+      "app/lib/ai.server.ts",
+      "app/lib/notifications-generator.server.ts",
+      "app/lib/openclaw-telegram-actions.server.ts",
+      "app/routes/api.automations-duplicate.tsx",
+      "app/routes/api.life-run.tsx",
+      "app/routes/api.openclaw-tools.tsx",
+      "app/routes/financial-cashflow-import.tsx",
+      "app/routes/financial-fatura-print.tsx",
+      "app/routes/notifications.tsx",
+      "app/routes/personal-life.finances.analytics.tsx",
+      "app/routes/settings.tsx",
+      "drizzle/seed-lhfex-client.ts",
+      "drizzle/seed.ts",
+      "scripts/run-migration.ts",
+      "CLAUDE.md"
+    ],
+    "changes": [
+      "typecheck limpo com companyId aplicado em seeds, duplicacao de automacao, cashflow import e fluxos OpenClaw",
+      "OpenClaw tools e Telegram ajustados para usar companyId, timeline correta e referencia A/M/C por modal ou fallback",
+      "financial-fatura-print passou a buscar email e telefone em contacts",
+      "notifications usa ids UUID corretamente e notifications-generator foi tipado para users UUID",
+      "PROMPT_IA_CONTINUACAO.md foi absorvido de forma sanitizada em CLAUDE.md e removido do repo"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "pipeline pronta para reexecutar com deploy automatico apos push"
+    ]
   }
 }

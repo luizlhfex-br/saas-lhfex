@@ -127,6 +127,14 @@ export async function loader({ request }: { request: Request }) {
 const fmtBRL = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
+const toCurrencyValue = (value: unknown) => {
+  const amount = typeof value === "number" ? value : Number(value ?? 0);
+  return fmtBRL(Number.isFinite(amount) ? amount : 0);
+};
+
+const pieLabel = ({ name, percent }: { name?: string; percent?: number }) =>
+  `${name || "Sem categoria"} ${((percent ?? 0) * 100).toFixed(0)}%`;
+
 export default function FinancesAnalyticsPage() {
   const { company, monthly, categories, accounts, totalBalance, totalLiability, netWorth } =
     useLoaderData<typeof loader>();
@@ -185,11 +193,11 @@ export default function FinancesAnalyticsPage() {
               <XAxis dataKey="month" tick={{ fontSize: 12 }} />
               <YAxis
                 tick={{ fontSize: 11 }}
-                tickFormatter={v => fmtBRL(v)}
+                tickFormatter={(v) => toCurrencyValue(v)}
                 width={80}
               />
               <Tooltip
-                formatter={(v: number) => [fmtBRL(v), "Total"]}
+                formatter={(v) => [toCurrencyValue(v), "Total"]}
                 contentStyle={{ fontSize: 12 }}
               />
               <Bar dataKey="total" fill="#6366f1" radius={[4, 4, 0, 0]} name="Total" />
@@ -214,7 +222,7 @@ export default function FinancesAnalyticsPage() {
                   cx="50%"
                   cy="50%"
                   outerRadius={90}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={pieLabel}
                   labelLine={false}
                   fontSize={11}
                 >
@@ -222,7 +230,7 @@ export default function FinancesAnalyticsPage() {
                     <Cell key={idx} fill={PIE_COLORS[idx % PIE_COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(v: number) => fmtBRL(v)} />
+                <Tooltip formatter={(v) => toCurrencyValue(v)} />
               </PieChart>
             </ResponsiveContainer>
           </div>

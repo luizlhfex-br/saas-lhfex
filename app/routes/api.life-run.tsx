@@ -47,7 +47,7 @@ export async function action({ request }: { request: Request }) {
     
     // Estimate cost (for free providers it's $0)
     let costEstimate = "0.00";
-    if (response.provider === "deepseek" || response.provider === "openrouter_paid") {
+    if (response.provider === "deepseek") {
       const tokensUsed = response.tokensUsed || 0;
       costEstimate = ((tokensUsed * 0.14) / 1_000_000).toFixed(6);
     }

@@ -3,12 +3,14 @@ import type { Route } from "./+types/api.automations-duplicate";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
 import { automations } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { logAudit } from "~/lib/audit.server";
 import { buildApiError } from "~/lib/api-error";
+import { getPrimaryCompanyId } from "~/lib/company-context.server";
 
 export async function action({ request }: Route.ActionArgs) {
   const { user } = await requireAuth(request);
+  const companyId = await getPrimaryCompanyId(user.id);
   const formData = await request.formData();
   const automationId = formData.get("automationId") as string;
   const newName = formData.get("newName") as string;
@@ -20,7 +22,7 @@ export async function action({ request }: Route.ActionArgs) {
   const [source] = await db
     .select()
     .from(automations)
-    .where(eq(automations.id, automationId))
+    .where(and(eq(automations.id, automationId), eq(automations.companyId, companyId)))
     .limit(1);
 
   if (!source) {
@@ -30,6 +32,7 @@ export async function action({ request }: Route.ActionArgs) {
   const [clone] = await db
     .insert(automations)
     .values({
+      companyId,
       name: newName,
       description: source.description,
       triggerType: source.triggerType,

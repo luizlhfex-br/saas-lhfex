@@ -30,7 +30,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     let company = profiles[0] || null;
 
     // Load bank accounts
-    let bankAccounts = [];
+    let bankAccounts: typeof companyBankAccounts.$inferSelect[] = [];
     if (company?.id) {
       bankAccounts = await db
         .select()

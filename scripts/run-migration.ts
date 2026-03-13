@@ -1,8 +1,9 @@
 import * as fs from 'fs';
 import { sql } from 'drizzle-orm';
-import { db } from './app/server/db';
+import { db } from '../app/lib/db.server';
 
-const migrationSql = fs.readFileSync('/tmp/migration.sql', 'utf-8');
+const migrationPath = process.argv[2] || '/tmp/migration.sql';
+const migrationSql = fs.readFileSync(migrationPath, 'utf-8');
 const statements = migrationSql.split(';').filter(s => s.trim());
 
 async function runMigration() {

@@ -35,7 +35,7 @@ export async function action({ request }: { request: Request }) {
   const intent = formData.get("intent");
 
   if (intent === "mark_read") {
-    const notificationId = Number(formData.get("notificationId"));
+    const notificationId = String(formData.get("notificationId") || "");
     await db
       .update(notifications)
       .set({ read: true })
@@ -66,10 +66,10 @@ export default function NotificationsPage() {
 
   const unreadCount = notificationsList.filter((n: any) => !n.read).length;
 
-  const handleMarkRead = (notificationId: number) => {
+  const handleMarkRead = (notificationId: string) => {
     const formData = new FormData();
     formData.set("intent", "mark_read");
-    formData.set("notificationId", String(notificationId));
+    formData.set("notificationId", notificationId);
     submit(formData, { method: "post" });
   };
 

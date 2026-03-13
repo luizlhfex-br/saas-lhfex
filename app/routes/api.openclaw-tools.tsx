@@ -29,6 +29,7 @@ import {
 } from "../../drizzle/schema";
 import { eq, desc, ilike, or, and, isNull, sql, gte, lte } from "drizzle-orm";
 import { askAgent } from "~/lib/ai.server";
+import { getPrimaryCompanyId } from "~/lib/company-context.server";
 
 function unauthorized() {
   return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -77,6 +78,35 @@ function getUserId(): string {
   return process.env.OPENCLAW_USER_ID || "";
 }
 
+const processStatuses = [
+  "draft",
+  "in_progress",
+  "awaiting_docs",
+  "customs_clearance",
+  "in_transit",
+  "delivered",
+  "completed",
+  "cancelled",
+  "pending_approval",
+] as const;
+
+type ProcessStatus = (typeof processStatuses)[number];
+
+function isProcessStatus(value: string): value is ProcessStatus {
+  return processStatuses.includes(value as ProcessStatus);
+}
+
+function getReferenceModalPrefix(value: unknown) {
+  switch (value) {
+    case "air":
+      return "A";
+    case "sea":
+      return "M";
+    default:
+      return "C";
+  }
+}
+
 // ── GET ──────────────────────────────────────────────────────────────────────
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -85,6 +115,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const action = url.searchParams.get("action") || "";
   const userId = getUserId();
+  if (!userId) return badRequest("OPENCLAW_USER_ID not configured");
+  const companyId = await getPrimaryCompanyId(userId);
 
   // ── resumo_processos ──────────────────────────────────────────────────────
   if (action === "resumo_processos") {
@@ -100,6 +132,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       .from(processes)
       .where(
         and(
+          eq(processes.companyId, companyId),
           isNull(processes.deletedAt),
           or(
             eq(processes.status, "in_progress"),
@@ -122,6 +155,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       .from(processes)
       .where(
         and(
+          eq(processes.companyId, companyId),
           isNull(processes.deletedAt),
           gte(processes.eta, sql`now()`),
           lte(processes.eta, sql`now() + interval '7 days'`),
@@ -138,9 +172,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (action === "buscar_processos") {
     const q = url.searchParams.get("q") || "";
     const status = url.searchParams.get("status") || "";
-
-    const conditions: ReturnType<typeof eq>[] = [isNull(processes.deletedAt) as ReturnType<typeof eq>];
-    if (status) conditions.push(eq(processes.status, status) as ReturnType<typeof eq>);
+    const normalizedStatus = isProcessStatus(status) ? status : undefined;
 
     const rows = await db
       .select({
@@ -156,7 +188,9 @@ export async function loader({ request }: Route.LoaderArgs) {
       .leftJoin(clients, eq(processes.clientId, clients.id))
       .where(
         and(
-          ...conditions,
+          eq(processes.companyId, companyId),
+          isNull(processes.deletedAt),
+          normalizedStatus ? eq(processes.status, normalizedStatus) : undefined,
           q
             ? or(
                 ilike(processes.reference, `%${q}%`),
@@ -255,6 +289,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       .from(clients)
       .where(
         and(
+          eq(clients.companyId, companyId),
           isNull(clients.deletedAt),
           q
             ? or(ilike(clients.razaoSocial, `%${q}%`), ilike(clients.nomeFantasia, `%${q}%`), ilike(clients.cnpj, `%${q}%`))
@@ -573,6 +608,7 @@ export async function loader({ request }: Route.LoaderArgs) {
             .from(processes)
             .where(
               and(
+                eq(processes.companyId, companyId),
                 isNull(processes.deletedAt),
                 or(
                   eq(processes.status, "in_progress"),
@@ -588,6 +624,7 @@ export async function loader({ request }: Route.LoaderArgs) {
             .from(processes)
             .where(
               and(
+                eq(processes.companyId, companyId),
                 isNull(processes.deletedAt),
                 gte(processes.eta, sql`now()`),
                 lte(processes.eta, sql`now() + interval '7 days'`),
@@ -737,6 +774,8 @@ export async function action({ request }: Route.ActionArgs) {
   if (!checkAuth(request)) return unauthorized();
 
   const userId = getUserId();
+  if (!userId) return badRequest("OPENCLAW_USER_ID not configured");
+  const companyId = await getPrimaryCompanyId(userId);
 
   let body: Record<string, unknown>;
   try {
@@ -757,7 +796,7 @@ export async function action({ request }: Route.ActionArgs) {
       const existing = await db
         .select({ id: clients.id })
         .from(clients)
-        .where(and(eq(clients.cnpj, cnpj), isNull(clients.deletedAt)))
+        .where(and(eq(clients.companyId, companyId), eq(clients.cnpj, cnpj), isNull(clients.deletedAt)))
         .limit(1);
       if (existing.length > 0) return badRequest(`Cliente com CNPJ ${cnpj} já existe`);
     }
@@ -765,6 +804,7 @@ export async function action({ request }: Route.ActionArgs) {
     const [client] = await db
       .insert(clients)
       .values({
+        companyId,
         cnpj: cnpj || "",
         razaoSocial,
         nomeFantasia: nomeFantasia || null,
@@ -799,6 +839,7 @@ export async function action({ request }: Route.ActionArgs) {
       .from(clients)
       .where(
         and(
+          eq(clients.companyId, companyId),
           isNull(clients.deletedAt),
           or(
             ilike(clients.razaoSocial, `%${clientSearch}%`),
@@ -815,21 +856,32 @@ export async function action({ request }: Route.ActionArgs) {
     }
 
     const client = clientRows[0];
-    const typePrefix = processType === "import" ? "IMP" : processType === "export" ? "EXP" : "SRV";
-    const year = new Date().getFullYear();
+    const modalPrefix = getReferenceModalPrefix(body.referenceModal);
+    const yearShort = String(new Date().getFullYear()).slice(-2);
+    const prefixPattern = `${modalPrefix}${yearShort}%`;
+    const sequenceResult = await db.execute(sql`
+      SELECT COALESCE(
+        MAX(
+          CASE
+            WHEN reference ~ ${`^${modalPrefix}${yearShort}-[0-9]+$`}
+              THEN substring(reference from '-([0-9]+)$')::int
+            ELSE 0
+          END
+        ),
+        0
+      ) AS last_seq
+      FROM processes
+      WHERE company_id = ${companyId}
+        AND reference LIKE ${prefixPattern}
+    `);
 
-    // Generate next reference number
-    const [{ maxRef }] = await db
-      .select({ maxRef: sql<number>`coalesce(max(cast(split_part(reference, '-', 3) as integer)), 0)` })
-      .from(processes)
-      .where(ilike(processes.reference, `${typePrefix}-${year}-%`));
-
-    const nextNum = String((maxRef || 0) + 1).padStart(4, "0");
-    const reference = `${typePrefix}-${year}-${nextNum}`;
+    const nextNum = String(Number(sequenceResult[0]?.last_seq || 0) + 1).padStart(3, "0");
+    const reference = `${modalPrefix}${yearShort}-${nextNum}`;
 
     const [proc] = await db
       .insert(processes)
       .values({
+        companyId,
         reference,
         processType: processType as "import" | "export" | "services",
         status: "draft",
@@ -844,7 +896,9 @@ export async function action({ request }: Route.ActionArgs) {
 
     await db.insert(processTimeline).values({
       processId: proc.id,
-      event: "Processo criado via OpenClaw",
+      status: "draft",
+      title: "Processo criado via OpenClaw",
+      description: `Referencia ${reference} criada pelo OpenClaw`,
       createdBy: userId,
     });
 
