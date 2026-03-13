@@ -21,7 +21,7 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: process.env.CI ? "npm run start" : "npm run dev",
+    command: process.env.CI ? "npm run start" : "npm run dev -- --port 3000",
     url: "http://localhost:3000",
     // reuseExistingServer=true: inicia o servidor apenas se não estiver rodando.
     // Em CI, subir o servidor separadamente antes de rodar os testes evita o timeout.

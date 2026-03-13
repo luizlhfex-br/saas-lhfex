@@ -1,13 +1,16 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
+
+async function loginAsAdmin(page: Page) {
+  await page.goto("/login");
+  await page.locator('input[name="email"]').fill("luiz@lhfex.com.br");
+  await page.locator('input[name="password"]').fill("lhfex2025!");
+  await page.locator('button[type="submit"]').click();
+  await expect(page).toHaveURL(/\/(dashboard)?$/);
+}
 
 test.describe("CRM Flow", () => {
   test.beforeEach(async ({ page }) => {
-    // Login before each test
-    await page.goto("/login");
-    await page.getByLabel(/email/i).fill("luiz@lhfex.com.br");
-    await page.getByLabel(/password/i).fill("lhfex2025!");
-    await page.getByRole("button", { name: /entrar|login/i }).click();
-    await expect(page).toHaveURL(/\/(dashboard)?$/);
+    await loginAsAdmin(page);
   });
 
   test("should navigate to CRM page", async ({ page }) => {

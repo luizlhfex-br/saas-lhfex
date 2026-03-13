@@ -1,13 +1,16 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
+
+async function loginAsAdmin(page: Page) {
+  await page.goto("/login");
+  await page.locator('input[name="email"]').fill("luiz@lhfex.com.br");
+  await page.locator('input[name="password"]').fill("lhfex2025!");
+  await page.locator('button[type="submit"]').click();
+  await expect(page).toHaveURL(/\/(dashboard)?$/);
+}
 
 test.describe("Chat Widget Integration", () => {
   test.beforeEach(async ({ page }) => {
-    // Login before each test
-    await page.goto("/login");
-    await page.getByLabel(/email/i).fill("luiz@lhfex.com.br");
-    await page.getByLabel(/password/i).fill("lhfex2025!");
-    await page.getByRole("button", { name: /entrar|login/i }).click();
-    await expect(page).toHaveURL(/\/(dashboard)?$/);
+    await loginAsAdmin(page);
   });
 
   test("should open chat widget", async ({ page }) => {
@@ -258,12 +261,7 @@ test.describe("Chat Widget Integration", () => {
 
 test.describe("NCM Classification E2E", () => {
   test.beforeEach(async ({ page }) => {
-    // Login
-    await page.goto("/login");
-    await page.getByLabel(/email/i).fill("luiz@lhfex.com.br");
-    await page.getByLabel(/password/i).fill("lhfex2025!");
-    await page.getByRole("button", { name: /entrar|login/i }).click();
-    await expect(page).toHaveURL(/\/(dashboard)?$/);
+    await loginAsAdmin(page);
   });
 
   test("should navigate to NCM page", async ({ page }) => {

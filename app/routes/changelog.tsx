@@ -29,6 +29,16 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-13",
+    version: "2.8.4",
+    type: "release",
+    title: "E2E com seletores estaveis e webServer local corrigido",
+    items: [
+      "Playwright: fluxo de login dos testes passou a usar os campos reais do formulario em vez de labels traduzidos",
+      "Playwright local: webServer agora sobe o react-router dev na porta 3000, a mesma esperada pela suite",
+    ],
+  },
+  {
+    date: "2026-03-13",
     version: "2.8.3",
     type: "release",
     title: "Ajuste dos testes E2E para o login atual",

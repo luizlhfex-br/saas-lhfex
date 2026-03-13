@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.8.3";
+export const APP_VERSION = "2.8.4";
 export const APP_RELEASE_DATE = "2026-03-13";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,15 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.8.4",
+    date: "2026-03-13",
+    title: "Seletores E2E desacoplados de traducao",
+    items: [
+      { type: "fix", text: "Playwright: login E2E passou a usar input[name=email|password] e button[type=submit]" },
+      { type: "fix", text: "Playwright local: webServer padronizado na porta 3000 para evitar timeout fora do CI" },
+    ],
+  },
   {
     version: "2.8.3",
     date: "2026-03-13",
