@@ -28,6 +28,18 @@ type Entry = {
 
 const CHANGELOG: Entry[] = [
   {
+    date: "2026-03-13",
+    version: "2.8.1",
+    type: "release",
+    title: "Estabilidade de CI e integracoes auxiliares",
+    items: [
+      "CI: typecheck voltou a passar com ajustes em seeds, scripts e rotas auxiliares",
+      "OpenClaw: companyId aplicado nas acoes e consultas de clientes e processos",
+      "Financeiro e notificacoes: correcao de UUIDs, contatos primarios e importacao de cashflow",
+      "Documentacao: instrucoes permanentes consolidadas em CLAUDE.md sem expor segredos operacionais",
+    ],
+  },
+  {
     date: "2026-03-12",
     version: "2.8.0",
     type: "release",

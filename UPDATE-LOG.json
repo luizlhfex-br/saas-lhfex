@@ -219,6 +219,7 @@
   },
   "session_2026_03_12_ci_stabilization": {
     "date": "2026-03-12",
+    "release_version": "2.8.1",
     "objective": "Destravar CI, auto-deploy do Coolify e consolidar memoria operacional sem segredos",
     "commits": [
       {

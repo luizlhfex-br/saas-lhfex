@@ -3,8 +3,8 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.8.0";
-export const APP_RELEASE_DATE = "2026-03-12";
+export const APP_VERSION = "2.8.1";
+export const APP_RELEASE_DATE = "2026-03-13";
 export const APP_NAME = "LHFEX SaaS";
 
 export type ChangelogItemType = "feature" | "improvement" | "fix" | "infra";
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.8.1",
+    date: "2026-03-13",
+    title: "Estabilidade de CI, seeds e fluxos auxiliares",
+    items: [
+      { type: "fix", text: "CI: typecheck limpo e seeds alinhados ao companyId obrigatorio" },
+      { type: "fix", text: "OpenClaw: tools e Telegram corrigidos para companyId, timeline e referencia por modal" },
+      { type: "fix", text: "Financeiro e notificacoes: UUIDs, contatos e importacao ajustados para o schema atual" },
+      { type: "infra", text: "Documentacao operacional consolidada sem segredos e prompt temporario removido do repo" },
+    ],
+  },
   {
     version: "2.8.0",
     date: "2026-03-12",
