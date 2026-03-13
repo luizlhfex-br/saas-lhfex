@@ -29,6 +29,16 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-13",
+    version: "2.8.3",
+    type: "release",
+    title: "Ajuste dos testes E2E para o login atual",
+    items: [
+      "Playwright: senha dos testes atualizada para combinar com o seed executado na pipeline",
+      "Playwright: validacao da pagina de login passou a usar os elementos reais da UI atual",
+    ],
+  },
+  {
+    date: "2026-03-13",
     version: "2.8.2",
     type: "release",
     title: "Correcao do boot E2E no CI",

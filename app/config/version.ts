@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.8.2";
+export const APP_VERSION = "2.8.3";
 export const APP_RELEASE_DATE = "2026-03-13";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,15 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.8.3",
+    date: "2026-03-13",
+    title: "E2E alinhado com login atual",
+    items: [
+      { type: "fix", text: "Playwright: credenciais E2E alinhadas ao seed atual (luiz@lhfex.com.br / lhfex2025!)" },
+      { type: "fix", text: "Playwright: seletores do login atualizados para a UI atual da pagina /login" },
+    ],
+  },
   {
     version: "2.8.2",
     date: "2026-03-13",

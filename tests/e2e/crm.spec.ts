@@ -5,7 +5,7 @@ test.describe("CRM Flow", () => {
     // Login before each test
     await page.goto("/login");
     await page.getByLabel(/email/i).fill("luiz@lhfex.com.br");
-    await page.getByLabel(/password/i).fill("Admin123!");
+    await page.getByLabel(/password/i).fill("lhfex2025!");
     await page.getByRole("button", { name: /entrar|login/i }).click();
     await expect(page).toHaveURL(/\/(dashboard)?$/);
   });

@@ -219,7 +219,7 @@
   },
   "session_2026_03_12_ci_stabilization": {
     "date": "2026-03-12",
-    "release_version": "2.8.2",
+    "release_version": "2.8.3",
     "objective": "Destravar CI, auto-deploy do Coolify e consolidar memoria operacional sem segredos",
     "commits": [
       {
@@ -258,7 +258,8 @@
       "financial-fatura-print passou a buscar email e telefone em contacts",
       "notifications usa ids UUID corretamente e notifications-generator foi tipado para users UUID",
       "PROMPT_IA_CONTINUACAO.md foi absorvido de forma sanitizada em CLAUDE.md e removido do repo",
-      "Playwright CI passou a usar npm run start para eliminar timeout no webServer dos E2E"
+      "Playwright CI passou a usar npm run start para eliminar timeout no webServer dos E2E",
+      "Seletores e credenciais dos testes E2E foram alinhados ao login atual do sistema"
     ],
     "verification": [
       "npx tsc --noEmit passou sem erros",

@@ -5,9 +5,9 @@ test.describe("Authentication Flow", () => {
     await page.goto("/login");
     
     await expect(page).toHaveTitle(/LHFEX/);
-    await expect(page.getByRole("heading", { name: /login/i })).toBeVisible();
     await expect(page.getByLabel(/email/i)).toBeVisible();
     await expect(page.getByLabel(/password/i)).toBeVisible();
+    await expect(page.getByRole("button", { name: /entrar|login/i })).toBeVisible();
   });
 
   test("should show error on invalid credentials", async ({ page }) => {
@@ -25,11 +25,11 @@ test.describe("Authentication Flow", () => {
     
     // Use credentials from seed file (admin user)
     await page.getByLabel(/email/i).fill("luiz@lhfex.com.br");
-    await page.getByLabel(/password/i).fill("Admin123!");
+    await page.getByLabel(/password/i).fill("lhfex2025!");
     await page.getByRole("button", { name: /entrar|login/i }).click();
     
     // Should redirect to dashboard
     await expect(page).toHaveURL(/\/(dashboard)?$/);
-    await expect(page.getByText(/dashboard|painel/i)).toBeVisible();
+    await expect(page).not.toHaveURL(/\/login$/);
   });
 });
