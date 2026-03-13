@@ -21,11 +21,11 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: "npm run dev",
+    command: process.env.CI ? "npm run start" : "npm run dev",
     url: "http://localhost:3000",
     // reuseExistingServer=true: inicia o servidor apenas se não estiver rodando.
     // Em CI, subir o servidor separadamente antes de rodar os testes evita o timeout.
-    reuseExistingServer: true,
+    reuseExistingServer: !process.env.CI,
     timeout: 180 * 1000,
   },
 });

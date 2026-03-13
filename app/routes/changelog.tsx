@@ -29,6 +29,16 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-13",
+    version: "2.8.2",
+    type: "release",
+    title: "Correcao do boot E2E no CI",
+    items: [
+      "Playwright em CI agora sobe o servidor com npm run start apos o build pronto",
+      "reuseExistingServer ficou restrito ao ambiente local para evitar timeout no webServer do GitHub Actions",
+    ],
+  },
+  {
+    date: "2026-03-13",
     version: "2.8.1",
     type: "release",
     title: "Estabilidade de CI e integracoes auxiliares",

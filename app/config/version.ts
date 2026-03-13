@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.8.1";
+export const APP_VERSION = "2.8.2";
 export const APP_RELEASE_DATE = "2026-03-13";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,15 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.8.2",
+    date: "2026-03-13",
+    title: "Playwright em CI usando start do build",
+    items: [
+      { type: "fix", text: "E2E: Playwright passou a iniciar npm run start no CI em vez de npm run dev" },
+      { type: "infra", text: "E2E: reuseExistingServer fica desativado em CI para evitar timeout silencioso no webServer" },
+    ],
+  },
   {
     version: "2.8.1",
     date: "2026-03-13",
