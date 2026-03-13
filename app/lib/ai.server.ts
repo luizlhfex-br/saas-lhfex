@@ -29,6 +29,37 @@ export interface AIResponse {
 
 type AIFeature = "chat" | "ncm_classification" | "ocr" | "enrichment" | "telegram" | "openclaw";
 
+type GeminiRequestPayload = {
+  system_instruction: { parts: Array<{ text: string }> };
+  contents: Array<{ parts: Array<{ text: string }> }>;
+  generationConfig: {
+    maxOutputTokens: number;
+    temperature: number;
+  };
+};
+
+type GeminiGenerateResponse = {
+  candidates?: Array<{
+    content?: {
+      parts?: Array<{ text?: string }>;
+    };
+  }>;
+  usageMetadata?: {
+    promptTokenCount?: number;
+    candidatesTokenCount?: number;
+  };
+};
+
+type GeminiTokenCountResponse = {
+  totalTokens?: number;
+};
+
+const GEMINI_PRIMARY_MODEL = process.env.GEMINI_MODEL_PRIMARY?.trim() || "gemini-2.0-flash";
+const GEMINI_SIMPLE_MODEL = process.env.GEMINI_MODEL_SIMPLE?.trim() || "gemini-2.0-flash-lite";
+const GEMINI_TOKEN_GUARD_THRESHOLD = Number(process.env.GEMINI_TOKEN_GUARD_THRESHOLD || 10000);
+const GEMINI_FLASH_LITE_TOKEN_THRESHOLD = Number(process.env.GEMINI_FLASH_LITE_TOKEN_THRESHOLD || 1200);
+const GEMINI_SIMPLE_FEATURES: ReadonlySet<AIFeature> = new Set(["chat", "telegram"]);
+
 // --- AI Guidelines (applied to ALL agents) ---
 
 const AI_GUIDELINES = `
@@ -229,6 +260,118 @@ IMPORTANTE: Este usuário tem acesso restrito. NÃO revele valores financeiros, 
 - Últimos processos: ${ctx.recentProcesses.map((p) => `${p.reference} (${p.status})`).join(", ") || "nenhum"}`;
 }
 
+function escapeGeminiXml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function buildGeminiXmlBlock(tag: "system" | "context" | "task", value: string): string {
+  return `<${tag}>\n${escapeGeminiXml(value.trim())}\n</${tag}>`;
+}
+
+function buildGeminiSystemInstruction(systemPrompt: string, contextMessage: string): string {
+  const sections = [buildGeminiXmlBlock("system", systemPrompt)];
+
+  if (contextMessage.trim()) {
+    sections.push(buildGeminiXmlBlock("context", contextMessage));
+  }
+
+  return sections.join("\n\n");
+}
+
+function buildGeminiTaskPrompt(userMessage: string): string {
+  return buildGeminiXmlBlock("task", userMessage);
+}
+
+function compactGeminiContext(contextMessage: string): string {
+  const normalized = contextMessage.replace(/\r\n/g, "\n").trim();
+
+  if (!normalized || normalized.length <= 4000) {
+    return normalized;
+  }
+
+  const lifeContextMarker = "[CONTEXTO VIDA PESSOAL ATUALIZADO]";
+  if (normalized.includes(lifeContextMarker)) {
+    const [baseContext, lifeContext = ""] = normalized.split(lifeContextMarker, 2);
+    const compactLifeContext = lifeContext.trim().slice(0, 2500);
+
+    return [
+      baseContext.trim(),
+      `${lifeContextMarker}\n${compactLifeContext}`,
+      "[CONTEXTO VIDA PESSOAL RESUMIDO AUTOMATICAMENTE PARA ECONOMIA DE TOKENS]",
+    ].filter(Boolean).join("\n\n");
+  }
+
+  return `${normalized.slice(0, 4000)}\n\n[CONTEXTO RESUMIDO AUTOMATICAMENTE PARA ECONOMIA DE TOKENS]`;
+}
+
+function buildGeminiRequestPayload(
+  systemPrompt: string,
+  userMessage: string,
+  contextMessage: string,
+  maxOutputTokens: number,
+): GeminiRequestPayload {
+  return {
+    system_instruction: {
+      parts: [{ text: buildGeminiSystemInstruction(systemPrompt, contextMessage) }],
+    },
+    contents: [{ parts: [{ text: buildGeminiTaskPrompt(userMessage) }] }],
+    generationConfig: {
+      maxOutputTokens,
+      temperature: 0.7,
+    },
+  };
+}
+
+async function countGeminiTokens(
+  apiKey: string,
+  model: string,
+  requestPayload: GeminiRequestPayload,
+): Promise<number | null> {
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:countTokens?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          generateContentRequest: requestPayload,
+        }),
+        signal: AbortSignal.timeout(10000),
+      }
+    );
+
+    if (!response.ok) {
+      console.warn(`[AI][Gemini] countTokens falhou para ${model}: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json() as GeminiTokenCountResponse;
+    return data.totalTokens ?? null;
+  } catch (error) {
+    console.warn("[AI][Gemini] countTokens indisponivel:", error);
+    return null;
+  }
+}
+
+function shouldUseGeminiFlashLite(
+  feature: AIFeature,
+  userMessage: string,
+  promptTokens: number | null,
+): boolean {
+  if (!GEMINI_SIMPLE_FEATURES.has(feature)) {
+    return false;
+  }
+
+  if (userMessage.trim().length > 500) {
+    return false;
+  }
+
+  return promptTokens !== null && promptTokens <= GEMINI_FLASH_LITE_TOKEN_THRESHOLD;
+}
+
 // --- Usage Logging ---
 
 async function logUsage(
@@ -288,23 +431,32 @@ async function callGemini(
   userMessage: string,
   contextMessage: string,
   maxOutputTokens = 2000,
+  feature: AIFeature = "chat",
 ): Promise<AIResponse> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
 
+  let effectiveContext = contextMessage;
+  let requestPayload = buildGeminiRequestPayload(systemPrompt, userMessage, effectiveContext, maxOutputTokens);
+  let promptTokens = await countGeminiTokens(apiKey, GEMINI_PRIMARY_MODEL, requestPayload);
+
+  if (promptTokens !== null && promptTokens > GEMINI_TOKEN_GUARD_THRESHOLD) {
+    effectiveContext = compactGeminiContext(contextMessage);
+    requestPayload = buildGeminiRequestPayload(systemPrompt, userMessage, effectiveContext, maxOutputTokens);
+    promptTokens = await countGeminiTokens(apiKey, GEMINI_PRIMARY_MODEL, requestPayload);
+    console.warn(`[AI][Gemini] Contexto resumido preventivamente para ${feature} (tokens=${promptTokens ?? "desconhecido"})`);
+  }
+
+  const model = shouldUseGeminiFlashLite(feature, userMessage, promptTokens)
+    ? GEMINI_SIMPLE_MODEL
+    : GEMINI_PRIMARY_MODEL;
+
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: `${systemPrompt}\n\n${contextMessage}` }] },
-        contents: [{ parts: [{ text: userMessage }] }],
-        generationConfig: {
-          maxOutputTokens,
-          temperature: 0.7,
-        },
-      }),
+      body: JSON.stringify(requestPayload),
       signal: AbortSignal.timeout(30000),
     }
   );
@@ -314,16 +466,18 @@ async function callGemini(
     throw new Error(`Gemini API error ${response.status}: ${err}`);
   }
 
-  const data = await response.json();
+  const data = await response.json() as GeminiGenerateResponse;
   const content = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
   const tokensIn = data.usageMetadata?.promptTokenCount || 0;
   const tokensOut = data.usageMetadata?.candidatesTokenCount || 0;
 
   if (!content) throw new Error("Gemini returned empty response");
 
+  console.info(`[AI][Gemini] model=${model} feature=${feature} promptTokens=${promptTokens ?? tokensIn}`);
+
   return {
     content,
-    model: "gemini-2.0-flash",
+    model,
     provider: "gemini",
     tokensUsed: tokensIn + tokensOut,
   };
@@ -578,7 +732,7 @@ ${JSON.stringify(lifeContext, null, 2)}`;
 
   const excludedProviders: ProviderType[] = [];
   const providerCallMap: Record<ProviderType, (prompt: string, msg: string, ctx: string) => Promise<AIResponse>> = {
-    gemini: callGemini,
+    gemini: (prompt, msg, ctx) => callGemini(prompt, msg, ctx, 2000, feature),
     openrouter_free: callOpenRouterFree,
     deepseek: callDeepSeek,
   };
@@ -672,13 +826,13 @@ export async function askLifeAgentLite(task: string, userId: string): Promise<AI
 
   if (process.env.GEMINI_API_KEY) {
     try {
-      const result = await callGemini(LIFE_AGENT_SYSTEM_PROMPT, task, "", maxOutputTokens);
+      const result = await callGemini(LIFE_AGENT_SYSTEM_PROMPT, task, "", maxOutputTokens, "chat");
       const latencyMs = Date.now() - startTime;
       await logUsage("gemini", result.model, "chat", 0, result.tokensUsed || 0, true, undefined, userId, latencyMs);
       return result;
     } catch (error) {
       const latencyMs = Date.now() - startTime;
-      await logUsage("gemini", "gemini-2.0-flash", "chat", 0, 0, false, String(error), userId, latencyMs);
+      await logUsage("gemini", GEMINI_PRIMARY_MODEL, "chat", 0, 0, false, String(error), userId, latencyMs);
       console.error("[LIFE_AGENT] Gemini failed:", error);
     }
   }

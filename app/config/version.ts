@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.8.5";
+export const APP_VERSION = "2.8.6";
 export const APP_RELEASE_DATE = "2026-03-13";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.8.6",
+    date: "2026-03-13",
+    title: "Gemini Free otimizado e coverage da CI padronizado",
+    items: [
+      { type: "improvement", text: "Gemini Free: prompts agora usam blocos XML de system, context e task para reduzir ruido e separar melhor cada parte do pedido" },
+      { type: "improvement", text: "Gemini Free: countTokens passou a rodar antes do envio, com resumo preventivo de contexto longo e Flash-Lite reservado a chat/telegram simples" },
+      { type: "infra", text: "CI: GitHub Actions atualizado para checkout, setup-node e Codecov v5" },
+      { type: "infra", text: "CI: suite unit agora gera coverage-final.json antes do upload para Codecov quando CODECOV_TOKEN estiver configurado" },
+    ],
+  },
   {
     version: "2.8.5",
     date: "2026-03-13",

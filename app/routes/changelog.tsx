@@ -29,6 +29,19 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-13",
+    version: "2.8.6",
+    type: "release",
+    title: "Gemini Free otimizado e workflow de coverage alinhado",
+    items: [
+      "Gemini Free: prompts passaram a separar system, context e task com delimitadores XML no provider Gemini",
+      "Gemini Free: countTokens agora roda antes do generateContent, com resumo preventivo quando o contexto cresce demais",
+      "Gemini Free: Flash-Lite ficou restrito a chat e telegram simples; NCM, OCR e contextos maiores permanecem no Flash 2.0",
+      "CI: workflow migrou checkout, setup-node e Codecov para v5",
+      "CI: job de unit tests passou a gerar coverage-final.json e so tenta upload no Codecov quando CODECOV_TOKEN existir",
+    ],
+  },
+  {
+    date: "2026-03-13",
     version: "2.8.5",
     type: "release",
     title: "Autenticacao, chat e NCM estabilizados para a suite E2E",

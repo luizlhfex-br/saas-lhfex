@@ -282,5 +282,38 @@
       "Playwright E2E (19 testes) passou com .env.codex carregado",
       "pipeline pronta para reexecutar com deploy automatico apos push"
     ]
+  },
+  "session_2026_03_13_gemini_ci_followup": {
+    "date": "2026-03-13",
+    "release_version": "2.8.6",
+    "objective": "Fechar avisos restantes da CI e aplicar as otimizacoes do Gemini Free previstas no plano",
+    "commits": [
+      {
+        "sha": "pending",
+        "message": "fix(ia): otimizar Gemini free e coverage da CI"
+      }
+    ],
+    "files_changed": [
+      ".github/workflows/ci.yml",
+      "package.json",
+      "app/lib/ai.server.ts",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx"
+    ],
+    "changes": [
+      "GitHub Actions migrou checkout, setup-node e Codecov para v5",
+      "Unit Tests da CI agora rodam com coverage e produzem coverage-final.json para upload consistente",
+      "Upload para Codecov passou a ser condicional a CODECOV_TOKEN configurado, removendo ruido em branch protegida sem token",
+      "Provider Gemini passou a montar prompts com blocos XML separados para system, context e task",
+      "Provider Gemini ganhou countTokens preventivo e resumo automatico quando o contexto extrapola o limite de economia",
+      "Flash-Lite agora so entra em chat e telegram simples; NCM, OCR e cargas mais pesadas continuam no Flash 2.0",
+      "E2E de chat/NCM validado com .env.codex, mantendo o fallback mesmo com GEMINI_API_KEY local invalida e OpenRouter Free sujeito a rate limit"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "npm run test:unit:coverage passou e gerou coverage/coverage-final.json",
+      "npm run build passou sem erros",
+      "npx playwright test tests/e2e/chat.spec.ts --project=chromium passou com .env.codex carregado"
+    ]
   }
 }
