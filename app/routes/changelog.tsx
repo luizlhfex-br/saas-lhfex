@@ -29,6 +29,19 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-13",
+    version: "2.8.5",
+    type: "release",
+    title: "Autenticacao, chat e NCM estabilizados para a suite E2E",
+    items: [
+      "Chat: widget recebeu atributos de acessibilidade e os testes passaram a usar seletores do DOM real",
+      "CRM: campos do cadastro de cliente agora associam label e input corretamente",
+      "Autenticacao: lockout passou a registrar apenas falhas reais de login, evitando bloqueio indevido de usuarios e E2E",
+      "NCM: classificacao deixou de depender de DeepSeek obrigatorio, voltou ao fluxo free-first e ganhou timeout controlado",
+      "Auditoria: login_failed deixa user_id nulo quando nao existe usuario em vez de gravar string invalida em coluna UUID",
+    ],
+  },
+  {
+    date: "2026-03-13",
     version: "2.8.4",
     type: "release",
     title: "E2E com seletores estaveis e webServer local corrigido",

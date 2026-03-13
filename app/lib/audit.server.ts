@@ -34,7 +34,7 @@ export async function logAudit({ userId, action, entity, entityId, changes, deta
     }
 
     await db.insert(auditLogs).values({
-      userId: userId || "system",
+      userId: userId ?? null,
       action,
       entity,
       entityId: entityId || null,

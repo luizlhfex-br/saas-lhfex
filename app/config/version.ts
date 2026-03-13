@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.8.4";
+export const APP_VERSION = "2.8.5";
 export const APP_RELEASE_DATE = "2026-03-13";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.8.5",
+    date: "2026-03-13",
+    title: "Autenticacao, chat e NCM estabilizados para CI",
+    items: [
+      { type: "fix", text: "Chat: popup ganhou role dialog, campo Mensagem com aria-label e indicador de digitacao com role status" },
+      { type: "fix", text: "CRM: InputField passou a ligar label e input por htmlFor/id, restaurando acessibilidade e seletores E2E" },
+      { type: "fix", text: "Autenticacao e auditoria: login_failed sem UUID invalido e lockout passa a contar apenas falhas reais de login" },
+      { type: "fix", text: "NCM: classificacao voltou para a cadeia free-first sem DeepSeek obrigatorio e agora falha com timeout controlado" },
+    ],
+  },
   {
     version: "2.8.4",
     date: "2026-03-13",

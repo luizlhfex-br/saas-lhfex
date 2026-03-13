@@ -71,6 +71,28 @@ interface RateLimitResult {
   retryAfterSeconds?: number;
 }
 
+async function getCurrentRequestCount(
+  client: Redis,
+  redisKey: string,
+  windowMs: number
+): Promise<number> {
+  const now = Date.now();
+  const windowStart = now - windowMs;
+
+  const results = await client
+    .multi()
+    .zremrangebyscore(redisKey, 0, windowStart)
+    .zcard(redisKey)
+    .expire(redisKey, Math.ceil(windowMs / 1000))
+    .exec();
+
+  if (!results) {
+    throw new Error("Redis multi command failed");
+  }
+
+  return (results[1][1] as number) || 0;
+}
+
 /**
  * Check rate limit using Redis sorted sets for precise sliding window
  * @param key - Unique identifier (e.g., IP address, userId)
@@ -91,32 +113,8 @@ export async function checkRateLimit(
 
   try {
     const now = Date.now();
-    const windowStart = now - windowMs;
     const redisKey = `ratelimit:${key}`;
-
-    // Use Redis Sorted Set (ZSET) for sliding window rate limiting
-    const multi = client.multi();
-
-    // 1. Remove expired entries (outside time window)
-    multi.zremrangebyscore(redisKey, 0, windowStart);
-
-    // 2. Count remaining requests in current window
-    multi.zcard(redisKey);
-
-    // 3. Add current request with timestamp as score
-    multi.zadd(redisKey, now, `${now}-${Math.random()}`);
-
-    // 4. Set expiration on key (cleanup)
-    multi.expire(redisKey, Math.ceil(windowMs / 1000));
-
-    const results = await multi.exec();
-
-    if (!results) {
-      throw new Error("Redis multi command failed");
-    }
-
-    // Extract count before current request (index 1 is ZCARD result)
-    const count = (results[1][1] as number) || 0;
+    const count = await getCurrentRequestCount(client, redisKey, windowMs);
     const remaining = Math.max(0, maxAttempts - count - 1);
 
     if (count >= maxAttempts) {
@@ -124,11 +122,65 @@ export async function checkRateLimit(
       return { allowed: false, remaining: 0, retryAfterSeconds };
     }
 
+    await client
+      .multi()
+      .zadd(redisKey, now, `${now}-${Math.random()}`)
+      .expire(redisKey, Math.ceil(windowMs / 1000))
+      .exec();
+
     return { allowed: true, remaining };
   } catch (error) {
     console.error("❌ Rate limit check failed:", error);
     // Fail open: allow request if Redis operation fails
     return { allowed: true, remaining: maxAttempts };
+  }
+}
+
+export async function getRateLimitStatus(
+  key: string,
+  maxAttempts: number,
+  windowMs: number
+): Promise<RateLimitResult> {
+  const client = getRedisClient();
+
+  if (!client || !redisAvailable) {
+    return { allowed: true, remaining: maxAttempts };
+  }
+
+  try {
+    const redisKey = `ratelimit:${key}`;
+    const count = await getCurrentRequestCount(client, redisKey, windowMs);
+
+    if (count >= maxAttempts) {
+      const retryAfterSeconds = Math.ceil(windowMs / 1000);
+      return { allowed: false, remaining: 0, retryAfterSeconds };
+    }
+
+    return { allowed: true, remaining: Math.max(0, maxAttempts - count) };
+  } catch (error) {
+    console.error("âŒ Rate limit status check failed:", error);
+    return { allowed: true, remaining: maxAttempts };
+  }
+}
+
+export async function recordRateLimitHit(key: string, windowMs: number): Promise<void> {
+  const client = getRedisClient();
+
+  if (!client || !redisAvailable) {
+    return;
+  }
+
+  try {
+    const now = Date.now();
+    const redisKey = `ratelimit:${key}`;
+
+    await client
+      .multi()
+      .zadd(redisKey, now, `${now}-${Math.random()}`)
+      .expire(redisKey, Math.ceil(windowMs / 1000))
+      .exec();
+  } catch (error) {
+    console.error("âŒ Failed to record rate limit hit:", error);
   }
 }
 

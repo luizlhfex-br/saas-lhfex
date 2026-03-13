@@ -225,7 +225,11 @@ export function ChatWidget() {
 
       {/* Chat popup */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 flex h-[520px] w-[380px] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900">
+        <div
+          className="fixed bottom-6 right-6 z-50 flex h-[520px] w-[380px] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900"
+          role="dialog"
+          aria-label={`Chat com ${selectedAgent.name}`}
+        >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-gray-200 bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-3 dark:border-gray-700">
             <div className="flex items-center gap-2">
@@ -336,6 +340,7 @@ export function ChatWidget() {
               <input
                 ref={inputRef}
                 type="text"
+                aria-label="Mensagem"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {

@@ -101,7 +101,7 @@ export async function destroySession(request: Request): Promise<void> {
  * Track failed login attempts and temporarily block accounts after threshold
  */
 
-import { checkRateLimit } from "./rate-limit.server";
+import { getRateLimitStatus, recordRateLimitHit } from "./rate-limit.server";
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 30 * 60 * 1000; // 30 minutes
@@ -121,8 +121,8 @@ export async function checkLoginAttempts(email: string, ip: string): Promise<Log
   const emailKey = `login-attempts:email:${email.toLowerCase()}`;
   const ipKey = `login-attempts:ip:${ip}`;
   
-  const emailCheck = await checkRateLimit(emailKey, MAX_FAILED_ATTEMPTS, LOCKOUT_DURATION_MS);
-  const ipCheck = await checkRateLimit(ipKey, MAX_FAILED_ATTEMPTS * 3, LOCKOUT_DURATION_MS); // More lenient for IP (shared networks)
+  const emailCheck = await getRateLimitStatus(emailKey, MAX_FAILED_ATTEMPTS, LOCKOUT_DURATION_MS);
+  const ipCheck = await getRateLimitStatus(ipKey, MAX_FAILED_ATTEMPTS * 3, LOCKOUT_DURATION_MS); // More lenient for IP (shared networks)
   
   // If either is blocked, deny login
   if (!emailCheck.allowed) {
@@ -148,11 +148,12 @@ export async function checkLoginAttempts(email: string, ip: string): Promise<Log
 }
 
 /**
- * Record a failed login attempt
- * This is handled automatically by checkRateLimit when called during login
+ * Record a failed login attempt without penalizing successful logins.
  */
-export function recordFailedLogin(email: string, ip: string): void {
-  // Rate limit recording happens automatically in checkLoginAttempts
-  // This function exists for explicit logging/audit purposes
+export async function recordFailedLogin(email: string, ip: string): Promise<void> {
+  await Promise.all([
+    recordRateLimitHit(`login-attempts:email:${email.toLowerCase()}`, LOCKOUT_DURATION_MS),
+    recordRateLimitHit(`login-attempts:ip:${ip}`, LOCKOUT_DURATION_MS),
+  ]);
   console.warn(`[AUTH] Failed login attempt: ${email} from ${ip}`);
 }

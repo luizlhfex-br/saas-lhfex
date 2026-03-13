@@ -1035,10 +1035,9 @@ Evite termos genéricos. Seja preciso e técnico.
 
 Responda em JSON com as chaves: "ncm", "description", "justification"`;
 
-  const result = await askAgent("iana", productDescription, userId, {
-    feature: "ncm_classification",
-    forceProvider: "deepseek", // Use DeepSeek for complex classification
-  });
+    const result = await askAgent("iana", productDescription, userId, {
+      feature: "ncm_classification",
+    });
 
   try {
     const jsonMatch = result.content.match(/\{[\s\S]*\}/);
@@ -1105,10 +1104,9 @@ REGRAS:
 
 Responda SOMENTE em JSON com as chaves: "ncm", "description", "justification"`;
 
-  const result = await askAgent("iana", `${systemPrompt}\n\n---\n\n${context}`, userId, {
-    feature: "ncm_classification",
-    forceProvider: "deepseek",
-  });
+    const result = await askAgent("iana", `${systemPrompt}\n\n---\n\n${context}`, userId, {
+      feature: "ncm_classification",
+    });
 
   try {
     const jsonMatch = result.content.match(/\{[\s\S]*\}/);

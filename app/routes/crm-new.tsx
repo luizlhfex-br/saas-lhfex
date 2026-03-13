@@ -587,11 +587,12 @@ function InputField({
 }) {
   return (
     <div className={className}>
-      <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+      <label htmlFor={name} className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
         {label}
         {required && <span className="ml-0.5 text-red-500">*</span>}
       </label>
       <input
+        id={name}
         type={type}
         name={name}
         required={required}

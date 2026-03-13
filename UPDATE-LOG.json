@@ -219,7 +219,7 @@
   },
   "session_2026_03_12_ci_stabilization": {
     "date": "2026-03-12",
-    "release_version": "2.8.4",
+    "release_version": "2.8.5",
     "objective": "Destravar CI, auto-deploy do Coolify e consolidar memoria operacional sem segredos",
     "commits": [
       {
@@ -237,16 +237,24 @@
     ],
     "files_changed": [
       "app/lib/ai.server.ts",
+      "app/lib/auth.server.ts",
       "app/lib/notifications-generator.server.ts",
       "app/lib/openclaw-telegram-actions.server.ts",
+      "app/lib/rate-limit.server.ts",
       "app/routes/api.automations-duplicate.tsx",
       "app/routes/api.life-run.tsx",
       "app/routes/api.openclaw-tools.tsx",
+      "app/routes/login.tsx",
+      "app/routes/ncm.tsx",
       "app/routes/financial-cashflow-import.tsx",
       "app/routes/financial-fatura-print.tsx",
       "app/routes/notifications.tsx",
       "app/routes/personal-life.finances.analytics.tsx",
       "app/routes/settings.tsx",
+      "app/components/chat/chat-message.tsx",
+      "app/components/chat/chat-widget.tsx",
+      "app/routes/crm-new.tsx",
+      "tests/e2e/chat.spec.ts",
       "drizzle/seed-lhfex-client.ts",
       "drizzle/seed.ts",
       "scripts/run-migration.ts",
@@ -260,10 +268,18 @@
       "PROMPT_IA_CONTINUACAO.md foi absorvido de forma sanitizada em CLAUDE.md e removido do repo",
       "Playwright CI passou a usar npm run start para eliminar timeout no webServer dos E2E",
       "Seletores e credenciais dos testes E2E foram alinhados ao login atual do sistema",
-      "Playwright local passou a subir o dev server na porta 3000 e o login E2E foi desacoplado de labels traduzidos"
+      "Playwright local passou a subir o dev server na porta 3000 e o login E2E foi desacoplado de labels traduzidos",
+      "Chat Widget recebeu atributos de acessibilidade e a suite E2E foi atualizada para o DOM real do componente",
+      "CRM new voltou a expor labels acessiveis e o audit log de login_failed parou de gravar UUID invalido",
+      "Classificacao NCM voltou a respeitar a cadeia free-first sem DeepSeek obrigatorio",
+      "Lockout de login passou a contar apenas falhas reais, sem consumir limite em autenticacoes validas",
+      "Tela de NCM agora devolve erro controlado quando a cadeia de IA excede o tempo limite de classificacao",
+      "Suite E2E completa foi validada localmente com .env.codex e 19 testes passaram"
     ],
     "verification": [
       "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros",
+      "Playwright E2E (19 testes) passou com .env.codex carregado",
       "pipeline pronta para reexecutar com deploy automatico apos push"
     ]
   }

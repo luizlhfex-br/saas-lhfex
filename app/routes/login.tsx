@@ -13,7 +13,7 @@ import { db } from "~/lib/db.server";
 import { users } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { logAudit } from "~/lib/audit.server";
-import { checkRateLimit, getClientIP, RATE_LIMITS } from "~/lib/rate-limit.server";
+import { getClientIP } from "~/lib/rate-limit.server";
 import { t } from "~/i18n";
 import { Button } from "~/components/ui/button";
 import { data } from "react-router";
@@ -27,16 +27,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  // Rate limiting — 5 attempts per 15 minutes per IP (basic flood protection)
   const ip = getClientIP(request);
-  const rateCheck = await checkRateLimit(`login:${ip}`, RATE_LIMITS.login.maxAttempts, RATE_LIMITS.login.windowMs);
-  if (!rateCheck.allowed) {
-    return data(
-      { error: `Muitas tentativas de login. Tente novamente em ${rateCheck.retryAfterSeconds} segundos.`, fields: { email: "", password: "" } },
-      { status: 429 }
-    );
-  }
-
   const formData = await request.formData();
   const raw = {
     email: String(formData.get("email") ?? ""),
@@ -73,7 +64,7 @@ export async function action({ request }: Route.ActionArgs) {
     .limit(1);
 
   if (!user) {
-    recordFailedLogin(email, ip);
+    await recordFailedLogin(email, ip);
     await logAudit({ 
       userId: null, 
       action: "login_failed", 
@@ -89,7 +80,7 @@ export async function action({ request }: Route.ActionArgs) {
 
   const valid = await verifyPassword(password, user.passwordHash);
   if (!valid) {
-    recordFailedLogin(email, ip);
+    await recordFailedLogin(email, ip);
     await logAudit({ 
       userId: user.id, 
       action: "login_failed", 

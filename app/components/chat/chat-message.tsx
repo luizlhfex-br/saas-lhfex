@@ -63,7 +63,7 @@ export function ChatMessage({ role, content, agentId, timestamp }: ChatMessagePr
 
 export function TypingIndicator({ agentId }: { agentId?: string }) {
   return (
-    <div className="flex gap-3">
+    <div className="flex gap-3" role="status" aria-live="polite">
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple-100 text-sm text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
         {agentId ? agentEmojis[agentId] || "🤖" : <Bot className="h-4 w-4" />}
       </div>

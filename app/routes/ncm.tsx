@@ -16,6 +16,25 @@ import { data } from "react-router";
 import { eq, desc } from "drizzle-orm";
 import { buildApiError, jsonApiError } from "~/lib/api-error";
 
+const NCM_CLASSIFICATION_TIMEOUT_MS = 20_000;
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
+
+    promise.then(
+      (value) => {
+        clearTimeout(timeoutId);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timeoutId);
+        reject(error);
+      }
+    );
+  });
+}
+
 export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
   const cookieHeader = request.headers.get("cookie") || "";
@@ -63,7 +82,11 @@ export async function action({ request }: Route.ActionArgs) {
     }
 
     try {
-      const classification = await classifyNCM(result.data.inputDescription, user.id);
+      const classification = await withTimeout(
+        classifyNCM(result.data.inputDescription, user.id),
+        NCM_CLASSIFICATION_TIMEOUT_MS,
+        "NCM classification timeout"
+      );
 
       const [saved] = await db.insert(ncmClassifications).values({
         userId: user.id,
