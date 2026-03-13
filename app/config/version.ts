@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.8.6";
+export const APP_VERSION = "2.8.7";
 export const APP_RELEASE_DATE = "2026-03-13";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,15 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.8.7",
+    date: "2026-03-13",
+    title: "Payload de countTokens do Gemini corrigido",
+    items: [
+      { type: "fix", text: "Gemini Free: countTokens agora envia o campo model no payload exigido pela API, eliminando o erro 400 estrutural" },
+      { type: "improvement", text: "Validacao operacional: smoke tests confirmaram Groq ativo e Gemini autenticando corretamente antes de bater no limite de quota da conta" },
+    ],
+  },
   {
     version: "2.8.6",
     date: "2026-03-13",

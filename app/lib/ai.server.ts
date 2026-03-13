@@ -337,7 +337,10 @@ async function countGeminiTokens(
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          generateContentRequest: requestPayload,
+          generateContentRequest: {
+            model: `models/${model}`,
+            ...requestPayload,
+          },
         }),
         signal: AbortSignal.timeout(10000),
       }

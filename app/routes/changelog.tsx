@@ -29,6 +29,17 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-13",
+    version: "2.8.7",
+    type: "release",
+    title: "Correcao estrutural do countTokens no Gemini",
+    items: [
+      "Gemini Free: request de countTokens passou a enviar model dentro de generateContentRequest, como exigido pela API",
+      "Smoke test operacional confirmou Groq Whisper autenticando com sucesso",
+      "Smoke test operacional confirmou que a chave Gemini esta valida, mas a conta atual esta retornando 429 por limite de quota",
+    ],
+  },
+  {
+    date: "2026-03-13",
     version: "2.8.6",
     type: "release",
     title: "Gemini Free otimizado e workflow de coverage alinhado",

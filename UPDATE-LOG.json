@@ -315,5 +315,34 @@
       "npm run build passou sem erros",
       "npx playwright test tests/e2e/chat.spec.ts --project=chromium passou com .env.codex carregado"
     ]
+  },
+  "session_2026_03_13_gemini_key_validation": {
+    "date": "2026-03-13",
+    "release_version": "2.8.7",
+    "objective": "Validar as novas chaves do Gemini e Groq e corrigir o payload de countTokens do Gemini",
+    "commits": [
+      {
+        "sha": "pending",
+        "message": "fix(ia): corrigir payload do countTokens no Gemini"
+      }
+    ],
+    "files_changed": [
+      "app/lib/ai.server.ts",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "countTokens do provider Gemini passou a enviar model dentro de generateContentRequest, removendo o erro 400 estrutural",
+      "Smoke test direto do Gemini confirmou countTokens respondendo 200 tanto em gemini-2.0-flash quanto em gemini-2.0-flash-lite",
+      "Smoke test direto do Gemini confirmou chave valida, mas generateContent ainda retorna 429 por quota excedida na conta Google",
+      "Smoke test direto do Groq confirmou autenticacao valida no endpoint /models e transcricao Whisper respondendo 200"
+    ],
+    "verification": [
+      "smoke test Gemini: countTokens 200 em flash e flash-lite",
+      "smoke test Gemini: generateContent 429 por quota excedida",
+      "smoke test Groq: /models 200",
+      "smoke test Groq Whisper: transcricao 200"
+    ]
   }
 }
