@@ -1,12 +1,13 @@
 /**
- * AI Service — Multi-provider hub (Gemini Free → OpenRouter Free → DeepSeek Paid)
- * Tracks usage per provider to monitor free vs paid consumption.
+ * AI Service - Multi-provider hub (Vertex Gemini -> OpenRouter Free -> DeepSeek Direct)
+ * Tracks usage per provider to monitor fallback behavior and paid usage.
  */
 
+import { VertexAI, type CountTokensRequest, type GenerateContentRequest } from "@google-cloud/vertexai";
 import { db } from "~/lib/db.server";
+import { getCache, setCache, CACHE_TTL } from "~/lib/cache.server";
 import { processes, invoices, clients, aiUsageLogs, personalFinance, personalInvestments, personalRoutines, personalGoals, promotions, pessoas, plannedTimeOff } from "drizzle/schema";
 import { isNull, and, notInArray, sql, eq, desc, asc } from "drizzle-orm";
-import { getCache, setCache, CACHE_TTL } from "~/lib/cache.server";
 import { recordFailure, recordSuccess, checkAndAlert } from "~/lib/ai-metrics.server";
 import { selectNextProvider, logProviderDecision, type ProviderType, type StrategyDecision } from "~/lib/ai-provider-strategy";
 
@@ -23,42 +24,22 @@ interface AgentContext {
 export interface AIResponse {
   content: string;
   model: string;
-  provider: "gemini" | "openrouter_free" | "deepseek";
+  provider: "vertex_gemini" | "openrouter_qwen" | "openrouter_llama" | "openrouter_deepseek_free" | "deepseek_direct";
   tokensUsed?: number;
 }
 
 type AIFeature = "chat" | "ncm_classification" | "ocr" | "enrichment" | "telegram" | "openclaw";
+const VERTEX_GEMINI_MODEL = process.env.GEMINI_VERTEX_MODEL?.trim() || "gemini-2.0-flash";
+const VERTEX_GEMINI_LOCATION = process.env.GEMINI_VERTEX_LOCATION?.trim() || process.env.GOOGLE_CLOUD_LOCATION?.trim() || "us-central1";
+const VERTEX_TOKEN_GUARD_THRESHOLD = Number(process.env.GEMINI_VERTEX_TOKEN_GUARD_THRESHOLD || 10000);
+const OPENROUTER_QWEN_MODEL = process.env.OPENROUTER_QWEN_MODEL?.trim() || "qwen/qwen-2.5-72b-instruct:free";
+const OPENROUTER_LLAMA_MODEL = process.env.OPENROUTER_LLAMA_MODEL?.trim() || "meta-llama/llama-3.3-70b-instruct:free";
+const OPENROUTER_DEEPSEEK_FREE_MODEL = process.env.OPENROUTER_DEEPSEEK_FREE_MODEL?.trim() || "deepseek/deepseek-r1-distill-llama-70b:free";
+const DEEPSEEK_DIRECT_MODEL = process.env.DEEPSEEK_DIRECT_MODEL?.trim() || "deepseek-chat";
+const DEFAULT_MAX_OUTPUT_TOKENS = 2000;
+const VERTEX_API_ENDPOINT = process.env.GEMINI_VERTEX_API_ENDPOINT?.trim();
 
-type GeminiRequestPayload = {
-  system_instruction: { parts: Array<{ text: string }> };
-  contents: Array<{ parts: Array<{ text: string }> }>;
-  generationConfig: {
-    maxOutputTokens: number;
-    temperature: number;
-  };
-};
-
-type GeminiGenerateResponse = {
-  candidates?: Array<{
-    content?: {
-      parts?: Array<{ text?: string }>;
-    };
-  }>;
-  usageMetadata?: {
-    promptTokenCount?: number;
-    candidatesTokenCount?: number;
-  };
-};
-
-type GeminiTokenCountResponse = {
-  totalTokens?: number;
-};
-
-const GEMINI_PRIMARY_MODEL = process.env.GEMINI_MODEL_PRIMARY?.trim() || "gemini-2.0-flash";
-const GEMINI_SIMPLE_MODEL = process.env.GEMINI_MODEL_SIMPLE?.trim() || "gemini-2.0-flash-lite";
-const GEMINI_TOKEN_GUARD_THRESHOLD = Number(process.env.GEMINI_TOKEN_GUARD_THRESHOLD || 10000);
-const GEMINI_FLASH_LITE_TOKEN_THRESHOLD = Number(process.env.GEMINI_FLASH_LITE_TOKEN_THRESHOLD || 1200);
-const GEMINI_SIMPLE_FEATURES: ReadonlySet<AIFeature> = new Set(["chat", "telegram"]);
+let vertexClient: VertexAI | null = null;
 
 // --- AI Guidelines (applied to ALL agents) ---
 
@@ -260,32 +241,40 @@ IMPORTANTE: Este usuário tem acesso restrito. NÃO revele valores financeiros, 
 - Últimos processos: ${ctx.recentProcesses.map((p) => `${p.reference} (${p.status})`).join(", ") || "nenhum"}`;
 }
 
-function escapeGeminiXml(value: string): string {
+function escapeProviderXml(value: string): string {
   return value
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;");
 }
 
-function buildGeminiXmlBlock(tag: "system" | "context" | "task", value: string): string {
-  return `<${tag}>\n${escapeGeminiXml(value.trim())}\n</${tag}>`;
+function buildXmlBlock(tag: "system" | "context" | "task", value: string): string {
+  return `<${tag}>\n${escapeProviderXml(value.trim())}\n</${tag}>`;
 }
 
-function buildGeminiSystemInstruction(systemPrompt: string, contextMessage: string): string {
-  const sections = [buildGeminiXmlBlock("system", systemPrompt)];
+function buildVertexSystemInstruction(systemPrompt: string, contextMessage: string): string {
+  const sections = [buildXmlBlock("system", systemPrompt)];
 
   if (contextMessage.trim()) {
-    sections.push(buildGeminiXmlBlock("context", contextMessage));
+    sections.push(buildXmlBlock("context", contextMessage));
   }
 
   return sections.join("\n\n");
 }
 
-function buildGeminiTaskPrompt(userMessage: string): string {
-  return buildGeminiXmlBlock("task", userMessage);
+function buildVertexTaskPrompt(userMessage: string): string {
+  return buildXmlBlock("task", userMessage);
 }
 
-function compactGeminiContext(contextMessage: string): string {
+function buildFlatSystemPrompt(systemPrompt: string, contextMessage: string): string {
+  if (!contextMessage.trim()) {
+    return systemPrompt;
+  }
+
+  return `${systemPrompt}\n\n${contextMessage}`;
+}
+
+function compactModelContext(contextMessage: string): string {
   const normalized = contextMessage.replace(/\r\n/g, "\n").trim();
 
   if (!normalized || normalized.length <= 4000) {
@@ -307,17 +296,14 @@ function compactGeminiContext(contextMessage: string): string {
   return `${normalized.slice(0, 4000)}\n\n[CONTEXTO RESUMIDO AUTOMATICAMENTE PARA ECONOMIA DE TOKENS]`;
 }
 
-function buildGeminiRequestPayload(
-  systemPrompt: string,
+function buildVertexRequestPayload(
+  systemInstruction: string,
   userMessage: string,
-  contextMessage: string,
   maxOutputTokens: number,
-): GeminiRequestPayload {
+): GenerateContentRequest {
   return {
-    system_instruction: {
-      parts: [{ text: buildGeminiSystemInstruction(systemPrompt, contextMessage) }],
-    },
-    contents: [{ parts: [{ text: buildGeminiTaskPrompt(userMessage) }] }],
+    systemInstruction,
+    contents: [{ role: "user", parts: [{ text: buildVertexTaskPrompt(userMessage) }] }],
     generationConfig: {
       maxOutputTokens,
       temperature: 0.7,
@@ -325,60 +311,74 @@ function buildGeminiRequestPayload(
   };
 }
 
-async function countGeminiTokens(
-  apiKey: string,
-  model: string,
-  requestPayload: GeminiRequestPayload,
+function buildVertexCountTokensPayload(userMessage: string): CountTokensRequest {
+  return {
+    contents: [{ role: "user", parts: [{ text: buildVertexTaskPrompt(userMessage) }] }],
+  };
+}
+
+function getVertexProjectId(): string | null {
+  return (
+    process.env.GOOGLE_PROJECT_ID?.trim() ||
+    process.env.GOOGLE_CLOUD_PROJECT?.trim() ||
+    process.env.GCLOUD_PROJECT?.trim() ||
+    null
+  );
+}
+
+function getVertexClient(): VertexAI {
+  if (vertexClient) return vertexClient;
+
+  const apiKey = process.env.GEMINI_VERTEX_API_KEY?.trim();
+  const project = getVertexProjectId();
+  if (!apiKey) throw new Error("GEMINI_VERTEX_API_KEY not configured");
+  if (!project) throw new Error("GOOGLE_PROJECT_ID not configured");
+
+  vertexClient = new VertexAI({
+    project,
+    location: VERTEX_GEMINI_LOCATION,
+    apiEndpoint: VERTEX_API_ENDPOINT || undefined,
+    googleAuthOptions: {
+      apiKey,
+      projectId: project,
+    },
+  });
+
+  return vertexClient;
+}
+
+async function countVertexTokens(
+  systemInstruction: string,
+  userMessage: string,
+  maxOutputTokens: number,
 ): Promise<number | null> {
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:countTokens?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          generateContentRequest: {
-            model: `models/${model}`,
-            ...requestPayload,
-          },
-        }),
-        signal: AbortSignal.timeout(10000),
-      }
-    );
+    const model = getVertexClient().getGenerativeModel({
+      model: VERTEX_GEMINI_MODEL,
+      systemInstruction,
+      generationConfig: {
+        maxOutputTokens,
+        temperature: 0.7,
+      },
+    });
 
-    if (!response.ok) {
-      console.warn(`[AI][Gemini] countTokens falhou para ${model}: ${response.status}`);
-      return null;
-    }
-
-    const data = await response.json() as GeminiTokenCountResponse;
-    return data.totalTokens ?? null;
+    const result = await model.countTokens(buildVertexCountTokensPayload(userMessage));
+    return result.totalTokens ?? null;
   } catch (error) {
-    console.warn("[AI][Gemini] countTokens indisponivel:", error);
+    console.warn("[AI][Vertex] countTokens indisponivel:", error);
     return null;
   }
 }
 
-function shouldUseGeminiFlashLite(
-  feature: AIFeature,
-  userMessage: string,
-  promptTokens: number | null,
-): boolean {
-  if (!GEMINI_SIMPLE_FEATURES.has(feature)) {
-    return false;
-  }
-
-  if (userMessage.trim().length > 500) {
-    return false;
-  }
-
-  return promptTokens !== null && promptTokens <= GEMINI_FLASH_LITE_TOKEN_THRESHOLD;
+function extractTextFromParts(parts: Array<{ text?: string }> | undefined): string {
+  return (parts || [])
+    .map((part) => part.text || "")
+    .join("")
+    .trim();
 }
 
-// --- Usage Logging ---
-
 async function logUsage(
-  provider: "gemini" | "openrouter_free" | "deepseek",
+  provider: AIResponse["provider"],
   model: string,
   feature: AIFeature,
   tokensIn: number,
@@ -389,12 +389,10 @@ async function logUsage(
   latencyMs?: number,
 ) {
   try {
-    // Estimate cost (approximate)
     let costEstimate = "0";
-    if (provider === "deepseek") {
+    if (provider === "deepseek_direct") {
       costEstimate = String(((tokensIn * 0.14 + tokensOut * 0.28) / 1_000_000).toFixed(6));
     }
-    // gemini and openrouter_free = $0
 
     await db.insert(aiUsageLogs).values({
       userId: userId || null,
@@ -409,13 +407,10 @@ async function logUsage(
       latencyMs: latencyMs || null,
     });
 
-    // Update metrics tracking
     if (success) {
       recordSuccess(provider, feature);
     } else {
       const consecutiveFailures = recordFailure(provider, feature);
-      
-      // Trigger alert check if we have multiple failures
       if (consecutiveFailures >= 3) {
         checkAndAlert(provider, feature).catch((err) => {
           console.error("[AI_METRICS] Alert check failed:", err);
@@ -427,234 +422,72 @@ async function logUsage(
   }
 }
 
-// --- Provider 1: Gemini Free ---
-
-async function callGemini(
+async function callVertexGemini(
   systemPrompt: string,
   userMessage: string,
   contextMessage: string,
-  maxOutputTokens = 2000,
-  feature: AIFeature = "chat",
+  maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS,
 ): Promise<AIResponse> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
-
   let effectiveContext = contextMessage;
-  let requestPayload = buildGeminiRequestPayload(systemPrompt, userMessage, effectiveContext, maxOutputTokens);
-  let promptTokens = await countGeminiTokens(apiKey, GEMINI_PRIMARY_MODEL, requestPayload);
+  let systemInstruction = buildVertexSystemInstruction(systemPrompt, effectiveContext);
+  let promptTokens = await countVertexTokens(systemInstruction, userMessage, maxOutputTokens);
 
-  if (promptTokens !== null && promptTokens > GEMINI_TOKEN_GUARD_THRESHOLD) {
-    effectiveContext = compactGeminiContext(contextMessage);
-    requestPayload = buildGeminiRequestPayload(systemPrompt, userMessage, effectiveContext, maxOutputTokens);
-    promptTokens = await countGeminiTokens(apiKey, GEMINI_PRIMARY_MODEL, requestPayload);
-    console.warn(`[AI][Gemini] Contexto resumido preventivamente para ${feature} (tokens=${promptTokens ?? "desconhecido"})`);
+  if (promptTokens !== null && promptTokens > VERTEX_TOKEN_GUARD_THRESHOLD) {
+    effectiveContext = compactModelContext(contextMessage);
+    systemInstruction = buildVertexSystemInstruction(systemPrompt, effectiveContext);
+    promptTokens = await countVertexTokens(systemInstruction, userMessage, maxOutputTokens);
+    console.warn(`[AI][Vertex] Contexto resumido preventivamente (tokens=${promptTokens ?? "desconhecido"})`);
   }
 
-  const model = shouldUseGeminiFlashLite(feature, userMessage, promptTokens)
-    ? GEMINI_SIMPLE_MODEL
-    : GEMINI_PRIMARY_MODEL;
+  const model = getVertexClient().getGenerativeModel({
+    model: VERTEX_GEMINI_MODEL,
+    systemInstruction,
+    generationConfig: {
+      maxOutputTokens,
+      temperature: 0.7,
+    },
+  });
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestPayload),
-      signal: AbortSignal.timeout(30000),
-    }
-  );
+  const result = await model.generateContent(buildVertexRequestPayload(systemInstruction, userMessage, maxOutputTokens));
+  const content = extractTextFromParts(result.response.candidates?.[0]?.content?.parts);
+  const tokensIn = result.response.usageMetadata?.promptTokenCount || 0;
+  const tokensOut = result.response.usageMetadata?.candidatesTokenCount || 0;
 
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Gemini API error ${response.status}: ${err}`);
-  }
+  if (!content) throw new Error("Vertex Gemini returned empty response");
 
-  const data = await response.json() as GeminiGenerateResponse;
-  const content = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-  const tokensIn = data.usageMetadata?.promptTokenCount || 0;
-  const tokensOut = data.usageMetadata?.candidatesTokenCount || 0;
-
-  if (!content) throw new Error("Gemini returned empty response");
-
-  console.info(`[AI][Gemini] model=${model} feature=${feature} promptTokens=${promptTokens ?? tokensIn}`);
+  console.info(`[AI][Vertex] model=${VERTEX_GEMINI_MODEL} promptTokens=${promptTokens ?? tokensIn}`);
 
   return {
     content,
-    model,
-    provider: "gemini",
+    model: VERTEX_GEMINI_MODEL,
+    provider: "vertex_gemini",
     tokensUsed: tokensIn + tokensOut,
   };
 }
 
-// --- Provider 2: OpenRouter (free models) ---
-
-async function callOpenRouterFree(
+async function callOpenRouterModel(
+  provider: "openrouter_qwen" | "openrouter_llama" | "openrouter_deepseek_free",
+  model: string,
   systemPrompt: string,
   userMessage: string,
   contextMessage: string,
-  maxOutputTokens = 2000,
+  maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS,
 ): Promise<AIResponse> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error("OPENROUTER_API_KEY not configured");
 
-  const preferredFallbacks = [
-    "google/gemini-2.0-flash-exp:free",
-    "qwen/qwen-2.5-72b-instruct:free",
-    "mistralai/mistral-small-3.1-24b-instruct:free",
-    "meta-llama/llama-3.3-70b-instruct:free",
-  ];
-
-  const envModel = process.env.OPENROUTER_FREE_MODEL?.trim();
-  const cachedModel = await getCache<string>("openrouter:free-model");
-
-  let dynamicModel: string | null = null;
-  try {
-    const modelsRes = await fetch("https://openrouter.ai/api/v1/models", {
-      headers: { Authorization: `Bearer ${apiKey}` },
-      signal: AbortSignal.timeout(5000),
-    });
-
-    if (modelsRes.ok) {
-      const modelsData = await modelsRes.json() as { data?: Array<{ id?: string }> };
-      const freeIds = (modelsData.data || [])
-        .map((m) => m.id || "")
-        .filter((id) => id.endsWith(":free"));
-
-      dynamicModel =
-        freeIds.find((id) => id.includes("google/gemini")) ||
-        freeIds.find((id) => id.includes("qwen")) ||
-        freeIds.find((id) => id.includes("mistral")) ||
-        freeIds.find((id) => id.includes("llama")) ||
-        freeIds[0] ||
-        null;
-
-      if (dynamicModel) {
-        await setCache("openrouter:free-model", dynamicModel, 3600);
-      }
-    }
-  } catch {
-    // best effort only
-  }
-
-  const tried = new Set<string>();
-  const candidateModels = [envModel, cachedModel, dynamicModel, ...preferredFallbacks]
-    .filter((m): m is string => !!m && m.length > 0)
-    .filter((m) => {
-      if (tried.has(m)) return false;
-      tried.add(m);
-      return true;
-    });
-
-  let lastError = "OpenRouter Free failed";
-
-  for (const model of candidateModels) {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": process.env.APP_URL || "https://saas.lhfex.com.br",
-        "X-Title": "LHFEX SaaS",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: `${systemPrompt}\n\n${contextMessage}` },
-          { role: "user", content: userMessage },
-        ],
-        max_tokens: maxOutputTokens,
-        temperature: 0.7,
-      }),
-      signal: AbortSignal.timeout(30000),
-    });
-
-    if (!response.ok) {
-      const err = await response.text();
-      lastError = `model=${model} status=${response.status} err=${err}`;
-      continue;
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || "";
-    if (!content) {
-      lastError = `model=${model} empty-response`;
-      continue;
-    }
-
-    if (data.model) {
-      await setCache("openrouter:free-model", data.model, 3600);
-    }
-
-    return {
-      content,
-      model: data.model || model,
-      provider: "openrouter_free",
-      tokensUsed: data.usage?.total_tokens,
-    };
-  }
-
-  throw new Error(`OpenRouter Free error: ${lastError}`);
-}
-
-// --- Provider 3: DeepSeek Paid (via OpenRouter or Direct) ---
-
-async function callDeepSeek(
-  systemPrompt: string,
-  userMessage: string,
-  contextMessage: string,
-  maxOutputTokens = 2000,
-): Promise<AIResponse> {
-  // Try via OpenRouter first (paid model transport), but keep provider classification as deepseek
-  const orKey = process.env.OPENROUTER_API_KEY;
-  if (orKey) {
-    try {
-      const model = process.env.OPENROUTER_MODEL || "deepseek/deepseek-chat";
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${orKey}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": process.env.APP_URL || "https://saas.lhfex.com.br",
-          "X-Title": "LHFEX SaaS",
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: "system", content: `${systemPrompt}\n\n${contextMessage}` },
-            { role: "user", content: userMessage },
-          ],
-          max_tokens: maxOutputTokens,
-          temperature: 0.7,
-        }),
-        signal: AbortSignal.timeout(30000),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        return {
-          content: data.choices?.[0]?.message?.content || "Sem resposta.",
-          model: data.model || model,
-          provider: "deepseek",
-          tokensUsed: data.usage?.total_tokens,
-        };
-      }
-    } catch { /* fall through to direct DeepSeek */ }
-  }
-
-  // Direct DeepSeek API
-  const dsKey = process.env.DEEPSEEK_API_KEY;
-  if (!dsKey) throw new Error("DEEPSEEK_API_KEY not configured");
-
-  const response = await fetch("https://api.deepseek.com/chat/completions", {
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${dsKey}`,
+      "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
+      "HTTP-Referer": process.env.APP_URL || "https://saas.lhfex.com.br",
+      "X-Title": "LHFEX SaaS",
     },
     body: JSON.stringify({
-      model: "deepseek-chat",
+      model,
       messages: [
-        { role: "system", content: `${systemPrompt}\n\n${contextMessage}` },
+        { role: "system", content: buildFlatSystemPrompt(systemPrompt, contextMessage) },
         { role: "user", content: userMessage },
       ],
       max_tokens: maxOutputTokens,
@@ -665,14 +498,79 @@ async function callDeepSeek(
 
   if (!response.ok) {
     const err = await response.text();
-    throw new Error(`DeepSeek API error ${response.status}: ${err}`);
+    throw new Error(`OpenRouter error ${response.status}: ${err}`);
   }
 
-  const data = await response.json();
+  const data = await response.json() as {
+    model?: string;
+    choices?: Array<{ message?: { content?: string } }>;
+    usage?: { total_tokens?: number };
+  };
+  const content = data.choices?.[0]?.message?.content?.trim() || "";
+  if (!content) throw new Error("OpenRouter returned empty response");
+
   return {
-    content: data.choices?.[0]?.message?.content || "Sem resposta.",
-    model: "deepseek-chat",
-    provider: "deepseek",
+    content,
+    model: data.model || model,
+    provider,
+    tokensUsed: data.usage?.total_tokens,
+  };
+}
+
+async function callOpenRouterQwen(systemPrompt: string, userMessage: string, contextMessage: string, maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS) {
+  return callOpenRouterModel("openrouter_qwen", OPENROUTER_QWEN_MODEL, systemPrompt, userMessage, contextMessage, maxOutputTokens);
+}
+
+async function callOpenRouterLlama(systemPrompt: string, userMessage: string, contextMessage: string, maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS) {
+  return callOpenRouterModel("openrouter_llama", OPENROUTER_LLAMA_MODEL, systemPrompt, userMessage, contextMessage, maxOutputTokens);
+}
+
+async function callOpenRouterDeepSeekFree(systemPrompt: string, userMessage: string, contextMessage: string, maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS) {
+  return callOpenRouterModel("openrouter_deepseek_free", OPENROUTER_DEEPSEEK_FREE_MODEL, systemPrompt, userMessage, contextMessage, maxOutputTokens);
+}
+
+async function callDeepSeekDirect(
+  systemPrompt: string,
+  userMessage: string,
+  contextMessage: string,
+  maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS,
+): Promise<AIResponse> {
+  const dsKey = process.env.DEEPSEEK_API_KEY;
+  if (!dsKey) throw new Error("DEEPSEEK_API_KEY not configured");
+
+  const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${dsKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: DEEPSEEK_DIRECT_MODEL,
+      messages: [
+        { role: "system", content: buildFlatSystemPrompt(systemPrompt, contextMessage) },
+        { role: "user", content: userMessage },
+      ],
+      max_tokens: maxOutputTokens,
+      temperature: 0.7,
+    }),
+    signal: AbortSignal.timeout(30000),
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`DeepSeek Direct API error ${response.status}: ${err}`);
+  }
+
+  const data = await response.json() as {
+    model?: string;
+    choices?: Array<{ message?: { content?: string } }>;
+    usage?: { total_tokens?: number };
+  };
+
+  return {
+    content: data.choices?.[0]?.message?.content?.trim() || "Sem resposta.",
+    model: data.model || DEEPSEEK_DIRECT_MODEL,
+    provider: "deepseek_direct",
     tokensUsed: data.usage?.total_tokens,
   };
 }
@@ -686,7 +584,7 @@ export async function askAgent(
   options?: {
     restricted?: boolean;
     feature?: AIFeature;
-    forceProvider?: "deepseek";
+    forceProvider?: ProviderType | "deepseek";
     includePersonalLifeContext?: boolean;
     allowPaidFallback?: boolean;
   },
@@ -697,6 +595,7 @@ export async function askAgent(
   let contextMessage = buildContextMessage(context, options?.restricted);
   const feature = options?.feature || "chat";
   const allowPaidFallback = options?.allowPaidFallback ?? true;
+  const maxOutputTokens = feature === "ocr" ? 3000 : DEFAULT_MAX_OUTPUT_TOKENS;
 
   // Se OpenClaw OU includePersonalLifeContext = true, carregar contexto de vida pessoal
   if ((agentId === "openclaw" || options?.includePersonalLifeContext) && _userId) {
@@ -714,42 +613,49 @@ ${JSON.stringify(lifeContext, null, 2)}`;
   }
 
   // Force DeepSeek for complex tasks
-  if (options?.forceProvider === "deepseek") {
+  const providerCallMap: Record<ProviderType, (prompt: string, msg: string, ctx: string, maxTokens: number) => Promise<AIResponse>> = {
+    vertex_gemini: callVertexGemini,
+    openrouter_qwen: callOpenRouterQwen,
+    openrouter_llama: callOpenRouterLlama,
+    openrouter_deepseek_free: callOpenRouterDeepSeekFree,
+    deepseek_direct: callDeepSeekDirect,
+  };
+
+  const forcedProvider = options?.forceProvider === "deepseek" ? "deepseek_direct" : options?.forceProvider;
+  if (forcedProvider) {
     try {
-      const result = await callDeepSeek(systemPrompt, message, contextMessage);
+      const result = await providerCallMap[forcedProvider](systemPrompt, message, contextMessage, maxOutputTokens);
       const latencyMs = Date.now() - startTime;
       await logUsage(result.provider, result.model, feature, 0, result.tokensUsed || 0, true, undefined, _userId, latencyMs);
       return result;
     } catch (error) {
       const latencyMs = Date.now() - startTime;
-      await logUsage("deepseek", "deepseek-chat", feature, 0, 0, false, String(error), _userId, latencyMs);
+      const failedModel = forcedProvider === "vertex_gemini"
+        ? VERTEX_GEMINI_MODEL
+        : forcedProvider === "openrouter_qwen"
+          ? OPENROUTER_QWEN_MODEL
+          : forcedProvider === "openrouter_llama"
+            ? OPENROUTER_LLAMA_MODEL
+            : forcedProvider === "openrouter_deepseek_free"
+              ? OPENROUTER_DEEPSEEK_FREE_MODEL
+              : DEEPSEEK_DIRECT_MODEL;
+      await logUsage(forcedProvider, failedModel, feature, 0, 0, false, String(error), _userId, latencyMs);
       throw error;
     }
   }
 
   // ═══════════════════════════════════════════════════════════════════════
-  // INTELLIGENT PROVIDER STRATEGY (Budget-Aware Fallback)
-  // Free tier first (Gemini → OpenRouter Free)
-  // Paid tier as fallback (DeepSeek Paid)
+  // Intelligent provider strategy: Vertex first, free OpenRouter fallback, DeepSeek Direct last.
   // ═══════════════════════════════════════════════════════════════════════
 
   const excludedProviders: ProviderType[] = [];
-  const providerCallMap: Record<ProviderType, (prompt: string, msg: string, ctx: string) => Promise<AIResponse>> = {
-    gemini: (prompt, msg, ctx) => callGemini(prompt, msg, ctx, 2000, feature),
-    openrouter_free: callOpenRouterFree,
-    deepseek: callDeepSeek,
-  };
+  const maxAttempts = allowPaidFallback ? 5 : 4;
 
-  // Attempt up to 3 times (once per provider) before giving up
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const decision: StrategyDecision = await selectNextProvider(excludedProviders, allowPaidFallback);
     try {
-      // Get next available provider based on budget and status
-      const decision: StrategyDecision = await selectNextProvider(excludedProviders, allowPaidFallback);
-
-      // Log the decision
       await logProviderDecision(decision, feature, _userId);
 
-      // Call the provider
       const callProvider = providerCallMap[decision.provider];
       if (!callProvider) {
         console.warn(`[AI_STRATEGY] Unknown provider: ${decision.provider}`);
@@ -757,16 +663,15 @@ ${JSON.stringify(lifeContext, null, 2)}`;
         continue;
       }
 
-      console.log(`[AI_STRATEGY] 🎯 Attempt ${attempt + 1}: Using ${decision.provider} (${decision.reason})`);
-      const result = await callProvider(systemPrompt, message, contextMessage);
+      console.log(`[AI_STRATEGY] Attempt ${attempt + 1}: using ${decision.provider} (${decision.reason})`);
+      const result = await callProvider(systemPrompt, message, contextMessage, maxOutputTokens);
       const latencyMs = Date.now() - startTime;
 
-      // Log successful usage
       await logUsage(
         result.provider,
         result.model,
         feature,
-        0,  // We don't have detailed token breakdown from all providers
+        0,
         result.tokensUsed || 0,
         true,
         undefined,
@@ -777,10 +682,9 @@ ${JSON.stringify(lifeContext, null, 2)}`;
       return result;
     } catch (error) {
       const latencyMs = Date.now() - startTime;
-      const decision = await selectNextProvider(excludedProviders, allowPaidFallback);
 
       console.error(
-        `[AI_STRATEGY] ❌ Provider failed (attempt ${attempt + 1}): ${decision.provider}`,
+        `[AI_STRATEGY] Provider failed (attempt ${attempt + 1}): ${decision.provider}`,
         (error as Error).message
       );
 
@@ -802,7 +706,7 @@ ${JSON.stringify(lifeContext, null, 2)}`;
     }
   }
 
-  // Ultimate fallback — all providers failed
+  // Final fallback when all providers fail.
   const agentName = agentId === "airton" ? "AIrton 🎯"
     : agentId === "iana" ? "IAna 📦"
     : agentId === "maria" ? "marIA 💰"
@@ -810,16 +714,16 @@ ${JSON.stringify(lifeContext, null, 2)}`;
 
   if (!allowPaidFallback) {
     return {
-      content: `Sou o ${agentName}. Não consegui responder com provedores gratuitos agora (Gemini/OpenRouter Free indisponíveis). Se quiser, posso tentar novamente com DeepSeek Paid nesta próxima mensagem.` ,
+      content: `Sou o ${agentName}. Nao consegui responder com Vertex e OpenRouter Free agora. Se quiser, posso tentar novamente com o fallback pago na proxima mensagem.`,
       model: "fallback-free-only",
-      provider: "gemini",
+      provider: "vertex_gemini",
     };
   }
 
   return {
     content: `Olá! Sou o ${agentName}. Estou temporariamente indisponível. Os provedores de IA não estão respondendo no momento. Tente novamente em alguns minutos.`,
     model: "fallback",
-    provider: "gemini",
+    provider: "vertex_gemini",
   };
 }
 
@@ -827,33 +731,42 @@ export async function askLifeAgentLite(task: string, userId: string): Promise<AI
   const startTime = Date.now();
   const maxOutputTokens = Number(process.env.LIFE_AGENT_MAX_OUTPUT_TOKENS || 3000);
 
-  if (process.env.GEMINI_API_KEY) {
+  const providerOrder: ProviderType[] = [
+    "vertex_gemini",
+    "openrouter_qwen",
+    "openrouter_llama",
+    "openrouter_deepseek_free",
+    "deepseek_direct",
+  ];
+  const providerModels: Record<ProviderType, string> = {
+    vertex_gemini: VERTEX_GEMINI_MODEL,
+    openrouter_qwen: OPENROUTER_QWEN_MODEL,
+    openrouter_llama: OPENROUTER_LLAMA_MODEL,
+    openrouter_deepseek_free: OPENROUTER_DEEPSEEK_FREE_MODEL,
+    deepseek_direct: DEEPSEEK_DIRECT_MODEL,
+  };
+  const providerCallMap: Record<ProviderType, (prompt: string, msg: string, ctx: string, maxTokens: number) => Promise<AIResponse>> = {
+    vertex_gemini: callVertexGemini,
+    openrouter_qwen: callOpenRouterQwen,
+    openrouter_llama: callOpenRouterLlama,
+    openrouter_deepseek_free: callOpenRouterDeepSeekFree,
+    deepseek_direct: callDeepSeekDirect,
+  };
+
+  for (const provider of providerOrder) {
     try {
-      const result = await callGemini(LIFE_AGENT_SYSTEM_PROMPT, task, "", maxOutputTokens, "chat");
+      const result = await providerCallMap[provider](LIFE_AGENT_SYSTEM_PROMPT, task, "", maxOutputTokens);
       const latencyMs = Date.now() - startTime;
-      await logUsage("gemini", result.model, "chat", 0, result.tokensUsed || 0, true, undefined, userId, latencyMs);
+      await logUsage(result.provider, result.model, "chat", 0, result.tokensUsed || 0, true, undefined, userId, latencyMs);
       return result;
     } catch (error) {
       const latencyMs = Date.now() - startTime;
-      await logUsage("gemini", GEMINI_PRIMARY_MODEL, "chat", 0, 0, false, String(error), userId, latencyMs);
-      console.error("[LIFE_AGENT] Gemini failed:", error);
+      await logUsage(provider, providerModels[provider], "chat", 0, 0, false, String(error), userId, latencyMs);
+      console.error(`[LIFE_AGENT] Provider failed (${provider}):`, error);
     }
   }
 
-  if (process.env.OPENROUTER_API_KEY) {
-    try {
-      const result = await callOpenRouterFree(LIFE_AGENT_SYSTEM_PROMPT, task, "", maxOutputTokens);
-      const latencyMs = Date.now() - startTime;
-      await logUsage("openrouter_free", result.model, "chat", 0, result.tokensUsed || 0, true, undefined, userId, latencyMs);
-      return result;
-    } catch (error) {
-      const latencyMs = Date.now() - startTime;
-      await logUsage("openrouter_free", "gemini-2.0-flash-exp:free", "chat", 0, 0, false, String(error), userId, latencyMs);
-      console.error("[LIFE_AGENT] OpenRouter free failed:", error);
-    }
-  }
-
-  throw new Error("Nenhum provedor free disponível para o Life Agent. Configure GEMINI_API_KEY ou OPENROUTER_API_KEY.");
+  throw new Error("Nenhum provedor disponivel para o Life Agent. Configure Vertex, OpenRouter ou DeepSeek.");
 }
 
 // --- Specialized: Parse Invoice/Document Text (OCR) ---

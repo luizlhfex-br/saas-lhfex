@@ -55,6 +55,7 @@ const mainNavItems: NavItem[] = [
   { labelKey: "pipeline", icon: Kanban, to: "/crm/pipeline" },
   { labelKey: "processes", icon: FileText, to: "/processes" },
   { labelKey: "financial", icon: DollarSign, to: "/financial" },
+  { label: "Assinaturas", icon: DollarSign, to: "/subscriptions" },
   { labelKey: "personalLife", icon: Heart, to: "/personal-life", requiredEmail: "luiz@lhfex.com.br" },
 ];
 
@@ -74,6 +75,7 @@ const comexNavItems: NavItem[] = [
 const aiAutomationNavItems: NavItem[] = [
   { labelKey: "automations", icon: Zap, to: "/automations" },
   { label: "IA Agentes", icon: Bot, to: "/agents" },
+  { label: "Pixel Room", icon: Package, to: "/squad" },
   { labelKey: "aiUsage", icon: Sparkles, to: "/ai-usage" },
 ];
 
@@ -84,6 +86,7 @@ export function Sidebar({ user, locale, currentPath, collapsed, onToggle }: Side
     aiAutomation:
       currentPath.startsWith("/automations") ||
       currentPath.startsWith("/agents") ||
+      currentPath.startsWith("/squad") ||
       currentPath.startsWith("/ai-usage") ||
       currentPath.startsWith("/changelog"),
     otherBusiness:

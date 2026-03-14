@@ -344,5 +344,49 @@
       "smoke test Groq: /models 200",
       "smoke test Groq Whisper: transcricao 200"
     ]
+  },
+  "session_2026_03_14_handoff_part14": {
+    "date": "2026-03-14",
+    "release_version": "2.9.0",
+    "objective": "Executar o handoff da Parte 14 com nova chain de IA, OpenClaw multiagente, Pixel Room, subscriptions e Radio Monitor",
+    "files_changed": [
+      "app/lib/ai-provider-strategy.ts",
+      "app/lib/ai.server.ts",
+      "app/lib/ai-metrics.server.ts",
+      "app/lib/ai-types.ts",
+      "app/lib/subscriptions.server.ts",
+      "app/routes/squad.tsx",
+      "app/routes/subscriptions.tsx",
+      "app/routes/api.openclaw-tools.tsx",
+      "app/routes/personal-life.radio-monitor.tsx",
+      "app/components/layout/sidebar.tsx",
+      "app/components/layout/mobile-nav.tsx",
+      "app/routes.ts",
+      "drizzle/schema/ai-usage.ts",
+      "drizzle/schema/subscriptions.ts",
+      "drizzle/schema/radio-monitor.ts",
+      "drizzle/migrations/0009_amusing_celestials.sql",
+      "openclaw-gateway/openclaw.json",
+      "openclaw-gateway/entrypoint.sh",
+      "openclaw-gateway/prompts/SOUL.md",
+      "openclaw-gateway/prompts/AGENTS.md",
+      "openclaw-gateway/prompts/skills/SAAS.md"
+    ],
+    "changes": [
+      "SAAS AI: chain reordenada para Vertex Gemini, Qwen Free, Llama Free, DeepSeek R1 Free e DeepSeek Direct",
+      "OpenClaw: 8 agentes especialistas com workspaces dedicados e identidades separadas em prompts/agents",
+      "OpenClaw: skills customizadas lhfex-comex-expert, lhfex-licitacoes e lhfex-promocoes adicionadas",
+      "OpenClaw: SOUL, AGENTS, SAAS skill e entrypoint reescritos sem segredo hardcoded",
+      "UI: rota /squad criada com visual Pixel Room e link no menu",
+      "Assinaturas: tabela subscriptions, helper compartilhado de vencimento, rota /subscriptions e endpoint ver_assinaturas adicionados",
+      "Radio Monitor: website_url, contact_phone e contact_whatsapp adicionados ao schema e a tela ganhou links clicaveis e modal de edicao",
+      "Migration 0009 tambem consolida ai_usage_logs.provider como varchar e remove o enum legado ai_provider"
+    ],
+    "verification": [
+      "npx react-router typegen passou sem erros",
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros",
+      "npx drizzle-kit generate executado com .env.codex e gerou a migration 0009_amusing_celestials.sql"
+    ]
   }
 }

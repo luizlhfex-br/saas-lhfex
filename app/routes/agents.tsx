@@ -444,10 +444,11 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
             </div>
             <div className="space-y-2">
               {[
-                { rank: "1", label: "Gemini 2.0 Flash FREE", desc: "Linha de frente — texto, imagem, áudio", badge: "GRÁTIS", color: "text-green-600" },
-                { rank: "2", label: "OpenRouter Free (:free)", desc: "Fallback leve — deepseek:free, gemini:free", badge: "GRÁTIS", color: "text-green-600" },
-                { rank: "3", label: "DeepSeek V3.2 (direto)", desc: "$0.028/MTok cache hit — raciocínio complexo", badge: "$0.03/MTok", color: "text-blue-600" },
-                { rank: "4", label: "OpenRouter Pago", desc: "Último recurso — limite $5/dia", badge: "PAGO", color: "text-amber-600" },
+                { rank: "1", label: "Vertex Gemini 2.0 Flash", desc: "Primário — cadeia principal via Vertex AI", badge: "PRIMÁRIO", color: "text-fuchsia-600" },
+                { rank: "2", label: "Qwen 2.5 72B Free", desc: "Fallback gratuito 1 via OpenRouter", badge: "GRÁTIS", color: "text-sky-600" },
+                { rank: "3", label: "Llama 3.3 70B Free", desc: "Fallback gratuito 2 via OpenRouter", badge: "GRÁTIS", color: "text-blue-600" },
+                { rank: "4", label: "DeepSeek R1 Distill Free", desc: "Fallback gratuito 3 via OpenRouter", badge: "GRÁTIS", color: "text-cyan-600" },
+                { rank: "5", label: "DeepSeek Direct", desc: "Último recurso direto na API da DeepSeek", badge: "PAGO", color: "text-orange-600" },
               ].map((m) => (
                 <div key={m.rank} className="flex items-center gap-3 rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800">
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-200 text-xs font-bold text-gray-600 dark:bg-gray-700 dark:text-gray-400">

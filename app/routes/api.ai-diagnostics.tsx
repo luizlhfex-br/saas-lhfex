@@ -33,43 +33,63 @@ export async function loader() {
   };
 
   // Check Provider Configuration
-  const geminiConfigured = Boolean(process.env.GEMINI_API_KEY);
+  const vertexConfigured = Boolean(process.env.GEMINI_VERTEX_API_KEY && process.env.GOOGLE_PROJECT_ID);
   const openrouterConfigured = Boolean(process.env.OPENROUTER_API_KEY);
   const deepseekConfigured = Boolean(process.env.DEEPSEEK_API_KEY);
 
-  diagnostics.providers.gemini = {
-    configured: geminiConfigured,
-    status: geminiConfigured ? "available" : "unavailable",
+  diagnostics.providers.vertex_gemini = {
+    configured: vertexConfigured,
+    status: vertexConfigured ? "available" : "unavailable",
     features: ["chat", "ncm_classification", "life_agent", "ocr"],
-    priority: 1, // Free tier, highest priority
+    priority: 1,
   };
 
-  diagnostics.providers.openrouter_free = {
+  diagnostics.providers.openrouter_qwen = {
     configured: openrouterConfigured,
     status: openrouterConfigured ? "available" : "unavailable",
     features: ["chat", "ncm_classification", "life_agent"],
-    priority: 2, // Free tier fallback
+    priority: 2,
   };
 
-  diagnostics.providers.deepseek = {
-    configured: deepseekConfigured || openrouterConfigured,
-    status: deepseekConfigured || openrouterConfigured ? "available" : "unavailable",
+  diagnostics.providers.openrouter_llama = {
+    configured: openrouterConfigured,
+    status: openrouterConfigured ? "available" : "unavailable",
+    features: ["chat", "ncm_classification", "life_agent"],
+    priority: 3,
+  };
+
+  diagnostics.providers.openrouter_deepseek_free = {
+    configured: openrouterConfigured,
+    status: openrouterConfigured ? "available" : "unavailable",
+    features: ["chat", "ncm_classification", "life_agent", "ocr"],
+    priority: 4,
+  };
+
+  diagnostics.providers.deepseek_direct = {
+    configured: deepseekConfigured,
+    status: deepseekConfigured ? "available" : "unavailable",
     features: ["chat", "ncm_classification", "ocr"],
-    priority: 3, // Paid tier, last resort
+    priority: 5,
   };
 
   // Feature Status
-  const hasAnyProvider = geminiConfigured || openrouterConfigured || deepseekConfigured;
+  const hasAnyProvider = vertexConfigured || openrouterConfigured || deepseekConfigured;
+  const fullFallbackChain = [
+    "vertex_gemini",
+    "openrouter_qwen",
+    "openrouter_llama",
+    "openrouter_deepseek_free",
+    "deepseek_direct",
+  ].filter((provider) => {
+    if (provider === "vertex_gemini") return vertexConfigured;
+    if (provider === "deepseek_direct") return deepseekConfigured;
+    return openrouterConfigured;
+  });
 
   diagnostics.features.chat = {
     status: hasAnyProvider ? "enabled" : "disabled",
-    preferredProvider: geminiConfigured ? "gemini" : openrouterConfigured ? "openrouter_free" : "deepseek",
-    fallbackChain: ["gemini", "openrouter_free", "deepseek"].filter((p) => {
-      if (p === "gemini") return geminiConfigured;
-      if (p === "openrouter_free") return openrouterConfigured;
-      if (p === "deepseek") return deepseekConfigured || openrouterConfigured;
-      return false;
-    }),
+    preferredProvider: fullFallbackChain[0] || "none",
+    fallbackChain: fullFallbackChain,
     constraints: {
       minLength: 1,
       maxLength: 5000,
@@ -80,13 +100,8 @@ export async function loader() {
 
   diagnostics.features.ncm_classification = {
     status: hasAnyProvider ? "enabled" : "disabled",
-    preferredProvider: deepseekConfigured || openrouterConfigured ? "deepseek" : "gemini",
-    fallbackChain: ["deepseek", "gemini", "openrouter_free"].filter((p) => {
-      if (p === "gemini") return geminiConfigured;
-      if (p === "openrouter_free") return openrouterConfigured;
-      if (p === "deepseek") return deepseekConfigured || openrouterConfigured;
-      return false;
-    }),
+    preferredProvider: fullFallbackChain[0] || "none",
+    fallbackChain: fullFallbackChain,
     constraints: {
       minLength: 5,
       maxLength: 5000,
@@ -96,13 +111,9 @@ export async function loader() {
   };
 
   diagnostics.features.life_agent = {
-    status: geminiConfigured || openrouterConfigured ? "enabled" : "disabled",
-    preferredProvider: geminiConfigured ? "gemini" : "openrouter_free",
-    fallbackChain: ["gemini", "openrouter_free"].filter((p) => {
-      if (p === "gemini") return geminiConfigured;
-      if (p === "openrouter_free") return openrouterConfigured;
-      return false;
-    }),
+    status: hasAnyProvider ? "enabled" : "disabled",
+    preferredProvider: fullFallbackChain[0] || "none",
+    fallbackChain: fullFallbackChain,
     constraints: {
       minLength: 5,
       maxLength: 3000,
@@ -112,9 +123,9 @@ export async function loader() {
   };
 
   diagnostics.features.ocr = {
-    status: deepseekConfigured || openrouterConfigured ? "enabled" : "disabled",
-    preferredProvider: "deepseek",
-    fallbackChain: ["deepseek"].filter(() => deepseekConfigured || openrouterConfigured),
+    status: hasAnyProvider ? "enabled" : "disabled",
+    preferredProvider: fullFallbackChain[0] || "none",
+    fallbackChain: fullFallbackChain,
     constraints: {
       minLength: 10,
       maxLength: 50000,

@@ -3,44 +3,34 @@
     "defaults": {
       "workspace": "/root/.openclaw/workspace",
       "model": {
-        "primary": "gemini/gemini-2.0-flash",
+        "primary": "vertex/gemini-2.0-flash",
         "fallbacks": [
-          "openrouter/auto",
-          "deepseek/deepseek-chat",
-          "openrouter/deepseek/deepseek-chat"
+          "openrouter/qwen-2.5-72b-instruct:free",
+          "deepseek/deepseek-chat"
         ]
       },
       "thinkingDefault": "adaptive",
-      "pdfModel": "gemini/gemini-2.0-flash",
+      "pdfModel": "vertex/gemini-2.0-flash",
       "pdfMaxBytesMb": 10,
       "pdfMaxPages": 20,
       "models": {
-        "gemini/gemini-2.0-flash": {
+        "vertex/gemini-2.0-flash": {
           "alias": "default"
         },
-        "gemini/gemini-2.0-flash-lite": {
-          "alias": "lite"
+        "openrouter/qwen-2.5-72b-instruct:free": {
+          "alias": "free-qwen"
         },
-        "openrouter/auto": {
-          "alias": "free"
+        "openrouter/meta-llama/llama-3.3-70b-instruct:free": {
+          "alias": "free-llama"
+        },
+        "openrouter/deepseek/deepseek-r1-distill-llama-70b:free": {
+          "alias": "free-r1"
         },
         "deepseek/deepseek-chat": {
           "alias": "deepseek-direct"
         },
-        "openrouter/deepseek/deepseek-chat": {
-          "alias": "brain"
-        },
-        "openrouter/deepseek/deepseek-reasoner": {
-          "alias": "subagent"
-        },
-        "openrouter/anthropic/claude-opus-4-6": {
-          "alias": "brain-best"
-        },
         "openrouter/openai/codex-mini-high": {
           "alias": "coding"
-        },
-        "openrouter/minimax/minimax-m1": {
-          "alias": "coding-savings"
         },
         "openrouter/perplexity/sonar": {
           "alias": "research"
@@ -48,7 +38,7 @@
       },
       "heartbeat": {
         "every": "30m",
-        "model": "gemini/gemini-2.0-flash",
+        "model": "vertex/gemini-2.0-flash",
         "target": "telegram"
       },
       "memorySearch": {
@@ -75,10 +65,112 @@
         "memoryFlush": {
           "enabled": true,
           "softThresholdTokens": 40000,
-          "prompt": "Before this context is compacted, extract and save all important information to memory files. Focus on: 1. DECISIONS made (what was decided and why). 2. STATE CHANGES (what was configured, installed, or modified). 3. LESSONS LEARNED (what worked, what failed, key insights). 4. BLOCKERS waiting for input. 5. Key facts about projects, people, or systems. Write to /root/.openclaw/workspace/memory/ files. Do not skip — missing context is permanently lost after compaction."
+          "prompt": "Before this context is compacted, extract and save all important information to memory files. Focus on decisions, state changes, lessons learned, blockers and key project facts. Write to /root/.openclaw/workspace/memory/. Do not skip because missing context is permanently lost after compaction."
+        }
+      },
+      "subagents": {
+        "allowAgents": [
+          "airton",
+          "iana",
+          "maria",
+          "iago",
+          "iara",
+          "sofia",
+          "mai",
+          "julia"
+        ]
+      }
+    },
+    "list": [
+      {
+        "id": "airton",
+        "workspace": "/root/.openclaw/workspace/agents/airton",
+        "model": {
+          "primary": "vertex/gemini-2.0-flash",
+          "fallbacks": [
+            "openrouter/qwen-2.5-72b-instruct:free",
+            "deepseek/deepseek-chat"
+          ]
+        }
+      },
+      {
+        "id": "iana",
+        "workspace": "/root/.openclaw/workspace/agents/iana",
+        "model": {
+          "primary": "vertex/gemini-2.0-flash",
+          "fallbacks": [
+            "openrouter/qwen-2.5-72b-instruct:free",
+            "deepseek/deepseek-chat"
+          ]
+        }
+      },
+      {
+        "id": "maria",
+        "workspace": "/root/.openclaw/workspace/agents/maria",
+        "model": {
+          "primary": "vertex/gemini-2.0-flash",
+          "fallbacks": [
+            "openrouter/qwen-2.5-72b-instruct:free",
+            "deepseek/deepseek-chat"
+          ]
+        }
+      },
+      {
+        "id": "iago",
+        "workspace": "/root/.openclaw/workspace/agents/iago",
+        "model": {
+          "primary": "vertex/gemini-2.0-flash",
+          "fallbacks": [
+            "openrouter/qwen-2.5-72b-instruct:free",
+            "deepseek/deepseek-chat"
+          ]
+        }
+      },
+      {
+        "id": "iara",
+        "workspace": "/root/.openclaw/workspace/agents/iara",
+        "model": {
+          "primary": "vertex/gemini-2.0-flash",
+          "fallbacks": [
+            "openrouter/qwen-2.5-72b-instruct:free",
+            "deepseek/deepseek-chat"
+          ]
+        }
+      },
+      {
+        "id": "sofia",
+        "workspace": "/root/.openclaw/workspace/agents/sofia",
+        "model": {
+          "primary": "vertex/gemini-2.0-flash",
+          "fallbacks": [
+            "openrouter/qwen-2.5-72b-instruct:free",
+            "deepseek/deepseek-chat"
+          ]
+        }
+      },
+      {
+        "id": "mai",
+        "workspace": "/root/.openclaw/workspace/agents/mai",
+        "model": {
+          "primary": "vertex/gemini-2.0-flash",
+          "fallbacks": [
+            "openrouter/qwen-2.5-72b-instruct:free",
+            "deepseek/deepseek-chat"
+          ]
+        }
+      },
+      {
+        "id": "julia",
+        "workspace": "/root/.openclaw/workspace/agents/julia",
+        "model": {
+          "primary": "vertex/gemini-2.0-flash",
+          "fallbacks": [
+            "openrouter/qwen-2.5-72b-instruct:free",
+            "deepseek/deepseek-chat"
+          ]
         }
       }
-    }
+    ]
   },
   "gateway": {
     "mode": "local",
@@ -160,7 +252,8 @@
         "curl",
         "jq",
         "date",
-        "echo"
+        "echo",
+        "openclaw"
       ]
     }
   },

@@ -3,8 +3,8 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.8.7";
-export const APP_RELEASE_DATE = "2026-03-13";
+export const APP_VERSION = "2.9.0";
+export const APP_RELEASE_DATE = "2026-03-14";
 export const APP_NAME = "LHFEX SaaS";
 
 export type ChangelogItemType = "feature" | "improvement" | "fix" | "infra";
@@ -20,6 +20,19 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.0",
+    date: "2026-03-14",
+    title: "Nova squad room, chain de IA e OpenClaw multiagente",
+    items: [
+      { type: "feature", text: "IA: cadeia principal do SAAS migrou para Vertex Gemini -> Qwen Free -> Llama Free -> DeepSeek R1 Free -> DeepSeek Direct" },
+      { type: "feature", text: "OpenClaw: configuracao multiagente com AIrton, IAna, marIA, IAgo, IAra, SofIA, mAI e JULia, cada um com workspace proprio" },
+      { type: "feature", text: "UI: nova rota /squad em estilo Pixel Room e novo modulo de Assinaturas com dashboard BRL/USD, CRUD e vencimento visual" },
+      { type: "feature", text: "OpenClaw tools: novo endpoint ver_assinaturas e skills customizadas para comex, licitacoes e promocoes" },
+      { type: "improvement", text: "Radio Monitor: radios agora aceitam site, telefone e WhatsApp com links clicaveis e modal de edicao completo" },
+      { type: "infra", text: "Migration 0009_amusing_celestials criada para subscriptions, radio monitor e consolidacao do provider de AI usage em varchar" },
+    ],
+  },
   {
     version: "2.8.7",
     date: "2026-03-13",

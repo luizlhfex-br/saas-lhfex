@@ -15,6 +15,7 @@ import {
   X,
   Heart,
   Briefcase,
+  Package,
   ChevronDown,
 } from "lucide-react";
 import { cn } from "~/lib/utils";
@@ -50,6 +51,7 @@ const mainNavItems: NavItem[] = [
   { labelKey: "crm", icon: Users, to: "/crm" },
   { labelKey: "processes", icon: FileText, to: "/processes" },
   { labelKey: "financial", icon: DollarSign, to: "/financial" },
+  { label: "Assinaturas", icon: DollarSign, to: "/subscriptions" },
   { labelKey: "publicProcurement", icon: Briefcase, to: "/public-procurement", requiredEmail: "luiz@lhfex.com.br" },
   { labelKey: "personalLife", icon: Heart, to: "/personal-life", requiredEmail: "luiz@lhfex.com.br" },
 ];
@@ -62,6 +64,7 @@ const comexNavItems: NavItem[] = [
 const aiAutomationNavItems: NavItem[] = [
   { labelKey: "automations", icon: Zap, to: "/automations" },
   { labelKey: "agents", icon: Bot, to: "/agents" },
+  { label: "Pixel Room", icon: Package, to: "/squad" },
   { labelKey: "aiUsage", icon: Sparkles, to: "/ai-usage" },
 ];
 
@@ -78,6 +81,7 @@ export function MobileNav({
     aiAutomation:
       currentPath.startsWith("/automations") ||
       currentPath.startsWith("/agents") ||
+      currentPath.startsWith("/squad") ||
       currentPath.startsWith("/ai-usage"),
   });
 

@@ -28,6 +28,22 @@ type Entry = {
 
 const CHANGELOG: Entry[] = [
   {
+    date: "2026-03-14",
+    version: "2.9.0",
+    type: "release",
+    title: "Squad Room, subscriptions e OpenClaw multiagente",
+    items: [
+      "IA: cadeia do SAAS passou para Vertex Gemini -> Qwen Free -> Llama Free -> DeepSeek R1 Free -> DeepSeek Direct",
+      "OpenClaw: openclaw.json agora registra 8 agentes especialistas com workspaces dedicados e cron de update check toda segunda 9h BRT",
+      "OpenClaw: SOUL.md e AGENTS.md foram reescritos com autonomia controlada, leitura financeira segura e delegacao objetiva",
+      "OpenClaw: novas skills locais lhfex-comex-expert, lhfex-licitacoes e lhfex-promocoes criadas do zero",
+      "UI: nova rota protegida /squad em estilo Pixel Room e link no menu desktop/mobile",
+      "Assinaturas: nova tabela subscriptions, rota /subscriptions com CRUD, totais BRL/USD e endpoint ver_assinaturas para o OpenClaw",
+      "Radio Monitor: radios agora suportam website_url, contact_phone e contact_whatsapp com links clicaveis e modal de edicao",
+      "Migrations: 0009_amusing_celestials inclui subscriptions, novos campos de radio e ajuste definitivo do provider de ai_usage_logs",
+    ],
+  },
+  {
     date: "2026-03-13",
     version: "2.8.7",
     type: "release",

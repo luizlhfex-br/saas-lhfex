@@ -57,9 +57,11 @@ export async function loader({ request }: { request: Request }) {
 
   // Check 3: AI Provider Configuration
   const providers: Record<string, boolean> = {
-    gemini: Boolean(process.env.GEMINI_API_KEY),
-    openrouter: Boolean(process.env.OPENROUTER_API_KEY),
-    deepseek: Boolean(process.env.DEEPSEEK_API_KEY),
+    vertex_gemini: Boolean(process.env.GEMINI_VERTEX_API_KEY && process.env.GOOGLE_PROJECT_ID),
+    openrouter_qwen: Boolean(process.env.OPENROUTER_API_KEY),
+    openrouter_llama: Boolean(process.env.OPENROUTER_API_KEY),
+    openrouter_deepseek_free: Boolean(process.env.OPENROUTER_API_KEY),
+    deepseek_direct: Boolean(process.env.DEEPSEEK_API_KEY),
   };
 
   const activeProviders = Object.entries(providers)

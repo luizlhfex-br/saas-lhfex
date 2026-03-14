@@ -22,6 +22,7 @@ import {
   Tag,
   Globe,
   Music2,
+  Pencil,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 
@@ -57,6 +58,9 @@ export async function action({ request }: { request: Request }) {
         city: String(formData.get("city") || "").trim() || null,
         state: String(formData.get("state") || "").trim().toUpperCase() || null,
         streamUrl: String(formData.get("streamUrl") || "").trim() || null,
+        websiteUrl: String(formData.get("websiteUrl") || "").trim() || null,
+        contactPhone: String(formData.get("contactPhone") || "").trim() || null,
+        contactWhatsapp: String(formData.get("contactWhatsapp") || "").trim() || null,
         monitoringEnabled: String(formData.get("monitoringEnabled") || "false") === "true",
         updatedAt: new Date(),
       });
@@ -74,13 +78,23 @@ export async function action({ request }: { request: Request }) {
     }
   }
 
-  if (intent === "edit_stream") {
+  if (intent === "update_station") {
     const stationId = String(formData.get("stationId") || "");
-    const streamUrl = String(formData.get("streamUrl") || "").trim() || null;
     if (stationId) {
       await db
         .update(radioStations)
-        .set({ streamUrl, updatedAt: new Date() })
+        .set({
+          name: String(formData.get("name") || "").trim(),
+          frequency: String(formData.get("frequency") || "").trim() || null,
+          city: String(formData.get("city") || "").trim() || null,
+          state: String(formData.get("state") || "").trim().toUpperCase() || null,
+          streamUrl: String(formData.get("streamUrl") || "").trim() || null,
+          websiteUrl: String(formData.get("websiteUrl") || "").trim() || null,
+          contactPhone: String(formData.get("contactPhone") || "").trim() || null,
+          contactWhatsapp: String(formData.get("contactWhatsapp") || "").trim() || null,
+          monitoringEnabled: String(formData.get("monitoringEnabled") || "false") === "true",
+          updatedAt: new Date(),
+        })
         .where(eq(radioStations.id, stationId));
     }
   }
@@ -145,6 +159,18 @@ const CATEGORY_LABELS: Record<string, string> = {
   contest: "Concurso",
 };
 
+function normalizePhoneHref(phone: string | null) {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, "");
+  return digits ? `tel:${digits}` : null;
+}
+
+function normalizeWhatsappHref(whatsapp: string | null) {
+  if (!whatsapp) return null;
+  const digits = whatsapp.replace(/\D/g, "");
+  return digits ? `https://wa.me/${digits}` : null;
+}
+
 function KeywordBadge({ kw, onDelete, onToggle, isSubmitting }: {
   kw: Keyword;
   onDelete: () => void;
@@ -170,168 +196,309 @@ function KeywordBadge({ kw, onDelete, onToggle, isSubmitting }: {
   );
 }
 
+function EditStationModal({
+  station,
+  open,
+  onClose,
+  isSubmitting,
+}: {
+  station: Station;
+  open: boolean;
+  onClose: () => void;
+  isSubmitting: boolean;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+      <div className="w-full max-w-2xl rounded-2xl border border-gray-200 bg-white p-5 shadow-2xl dark:border-gray-700 dark:bg-gray-950">
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Editar estação</h3>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{station.name}</p>
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={onClose}>
+            Fechar
+          </Button>
+        </div>
+
+        <Form method="post" className="space-y-3" onSubmit={onClose}>
+          <input type="hidden" name="intent" value="update_station" />
+          <input type="hidden" name="stationId" value={station.id} />
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <input
+              type="text"
+              name="name"
+              defaultValue={station.name}
+              required
+              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+            />
+            <input
+              type="text"
+              name="frequency"
+              defaultValue={station.frequency ?? ""}
+              placeholder="FM 104.5"
+              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+            />
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-3">
+            <input
+              type="text"
+              name="city"
+              defaultValue={station.city ?? ""}
+              placeholder="Cidade"
+              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+            />
+            <input
+              type="text"
+              name="state"
+              maxLength={2}
+              defaultValue={station.state ?? ""}
+              placeholder="UF"
+              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm uppercase dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+            />
+            <label className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-300">
+              <input type="checkbox" name="monitoringEnabled" value="true" defaultChecked={station.monitoringEnabled} />
+              Monitoramento ativo
+            </label>
+          </div>
+
+          <input
+            type="url"
+            name="streamUrl"
+            defaultValue={station.streamUrl ?? ""}
+            placeholder="https://stream.exemplo.com/radio.mp3"
+            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+          />
+          <input
+            type="url"
+            name="websiteUrl"
+            defaultValue={station.websiteUrl ?? ""}
+            placeholder="https://site-da-radio.com.br"
+            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+          />
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <input
+              type="text"
+              name="contactPhone"
+              defaultValue={station.contactPhone ?? ""}
+              placeholder="+55 31 99999-9999"
+              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+            />
+            <input
+              type="text"
+              name="contactWhatsapp"
+              defaultValue={station.contactWhatsapp ?? ""}
+              placeholder="+55 31 99999-9999 (WhatsApp)"
+              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <Button type="submit" size="sm" disabled={isSubmitting}>Salvar alterações</Button>
+            <Button type="button" variant="outline" size="sm" onClick={onClose}>Cancelar</Button>
+          </div>
+        </Form>
+      </div>
+    </div>
+  );
+}
+
 function StationCard({ station, keywords }: { station: Station; keywords: Keyword[] }) {
   const [expanded, setExpanded] = useState(false);
   const [showAddKw, setShowAddKw] = useState(false);
-  const [editStream, setEditStream] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
 
   const stationKws = keywords.filter(k => k.stationId === station.id);
   const activeCount = stationKws.filter(k => k.isActive).length;
+  const websiteHref = station.websiteUrl || null;
+  const phoneHref = normalizePhoneHref(station.contactPhone);
+  const whatsappHref = normalizeWhatsappHref(station.contactWhatsapp);
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
-      {/* Card header */}
-      <div className="flex items-center gap-3 p-4">
-        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-          station.monitoringEnabled
-            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-            : "bg-gray-100 text-gray-400 dark:bg-gray-800"
-        }`}>
-          <Radio className="h-4 w-4" />
-        </div>
+    <>
+      <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
+        <div className="flex items-center gap-3 p-4">
+          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+            station.monitoringEnabled
+              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+              : "bg-gray-100 text-gray-400 dark:bg-gray-800"
+          }`}>
+            <Radio className="h-4 w-4" />
+          </div>
 
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">{station.name}</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            {[station.frequency, station.city, station.state].filter(Boolean).join(" • ")}
-            {activeCount > 0 && <span className="ml-2 text-blue-500">{activeCount} keyword{activeCount !== 1 ? "s" : ""}</span>}
-          </p>
-        </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">{station.name}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {[station.frequency, station.city, station.state].filter(Boolean).join(" • ")}
+              {activeCount > 0 && <span className="ml-2 text-blue-500">{activeCount} keyword{activeCount !== 1 ? "s" : ""}</span>}
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+              {websiteHref ? (
+                <a href={websiteHref} target="_blank" rel="noreferrer" className="rounded-full bg-gray-100 px-2 py-0.5 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200">
+                  🔗 Site
+                </a>
+              ) : null}
+              {whatsappHref ? (
+                <a href={whatsappHref} target="_blank" rel="noreferrer" className="rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300">
+                  📞 WhatsApp
+                </a>
+              ) : phoneHref ? (
+                <a href={phoneHref} className="rounded-full bg-blue-100 px-2 py-0.5 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300">
+                  📞 Telefone
+                </a>
+              ) : null}
+            </div>
+          </div>
 
-        {/* Toggle monitoring */}
-        <Form method="post">
-          <input type="hidden" name="intent" value="toggle_station" />
-          <input type="hidden" name="stationId" value={station.id} />
-          <input type="hidden" name="current" value={String(station.monitoringEnabled)} />
+          <Form method="post">
+            <input type="hidden" name="intent" value="toggle_station" />
+            <input type="hidden" name="stationId" value={station.id} />
+            <input type="hidden" name="current" value={String(station.monitoringEnabled)} />
+            <button
+              type="submit"
+              title={station.monitoringEnabled ? "Pausar monitoramento" : "Ativar monitoramento"}
+              className={`rounded-lg p-1.5 transition-colors ${
+                station.monitoringEnabled
+                  ? "text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30"
+                  : "text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+              }`}
+            >
+              {station.monitoringEnabled ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
+            </button>
+          </Form>
+
+          <Form method="post" onSubmit={(e) => { if (!confirm(`Excluir ${station.name} e todas as suas keywords?`)) e.preventDefault(); }}>
+            <input type="hidden" name="intent" value="delete_station" />
+            <input type="hidden" name="stationId" value={station.id} />
+            <button type="submit" title="Excluir estação" className="rounded-lg p-1.5 text-gray-400 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30">
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </Form>
+
           <button
-            type="submit"
-            title={station.monitoringEnabled ? "Pausar monitoramento" : "Ativar monitoramento"}
-            className={`rounded-lg p-1.5 transition-colors ${
-              station.monitoringEnabled
-                ? "text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30"
-                : "text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-            }`}
+            type="button"
+            onClick={() => setShowEditModal(true)}
+            title="Editar estação"
+            className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
           >
-            {station.monitoringEnabled ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
+            <Pencil className="h-4 w-4" />
           </button>
-        </Form>
 
-        {/* Delete station */}
-        <Form method="post" onSubmit={(e) => { if (!confirm(`Excluir ${station.name} e todas as suas keywords?`)) e.preventDefault(); }}>
-          <input type="hidden" name="intent" value="delete_station" />
-          <input type="hidden" name="stationId" value={station.id} />
-          <button type="submit" title="Excluir estação" className="rounded-lg p-1.5 text-gray-400 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30">
-            <Trash2 className="h-4 w-4" />
+          <button onClick={() => setExpanded(!expanded)} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">
+            {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </button>
-        </Form>
+        </div>
 
-        {/* Expand */}
-        <button onClick={() => setExpanded(!expanded)} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">
-          {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </button>
-      </div>
-
-      {/* Expanded content */}
-      {expanded && (
-        <div className="border-t border-gray-100 px-4 pb-4 pt-3 dark:border-gray-800">
-          {/* Stream URL */}
-          <div className="mb-3">
-            <p className="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">Stream URL</p>
-            {editStream ? (
-              <Form method="post" className="flex gap-2" onSubmit={() => setEditStream(false)}>
-                <input type="hidden" name="intent" value="edit_stream" />
-                <input type="hidden" name="stationId" value={station.id} />
-                <input
-                  type="url"
-                  name="streamUrl"
-                  defaultValue={station.streamUrl ?? ""}
-                  placeholder="https://stream.exemplo.com/radio.mp3"
-                  className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                />
-                <Button type="submit" size="sm" className="h-7 text-xs">Salvar</Button>
-                <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => setEditStream(false)}>Cancelar</Button>
-              </Form>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="flex-1 truncate text-xs text-gray-600 dark:text-gray-300">
+        {expanded && (
+          <div className="border-t border-gray-100 px-4 pb-4 pt-3 dark:border-gray-800">
+            <div className="mb-3 grid gap-3 sm:grid-cols-2">
+              <div>
+                <p className="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">Stream URL</p>
+                <span className="text-xs text-gray-600 dark:text-gray-300">
                   {station.streamUrl || <span className="italic text-gray-400">Não configurado</span>}
                 </span>
-                <button onClick={() => setEditStream(true)} className="text-xs text-blue-500 hover:underline">Editar</button>
               </div>
-            )}
-          </div>
-
-          {/* Keywords for this station */}
-          <div className="mb-2">
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Keywords desta estação</p>
-              <button onClick={() => setShowAddKw(!showAddKw)} className="flex items-center gap-0.5 text-xs text-blue-500 hover:underline">
-                <Plus className="h-3 w-3" />
-                Adicionar
-              </button>
+              <div>
+                <p className="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">Contato</p>
+                <span className="text-xs text-gray-600 dark:text-gray-300">
+                  {station.contactWhatsapp || station.contactPhone || "Não configurado"}
+                </span>
+              </div>
+              <div>
+                <p className="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">Site</p>
+                <span className="text-xs text-gray-600 dark:text-gray-300">
+                  {station.websiteUrl || "Não configurado"}
+                </span>
+              </div>
+              <div>
+                <p className="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">Edição</p>
+                <button type="button" onClick={() => setShowEditModal(true)} className="text-xs text-blue-500 hover:underline">
+                  Abrir modal de edição
+                </button>
+              </div>
             </div>
 
-            {stationKws.length === 0 && !showAddKw && (
-              <p className="text-xs italic text-gray-400">Nenhuma keyword específica. Serão usadas as keywords globais.</p>
-            )}
+            <div className="mb-2">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Keywords desta estação</p>
+                <button onClick={() => setShowAddKw(!showAddKw)} className="flex items-center gap-0.5 text-xs text-blue-500 hover:underline">
+                  <Plus className="h-3 w-3" />
+                  Adicionar
+                </button>
+              </div>
 
-            <div className="flex flex-wrap gap-1.5">
-              {stationKws.map(kw => (
-                <Form key={kw.id} method="post">
-                  <KeywordBadge
-                    kw={kw}
-                    isSubmitting={isSubmitting}
-                    onToggle={() => {
-                      const fd = new FormData();
-                      fd.set("intent", "toggle_keyword");
-                      fd.set("keywordId", kw.id);
-                      fd.set("isActive", String(kw.isActive));
-                      fetch("/personal-life/radio-monitor", { method: "POST", body: fd });
-                    }}
-                    onDelete={() => {
-                      if (!confirm(`Remover keyword "${kw.keyword}"?`)) return;
-                      const fd = new FormData();
-                      fd.set("intent", "delete_keyword");
-                      fd.set("keywordId", kw.id);
-                      fetch("/personal-life/radio-monitor", { method: "POST", body: fd }).then(() => window.location.reload());
-                    }}
+              {stationKws.length === 0 && !showAddKw && (
+                <p className="text-xs italic text-gray-400">Nenhuma keyword específica. Serão usadas as keywords globais.</p>
+              )}
+
+              <div className="flex flex-wrap gap-1.5">
+                {stationKws.map(kw => (
+                  <Form key={kw.id} method="post">
+                    <KeywordBadge
+                      kw={kw}
+                      isSubmitting={isSubmitting}
+                      onToggle={() => {
+                        const fd = new FormData();
+                        fd.set("intent", "toggle_keyword");
+                        fd.set("keywordId", kw.id);
+                        fd.set("isActive", String(kw.isActive));
+                        fetch("/personal-life/radio-monitor", { method: "POST", body: fd });
+                      }}
+                      onDelete={() => {
+                        if (!confirm(`Remover keyword "${kw.keyword}"?`)) return;
+                        const fd = new FormData();
+                        fd.set("intent", "delete_keyword");
+                        fd.set("keywordId", kw.id);
+                        fetch("/personal-life/radio-monitor", { method: "POST", body: fd }).then(() => window.location.reload());
+                      }}
+                    />
+                  </Form>
+                ))}
+              </div>
+
+              {showAddKw && (
+                <Form method="post" className="mt-2 flex flex-wrap gap-2" onSubmit={() => setShowAddKw(false)}>
+                  <input type="hidden" name="intent" value="create_keyword" />
+                  <input type="hidden" name="stationId" value={station.id} />
+                  <input
+                    type="text"
+                    name="keyword"
+                    placeholder="Palavra-chave"
+                    required
+                    className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                   />
+                  <select name="category" className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
+                    <option value="promotion">Promoção</option>
+                    <option value="raffle">Sorteio</option>
+                    <option value="discount">Desconto</option>
+                    <option value="contest">Concurso</option>
+                  </select>
+                  <select name="priority" className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
+                    <option value="medium">Média</option>
+                    <option value="high">Alta</option>
+                    <option value="low">Baixa</option>
+                  </select>
+                  <Button type="submit" size="sm" className="h-7 text-xs">Adicionar</Button>
                 </Form>
-              ))}
+              )}
             </div>
-
-            {/* Add keyword inline */}
-            {showAddKw && (
-              <Form method="post" className="mt-2 flex flex-wrap gap-2" onSubmit={() => setShowAddKw(false)}>
-                <input type="hidden" name="intent" value="create_keyword" />
-                <input type="hidden" name="stationId" value={station.id} />
-                <input
-                  type="text"
-                  name="keyword"
-                  placeholder="Palavra-chave"
-                  required
-                  className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                />
-                <select name="category" className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
-                  <option value="promotion">Promoção</option>
-                  <option value="raffle">Sorteio</option>
-                  <option value="discount">Desconto</option>
-                  <option value="contest">Concurso</option>
-                </select>
-                <select name="priority" className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
-                  <option value="medium">Média</option>
-                  <option value="high">Alta</option>
-                  <option value="low">Baixa</option>
-                </select>
-                <Button type="submit" size="sm" className="h-7 text-xs">Adicionar</Button>
-              </Form>
-            )}
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+
+      <EditStationModal
+        station={station}
+        open={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        isSubmitting={isSubmitting}
+      />
+    </>
   );
 }
 
@@ -405,6 +572,26 @@ export default function PersonalLifeRadioMonitorPage() {
               placeholder="https://stream.exemplo.com/radio.mp3 (opcional)"
               className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
             />
+            <div className="grid gap-3 md:grid-cols-3">
+              <input
+                type="url"
+                name="websiteUrl"
+                placeholder="https://site-da-radio.com.br"
+                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+              />
+              <input
+                type="text"
+                name="contactPhone"
+                placeholder="Telefone/Contato"
+                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+              />
+              <input
+                type="text"
+                name="contactWhatsapp"
+                placeholder="WhatsApp"
+                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+              />
+            </div>
             <div className="flex gap-2">
               <Button type="submit" size="sm" disabled={isSubmitting}>Salvar estação</Button>
               <Button type="button" variant="outline" size="sm" onClick={() => setShowAddStation(false)}>Cancelar</Button>

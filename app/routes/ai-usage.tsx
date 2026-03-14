@@ -91,26 +91,32 @@ export default function AIUsagePage({ loaderData }: Route.ComponentProps) {
   };
 
   const providerConfig: Record<string, { label: string; color: string; badge: string }> = {
-    gemini: { label: "Gemini (Free)", color: "bg-blue-500", badge: "info" },
-    openrouter_free: { label: "OpenRouter (Free)", color: "bg-green-500", badge: "success" },
-    openrouter_paid: { label: "OpenRouter (Paid)", color: "bg-orange-500", badge: "warning" },
-    deepseek: { label: "DeepSeek (Paid)", color: "bg-purple-500", badge: "danger" },
+    vertex_gemini: { label: "Vertex Gemini", color: "bg-fuchsia-500", badge: "info" },
+    openrouter_qwen: { label: "Qwen Free", color: "bg-sky-500", badge: "success" },
+    openrouter_llama: { label: "Llama Free", color: "bg-blue-500", badge: "success" },
+    openrouter_deepseek_free: { label: "R1 Free", color: "bg-cyan-500", badge: "success" },
+    deepseek_direct: { label: "DeepSeek Direct", color: "bg-orange-500", badge: "warning" },
+    gemini: { label: "Gemini legado", color: "bg-blue-400", badge: "secondary" },
+    openrouter_free: { label: "OpenRouter legado", color: "bg-emerald-500", badge: "secondary" },
     deepseek_chat: { label: "DeepSeek (Chat)", color: "bg-purple-500", badge: "danger" },
     deepseek_reasoner: { label: "DeepSeek (Reasoner)", color: "bg-purple-500", badge: "danger" },
+    deepseek: { label: "DeepSeek legado", color: "bg-purple-500", badge: "secondary" },
     groq: { label: "Groq", color: "bg-teal-500", badge: "info" },
   };
 
   const normalizedStats = (() => {
     const rows = [...stats];
-    if (!rows.some((row) => String(row.provider || "").startsWith("deepseek"))) {
-      rows.push({
-        provider: "deepseek",
-        totalCalls: 0,
-        totalTokensIn: 0,
-        totalTokensOut: 0,
-        totalCost: "0",
-        successRate: 0,
-      });
+    for (const provider of ["vertex_gemini", "openrouter_qwen", "openrouter_llama", "openrouter_deepseek_free", "deepseek_direct"]) {
+      if (!rows.some((row) => row.provider === provider)) {
+        rows.push({
+          provider,
+          totalCalls: 0,
+          totalTokensIn: 0,
+          totalTokensOut: 0,
+          totalCost: "0",
+          successRate: 0,
+        });
+      }
     }
     return rows;
   })();

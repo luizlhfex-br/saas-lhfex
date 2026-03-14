@@ -1,15 +1,5 @@
 /**
- * AI Provider Strategy — Otimização de Custos
- *
- * Estratégia de fallback inteligente:
- * 1. Gemini Free (100% gratuito) ← PRIMEIRO
- * 2. OpenRouter Free (100% gratuito) ← SEGUNDO
- * 3. DeepSeek Paid (último resort) ← TERCEIRO
- *
- * Controle de quota:
- * - Monitorar custos diários/mensais
- * - Alertar quando atingir 80% do orçamento
- * - Bloquear quando atingir 100%
+ * AI Provider Strategy — Cadeia Vertex → OpenRouter Free → DeepSeek Direct
  */
 
 import { db } from "~/lib/db.server";
@@ -19,30 +9,45 @@ import { sql } from "drizzle-orm";
 // ── Configuração de Orçamentos ──
 
 export const PROVIDER_BUDGETS = {
-  // Gratuitos — sem limite real, mas monitorar uso
-  gemini: {
+  vertex_gemini: {
     monthlyBudget: Number.POSITIVE_INFINITY,
-    dailyLimit: 1_000_000, // tokens/dia
-    alertAt: 0.8, // Alertar a 80% (não aplicável, mas para log)
-    costPerMTok: 0, // Grátis
-    priority: 1, // PRIMEIRO
-  },
-
-  openrouter_free: {
-    monthlyBudget: Number.POSITIVE_INFINITY,
-    dailyLimit: 500_000,
+    dailyLimit: 2_000_000,
     alertAt: 0.8,
-    costPerMTok: 0, // Grátis
-    priority: 2, // SEGUNDO
+    costPerMTok: 0,
+    priority: 1,
+    requiredEnvs: ["GEMINI_VERTEX_API_KEY", "GOOGLE_PROJECT_ID"],
   },
-
-  // Pago DeepSeek — último resort
-  deepseek: {
-    monthlyBudget: 100, // USD $100/mês máximo
+  openrouter_qwen: {
+    monthlyBudget: Number.POSITIVE_INFINITY,
+    dailyLimit: 800_000,
+    alertAt: 0.8,
+    costPerMTok: 0,
+    priority: 2,
+    requiredEnvs: ["OPENROUTER_API_KEY"],
+  },
+  openrouter_llama: {
+    monthlyBudget: Number.POSITIVE_INFINITY,
+    dailyLimit: 800_000,
+    alertAt: 0.8,
+    costPerMTok: 0,
+    priority: 3,
+    requiredEnvs: ["OPENROUTER_API_KEY"],
+  },
+  openrouter_deepseek_free: {
+    monthlyBudget: Number.POSITIVE_INFINITY,
+    dailyLimit: 800_000,
+    alertAt: 0.8,
+    costPerMTok: 0,
+    priority: 4,
+    requiredEnvs: ["OPENROUTER_API_KEY"],
+  },
+  deepseek_direct: {
+    monthlyBudget: 100,
     dailyLimit: 200_000,
-    alertAt: 0.8, // Alertar a $80
-    costPerMTok: 0.14, // DeepSeek é barato (~$0.14 por 1M tokens)
-    priority: 3, // TERCEIRO (último resort)
+    alertAt: 0.8,
+    costPerMTok: 0.14,
+    priority: 5,
+    requiredEnvs: ["DEEPSEEK_API_KEY"],
   },
 } as const;
 
@@ -151,11 +156,19 @@ export async function isProviderAvailable(
   const costMonth = await getCostThisMonth(provider);
   const percentOfMonth = (costMonth / config.monthlyBudget) * 100;
 
-  // Gratuitos sempre disponíveis
-  if (
-    provider === "gemini" ||
-    provider === "openrouter_free"
-  ) {
+  const missingEnv = config.requiredEnvs.find((envName) => !process.env[envName]?.trim());
+  if (missingEnv) {
+    return {
+      provider,
+      available: false,
+      costToday,
+      costMonth,
+      percentOfMonth: 0,
+      reason: `Env ausente: ${missingEnv}`,
+    };
+  }
+
+  if (provider !== "deepseek_direct") {
     return {
       provider,
       available: true,
@@ -184,17 +197,17 @@ export async function isProviderAvailable(
  * ESTRATÉGIA DE SELEÇÃO DE PROVIDER
  *
  * Lógica:
- * 1. Tenta Gemini Free (sempre)
- * 2. Se falhar, tenta OpenRouter Free (sempre)
- * 3. Se falhar, tenta DeepSeek Paid (último resort, se tiver orçamento)
+ * 1. Tenta Vertex Gemini
+ * 2. Se falhar, percorre OpenRouter Free (Qwen → Llama → R1)
+ * 3. Se falhar, usa DeepSeek Direct
  */
 export async function selectNextProvider(
   excludeProviders: ProviderType[] = [],
   allowPaidFallback = true,
 ): Promise<StrategyDecision> {
   const providers: ProviderType[] = allowPaidFallback
-    ? ["gemini", "openrouter_free", "deepseek"]
-    : ["gemini", "openrouter_free"];
+    ? ["vertex_gemini", "openrouter_qwen", "openrouter_llama", "openrouter_deepseek_free", "deepseek_direct"]
+    : ["vertex_gemini", "openrouter_qwen", "openrouter_llama", "openrouter_deepseek_free"];
 
   for (const provider of providers) {
     if (excludeProviders.includes(provider)) {
@@ -205,15 +218,18 @@ export async function selectNextProvider(
     const status = await isProviderAvailable(provider);
 
     if (status.available) {
-      const isDegraded =
-        provider !== "gemini" && provider !== "openrouter_free";
+      const isDegraded = provider !== "vertex_gemini";
 
       const reason =
-        provider === "gemini"
-          ? "Gemini Free disponível"
-          : provider === "openrouter_free"
-            ? "OpenRouter Free disponível (Gemini falhou)"
-            : `DeepSeek Paid (último resort, $${status.costMonth.toFixed(2)}/$100)`;
+        provider === "vertex_gemini"
+          ? "Vertex Gemini disponível"
+          : provider === "openrouter_qwen"
+            ? "Qwen Free disponível (fallback 1)"
+            : provider === "openrouter_llama"
+              ? "Llama Free disponível (fallback 2)"
+              : provider === "openrouter_deepseek_free"
+                ? "R1 Free disponível (fallback 3)"
+                : `DeepSeek Direct (último recurso, $${status.costMonth.toFixed(2)}/$100)`;
 
       return {
         provider,
@@ -234,9 +250,9 @@ export async function selectNextProvider(
   );
 
   return {
-    provider: allowPaidFallback ? "deepseek" : "openrouter_free",
+    provider: allowPaidFallback ? "deepseek_direct" : "openrouter_deepseek_free",
     reason: allowPaidFallback
-      ? "FALLBACK FINAL: DeepSeek (pode exceder orçamento)"
+      ? "FALLBACK FINAL: DeepSeek Direct (pode exceder orçamento)"
       : "Sem fallback pago: provedores gratuitos indisponíveis",
     isDegraded: true,
   };
@@ -250,7 +266,7 @@ export async function checkBudgetAlerts(): Promise<
 > {
   const alerts: Array<{ provider: ProviderType; status: ProviderStatus }> = [];
 
-  for (const provider of ["deepseek"] as const) {
+  for (const provider of ["deepseek_direct"] as const) {
     const status = await isProviderAvailable(provider);
 
     if (status.percentOfMonth >= PROVIDER_BUDGETS[provider].alertAt * 100) {
@@ -293,9 +309,11 @@ export async function getProviderUsageDashboard(): Promise<
   > = {} as any;
 
   for (const provider of [
-    "gemini",
-    "openrouter_free",
-    "deepseek",
+    "vertex_gemini",
+    "openrouter_qwen",
+    "openrouter_llama",
+    "openrouter_deepseek_free",
+    "deepseek_direct",
   ] as const) {
     const status = await isProviderAvailable(provider);
     const config = PROVIDER_BUDGETS[provider];

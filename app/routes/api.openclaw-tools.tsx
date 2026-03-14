@@ -26,10 +26,12 @@ import {
   personalGoals,
   pessoas,
   plannedTimeOff,
+  subscriptions,
 } from "../../drizzle/schema";
 import { eq, desc, ilike, or, and, isNull, sql, gte, lte } from "drizzle-orm";
 import { askAgent } from "~/lib/ai.server";
 import { getPrimaryCompanyId } from "~/lib/company-context.server";
+import { getSubscriptionHealth, resolveSubscriptionNextDueDate, summarizeSubscriptionTotals } from "~/lib/subscriptions.server";
 
 function unauthorized() {
   return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -269,6 +271,44 @@ export async function loader({ request }: Route.LoaderArgs) {
       .limit(30);
 
     return ok(rows);
+  }
+
+  if (action === "ver_assinaturas") {
+    const rows = await db
+      .select()
+      .from(subscriptions)
+      .where(
+        and(
+          eq(subscriptions.companyId, companyId),
+          isNull(subscriptions.deletedAt),
+        ),
+      )
+      .orderBy(desc(subscriptions.updatedAt));
+
+    const totals = summarizeSubscriptionTotals(rows);
+    const items = rows.map((subscription) => ({
+      id: subscription.id,
+      name: subscription.name,
+      category: subscription.category,
+      valueAmount: subscription.valueAmount,
+      valueCurrency: subscription.valueCurrency,
+      recurrence: subscription.recurrence,
+      paymentMethod: subscription.paymentMethod,
+      status: subscription.status,
+      dueDay: subscription.dueDay,
+      dueDate: subscription.dueDate,
+      nextDueDate: resolveSubscriptionNextDueDate(subscription),
+      health: getSubscriptionHealth(subscription),
+      url: subscription.url,
+      loginHint: subscription.loginHint,
+      notes: subscription.notes,
+    }));
+
+    return ok({
+      totals,
+      total: items.length,
+      subscriptions: items,
+    });
   }
 
   // ── buscar_clientes ───────────────────────────────────────────────────────

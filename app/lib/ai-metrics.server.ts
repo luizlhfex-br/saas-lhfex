@@ -43,6 +43,13 @@ const ALERT_THRESHOLDS = {
 
 const METRICS_WINDOW_HOURS = 24; // Analyze last 24 hours
 const ALERT_COOLDOWN_MS = 3600000; // Don't re-alert for same issue within 1 hour
+const AI_PROVIDERS = [
+  "vertex_gemini",
+  "openrouter_qwen",
+  "openrouter_llama",
+  "openrouter_deepseek_free",
+  "deepseek_direct",
+] as const;
 
 // In-memory cache for alert cooldowns
 const alertCooldowns = new Map<string, number>();
@@ -111,10 +118,9 @@ export async function getFeatureMetrics(
   feature: string,
   windowHours: number = METRICS_WINDOW_HOURS
 ): Promise<Record<string, AIMetrics>> {
-  const providers = ["gemini", "openrouter_free", "openrouter_paid", "deepseek"];
   const metrics: Record<string, AIMetrics> = {};
 
-  for (const provider of providers) {
+  for (const provider of AI_PROVIDERS) {
     metrics[provider] = await getProviderMetrics(provider, feature, windowHours);
   }
 
@@ -293,12 +299,11 @@ export async function checkAndAlert(
  */
 export async function runMetricsCheck(): Promise<void> {
   const features = ["chat", "ncm_classification", "life_agent", "ocr"];
-  const providers = ["gemini", "openrouter_free", "openrouter_paid", "deepseek"];
 
   console.log("[AI_METRICS] Running scheduled metrics check...");
 
   for (const feature of features) {
-    for (const provider of providers) {
+    for (const provider of AI_PROVIDERS) {
       try {
         await checkAndAlert(provider, feature);
       } catch (error) {
@@ -372,8 +377,7 @@ export async function getMetricsDashboard(): Promise<{
 
   // Aggregate by provider
   const byProvider: Record<string, AIMetrics> = {};
-  const providers = ["gemini", "openrouter_free", "openrouter_paid", "deepseek"];
-  for (const provider of providers) {
+  for (const provider of AI_PROVIDERS) {
     const providerMetrics: AIMetrics[] = [];
     for (const feature of Object.keys(systemMetrics)) {
       providerMetrics.push(systemMetrics[feature][provider]);

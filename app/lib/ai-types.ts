@@ -18,10 +18,11 @@ export type AIFeature =
   | "life_agent";
 
 export type AIProvider = 
-  | "gemini" 
-  | "openrouter_free" 
-  | "openrouter_paid" 
-  | "deepseek"
+  | "vertex_gemini"
+  | "openrouter_qwen"
+  | "openrouter_llama"
+  | "openrouter_deepseek_free"
+  | "deepseek_direct"
   | "fallback";
 
 /**

@@ -375,9 +375,11 @@ Responda *sim* para continuar ou *não* para cancelar (válido por 10 min).`,
     });
 
     // Provider badge
-    const providerBadge = response.provider === "gemini" ? "🟢 Gemini"
-      : response.provider === "openrouter_free" ? "🔵 OpenRouter"
-      : response.provider === "deepseek" ? "🟠 DeepSeek Paid"
+    const providerBadge = response.provider === "vertex_gemini" ? "🟣 Vertex"
+      : response.provider === "openrouter_qwen" ? "🔵 Qwen Free"
+      : response.provider === "openrouter_llama" ? "🔵 Llama Free"
+      : response.provider === "openrouter_deepseek_free" ? "🔵 R1 Free"
+      : response.provider === "deepseek_direct" ? "🟠 DeepSeek Direct"
       : "⚪";
 
     let responseText = response.content;

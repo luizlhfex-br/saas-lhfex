@@ -310,9 +310,11 @@ Responda *sim* para continuar ou *não* para cancelar (válido por 10 min).`,
         feature: "telegram",
         allowPaidFallback,
       });
-      const providerBadge = agentResponse.provider === "gemini" ? "🟢 Gemini"
-        : agentResponse.provider === "openrouter_free" ? "🔵 OpenRouter"
-        : agentResponse.provider === "deepseek" ? "🟠 DeepSeek Paid"
+      const providerBadge = agentResponse.provider === "vertex_gemini" ? "🟣 Vertex"
+        : agentResponse.provider === "openrouter_qwen" ? "🔵 Qwen Free"
+        : agentResponse.provider === "openrouter_llama" ? "🔵 Llama Free"
+        : agentResponse.provider === "openrouter_deepseek_free" ? "🔵 R1 Free"
+        : agentResponse.provider === "deepseek_direct" ? "🟠 DeepSeek Direct"
         : "⚪";
       let responseText = agentResponse.content;
       if (responseText.length > 3900) responseText = responseText.slice(0, 3890) + "...\n_(truncado)_";
@@ -342,9 +344,11 @@ Responda *sim* para continuar ou *não* para cancelar (válido por 10 min).`,
         feature: "telegram",
         allowPaidFallback,
       });
-      const providerBadge = agentResponse.provider === "gemini" ? "🟢 Gemini"
-        : agentResponse.provider === "openrouter_free" ? "🔵 OpenRouter"
-        : agentResponse.provider === "deepseek" ? "🟠 DeepSeek Paid"
+      const providerBadge = agentResponse.provider === "vertex_gemini" ? "🟣 Vertex"
+        : agentResponse.provider === "openrouter_qwen" ? "🔵 Qwen Free"
+        : agentResponse.provider === "openrouter_llama" ? "🔵 Llama Free"
+        : agentResponse.provider === "openrouter_deepseek_free" ? "🔵 R1 Free"
+        : agentResponse.provider === "deepseek_direct" ? "🟠 DeepSeek Direct"
         : "⚪";
       let responseText = agentResponse.content;
       if (responseText.length > 3950) responseText = responseText.slice(0, 3940) + "...\n_(truncado)_";
@@ -365,10 +369,11 @@ Responda *sim* para continuar ou *não* para cancelar (válido por 10 min).`,
     });
 
     // Add provider badge to response
-    // 🟢 Gemini Free | 🔵 OpenRouter Free | 🟠 DeepSeek Paid | ⚪ Unknown
-    const providerBadge = response.provider === "gemini" ? "🟢 Gemini"
-      : response.provider === "openrouter_free" ? "🔵 OpenRouter"
-      : response.provider === "deepseek" ? "🟠 DeepSeek Paid"
+    const providerBadge = response.provider === "vertex_gemini" ? "🟣 Vertex"
+      : response.provider === "openrouter_qwen" ? "🔵 Qwen Free"
+      : response.provider === "openrouter_llama" ? "🔵 Llama Free"
+      : response.provider === "openrouter_deepseek_free" ? "🔵 R1 Free"
+      : response.provider === "deepseek_direct" ? "🟠 DeepSeek Direct"
       : "⚪";
 
     // Limit to Telegram max (4096 chars)

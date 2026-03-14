@@ -9,6 +9,9 @@ export const radioStations = pgTable(
     city: varchar("city", { length: 100 }),
     state: varchar("state", { length: 2 }),
     streamUrl: text("stream_url"), // URL for live stream monitoring
+    websiteUrl: text("website_url"),
+    contactPhone: text("contact_phone"),
+    contactWhatsapp: text("contact_whatsapp"),
     isActive: boolean("is_active").notNull().default(true),
     monitoringEnabled: boolean("monitoring_enabled").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
