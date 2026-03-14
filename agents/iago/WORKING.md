@@ -1,6 +1,6 @@
 # WORKING.md - Estado Atual
 
-**Sessao:** agent:openclaw:main
+**Sessao:** agent:iago:main
 **Iniciado:** [sera atualizado automaticamente]
 **Ultimo heartbeat:** [sera atualizado automaticamente]
 
