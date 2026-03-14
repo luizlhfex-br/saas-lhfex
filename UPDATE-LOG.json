@@ -1,9 +1,9 @@
 {
   "release": {
-    "version": "v2.3.0",
-    "date": "2026-03-03T00:00:00Z",
-    "type": "feature",
-    "title": "Slate Pro Redesign + OpenClaw 2.0 + Faturamento Profissional"
+    "version": "v2.9.1",
+    "date": "2026-03-14T00:00:00Z",
+    "type": "infra",
+    "title": "Auto-deploy do OpenClaw no GitHub Actions"
   },
   "summary": {
     "commits": 6,
@@ -387,6 +387,27 @@
       "npx tsc --noEmit passou sem erros",
       "npm run build passou sem erros",
       "npx drizzle-kit generate executado com .env.codex e gerou a migration 0009_amusing_celestials.sql"
+    ]
+  },
+  "session_2026_03_14_openclaw_autodeploy": {
+    "date": "2026-03-14",
+    "release_version": "2.9.1",
+    "objective": "Automatizar o deploy do OpenClaw via GitHub Actions e preparar o restante do rollout",
+    "files_changed": [
+      ".github/workflows/ci.yml",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "Workflow renomeou o job de deploy atual para deploy-saas e adicionou o job deploy-openclaw",
+      "Deploy do OpenClaw agora so executa em push para main quando houver diff em openclaw-gateway/",
+      "Secret COOLIFY_OPENCLAW_APP_UUID foi registrado no GitHub para o novo job",
+      "Upload do playwright-report foi atualizado para actions/upload-artifact@v5"
+    ],
+    "verification": [
+      "gh secret list confirmou os secrets COOLIFY_API_TOKEN, COOLIFY_APP_UUID, COOLIFY_BASE_URL e COOLIFY_OPENCLAW_APP_UUID",
+      "workflow preparado para monitorar dois deploys independentes no Coolify"
     ]
   }
 }

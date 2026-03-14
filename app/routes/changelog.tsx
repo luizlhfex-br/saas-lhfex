@@ -29,6 +29,18 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-14",
+    version: "2.9.1",
+    type: "release",
+    title: "Auto-deploy do OpenClaw e pipeline segmentada",
+    items: [
+      "CI/CD: workflow agora publica o SaaS e o OpenClaw em jobs separados no GitHub Actions",
+      "OpenClaw: deploy automatico via Coolify so dispara quando houver alteracoes em openclaw-gateway/",
+      "CI: upload do relatorio Playwright migrado para actions/upload-artifact@v5, eliminando o aviso legado de Node 20 nessa etapa",
+      "Infra: secret COOLIFY_OPENCLAW_APP_UUID registrado no GitHub para permitir deploy automatico do container separado",
+    ],
+  },
+  {
+    date: "2026-03-14",
     version: "2.9.0",
     type: "release",
     title: "Squad Room, subscriptions e OpenClaw multiagente",

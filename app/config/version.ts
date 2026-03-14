@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.0";
+export const APP_VERSION = "2.9.1";
 export const APP_RELEASE_DATE = "2026-03-14";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,16 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.1",
+    date: "2026-03-14",
+    title: "Auto-deploy do OpenClaw no GitHub Actions",
+    items: [
+      { type: "infra", text: "CI/CD: workflow passou a ter jobs separados para deploy do SaaS e do OpenClaw via API do Coolify" },
+      { type: "infra", text: "OpenClaw: deploy automatico agora roda apenas quando houver alteracao em openclaw-gateway/" },
+      { type: "improvement", text: "CI: upload do relatorio Playwright atualizado para actions/upload-artifact@v5, removendo o aviso legado de Node 20" },
+    ],
+  },
   {
     version: "2.9.0",
     date: "2026-03-14",
