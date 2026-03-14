@@ -29,6 +29,20 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-14",
+    version: "2.9.2",
+    type: "release",
+    title: "Migration 0009 aplicada e OpenClaw pronto para publicar",
+    items: [
+      "Producao: migration 0009_amusing_celestials foi aplicada com sucesso no banco do SaaS",
+      "Assinaturas: tabela subscriptions e indices agora existem em producao",
+      "Radio Monitor: colunas website_url, contact_phone e contact_whatsapp foram criadas em radio_stations",
+      "AI Usage: coluna provider migrou do enum ai_provider para varchar(64) sem dependencias residuais",
+      "OpenClaw: changelog interno foi atualizado para descrever os 8 agentes, a nova chain de IA e o cron de update check",
+      "CI: workflow passou a usar FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true e actions/upload-artifact@v7",
+    ],
+  },
+  {
+    date: "2026-03-14",
     version: "2.9.1",
     type: "release",
     title: "Auto-deploy do OpenClaw e pipeline segmentada",

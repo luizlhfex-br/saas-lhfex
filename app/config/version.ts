@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.1";
+export const APP_VERSION = "2.9.2";
 export const APP_RELEASE_DATE = "2026-03-14";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,16 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.2",
+    date: "2026-03-14",
+    title: "OpenClaw publicado e migration 0009 aplicada",
+    items: [
+      { type: "infra", text: "Producao: migration 0009_amusing_celestials foi aplicada no banco do SaaS, liberando subscriptions, radio monitor expandido e provider varchar em ai_usage_logs" },
+      { type: "infra", text: "OpenClaw: prompts internos ganharam changelog atualizado para refletir a stack multiagente, a nova chain de IA e o cron de update check" },
+      { type: "improvement", text: "CI: workflow passou a forcar Node 24 para JavaScript actions e o upload do Playwright foi atualizado para actions/upload-artifact@v7" },
+    ],
+  },
   {
     version: "2.9.1",
     date: "2026-03-14",

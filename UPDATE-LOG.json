@@ -1,9 +1,9 @@
 {
   "release": {
-    "version": "v2.9.1",
+    "version": "v2.9.2",
     "date": "2026-03-14T00:00:00Z",
     "type": "infra",
-    "title": "Auto-deploy do OpenClaw no GitHub Actions"
+    "title": "Migration 0009 aplicada e rollout do OpenClaw preparado"
   },
   "summary": {
     "commits": 6,
@@ -408,6 +408,29 @@
     "verification": [
       "gh secret list confirmou os secrets COOLIFY_API_TOKEN, COOLIFY_APP_UUID, COOLIFY_BASE_URL e COOLIFY_OPENCLAW_APP_UUID",
       "workflow preparado para monitorar dois deploys independentes no Coolify"
+    ]
+  },
+  "session_2026_03_14_prod_rollout": {
+    "date": "2026-03-14",
+    "release_version": "2.9.2",
+    "objective": "Aplicar a migration 0009 em producao e disparar o primeiro deploy automatico real do OpenClaw",
+    "files_changed": [
+      ".github/workflows/ci.yml",
+      "openclaw-gateway/prompts/CHANGELOG.md",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "Migration 0009_amusing_celestials foi aplicada no banco via container do SaaS",
+      "Workflow passou a usar FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true e actions/upload-artifact@v7",
+      "Changelog interno do OpenClaw foi alinhado ao rollout multiagente e a nova chain de IA",
+      "Novo push vai acionar o deploy automatico do OpenClaw porque altera openclaw-gateway/"
+    ],
+    "verification": [
+      "subscriptions criada em producao",
+      "radio_stations recebeu website_url, contact_phone e contact_whatsapp",
+      "ai_usage_logs.provider agora e varchar(64)"
     ]
   }
 }
