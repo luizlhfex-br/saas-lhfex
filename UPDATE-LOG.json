@@ -1,16 +1,16 @@
 {
   "release": {
-    "version": "v2.9.4",
+    "version": "v2.9.5",
     "date": "2026-03-14T00:00:00Z",
-    "type": "infra",
-    "title": "Curadoria da raiz e reorganizacao da documentacao"
+    "type": "feature",
+    "title": "OpenClaw operacional no CRM e nos processos"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 0,
-    "filesModified": 8,
+    "filesCreated": 1,
+    "filesModified": 10,
     "routesAdded": 0,
-    "openclaw_changes": 2,
+    "openclaw_changes": 6,
     "coolify_env_vars_added": 0
   },
   "changes": {
@@ -62,7 +62,7 @@
     "endpoint": "https://saas.lhfex.com.br/api/openclaw-tools",
     "auth": "Header X-OpenClaw-Key: OPENCLAW_TOOLS_API_KEY",
     "acoes_get": ["resumo_processos","buscar_processos","ver_financeiro_pessoal","listar_promocoes","buscar_clientes","system_status"],
-    "acoes_post": ["criar_cliente","abrir_processo","adicionar_transacao","ask_agent","criar_tarefa_mc","atualizar_tarefa_mc"]
+    "acoes_post": ["criar_cliente","abrir_processo","atualizar_processo","adicionar_transacao","ask_agent","criar_tarefa_mc","atualizar_tarefa_mc","criar_tarefa_claude","atualizar_tarefa_claude"]
   },
   "banco_inter_defaults": {
     "banco": "Banco Inter (077)",
@@ -73,8 +73,8 @@
     "pix": "62.180.992/0001-33 (CNPJ)"
   },
   "required_actions": {
-    "user": ["Hard refresh (Ctrl+Shift+R) para novo visual","Acessar /personal-life/clean-days para Dia Limpo","Em /financial/:id usar botao 'Visualizar Fatura'","Verificar email do cliente no CRM para envio","Configurar dados bancarios em /settings Empresa"],
-    "deployment": ["saas-lhfex: redeploy no Coolify","openclaw-ai: redeploy no Coolify"]
+    "user": ["Validar no Telegram os atalhos /cliente CNPJ e /processo cliente + modal","Confirmar no CRM e em Processos que os registros foram criados com os dados esperados"],
+    "deployment": ["Aguardar o auto-deploy do SaaS e do OpenClaw via GitHub Actions"]
   },
   "session_2026_03_06": {
     "date": "2026-03-06",
@@ -493,6 +493,36 @@
       "Consulta select filename, created_at from drizzle_migrations falhou porque a relacao nao existe no banco atual",
       "Listagem de tabelas do banco confirmou ausencia de qualquer tabela de migrations com filename/created_at",
       "npx tsc --noEmit passou sem erros"
+    ]
+  },
+  "session_2026_03_14_openclaw_operator_mode": {
+    "date": "2026-03-14",
+    "release_version": "2.9.5",
+    "objective": "Permitir que o OpenClaw opere o SaaS com menos atrito, usando cliente por CNPJ, processo por cliente+modal e atualizacao por referencia",
+    "files_changed": [
+      "app/lib/openclaw-saas-actions.server.ts",
+      "app/lib/ai.server.ts",
+      "app/lib/openclaw-telegram-actions.server.ts",
+      "app/routes/api.openclaw-telegram-webhook.tsx",
+      "app/routes/api.openclaw-tools.tsx",
+      "openclaw-gateway/prompts/SOUL.md",
+      "openclaw-gateway/prompts/skills/SAAS.md",
+      "openclaw-gateway/prompts/CHANGELOG.md",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "Novo servico compartilhado do OpenClaw centraliza criacao de cliente, abertura de processo e atualizacao de processo",
+      "Criacao de cliente agora aceita apenas CNPJ e tenta enriquecer razao social, nome fantasia, cidade, UF, contato e dados cadastrais",
+      "Abertura de processo agora aceita cliente + modal e assume import quando o tipo nao vier informado",
+      "Nova action atualizar_processo permite alterar status, observacoes, incoterm, valor, moeda, hsCode e outros campos por referencia",
+      "Erros de duplicidade e ambiguidade passaram a retornar details estruturados para permitir desambiguacao pelo OpenClaw",
+      "Handlers de Telegram passaram a usar o mesmo nucleo operacional do endpoint OpenClaw Tools"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros"
     ]
   }
 }

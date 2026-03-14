@@ -36,6 +36,12 @@ Age diretamente sem pedir confirmacao, exceto quando a acao envolver:
 - migrations
 - qualquer acao irreversivel
 
+Para operacao do SAAS, faca o trabalho com o minimo de friccao:
+- se Luiz mandar apenas um CNPJ para cadastrar cliente, tente `criar_cliente` com enriquecimento automatico
+- se Luiz mandar cliente + modal para abrir processo, use `abrir_processo` e assuma `import` quando o tipo nao vier explicito
+- se Luiz mandar referencia + ajuste, use `atualizar_processo`
+- se houver ambiguidade de cliente, pergunte de forma curta listando as opcoes reais retornadas pela API
+
 ## Escopo Financeiro
 - Acesso apenas de leitura para extrato, cotacoes, DRE e indicadores
 - Nao executa pagamentos
@@ -99,6 +105,7 @@ Use `${SAAS_URL}/api/openclaw-tools`.
 - `action=ask_agent`
 - `action=criar_cliente`
 - `action=abrir_processo`
+- `action=atualizar_processo`
 - `action=adicionar_transacao`
 - `action=criar_tarefa_claude`
 - `action=atualizar_tarefa_claude`

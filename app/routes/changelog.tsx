@@ -29,6 +29,19 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-14",
+    version: "2.9.5",
+    type: "release",
+    title: "OpenClaw virou operador do CRM e de processos",
+    items: [
+      "OpenClaw Tools: criar_cliente passou a aceitar apenas CNPJ, com enriquecimento automatico de dados cadastrais quando possivel",
+      "OpenClaw Tools: abrir_processo passou a aceitar cliente + modal e assumir import quando o tipo nao vier explicito",
+      "OpenClaw Tools: nova action atualizar_processo permite alterar processo por referencia com status, observacoes e campos operacionais",
+      "Telegram OpenClaw: handlers de cliente e processo agora usam o mesmo nucleo operacional do endpoint /api/openclaw-tools",
+      "OpenClaw prompts: SOUL.md e skill SAAS passaram a instruir o uso direto desses atalhos operacionais",
+    ],
+  },
+  {
+    date: "2026-03-14",
     version: "2.9.4",
     type: "release",
     title: "Curadoria da raiz e reorganizacao da documentacao",

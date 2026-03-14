@@ -1,36 +1,29 @@
 /**
  * OpenClaw Telegram Actions
  *
- * Handlers para ações diretas via Telegram:
- * - Cadastrar Pessoa (contato pessoal)
- * - Cadastrar Cliente LHFEX (CRM)
- * - Abrir Processo LHFEX (importação/exportação/serviços)
- *
- * Cada handler: parse NLP via IA → validação → insert DB → confirmação Telegram
+ * Handlers para acoes diretas via Telegram:
+ * - Cadastrar pessoa
+ * - Cadastrar cliente no CRM
+ * - Abrir processo
+ * - Cancelar processo
  */
 
-import { db } from "./db.server";
-import { pessoas, clients, contacts, processes, processTimeline } from "../../drizzle/schema";
-import { eq, isNull, ilike, or, and, sql } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
+import { pessoas, processTimeline, processes } from "../../drizzle/schema";
 import {
   parsePessoaFromTelegram,
   parseClienteFromTelegram,
   parseProcessoFromTelegram,
-  enrichCNPJ,
 } from "./ai.server";
+import { db } from "./db.server";
+import {
+  OpenClawActionError,
+  createClientFromOpenClaw,
+  extractCnpjFromText,
+  getProcessTypeLabel,
+  openProcessFromOpenClaw,
+} from "./openclaw-saas-actions.server";
 import { getPrimaryCompanyId } from "./company-context.server";
-
-function normalizeCnpj(input: string): string {
-  const digits = input.replace(/\D/g, "");
-  if (digits.length !== 14) return "";
-  return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
-}
-
-function extractCnpjFromText(text: string): string {
-  const m = text.match(/\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/);
-  if (!m) return "";
-  return normalizeCnpj(m[0]);
-}
 
 async function getOpenClawContext() {
   const userId = process.env.OPENCLAW_USER_ID;
@@ -42,27 +35,16 @@ async function getOpenClawContext() {
   return { userId, companyId };
 }
 
-function getReferenceModalPrefix(text: string) {
-  const normalized = text.toLowerCase();
-  if (/(aere|air|awb|voo)/.test(normalized)) return "A";
-  if (/(marit|sea|navio|container|bl)/.test(normalized)) return "M";
-  return "C";
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Helper: send Telegram message with Markdown retry
-// ─────────────────────────────────────────────────────────────────────────────
-
 async function sendTg(token: string, chatId: number, text: string, parseMode?: string) {
   try {
-    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id: chatId, text, parse_mode: parseMode }),
       signal: AbortSignal.timeout(10000),
     });
-    if (!res.ok && parseMode) {
-      // Retry sem formatação se Markdown falhar
+
+    if (!response.ok && parseMode) {
       await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -72,6 +54,7 @@ async function sendTg(token: string, chatId: number, text: string, parseMode?: s
     }
   } catch (error) {
     console.error("[OpenClaw Actions] sendTg failed:", error);
+
     if (parseMode) {
       try {
         await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
@@ -80,33 +63,30 @@ async function sendTg(token: string, chatId: number, text: string, parseMode?: s
           body: JSON.stringify({ chat_id: chatId, text: text.replace(/[*_`\[]/g, "") }),
           signal: AbortSignal.timeout(10000),
         });
-      } catch { /* silent */ }
+      } catch {
+        // noop
+      }
     }
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 1. Cadastrar Pessoa
-// ─────────────────────────────────────────────────────────────────────────────
 
 export async function handleCadastrarPessoa(text: string, chatId: number, botToken: string) {
   await sendTg(botToken, chatId, "⏳ Analisando dados da pessoa...");
 
   const fields = await parsePessoaFromTelegram(text);
-
   if (!fields.nomeCompleto) {
-    await sendTg(botToken, chatId,
-      `❌ *Nome não identificado.*\n\n` +
-      `Informe pelo menos o nome completo. Exemplo:\n` +
-      `\`/pessoa João Silva, CPF: 123.456.789-00, 31999990000, joao@gmail.com\``,
-      "Markdown"
+    await sendTg(
+      botToken,
+      chatId,
+      "❌ *Nome nao identificado.*\n\nInforme pelo menos o nome completo. Exemplo:\n`/pessoa Joao Silva, CPF: 123.456.789-00, 31999990000, joao@gmail.com`",
+      "Markdown",
     );
     return;
   }
 
   const userId = process.env.OPENCLAW_USER_ID;
   if (!userId) {
-    await sendTg(botToken, chatId, "❌ OPENCLAW\\_USER\\_ID não configurado no servidor.", "Markdown");
+    await sendTg(botToken, chatId, "❌ OPENCLAW_USER_ID nao configurado no servidor.");
     return;
   }
 
@@ -131,7 +111,7 @@ export async function handleCadastrarPessoa(text: string, chatId: number, botTok
       fields.celular ? `📱 ${fields.celular}` : null,
       fields.email ? `📧 ${fields.email}` : null,
       fields.instagram ? `📷 @${fields.instagram}` : null,
-      `\nVer em: saas.lhfex.com.br/personal-life/promotions`,
+      "\nVer em: saas.lhfex.com.br/personal-life/promotions",
     ].filter(Boolean).join("\n");
 
     await sendTg(botToken, chatId, linhas, "Markdown");
@@ -141,241 +121,131 @@ export async function handleCadastrarPessoa(text: string, chatId: number, botTok
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 2. Cadastrar Cliente LHFEX
-// ─────────────────────────────────────────────────────────────────────────────
-
 export async function handleNovoCliente(text: string, chatId: number, botToken: string) {
   await sendTg(botToken, chatId, "⏳ Analisando dados do cliente...");
 
   const fields = await parseClienteFromTelegram(text);
   const extractedCnpj = extractCnpjFromText(text);
-  const cnpj = normalizeCnpj(((fields.cnpj as string | null) ?? extractedCnpj) || "");
-  let razaoSocial = (fields.razaoSocial as string | undefined)?.trim() || "";
-  let nomeFantasia = (fields.nomeFantasia as string | null) ?? null;
-  let city = (fields.city as string | null) ?? null;
-  let state = (fields.state as string | null) ?? null;
-  let notes = (fields.notes as string | null) ?? null;
-
-  if (!razaoSocial && cnpj) {
-    try {
-      const enriched = await enrichCNPJ(cnpj);
-      if (enriched) {
-        razaoSocial = enriched.razaoSocial || razaoSocial;
-        nomeFantasia = nomeFantasia || enriched.nomeFantasia || null;
-        city = city || enriched.city || null;
-        state = state || enriched.state || null;
-        notes = notes || (enriched.situacao ? `Situação cadastral: ${enriched.situacao}` : null);
-      }
-    } catch (error) {
-      console.error("[OpenClaw Actions] CNPJ enrichment failed:", error);
-    }
-  }
-
-  if (!razaoSocial) {
-    await sendTg(botToken, chatId,
-      `❌ *Não consegui identificar os dados para cadastro.*\n\n` +
-      `Envie ao menos um CNPJ válido ou razão social. Exemplo:\n` +
-      `\`/cliente 03.954.434/0001-19\``,
-      "Markdown"
-    );
-    return;
-  }
-
-  const contact = (fields.contact as Record<string, string> | null) ?? {};
   const { userId, companyId } = await getOpenClawContext();
 
-  // Verifica CNPJ duplicado
-  if (cnpj) {
-    const existing = await db.select({ id: clients.id, razaoSocial: clients.razaoSocial })
-      .from(clients)
-      .where(and(eq(clients.companyId, companyId), eq(clients.cnpj, cnpj), isNull(clients.deletedAt)))
-      .limit(1);
-
-    if (existing.length > 0) {
-      await sendTg(botToken, chatId,
-        `⚠️ CNPJ *${cnpj}* já cadastrado:\n*${existing[0].razaoSocial}*\n\nVer em: saas.lhfex.com.br/crm/${existing[0].id}`,
-        "Markdown"
-      );
-      return;
-    }
-  }
-
   try {
-    const clientType = (fields.clientType as "importer" | "exporter" | "both") || "importer";
-
-    const [newClient] = await db.insert(clients).values({
+    const result = await createClientFromOpenClaw({
       companyId,
-      cnpj: cnpj || "00.000.000/0000-00",
-      razaoSocial,
-      nomeFantasia,
-      clientType,
-      city,
-      state,
-      notes,
-      status: "active",
-      createdBy: userId,
-    }).returning();
-
-    // Insere contato principal
-    if (contact.name) {
-      await db.insert(contacts).values({
-        clientId: newClient.id,
-        name: contact.name,
-        role: contact.role ?? null,
-        email: contact.email ?? null,
-        phone: contact.phone ?? null,
-        isPrimary: true,
-      });
-    }
+      userId,
+      input: {
+        ...fields,
+        cnpj: (fields.cnpj as string | null) ?? extractedCnpj,
+      },
+    });
 
     const linhas = [
-      `✅ Cliente *${newClient.razaoSocial}* cadastrado!`,
-      cnpj ? `🏢 CNPJ: ${cnpj}` : null,
-      contact.name ? `👤 Contato: ${contact.name}${contact.phone ? ` — ${contact.phone}` : ""}` : null,
-      `\nVer em: saas.lhfex.com.br/crm/${newClient.id}`,
+      `✅ Cliente *${result.razaoSocial}* cadastrado!`,
+      result.cnpj ? `🏢 CNPJ: ${result.cnpj}` : null,
+      result.enrichedFromCnpj ? "🟣 Dados cadastrais preenchidos automaticamente pelo CNPJ" : null,
+      `\nVer em: saas.lhfex.com.br/crm/${result.clientId}`,
     ].filter(Boolean).join("\n");
 
     await sendTg(botToken, chatId, linhas, "Markdown");
   } catch (error) {
+    if (error instanceof OpenClawActionError) {
+      if (error.code === "duplicate_client_cnpj") {
+        await sendTg(
+          botToken,
+          chatId,
+          `⚠️ CNPJ *${extractedCnpj || "informado"}* ja cadastrado:\n*${String(error.details?.razaoSocial || "")}*\n\nVer em: saas.lhfex.com.br/crm/${String(error.details?.clientId || "")}`,
+          "Markdown",
+        );
+        return;
+      }
+
+      if (error.code === "missing_client_identity") {
+        await sendTg(
+          botToken,
+          chatId,
+          "❌ *Nao consegui identificar os dados para cadastro.*\n\nEnvie ao menos um CNPJ valido ou razao social. Exemplo:\n`/cliente 03.954.434/0001-19`",
+          "Markdown",
+        );
+        return;
+      }
+    }
+
     console.error("[OpenClaw Actions] handleNovoCliente error:", error);
     await sendTg(botToken, chatId, "❌ Erro ao cadastrar cliente. Verifique os dados e tente novamente.");
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 3. Abrir Processo LHFEX
-// ─────────────────────────────────────────────────────────────────────────────
-
 export async function handleAbrirProcesso(text: string, chatId: number, botToken: string) {
   await sendTg(botToken, chatId, "⏳ Analisando dados do processo...");
 
   const fields = await parseProcessoFromTelegram(text);
-
   if (!fields.clientSearch) {
-    await sendTg(botToken, chatId,
-      `❌ *Cliente não identificado.*\n\n` +
-      `Informe o cliente. Exemplo:\n` +
-      `\`/processo importação, cliente: Empresa ABC, produto: têxteis, USD 50.000\``,
-      "Markdown"
+    await sendTg(
+      botToken,
+      chatId,
+      "❌ *Cliente nao identificado.*\n\nInforme o cliente. Exemplo:\n`/processo importacao, cliente: Empresa ABC, produto: texteis, USD 50.000`",
+      "Markdown",
     );
     return;
   }
 
-  const search = fields.clientSearch as string;
   const { userId, companyId } = await getOpenClawContext();
 
-  // Busca cliente por nome ou CNPJ
-  const found = await db.select({
-    id: clients.id,
-    razaoSocial: clients.razaoSocial,
-    cnpj: clients.cnpj,
-  })
-    .from(clients)
-    .where(and(
-      eq(clients.companyId, companyId),
-      isNull(clients.deletedAt),
-      or(
-        ilike(clients.razaoSocial, `%${search}%`),
-        ilike(clients.nomeFantasia, `%${search}%`),
-        ilike(clients.cnpj, `%${search}%`)
-      )
-    ))
-    .limit(5);
-
-  if (found.length === 0) {
-    await sendTg(botToken, chatId,
-      `❌ Cliente *"${search}"* não encontrado no CRM.\n\n` +
-      `Cadastre primeiro com:\n\`/cliente CNPJ: ..., Razão Social: ...\``,
-      "Markdown"
-    );
-    return;
-  }
-
-  if (found.length > 1) {
-    const lista = found.map((c, i) => `${i + 1}. ${c.razaoSocial} — ${c.cnpj}`).join("\n");
-    await sendTg(botToken, chatId,
-      `⚠️ *${found.length} clientes encontrados para "${search}":*\n\n${lista}\n\nRepita o comando com o nome exato ou CNPJ completo.`,
-      "Markdown"
-    );
-    return;
-  }
-
-  const client = found[0];
-  const processType = (fields.processType as "import" | "export" | "services") || "import";
-
-  // Gera referência única: IMP/EXP/SRV-ANO-NNNN
-  const modalPrefix = getReferenceModalPrefix(text);
-  const yearShort = String(new Date().getFullYear()).slice(-2);
-  const prefixPattern = `${modalPrefix}${yearShort}%`;
-  const sequenceResult = await db.execute(sql`
-    SELECT COALESCE(
-      MAX(
-        CASE
-          WHEN reference ~ ${`^${modalPrefix}${yearShort}-[0-9]+$`}
-            THEN substring(reference from '-([0-9]+)$')::int
-          ELSE 0
-        END
-      ),
-      0
-    ) AS last_seq
-    FROM processes
-    WHERE company_id = ${companyId}
-      AND reference LIKE ${prefixPattern}
-  `);
-  const nextNum = String(Number(sequenceResult[0]?.last_seq || 0) + 1).padStart(3, "0");
-  const reference = `${modalPrefix}${yearShort}-${nextNum}`;
-
   try {
-    const [newProcess] = await db.insert(processes).values({
+    const result = await openProcessFromOpenClaw({
       companyId,
-      reference,
-      processType,
-      clientId: client.id,
-      status: "draft",
-      description: (fields.description as string | null) ?? null,
-      originCountry: (fields.originCountry as string | null) ?? null,
-      destinationCountry: (fields.destinationCountry as string | null) ?? "Brasil",
-      incoterm: (fields.incoterm as string | null) ?? null,
-      totalValue: (fields.totalValue as string | null) ?? null,
-      currency: (fields.currency as string | null) ?? "USD",
-      hsCode: (fields.hsCode as string | null) ?? null,
-      notes: (fields.notes as string | null) ?? null,
-      requiresApproval: false,
-      createdBy: userId,
-    }).returning();
-
-    await db.insert(processTimeline).values({
-      processId: newProcess.id,
-      status: "draft",
-      title: "Processo criado via Telegram",
-      description: `Referência ${reference} criada pelo OpenClaw`,
-      createdBy: userId,
+      userId,
+      input: {
+        ...fields,
+        sourceText: text,
+      },
     });
 
-    const typeLabel = processType === "import" ? "Importação" : processType === "export" ? "Exportação" : "Serviços";
-
     const linhas = [
-      `✅ Processo *${reference}* aberto!`,
-      `📋 Tipo: ${typeLabel}`,
-      `🏢 Cliente: ${client.razaoSocial}`,
+      `✅ Processo *${result.reference}* aberto!`,
+      `📋 Tipo: ${getProcessTypeLabel(result.processType)}`,
+      `🏢 Cliente: ${result.clientName}`,
       fields.description ? `📦 ${fields.description}` : null,
       fields.totalValue ? `💰 ${fields.currency ?? "USD"} ${fields.totalValue}` : null,
       fields.incoterm ? `🚢 ${fields.incoterm}` : null,
-      `📊 Status: Rascunho`,
-      `\nVer em: saas.lhfex.com.br/processes/${newProcess.id}`,
+      "📊 Status: Rascunho",
+      `\nVer em: saas.lhfex.com.br/processes/${result.processId}`,
     ].filter(Boolean).join("\n");
 
     await sendTg(botToken, chatId, linhas, "Markdown");
   } catch (error) {
+    if (error instanceof OpenClawActionError) {
+      if (error.code === "client_not_found") {
+        await sendTg(
+          botToken,
+          chatId,
+          `❌ Cliente *"${String(fields.clientSearch)}"* nao encontrado no CRM.\n\nCadastre primeiro com:\n\`/cliente 03.954.434/0001-19\``,
+          "Markdown",
+        );
+        return;
+      }
+
+      if (error.code === "client_ambiguous") {
+        const matches = Array.isArray(error.details?.matches)
+          ? (error.details.matches as Array<Record<string, unknown>>)
+          : [];
+        const lista = matches
+          .map((client, index) => `${index + 1}. ${String(client.razaoSocial)} - ${String(client.cnpj)}`)
+          .join("\n");
+
+        await sendTg(
+          botToken,
+          chatId,
+          `⚠️ *${matches.length} clientes encontrados para "${String(fields.clientSearch)}":*\n\n${lista}\n\nRepita o comando com o nome exato ou CNPJ completo.`,
+          "Markdown",
+        );
+        return;
+      }
+    }
+
     console.error("[OpenClaw Actions] handleAbrirProcesso error:", error);
     await sendTg(botToken, chatId, "❌ Erro ao abrir processo. Verifique os dados e tente novamente.");
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 4. Cancelar Processo LHFEX (com justificativa)
-// ─────────────────────────────────────────────────────────────────────────────
 
 export async function handleCancelarProcesso(text: string, chatId: number, botToken: string) {
   const referenceMatch = text.match(/\b(?:[AMC]\d{2}-\d{3}|(?:IMP|EXP|SRV)-\d{4}-\d{4})\b/i);
@@ -396,61 +266,69 @@ export async function handleCancelarProcesso(text: string, chatId: number, botTo
   }
 
   if (!reference) {
-    await sendTg(botToken, chatId,
-      "❌ Não encontrei a referência do processo.\n\nUse: `/cancelar_processo IMP-2026-0001 motivo: cliente desistiu`",
-      "Markdown"
+    await sendTg(
+      botToken,
+      chatId,
+      "❌ Nao encontrei a referencia do processo.\n\nUse: `/cancelar_processo A26-001 motivo: cliente desistiu`",
+      "Markdown",
     );
     return;
   }
 
   if (!justification) {
-    await sendTg(botToken, chatId,
-      "❌ Informe uma justificativa do cancelamento.\n\nExemplo: `/cancelar_processo IMP-2026-0001 motivo: documentação incompleta`",
-      "Markdown"
+    await sendTg(
+      botToken,
+      chatId,
+      "❌ Informe uma justificativa do cancelamento.\n\nExemplo: `/cancelar_processo A26-001 motivo: documentacao incompleta`",
+      "Markdown",
     );
     return;
   }
 
-  const [proc] = await db.select({
-    id: processes.id,
-    status: processes.status,
-    reference: processes.reference,
-  })
+  const [process] = await db
+    .select({
+      id: processes.id,
+      status: processes.status,
+      reference: processes.reference,
+    })
     .from(processes)
     .where(and(eq(processes.companyId, companyId), eq(processes.reference, reference), isNull(processes.deletedAt)))
     .limit(1);
 
-  if (!proc) {
-    await sendTg(botToken, chatId, `❌ Processo *${reference}* não encontrado.`, "Markdown");
+  if (!process) {
+    await sendTg(botToken, chatId, `❌ Processo *${reference}* nao encontrado.`, "Markdown");
     return;
   }
 
-  if (proc.status === "cancelled") {
-    await sendTg(botToken, chatId, `ℹ️ O processo *${reference}* já está cancelado.`, "Markdown");
+  if (process.status === "cancelled") {
+    await sendTg(botToken, chatId, `ℹ️ O processo *${reference}* ja esta cancelado.`, "Markdown");
     return;
   }
 
-  if (proc.status === "completed") {
-    await sendTg(botToken, chatId, `⚠️ Processo *${reference}* está concluído e não pode ser cancelado.`, "Markdown");
+  if (process.status === "completed") {
+    await sendTg(botToken, chatId, `⚠️ Processo *${reference}* esta concluido e nao pode ser cancelado.`, "Markdown");
     return;
   }
 
   try {
-    await db.update(processes)
+    await db
+      .update(processes)
       .set({ status: "cancelled", updatedAt: new Date() })
-      .where(eq(processes.id, proc.id));
+      .where(eq(processes.id, process.id));
 
     await db.insert(processTimeline).values({
-      processId: proc.id,
+      processId: process.id,
       status: "cancelled",
       title: "Processo cancelado via Telegram",
       description: `Justificativa: ${justification}`,
-      createdBy: userId ?? null,
+      createdBy: userId,
     });
 
-    await sendTg(botToken, chatId,
-      `✅ Processo *${reference}* cancelado com sucesso.\n📝 Justificativa: ${justification}\n\nEle permanece no histórico como inativo.`,
-      "Markdown"
+    await sendTg(
+      botToken,
+      chatId,
+      `✅ Processo *${reference}* cancelado com sucesso.\n📝 Justificativa: ${justification}\n\nEle permanece no historico como inativo.`,
+      "Markdown",
     );
   } catch (error) {
     console.error("[OpenClaw Actions] handleCancelarProcesso error:", error);

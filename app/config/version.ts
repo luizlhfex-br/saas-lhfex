@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.4";
+export const APP_VERSION = "2.9.5";
 export const APP_RELEASE_DATE = "2026-03-14";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.5",
+    date: "2026-03-14",
+    title: "OpenClaw operacional com cliente por CNPJ e processo por referencia",
+    items: [
+      { type: "feature", text: "OpenClaw: create_client agora aceita apenas CNPJ e tenta enriquecer automaticamente os dados do cliente antes de gravar no CRM" },
+      { type: "feature", text: "OpenClaw: abrir_processo agora aceita cliente mais modal, com tipo import como padrao quando a operacao nao vier explicita" },
+      { type: "feature", text: "OpenClaw: novo atualizar_processo permite ajustar status, observacoes, incoterm, valores e campos operacionais por referencia" },
+      { type: "improvement", text: "OpenClaw: erros de duplicidade e ambiguidade passaram a voltar com details estruturados para desambiguacao rapida no Telegram" },
+    ],
+  },
   {
     version: "2.9.4",
     date: "2026-03-14",

@@ -30,6 +30,16 @@
 
 ---
 
+## v2.9.5 - 2026-03-14
+
+### Melhorias em voce (OpenClaw)
+- CRM operacional: `criar_cliente` agora aceita apenas CNPJ e tenta enriquecer os dados automaticamente
+- Processos operacionais: `abrir_processo` agora aceita cliente + modal, com `import` como padrao quando o tipo nao vier explicito
+- Novo endpoint `atualizar_processo` para atualizar processo por referencia com status, observacoes e campos operacionais
+- Erros de ambiguidade e duplicidade passam a retornar detalhes estruturados para voce desambiguar com respostas curtas
+
+---
+
 ## v2.9.0 - 2026-03-14
 
 - OpenClaw multiagente configurado com 8 identidades especializadas e workspaces dedicados

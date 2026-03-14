@@ -241,8 +241,8 @@ Responda *sim* para confirmar ou *não* para cancelar (expira em 10 min).`,
       `🎁 *Promoções* — rastreamento, oportunidades, ROI\n\n` +
       `*Comandos de cadastro:*\n` +
       `/pessoa — Cadastrar contato pessoal\n` +
-      `/cliente — Cadastrar cliente LHFEX\n` +
-      `/processo — Abrir processo de importação/exportação\n` +
+      `/cliente — Cadastrar cliente LHFEX (aceita so CNPJ)\n` +
+      `/processo — Abrir processo (aceita cliente + modal)\n` +
       `/cancelar_processo — Cancelar processo com justificativa\n\n` +
       `*Exemplos de perguntas:*\n` +
       `"Como estão meus gastos este mês?"\n` +
@@ -263,12 +263,14 @@ Responda *sim* para confirmar ou *não* para cancelar (expira em 10 min).`,
       `🌙 *OpenClaw — Ajuda*\n\n` +
       `*Comandos de cadastro:*\n` +
       `/pessoa Nome, CPF, celular, email — Cadastrar contato\n` +
-      `/cliente CNPJ, Razão Social, contato — Cadastrar cliente LHFEX\n` +
-      `/processo tipo, cliente, produto — Abrir processo comex\n` +
+      `/cliente CNPJ ou CNPJ, Razão Social, contato — Cadastrar cliente LHFEX\n` +
+      `/processo cliente + modal ou tipo, cliente, produto — Abrir processo comex\n` +
       `/cancelar_processo IMP-2026-0001 motivo: texto — Cancelar processo\n\n` +
       `*Exemplos:*\n` +
       `\`/pessoa João Silva, 31999990000, joao@gmail.com\`\n` +
+      `\`/cliente 12.345.678/0001-90\`\n` +
       `\`/cliente 12.345.678/0001-90, Empresa ABC, contato: Maria\`\n` +
+      `\`/processo cliente: Empresa ABC, modal: maritimo\`\n` +
       `\`/processo importação, cliente: Empresa ABC, têxteis, USD 50.000\`\n\n` +
       `*Funcionalidades:*\n` +
       `✓ Finanças pessoais e investimentos\n` +

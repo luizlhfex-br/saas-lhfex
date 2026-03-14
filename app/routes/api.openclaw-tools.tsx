@@ -13,9 +13,7 @@ import { db } from "~/lib/db.server";
 import { APP_VERSION } from "~/config/version";
 import {
   clients,
-  contacts,
   processes,
-  processTimeline,
   personalFinance,
   promotions,
   missionControlTasks,
@@ -31,6 +29,12 @@ import {
 import { eq, desc, ilike, or, and, isNull, sql, gte, lte } from "drizzle-orm";
 import { askAgent } from "~/lib/ai.server";
 import { getPrimaryCompanyId } from "~/lib/company-context.server";
+import {
+  OpenClawActionError,
+  createClientFromOpenClaw,
+  openProcessFromOpenClaw,
+  updateProcessFromOpenClaw,
+} from "~/lib/openclaw-saas-actions.server";
 import { getSubscriptionHealth, resolveSubscriptionNextDueDate, summarizeSubscriptionTotals } from "~/lib/subscriptions.server";
 
 function unauthorized() {
@@ -49,6 +53,13 @@ function ok(data: unknown) {
 
 function badRequest(msg: string) {
   return new Response(JSON.stringify({ error: msg }), {
+    status: 400,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+function badRequestWithDetails(msg: string, details?: Record<string, unknown>) {
+  return new Response(JSON.stringify({ error: msg, details: details ?? null }), {
     status: 400,
     headers: { "Content-Type": "application/json" },
   });
@@ -96,17 +107,6 @@ type ProcessStatus = (typeof processStatuses)[number];
 
 function isProcessStatus(value: string): value is ProcessStatus {
   return processStatuses.includes(value as ProcessStatus);
-}
-
-function getReferenceModalPrefix(value: unknown) {
-  switch (value) {
-    case "air":
-      return "A";
-    case "sea":
-      return "M";
-    default:
-      return "C";
-  }
 }
 
 // ── GET ──────────────────────────────────────────────────────────────────────
@@ -828,124 +828,57 @@ export async function action({ request }: Route.ActionArgs) {
 
   // ── criar_cliente ─────────────────────────────────────────────────────────
   if (act === "criar_cliente") {
-    const { cnpj, razaoSocial, nomeFantasia, clientType, contato, telefone, email } = body as Record<string, string>;
-    if (!razaoSocial) return badRequest("razaoSocial obrigatório");
-
-    // Check duplicate CNPJ
-    if (cnpj) {
-      const existing = await db
-        .select({ id: clients.id })
-        .from(clients)
-        .where(and(eq(clients.companyId, companyId), eq(clients.cnpj, cnpj), isNull(clients.deletedAt)))
-        .limit(1);
-      if (existing.length > 0) return badRequest(`Cliente com CNPJ ${cnpj} já existe`);
-    }
-
-    const [client] = await db
-      .insert(clients)
-      .values({
+    try {
+      const result = await createClientFromOpenClaw({
         companyId,
-        cnpj: cnpj || "",
-        razaoSocial,
-        nomeFantasia: nomeFantasia || null,
-        clientType: (clientType as "importer" | "exporter" | "both") || "importer",
-        status: "active",
-        createdBy: userId,
-      })
-      .returning({ id: clients.id, reference: clients.razaoSocial });
-
-    // Create primary contact if provided
-    if (contato || telefone || email) {
-      await db.insert(contacts).values({
-        clientId: client.id,
-        name: contato || razaoSocial,
-        phone: telefone || null,
-        email: email || null,
-        isPrimary: true,
+        userId,
+        input: body,
       });
+      return ok(result);
+    } catch (error) {
+      if (error instanceof OpenClawActionError) {
+        return badRequestWithDetails(error.message, error.details);
+      }
+      throw error;
     }
 
-    return ok({ success: true, clientId: client.id, razaoSocial });
   }
 
   // ── abrir_processo ────────────────────────────────────────────────────────
   if (act === "abrir_processo") {
-    const { processType, clientSearch, description, incoterm, totalValue, currency } = body as Record<string, unknown>;
-    if (!processType || !clientSearch) return badRequest("processType e clientSearch são obrigatórios");
-
-    // Find client
-    const clientRows = await db
-      .select({ id: clients.id, razaoSocial: clients.razaoSocial })
-      .from(clients)
-      .where(
-        and(
-          eq(clients.companyId, companyId),
-          isNull(clients.deletedAt),
-          or(
-            ilike(clients.razaoSocial, `%${clientSearch}%`),
-            ilike(clients.nomeFantasia, `%${clientSearch}%`),
-            ilike(clients.cnpj, `%${clientSearch}%`),
-          ),
-        ),
-      )
-      .limit(3);
-
-    if (clientRows.length === 0) return badRequest(`Nenhum cliente encontrado: ${clientSearch}`);
-    if (clientRows.length > 1) {
-      return badRequest(`Múltiplos clientes encontrados: ${clientRows.map((c) => c.razaoSocial).join(", ")}. Seja mais específico.`);
+    try {
+      const result = await openProcessFromOpenClaw({
+        companyId,
+        userId,
+        input: body,
+      });
+      return ok(result);
+    } catch (error) {
+      if (error instanceof OpenClawActionError) {
+        return badRequestWithDetails(error.message, error.details);
+      }
+      throw error;
     }
 
-    const client = clientRows[0];
-    const modalPrefix = getReferenceModalPrefix(body.referenceModal);
-    const yearShort = String(new Date().getFullYear()).slice(-2);
-    const prefixPattern = `${modalPrefix}${yearShort}%`;
-    const sequenceResult = await db.execute(sql`
-      SELECT COALESCE(
-        MAX(
-          CASE
-            WHEN reference ~ ${`^${modalPrefix}${yearShort}-[0-9]+$`}
-              THEN substring(reference from '-([0-9]+)$')::int
-            ELSE 0
-          END
-        ),
-        0
-      ) AS last_seq
-      FROM processes
-      WHERE company_id = ${companyId}
-        AND reference LIKE ${prefixPattern}
-    `);
-
-    const nextNum = String(Number(sequenceResult[0]?.last_seq || 0) + 1).padStart(3, "0");
-    const reference = `${modalPrefix}${yearShort}-${nextNum}`;
-
-    const [proc] = await db
-      .insert(processes)
-      .values({
-        companyId,
-        reference,
-        processType: processType as "import" | "export" | "services",
-        status: "draft",
-        clientId: client.id,
-        description: (description as string) || null,
-        incoterm: (incoterm as string) || null,
-        totalValue: totalValue ? String(totalValue) : null,
-        currency: (currency as string) || "USD",
-        createdBy: userId,
-      })
-      .returning({ id: processes.id });
-
-    await db.insert(processTimeline).values({
-      processId: proc.id,
-      status: "draft",
-      title: "Processo criado via OpenClaw",
-      description: `Referencia ${reference} criada pelo OpenClaw`,
-      createdBy: userId,
-    });
-
-    return ok({ success: true, processId: proc.id, reference, clientName: client.razaoSocial });
   }
 
   // ── adicionar_transacao ───────────────────────────────────────────────────
+  if (act === "atualizar_processo") {
+    try {
+      const result = await updateProcessFromOpenClaw({
+        companyId,
+        userId,
+        input: body,
+      });
+      return ok(result);
+    } catch (error) {
+      if (error instanceof OpenClawActionError) {
+        return badRequestWithDetails(error.message, error.details);
+      }
+      throw error;
+    }
+  }
+
   if (act === "adicionar_transacao") {
     const { type, amount, description, category, date } = body as Record<string, unknown>;
     if (!type || !amount || !description || !category) {

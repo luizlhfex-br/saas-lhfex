@@ -31,10 +31,22 @@ Use esta skill sempre que precisar de dados reais do SAAS.
 ## Acoes
 - `{ "action": "criar_cliente", ... }`
 - `{ "action": "abrir_processo", ... }`
+- `{ "action": "atualizar_processo", ... }`
 - `{ "action": "adicionar_transacao", ... }`
 - `{ "action": "ask_agent", "agentId": "airton|iana|maria", "message": "..." }`
 - `{ "action": "criar_tarefa_claude", "prompt": "..." }`
 - `{ "action": "atualizar_tarefa_claude", "id": "...", "status": "running|done|error" }`
+
+## Atalhos Operacionais
+- `criar_cliente` aceita apenas `cnpj` e tenta enriquecer automaticamente razao social, nome fantasia, cidade, UF e contato basico.
+- `abrir_processo` aceita `clientSearch` + `modal` (`aereo`, `maritimo`, `outros`). Se `processType` nao vier, o padrao e `import`.
+- `atualizar_processo` aceita `reference` e campos como `status`, `notes`, `incoterm`, `totalValue`, `currency`, `hsCode`, `originCountry` e `destinationCountry`.
+- Quando a API devolver ambiguidade de cliente, use os itens em `details.matches` para responder com uma pergunta curta e objetiva.
+
+## Exemplos
+- `{ "action": "criar_cliente", "cnpj": "03.954.434/0001-19" }`
+- `{ "action": "abrir_processo", "clientSearch": "Empresa ABC", "modal": "maritimo" }`
+- `{ "action": "atualizar_processo", "reference": "M26-001", "status": "em andamento", "notes": "Booking confirmado" }`
 
 ## Regras
 1. Sempre priorize dados reais do SAAS antes de responder.

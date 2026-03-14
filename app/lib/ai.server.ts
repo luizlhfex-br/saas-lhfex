@@ -897,18 +897,20 @@ Retorne APENAS JSON válido, sem texto adicional. Campos não encontrados devem 
  * Returns structured fields for inserting into `clients` + `contacts` tables.
  */
 export async function parseClienteFromTelegram(text: string): Promise<Record<string, unknown>> {
-  const prompt = `Você é um parser de dados empresariais brasileiros. Extraia e retorne JSON:
-- cnpj (string | null) — CNPJ no formato "00.000.000/0000-00" (normalize se precisar)
-- razaoSocial (string) — razão social, OBRIGATÓRIO
-- nomeFantasia (string | null) — nome fantasia
-- clientType (string | null) — tipo: "importer", "exporter" ou "both" (padrão: "importer")
-- city (string | null) — cidade
-- state (string | null) — UF com 2 letras
-- notes (string | null) — observações
-- contact (object | null) — dados do contato principal:
-  { name (string), role (string | null), email (string | null), phone (string | null) }
+  const prompt = `Voce e um parser de dados empresariais brasileiros. Extraia e retorne JSON:
+- cnpj (string | null) - CNPJ no formato "00.000.000/0000-00" (normalize se precisar)
+- razaoSocial (string | null) - razao social, se estiver explicita no texto
+- nomeFantasia (string | null) - nome fantasia
+- clientType (string | null) - tipo: "importer", "exporter" ou "both" (padrao: "importer")
+- city (string | null) - cidade
+- state (string | null) - UF com 2 letras
+- notes (string | null) - observacoes
+- contact (object | null) - dados do contato principal:
+  { name (string | null), role (string | null), email (string | null), phone (string | null) }
 
-Retorne APENAS JSON válido, sem texto adicional.`;
+Se houver apenas CNPJ, preserve o CNPJ e retorne null para os demais campos ausentes.
+Nao invente razao social, contato ou endereco.
+Retorne APENAS JSON valido, sem texto adicional.`;
 
   const result = await askAgent("iana", `${prompt}\n\n---\n${text}`, "system", {
     feature: "openclaw",
@@ -929,19 +931,24 @@ Retorne APENAS JSON válido, sem texto adicional.`;
  * Returns structured fields for inserting into `processes` table.
  */
 export async function parseProcessoFromTelegram(text: string): Promise<Record<string, unknown>> {
-  const prompt = `Você é um parser de processos de comércio exterior brasileiro. Extraia e retorne JSON:
-- processType (string) — tipo: "import", "export" ou "services", OBRIGATÓRIO
-- clientSearch (string) — nome ou CNPJ do cliente para busca, OBRIGATÓRIO
-- description (string | null) — descrição do produto ou serviço
-- originCountry (string | null) — país de origem (para importação)
-- destinationCountry (string | null) — país de destino (para exportação; padrão: "Brasil")
-- incoterm (string | null) — ex: FOB, CIF, EXW, DAP
-- totalValue (string | null) — valor total (apenas números e ponto decimal, ex: "50000.00")
-- currency (string | null) — moeda: "USD", "EUR", "BRL" (padrão: "USD")
-- hsCode (string | null) — código NCM/HS
-- notes (string | null) — observações
+  const prompt = `Voce e um parser de processos de comercio exterior brasileiro. Extraia e retorne JSON:
+- processType (string | null) - tipo: "import", "export" ou "services"
+- clientSearch (string | null) - nome ou CNPJ do cliente para busca
+- referenceModal (string | null) - "air", "sea" ou "other" conforme o modal citado
+- description (string | null) - descricao do produto ou servico
+- originCountry (string | null) - pais de origem
+- destinationCountry (string | null) - pais de destino
+- incoterm (string | null) - ex: FOB, CIF, EXW, DAP
+- totalValue (string | null) - valor total (apenas numeros e ponto decimal, ex: "50000.00")
+- currency (string | null) - moeda: "USD", "EUR", "BRL"
+- hsCode (string | null) - codigo NCM/HS
+- notes (string | null) - observacoes
 
-Retorne APENAS JSON válido, sem texto adicional.`;
+clientSearch e obrigatorio.
+Se o texto vier apenas com cliente + modal, retorne clientSearch e referenceModal e deixe os demais campos como null.
+Se processType nao estiver explicito, retorne null.
+Nao invente dados ausentes.
+Retorne APENAS JSON valido, sem texto adicional.`;
 
   const result = await askAgent("iana", `${prompt}\n\n---\n${text}`, "system", {
     feature: "openclaw",
