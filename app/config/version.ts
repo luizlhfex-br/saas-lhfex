@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.2";
+export const APP_VERSION = "2.9.3";
 export const APP_RELEASE_DATE = "2026-03-14";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,16 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.3",
+    date: "2026-03-14",
+    title: "Monitoramento do Coolify robusto para SaaS e OpenClaw",
+    items: [
+      { type: "infra", text: "CI/CD: parser do Coolify passou a ler JSON via stdin, evitando falha por argument list too long no monitoramento de deploy" },
+      { type: "infra", text: "CI/CD: janela de espera foi ampliada para 45 tentativas no SaaS e 90 tentativas no OpenClaw" },
+      { type: "improvement", text: "Operacao: deploy real do OpenClaw foi concluido em producao com imagem do commit d98e545 e o falso negativo ficou isolado ao monitor antigo" },
+    ],
+  },
   {
     version: "2.9.2",
     date: "2026-03-14",

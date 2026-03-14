@@ -29,6 +29,17 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-14",
+    version: "2.9.3",
+    type: "release",
+    title: "Monitor de deploy do Coolify corrigido",
+    items: [
+      "CI: leitura do retorno da API do Coolify agora usa stdin em vez de sys.argv, eliminando o erro 'argument list too long'",
+      "CI: monitor de deploy do SaaS passou para 45 tentativas e o do OpenClaw para 90 tentativas",
+      "OpenClaw: deploy real da imagem d98e545 foi confirmado em producao; a falha anterior era apenas do monitoramento do job",
+    ],
+  },
+  {
+    date: "2026-03-14",
     version: "2.9.2",
     type: "release",
     title: "Migration 0009 aplicada e OpenClaw pronto para publicar",

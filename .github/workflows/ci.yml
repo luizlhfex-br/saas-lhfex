@@ -183,7 +183,7 @@ jobs:
             -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
             "${COOLIFY_BASE_URL}/api/v1/applications/${COOLIFY_APP_UUID}/start?force=true")
           echo "$RESPONSE"
-          DEPLOYMENT_UUID=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("deployment_uuid",""))' "$RESPONSE")
+          DEPLOYMENT_UUID=$(printf '%s' "$RESPONSE" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("deployment_uuid",""))')
           if [ -z "$DEPLOYMENT_UUID" ]; then
             echo "Coolify API did not return deployment_uuid"
             exit 1
@@ -197,12 +197,12 @@ jobs:
           DEPLOYMENT_UUID: ${{ steps.coolify_deploy.outputs.deployment_uuid }}
         run: |
           echo "Monitoring deployment $DEPLOYMENT_UUID"
-          for attempt in $(seq 1 30); do
+          for attempt in $(seq 1 45); do
             RESPONSE=$(curl -fsS \
               -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
               "${COOLIFY_BASE_URL}/api/v1/deployments/${DEPLOYMENT_UUID}")
-            STATUS=$(python3 -c 'import json,sys; print(str(json.loads(sys.argv[1]).get("status","unknown")).lower())' "$RESPONSE")
-            echo "Attempt $attempt/30: status=$STATUS"
+            STATUS=$(printf '%s' "$RESPONSE" | python3 -c 'import json,sys; print(str(json.load(sys.stdin).get("status","unknown")).lower())')
+            echo "Attempt $attempt/45: status=$STATUS"
             case "$STATUS" in
               finished|success|successful|completed)
                 exit 0
@@ -262,7 +262,7 @@ jobs:
             -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
             "${COOLIFY_BASE_URL}/api/v1/applications/${COOLIFY_OPENCLAW_APP_UUID}/start?force=true")
           echo "$RESPONSE"
-          DEPLOYMENT_UUID=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("deployment_uuid",""))' "$RESPONSE")
+          DEPLOYMENT_UUID=$(printf '%s' "$RESPONSE" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("deployment_uuid",""))')
           if [ -z "$DEPLOYMENT_UUID" ]; then
             echo "Coolify API did not return deployment_uuid"
             exit 1
@@ -277,12 +277,12 @@ jobs:
           DEPLOYMENT_UUID: ${{ steps.coolify_openclaw_deploy.outputs.deployment_uuid }}
         run: |
           echo "Monitoring deployment $DEPLOYMENT_UUID"
-          for attempt in $(seq 1 30); do
+          for attempt in $(seq 1 90); do
             RESPONSE=$(curl -fsS \
               -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
               "${COOLIFY_BASE_URL}/api/v1/deployments/${DEPLOYMENT_UUID}")
-            STATUS=$(python3 -c 'import json,sys; print(str(json.loads(sys.argv[1]).get("status","unknown")).lower())' "$RESPONSE")
-            echo "Attempt $attempt/30: status=$STATUS"
+            STATUS=$(printf '%s' "$RESPONSE" | python3 -c 'import json,sys; print(str(json.load(sys.stdin).get("status","unknown")).lower())')
+            echo "Attempt $attempt/90: status=$STATUS"
             case "$STATUS" in
               finished|success|successful|completed)
                 exit 0

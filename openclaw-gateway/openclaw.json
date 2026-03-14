@@ -67,18 +67,6 @@
           "softThresholdTokens": 40000,
           "prompt": "Before this context is compacted, extract and save all important information to memory files. Focus on decisions, state changes, lessons learned, blockers and key project facts. Write to /root/.openclaw/workspace/memory/. Do not skip because missing context is permanently lost after compaction."
         }
-      },
-      "subagents": {
-        "allowAgents": [
-          "airton",
-          "iana",
-          "maria",
-          "iago",
-          "iara",
-          "sofia",
-          "mai",
-          "julia"
-        ]
       }
     },
     "list": [

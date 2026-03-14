@@ -1,9 +1,9 @@
 {
   "release": {
-    "version": "v2.9.2",
+    "version": "v2.9.3",
     "date": "2026-03-14T00:00:00Z",
     "type": "infra",
-    "title": "Migration 0009 aplicada e rollout do OpenClaw preparado"
+    "title": "Monitoramento do Coolify endurecido para SaaS e OpenClaw"
   },
   "summary": {
     "commits": 6,
@@ -431,6 +431,27 @@
       "subscriptions criada em producao",
       "radio_stations recebeu website_url, contact_phone e contact_whatsapp",
       "ai_usage_logs.provider agora e varchar(64)"
+    ]
+  },
+  "session_2026_03_14_coolify_monitor_fix": {
+    "date": "2026-03-14",
+    "release_version": "2.9.3",
+    "objective": "Eliminar falso negativo do job de deploy do OpenClaw no GitHub Actions",
+    "files_changed": [
+      ".github/workflows/ci.yml",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "Parser do Coolify trocou sys.argv por stdin para suportar respostas grandes da API",
+      "Monitor do deploy do SaaS foi ampliado para 45 tentativas",
+      "Monitor do deploy do OpenClaw foi ampliado para 90 tentativas",
+      "Run 23089749940 provou que o deploy do OpenClaw concluiu, mas o monitor antigo falhava por argument list too long"
+    ],
+    "verification": [
+      "Container OpenClaw em producao subiu com a imagem d98e545",
+      "Container SaaS em producao subiu com a imagem d98e545"
     ]
   }
 }
