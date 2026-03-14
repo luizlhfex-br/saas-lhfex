@@ -54,7 +54,7 @@
 - Verificar em `aiUsageLogs` que feature="openclaw" está gravando
 
 ### 2.2 Validar economia de tokens
-- Respostas máximo 3 parágrafos (conforme OPENCLAW-TRAINING.md)
+- Respostas máximo 3 parágrafos (conforme openclaw-gateway/prompts/TRAINING.md)
 - Gemini Free sendo usado primeiro (verificar logs)
 - Custo em `aiUsageLogs` dentro do esperado
 

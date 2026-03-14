@@ -235,14 +235,14 @@ Mensagem 3: "E com meus investimentos?"
 ### Local 1: Arquivo Markdown (Este Repo)
 
 ```
-📄 OPENCLAW-TRAINING.md
+📄 TRAINING.md
    └─ System prompt
    └─ Boas práticas
    └─ Técnicas de economia de tokens
    └─ Exemplos de conversas
    └─ Métricas de performance
 
-Localização: /C/Users/luizf/projects/saas-lhfex/OPENCLAW-TRAINING.md
+Localização: /C/Users/luizf/projects/saas-lhfex/openclaw-gateway/prompts/TRAINING.md
 Status: ✅ Salvo no GitHub (backup permanente)
 Nunca perde: ✅ SIM (versionado no Git)
 ```
@@ -349,7 +349,7 @@ Maiores Gastos:
 
 ### P1: "O treinamento do OpenClaw fica salvo?"
 ✅ **SIM!** Em 4 lugares:
-1. `OPENCLAW-TRAINING.md` (GitHub)
+1. `openclaw-gateway/prompts/TRAINING.md` (GitHub)
 2. `ai.server.ts` system prompt (GitHub)
 3. `api.openclaw-telegram-webhook.tsx` (GitHub)
 4. PostgreSQL chat_conversations (Backup 3x)

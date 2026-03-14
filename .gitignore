@@ -38,3 +38,13 @@ test-results/
 
 # TypeScript
 *.tsbuildinfo
+
+# Artifacts
+*.log
+build.log
+desktop.ini
+nul
+coverage/
+playwright-report/
+test-results/
+.react-router/

@@ -29,6 +29,19 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-14",
+    version: "2.9.4",
+    type: "release",
+    title: "Curadoria da raiz e reorganizacao da documentacao",
+    items: [
+      "Documentacao: arquivos historicos foram movidos para docs/history e ROADMAP, IDEAS e AUTOMATIONS-ROADMAP foram centralizados em docs/",
+      "OpenClaw: MEMORY.md e TRAINING.md foram movidos para openclaw-gateway/prompts, alinhando a documentacao ao gateway",
+      "Outros Negocios: pagina Criar/Publicar Apps passou a ler e salvar em docs/IDEAS.md",
+      "App: rotas mortas ui-concept-a, ui-concept-b e ui-concept-c foram removidas do registro do React Router",
+      "Infra: .gitignore ganhou um bloco final para logs, coverage, relatarios Playwright, .react-router e arquivos residuais do Windows",
+    ],
+  },
+  {
+    date: "2026-03-14",
     version: "2.9.3",
     type: "release",
     title: "Monitor de deploy do Coolify corrigido",

@@ -1,17 +1,17 @@
 {
   "release": {
-    "version": "v2.9.3",
+    "version": "v2.9.4",
     "date": "2026-03-14T00:00:00Z",
     "type": "infra",
-    "title": "Monitoramento do Coolify endurecido para SaaS e OpenClaw"
+    "title": "Curadoria da raiz e reorganizacao da documentacao"
   },
   "summary": {
-    "commits": 6,
-    "filesCreated": 5,
-    "filesModified": 12,
-    "routesAdded": 2,
-    "openclaw_changes": 4,
-    "coolify_env_vars_added": 6
+    "commits": 1,
+    "filesCreated": 0,
+    "filesModified": 8,
+    "routesAdded": 0,
+    "openclaw_changes": 2,
+    "coolify_env_vars_added": 0
   },
   "changes": {
     "ui_redesign": {
@@ -452,6 +452,47 @@
     "verification": [
       "Container OpenClaw em producao subiu com a imagem d98e545",
       "Container SaaS em producao subiu com a imagem d98e545"
+    ]
+  },
+  "session_2026_03_14_folder_cleanup": {
+    "date": "2026-03-14",
+    "release_version": "2.9.4",
+    "objective": "Executar a Parte 15 com limpeza da raiz, curadoria de documentos e remocao de rotas mortas",
+    "files_changed": [
+      ".gitignore",
+      "app/routes.ts",
+      "app/routes/other-business.apps.tsx",
+      "app/routes/system-updates.tsx",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json",
+      "docs/ROADMAP.md",
+      "docs/IDEAS.md",
+      "docs/AUTOMATIONS-ROADMAP.md",
+      "docs/history/CHANGELOG-2026-02-20.md",
+      "docs/history/ENV-ONDAS-7-8.md",
+      "docs/history/MIGRATION-4C.md",
+      "docs/history/MIGRATION-DB-SETUP.md",
+      "docs/history/THEME-APPLIED.md",
+      "docs/history/multi_tenancy_migration.sql",
+      "openclaw-gateway/prompts/MEMORY.md",
+      "openclaw-gateway/prompts/TRAINING.md",
+      "scripts/remote_monitor_wave1.sh",
+      "scripts/remote_q146_log.sh",
+      "scripts/remote_q146_log_full.sh",
+      "scripts/remote_queue_wave1.sh"
+    ],
+    "changes": [
+      "Raiz do projeto foi enxugada com remocao de logs regeneraveis, desktop.ini, nul e das rotas ui-concept abandonadas",
+      "Documentacao historica foi movida para docs/history e os documentos ativos passaram a ficar em docs/",
+      "OpenClaw MEMORY.md e TRAINING.md foram realocados para openclaw-gateway/prompts com referencias internas ajustadas",
+      "Criar/Publicar Apps passou a operar sobre docs/IDEAS.md para manter a funcionalidade apos a reorganizacao",
+      "A checagem no banco nao encontrou a tabela drizzle_migrations no ambiente apontado pelo .env.codex, entao nenhum arquivo 0003_*.sql foi renomeado"
+    ],
+    "verification": [
+      "Consulta select filename, created_at from drizzle_migrations falhou porque a relacao nao existe no banco atual",
+      "Listagem de tabelas do banco confirmou ausencia de qualquer tabela de migrations com filename/created_at",
+      "npx tsc --noEmit passou sem erros"
     ]
   }
 }

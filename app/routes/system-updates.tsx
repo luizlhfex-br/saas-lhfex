@@ -261,7 +261,7 @@ export default function SystemUpdatesPage({ loaderData }: Route["ComponentProps"
       {/* Footer */}
       <div className="border-t border-gray-200 pt-6 dark:border-gray-800">
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          📄 Para detalhes completos, veja <code className="rounded bg-gray-100 px-2 py-1 font-mono dark:bg-gray-800">CHANGELOG-2026-02-20.md</code>
+          📄 Para detalhes completos, veja <code className="rounded bg-gray-100 px-2 py-1 font-mono dark:bg-gray-800">docs/history/CHANGELOG-2026-02-20.md</code>
         </p>
       </div>
     </div>

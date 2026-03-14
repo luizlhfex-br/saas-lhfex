@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.3";
+export const APP_VERSION = "2.9.4";
 export const APP_RELEASE_DATE = "2026-03-14";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.4",
+    date: "2026-03-14",
+    title: "Curadoria da raiz e documentos reorganizados",
+    items: [
+      { type: "improvement", text: "Documentacao historica foi movida para docs/history e os arquivos ativos ROADMAP, IDEAS e AUTOMATIONS-ROADMAP passaram a viver em docs/" },
+      { type: "improvement", text: "Criar/Publicar Apps agora le e grava ideias em docs/IDEAS.md, preservando o fluxo apos a reorganizacao da pasta raiz" },
+      { type: "infra", text: "Rotas mortas ui-concept-a, ui-concept-b e ui-concept-c foram removidas do app e o .gitignore passou a bloquear logs, artifacts e metadados do Windows" },
+      { type: "infra", text: "Prompts auxiliares do OpenClaw e scripts remotos foram reposicionados para openclaw-gateway/prompts e scripts/" },
+    ],
+  },
   {
     version: "2.9.3",
     date: "2026-03-14",

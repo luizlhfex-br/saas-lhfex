@@ -8,7 +8,7 @@ import { resolve } from "node:path";
 import { Lightbulb, Plus } from "lucide-react";
 import { Button } from "~/components/ui/button";
 
-const IDEAS_PATH = resolve(process.cwd(), "IDEAS.md");
+const IDEAS_PATH = resolve(process.cwd(), "docs", "IDEAS.md");
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
@@ -20,7 +20,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     const recent = lines.slice(Math.max(0, lines.length - 40));
     return { recentIdeasLines: recent, readError: null as string | null };
   } catch {
-    return { recentIdeasLines: [] as string[], readError: "Nao foi possivel ler IDEAS.md." };
+    return { recentIdeasLines: [] as string[], readError: "Nao foi possivel ler docs/IDEAS.md." };
   }
 }
 
@@ -49,7 +49,7 @@ export async function action({ request }: Route.ActionArgs) {
     await appendFile(IDEAS_PATH, entry, "utf-8");
     return data({ success: true });
   } catch {
-    return data({ error: "Falha ao salvar no IDEAS.md" }, { status: 500 });
+    return data({ error: "Falha ao salvar no docs/IDEAS.md" }, { status: 500 });
   }
 }
 
@@ -69,7 +69,7 @@ export default function OtherBusinessAppsPage({ loaderData, actionData }: Route.
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-        <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-gray-100">Nova Ideia (salva em IDEAS.md)</h2>
+        <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-gray-100">Nova Ideia (salva em docs/IDEAS.md)</h2>
         <Form method="post" className="space-y-3">
           <input type="hidden" name="intent" value="add_idea" />
           <input
@@ -85,7 +85,7 @@ export default function OtherBusinessAppsPage({ loaderData, actionData }: Route.
             className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
           />
           {actionError && <p className="text-sm text-red-500">{actionError}</p>}
-          {actionSuccess && <p className="text-sm text-green-600 dark:text-green-400">Ideia salva com sucesso no IDEAS.md.</p>}
+          {actionSuccess && <p className="text-sm text-green-600 dark:text-green-400">Ideia salva com sucesso no docs/IDEAS.md.</p>}
           <Button type="submit" disabled={isSubmitting}>
             <Plus className="h-4 w-4" /> Salvar Ideia
           </Button>
@@ -95,7 +95,7 @@ export default function OtherBusinessAppsPage({ loaderData, actionData }: Route.
       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
           <Lightbulb className="h-4 w-4 text-amber-500" />
-          Trecho recente de IDEAS.md
+          Trecho recente de docs/IDEAS.md
         </h2>
         {loaderData.readError ? (
           <p className="text-sm text-red-500">{loaderData.readError}</p>
