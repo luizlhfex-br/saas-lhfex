@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.5";
+export const APP_VERSION = "2.9.6";
 export const APP_RELEASE_DATE = "2026-03-14";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,16 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.6",
+    date: "2026-03-14",
+    title: "Roadmap saneado e warnings operacionais reduzidos",
+    items: [
+      { type: "fix", text: "Documentacao: docs/ROADMAP.md foi reescrito para refletir o estado atual do SaaS, remover referencias a openrouter_paid e eliminar segredos versionados" },
+      { type: "infra", text: "OpenClaw: openclaw.json agora declara safeBinProfiles para curl, jq, date, echo e openclaw, alem de /usr/local/bin em safeBinTrustedDirs" },
+      { type: "improvement", text: "Build: crm-pipeline removeu import morto de useRevalidator, limpando o warning simples do Vite" },
+    ],
+  },
   {
     version: "2.9.5",
     date: "2026-03-14",

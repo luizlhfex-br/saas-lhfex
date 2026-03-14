@@ -1,16 +1,16 @@
 {
   "release": {
-    "version": "v2.9.5",
+    "version": "v2.9.6",
     "date": "2026-03-14T00:00:00Z",
-    "type": "feature",
-    "title": "OpenClaw operacional no CRM e nos processos"
+    "type": "infra",
+    "title": "Roadmap saneado e warnings operacionais reduzidos"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 1,
-    "filesModified": 10,
+    "filesCreated": 0,
+    "filesModified": 6,
     "routesAdded": 0,
-    "openclaw_changes": 6,
+    "openclaw_changes": 1,
     "coolify_env_vars_added": 0
   },
   "changes": {
@@ -523,6 +523,36 @@
     "verification": [
       "npx tsc --noEmit passou sem erros",
       "npm run build passou sem erros"
+    ]
+  },
+  "session_2026_03_14_roadmap_and_openclaw_hardening": {
+    "date": "2026-03-14",
+    "release_version": "2.9.6",
+    "objective": "Alinhar a base documental ao estado real do SaaS, remover segredos versionados e reduzir warnings operacionais restantes",
+    "files_changed": [
+      "docs/ROADMAP.md",
+      "app/routes/crm-pipeline.tsx",
+      "openclaw-gateway/openclaw.json",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "ROADMAP reescrito com status atual dos modulos, prioridades operacionais e backlog coerente com a versao 2.9.x",
+      "Segredos hardcoded foram removidos da documentacao versionada",
+      "OpenClaw doctor foi executado no container de producao para confirmar o shape dos warnings de safeBinProfiles",
+      "openclaw.json passou a incluir safeBinProfiles scaffold e /usr/local/bin em safeBinTrustedDirs para evitar recorrencia no proximo deploy",
+      "crm-pipeline removeu o import morto de useRevalidator"
+    ],
+    "verification": [
+      "JSON de openclaw-gateway/openclaw.json validado com node local",
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros"
+    ],
+    "runtime_notes": [
+      "openclaw doctor --fix --non-interactive --yes foi executado no container atual e removeu os warnings de safeBinProfiles ausentes",
+      "Permanece apenas o warning residual do binario openclaw fora de trusted dirs ate o proximo deploy consumir o openclaw.json versionado",
+      "Permanece o aviso de privacy mode do Telegram quando requireMention=false; a correcao depende de BotFather (/setprivacy)"
     ]
   }
 }

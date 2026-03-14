@@ -29,6 +29,18 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-14",
+    version: "2.9.6",
+    type: "release",
+    title: "Roadmap e OpenClaw alinhados ao estado real do projeto",
+    items: [
+      "Documentacao: docs/ROADMAP.md foi reescrito para refletir os modulos realmente publicados e remover referencias obsoletas como openrouter_paid e multi-tenancy amplo",
+      "Seguranca operacional: o roadmap deixou de carregar token de bot e exemplo de Bearer real dentro do repositorio",
+      "OpenClaw: openclaw.json agora inclui safeBinProfiles scaffold para curl, jq, date, echo e openclaw, alem de /usr/local/bin em safeBinTrustedDirs",
+      "CRM Pipeline: import morto de useRevalidator foi removido, limpando o warning simples de build nessa rota",
+    ],
+  },
+  {
+    date: "2026-03-14",
     version: "2.9.5",
     type: "release",
     title: "OpenClaw virou operador do CRM e de processos",

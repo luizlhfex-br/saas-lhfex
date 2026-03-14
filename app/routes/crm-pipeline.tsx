@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Form, Link, useActionData, useNavigation, useRevalidator } from "react-router";
+import { Form, Link, useActionData, useNavigation } from "react-router";
 import type { Route } from "./+types/crm-pipeline";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";

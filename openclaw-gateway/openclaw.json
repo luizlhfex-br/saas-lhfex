@@ -236,13 +236,23 @@
       "host": "gateway",
       "security": "allowlist",
       "ask": "on-miss",
+      "safeBinTrustedDirs": [
+        "/usr/local/bin"
+      ],
       "safeBins": [
         "curl",
         "jq",
         "date",
         "echo",
         "openclaw"
-      ]
+      ],
+      "safeBinProfiles": {
+        "curl": {},
+        "jq": {},
+        "date": {},
+        "echo": {},
+        "openclaw": {}
+      }
     }
   },
   "cron": {
