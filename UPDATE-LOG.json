@@ -1,17 +1,37 @@
 {
   "release": {
-    "version": "v2.9.6",
+    "version": "v2.9.7",
     "date": "2026-03-14T00:00:00Z",
     "type": "infra",
-    "title": "Roadmap saneado e warnings operacionais reduzidos"
+    "title": "Smoke test em producao e hardening extra do OpenClaw"
   },
   "summary": {
     "commits": 1,
     "filesCreated": 0,
-    "filesModified": 6,
+    "filesModified": 5,
     "routesAdded": 0,
     "openclaw_changes": 1,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_14_runtime_hardening": {
+    "date": "2026-03-14",
+    "objective": "Validar as rotas publicadas e reduzir warnings operacionais restantes do OpenClaw",
+    "files_changed": [
+      "openclaw-gateway/entrypoint.sh",
+      "CLAUDE.md",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "Smoke test autenticado em producao confirmou login, dashboard, /squad, /subscriptions, /personal-life/radio-monitor e /settings respondendo com HTTP 200 e conteudo esperado",
+      "OpenClaw: entrypoint passou a exportar NODE_COMPILE_CACHE por padrao e OPENCLAW_NO_RESPAWN=1 para reduzir warnings do runtime em container",
+      "Documentacao permanente: CLAUDE.md foi alinhado com a chain atual Vertex Gemini -> Qwen Free -> Llama Free -> DeepSeek R1 Free -> DeepSeek Direct"
+    ],
+    "pending_manual": [
+      "Desabilitar privacy mode do bot no BotFather se quiser que o OpenClaw leia mensagens de grupo sem mention",
+      "Revisar depois se o bind customizado 0.0.0.0 deve permanecer como esta no container"
+    ]
   },
   "changes": {
     "ui_redesign": {

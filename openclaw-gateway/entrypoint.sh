@@ -1,6 +1,13 @@
 #!/bin/sh
 set -e
 
+: "${NODE_COMPILE_CACHE:=/tmp/openclaw-node-compile-cache}"
+: "${OPENCLAW_NO_RESPAWN:=1}"
+export NODE_COMPILE_CACHE
+export OPENCLAW_NO_RESPAWN
+
+mkdir -p "$NODE_COMPILE_CACHE"
+
 echo "[openclaw] Installing skills..."
 clawhub install qmd web-search file-ops reminders 2>/dev/null || true
 clawhub update --all 2>/dev/null || true

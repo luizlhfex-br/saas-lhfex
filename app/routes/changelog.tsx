@@ -29,6 +29,17 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-14",
+    version: "2.9.7",
+    type: "release",
+    title: "Smoke test de producao validado e entrypoint do OpenClaw endurecido",
+    items: [
+      "Producao: login, dashboard, /squad, /subscriptions, /personal-life/radio-monitor e /settings responderam corretamente em smoke test autenticado",
+      "OpenClaw: entrypoint agora define NODE_COMPILE_CACHE por padrao e OPENCLAW_NO_RESPAWN=1 para reduzir warnings operacionais e evitar respawn desnecessario no container",
+      "Documentacao permanente: CLAUDE.md foi alinhado com a chain real do SAAS baseada em Vertex Gemini, Qwen, Llama e DeepSeek",
+    ],
+  },
+  {
+    date: "2026-03-14",
     version: "2.9.6",
     type: "release",
     title: "Roadmap e OpenClaw alinhados ao estado real do projeto",

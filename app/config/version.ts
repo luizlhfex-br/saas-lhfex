@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.6";
+export const APP_VERSION = "2.9.7";
 export const APP_RELEASE_DATE = "2026-03-14";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,16 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.7",
+    date: "2026-03-14",
+    title: "Smoke test em producao e hardening extra do OpenClaw",
+    items: [
+      { type: "improvement", text: "Producao: smoke test confirmou login, dashboard, /squad, /subscriptions, /personal-life/radio-monitor e /settings respondendo corretamente apos o ultimo deploy" },
+      { type: "infra", text: "OpenClaw: entrypoint passou a exportar NODE_COMPILE_CACHE por padrao e OPENCLAW_NO_RESPAWN=1 para reduzir warnings e loops de respawn no container" },
+      { type: "fix", text: "Documentacao permanente: CLAUDE.md foi alinhado com a chain atual Vertex Gemini -> Qwen -> Llama -> DeepSeek" },
+    ],
+  },
   {
     version: "2.9.6",
     date: "2026-03-14",
