@@ -1,17 +1,37 @@
 {
   "release": {
-    "version": "v2.9.8",
+    "version": "v2.9.9",
     "date": "2026-03-14T00:00:00Z",
     "type": "fix",
-    "title": "CSRF reforcado, planejamento saneado e smoke pos-deploy fechado"
+    "title": "Smoke de producao resiliente ao boot do OpenClaw"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 1,
-    "filesModified": 24,
+    "filesCreated": 0,
+    "filesModified": 4,
     "routesAdded": 0,
-    "openclaw_changes": 4,
+    "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_14_smoke_retry_hotfix": {
+    "date": "2026-03-14",
+    "release_version": "2.9.9",
+    "objective": "Eliminar falso negativo do smoke pos-deploy enquanto o OpenClaw ainda aquece a rota publica",
+    "files_changed": [
+      "scripts/smoke-production.mjs",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "Diagnostico da run 23100025312 mostrou que o OpenClaw so ficou online na URL publica cerca de 30s depois do smoke ter iniciado",
+      "scripts/smoke-production.mjs passou a repetir o check de /api/monitor-openclaw com retry controlado antes de falhar",
+      "O smoke continua fail-fast para /login e /api/health, mas agora trata o aquecimento legitimo do gateway separadamente"
+    ],
+    "verification": [
+      "Teste direto no host confirmou OpenClaw ouvindo em 3000 e /api/monitor-openclaw retornando 200 depois do aquecimento",
+      "Hotfix preparado para novo push sem alterar a semantica dos checks definitivos"
+    ]
   },
   "session_2026_03_14_security_docs_smoke": {
     "date": "2026-03-14",

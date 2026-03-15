@@ -29,6 +29,16 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-14",
+    version: "2.9.9",
+    type: "release",
+    title: "Smoke de producao tolera aquecimento do OpenClaw",
+    items: [
+      "CI: scripts/smoke-production.mjs passou a repetir o check do OpenClaw com backoff simples antes de declarar falha",
+      "Smoke: o job continua falhando se o gateway permanecer offline, mas deixa de quebrar por boot legitimo logo apos o deploy",
+    ],
+  },
+  {
+    date: "2026-03-14",
     version: "2.9.8",
     type: "release",
     title: "CSRF reforcado, planejamento saneado e smoke pos-deploy concluido",

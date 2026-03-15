@@ -1,7 +1,13 @@
 const baseUrl = process.env.SMOKE_BASE_URL || "https://saas.lhfex.com.br";
+const retryAttempts = Number(process.env.SMOKE_RETRY_ATTEMPTS || 6);
+const retryDelayMs = Number(process.env.SMOKE_RETRY_DELAY_MS || 15000);
 
 async function readText(response) {
   return await response.text();
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function assertOk(name, path, options = {}) {
@@ -16,6 +22,23 @@ async function assertOk(name, path, options = {}) {
   }
 
   return response;
+}
+
+async function waitForCheck(name, check, attempts = retryAttempts) {
+  let lastError;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await check();
+    } catch (error) {
+      lastError = error;
+      if (attempt === attempts) break;
+      console.warn(`${name}: tentativa ${attempt}/${attempts} falhou, aguardando ${retryDelayMs}ms`);
+      await sleep(retryDelayMs);
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
 }
 
 async function main() {
@@ -33,13 +56,16 @@ async function main() {
     throw new Error(`health: status inesperado ${JSON.stringify(health)}`);
   }
 
-  const openClawResponse = await assertOk("openclaw-monitor", "/api/monitor-openclaw", {
-    headers: { Accept: "application/json" },
+  const { response: openClawResponse, payload: openClaw } = await waitForCheck("openclaw-monitor", async () => {
+    const response = await assertOk("openclaw-monitor", "/api/monitor-openclaw", {
+      headers: { Accept: "application/json" },
+    });
+    const payload = await response.json();
+    if (payload.ok !== true || payload.openclaw === "offline") {
+      throw new Error(`openclaw-monitor: retorno inesperado ${JSON.stringify(payload)}`);
+    }
+    return { response, payload };
   });
-  const openClaw = await openClawResponse.json();
-  if (openClaw.ok !== true || openClaw.openclaw === "offline") {
-    throw new Error(`openclaw-monitor: retorno inesperado ${JSON.stringify(openClaw)}`);
-  }
 
   console.log(
     JSON.stringify(

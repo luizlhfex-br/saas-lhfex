@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.8";
+export const APP_VERSION = "2.9.9";
 export const APP_RELEASE_DATE = "2026-03-14";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,15 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.9",
+    date: "2026-03-14",
+    title: "Smoke de producao resiliente ao aquecimento do OpenClaw",
+    items: [
+      { type: "fix", text: "CI: scripts/smoke-production.mjs agora faz retry controlado no monitor do OpenClaw para absorver o tempo real de boot do gateway apos o deploy" },
+      { type: "improvement", text: "Smoke: logs de tentativa passaram a indicar aquecimento do endpoint sem mascarar falhas definitivas" },
+    ],
+  },
   {
     version: "2.9.8",
     date: "2026-03-14",
