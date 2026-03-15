@@ -1,32 +1,33 @@
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Route } from "./+types/agents";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
 import { chatConversations } from "drizzle/schema";
-import { eq, desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { t, type Locale } from "~/i18n";
+import { getOpenClawOverview } from "~/lib/openclaw-overview.server";
 import {
+  ArrowLeft,
   Bot,
-  Send,
+  Brain,
+  CheckCircle2,
+  Clock,
   MessageSquare,
   Plus,
-  Clock,
-  ArrowLeft,
+  Send,
   Sparkles,
-  Brain,
   Zap,
-  CheckCircle2,
 } from "lucide-react";
 import { Link, useSearchParams } from "react-router";
 import { ChatMessage, TypingIndicator } from "~/components/chat/chat-message";
 
-const agents = [
+const chatAgents = [
   {
     id: "airton",
     name: "AIrton",
     emoji: "🎯",
     role: "Maestro LHFEX",
-    description: "Orquestra todas as operações de comércio exterior. Coordena os demais agentes e oferece visão estratégica.",
+    description: "Orquestra as operacoes de comercio exterior e faz leitura estrategica do contexto.",
     color: "from-blue-500 to-cyan-500",
     bg: "bg-blue-50 dark:bg-blue-900/20",
     border: "border-blue-200 dark:border-blue-800",
@@ -36,7 +37,7 @@ const agents = [
     name: "IAna",
     emoji: "📦",
     role: "Especialista Comex",
-    description: "Classificação NCM, descrições blindadas, análise de processos, documentação e compliance aduaneiro.",
+    description: "NCM, descricao blindada, DI, DUIMP, Incoterms e compliance aduaneiro.",
     color: "from-green-500 to-emerald-500",
     bg: "bg-green-50 dark:bg-green-900/20",
     border: "border-green-200 dark:border-green-800",
@@ -46,7 +47,7 @@ const agents = [
     name: "marIA",
     emoji: "💰",
     role: "Gestora Financeira",
-    description: "Controle financeiro, análise de custos, projeções de câmbio, planejamento tributário e DRE.",
+    description: "Cambio, custos, DRE, fluxo de caixa e leitura financeira das operacoes.",
     color: "from-amber-500 to-orange-500",
     bg: "bg-amber-50 dark:bg-amber-900/20",
     border: "border-amber-200 dark:border-amber-800",
@@ -56,7 +57,7 @@ const agents = [
     name: "IAgo",
     emoji: "🔧",
     role: "Engenheiro de Infra",
-    description: "Monitoramento de servidores, automações backend, integrações e manutenção do sistema.",
+    description: "Servidor, Docker, Coolify, automacoes backend e diagnostico de runtime.",
     color: "from-purple-500 to-violet-500",
     bg: "bg-purple-50 dark:bg-purple-900/20",
     border: "border-purple-200 dark:border-purple-800",
@@ -65,21 +66,76 @@ const agents = [
     id: "openclaw",
     name: "OpenClaw",
     emoji: "🦞",
-    role: "Assistente Vida Pessoal",
-    description: "Responsável por toda a aba Vida Pessoal — promoções, sorteios, rotinas, finanças pessoais, radio monitor e objetivos pessoais.",
+    role: "Vida Pessoal",
+    description: "Promocoes, sorteios, rotinas, objetivos e operacao pessoal no Telegram.",
     color: "from-rose-500 to-pink-500",
     bg: "bg-rose-50 dark:bg-rose-900/20",
     border: "border-rose-200 dark:border-rose-800",
   },
 ];
 
-
-interface MessageData {
+type MessageData = {
   id: string;
   role: "user" | "assistant";
   content: string;
   agentId?: string | null;
   timestamp?: string;
+};
+
+const modelLabels: Record<string, { label: string; badge: string; badgeClass: string; description: string }> = {
+  "vertex/gemini-2.0-flash": {
+    label: "Vertex Gemini 2.0 Flash",
+    badge: "PRIMARIO",
+    badgeClass: "text-fuchsia-600",
+    description: "Cadeia principal do gateway via Vertex AI.",
+  },
+  "openrouter/qwen-2.5-72b-instruct:free": {
+    label: "Qwen 2.5 72B Free",
+    badge: "FREE",
+    badgeClass: "text-sky-600",
+    description: "Fallback gratuito via OpenRouter.",
+  },
+  "openrouter/meta-llama/llama-3.3-70b-instruct:free": {
+    label: "Llama 3.3 70B Free",
+    badge: "FREE",
+    badgeClass: "text-blue-600",
+    description: "Fallback gratuito adicional para consultas gerais.",
+  },
+  "openrouter/deepseek/deepseek-r1-distill-llama-70b:free": {
+    label: "DeepSeek R1 Distill Free",
+    badge: "FREE",
+    badgeClass: "text-cyan-600",
+    description: "Fallback gratuito focado em raciocinio.",
+  },
+  "deepseek/deepseek-chat": {
+    label: "DeepSeek Direct",
+    badge: "DIRECT",
+    badgeClass: "text-orange-600",
+    description: "Ultimo recurso direto na API da DeepSeek.",
+  },
+};
+
+const promptFiles = [
+  { file: "SOUL.md", desc: "Personalidade, autonomia, seguranca e escopo do gateway." },
+  { file: "IDENTITY.md", desc: "Nome, funcao, timezone e idioma de cada agente." },
+  { file: "USER.md", desc: "Perfil, preferencia e tom operacional do usuario." },
+  { file: "AGENTS.md", desc: "Manual de delegacao entre especialistas e regras do projeto." },
+  { file: "WORKING.md", desc: "Estado vivo da sessao e memoria recente do gateway." },
+];
+
+function getSuggestionTexts(agentId: string) {
+  switch (agentId) {
+    case "airton":
+      return ["Resuma os gargalos atuais do SaaS", "Me diga o proximo risco tecnico real", "Organize este problema em etapas"];
+    case "iana":
+      return ["Revise esta descricao blindada", "Explique o impacto deste Incoterm", "Monte um checklist DUIMP"];
+    case "maria":
+      return ["Analise custo total desta operacao", "Compare impacto cambial de USD x EUR", "Resuma o DRE do mes"];
+    case "iago":
+      return ["Cheque o risco do ultimo deploy", "Liste o que pode quebrar em producao", "Sugira hardening da infra"];
+    default:
+      return ["Resumo das minhas promocoes", "Organize minhas proximas acoes", "Me lembre do que esta vencendo"];
+  }
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -102,9 +158,9 @@ export async function loader({ request }: Route.LoaderArgs) {
     .limit(20);
 
   return {
-    user: { id: user.id, name: user.name, email: user.email, locale: user.locale, theme: user.theme },
     locale,
     conversations,
+    openClawOverview: await getOpenClawOverview(),
   };
 }
 
@@ -113,13 +169,13 @@ export async function action() {
 }
 
 export default function AgentsPage({ loaderData }: Route.ComponentProps) {
-  const { user, locale, conversations } = loaderData;
+  const { locale, conversations, openClawOverview } = loaderData;
   const i18n = t(locale);
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab = searchParams.get("tab") === "knowledge" ? "knowledge" : "agents";
-
-  const [activeTab, setActiveTab] = useState<"agents" | "knowledge">(initialTab);
+  const [activeTab, setActiveTab] = useState<"agents" | "knowledge">(
+    searchParams.get("tab") === "knowledge" ? "knowledge" : "agents"
+  );
   const [activeAgent, setActiveAgent] = useState<string | null>(null);
   const [messages, setMessages] = useState<MessageData[]>([]);
   const [input, setInput] = useState("");
@@ -128,13 +184,26 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const modelChain = useMemo(
+    () => [openClawOverview.primaryModel, ...openClawOverview.fallbackModels].filter(Boolean),
+    [openClawOverview.fallbackModels, openClawOverview.primaryModel]
+  );
+  const agentLabelById = useMemo(
+    () => Object.fromEntries(openClawOverview.agents.map((entry) => [entry.id, `${entry.emoji} ${entry.name}`])),
+    [openClawOverview.agents]
+  );
+  const chatAgentLookup = useMemo(
+    () => Object.fromEntries(chatAgents.map((agent) => [agent.id, agent])),
+    []
+  );
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
   useEffect(() => {
-    if (activeAgent && inputRef.current) {
-      inputRef.current.focus();
+    if (activeAgent) {
+      inputRef.current?.focus();
     }
   }, [activeAgent]);
 
@@ -144,36 +213,43 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
     }
   }, [searchParams]);
 
+  const selectedAgent = activeAgent ? chatAgentLookup[activeAgent] ?? null : null;
+
   const handleStartChat = (agentId: string) => {
     setActiveAgent(agentId);
     setMessages([]);
     setConversationId(null);
   };
 
-  const handleLoadConversation = async (convId: string, agentId: string) => {
+  const handleLoadConversation = async (convId: string, agentId: string | null) => {
+    if (!agentId) return;
+
     setActiveAgent(agentId);
     setConversationId(convId);
+
     try {
       const res = await fetch(`/api/chat?conversationId=${convId}`);
-      if (res.ok) {
-        const d = await res.json();
-        setMessages(
-          d.messages.map((m: { id: string; role: "user" | "assistant"; content: string; agentId?: string; createdAt?: string }) => ({
-            id: m.id,
-            role: m.role,
-            content: m.content,
-            agentId: m.agentId,
-            timestamp: m.createdAt,
-          })),
-        );
-      }
+      if (!res.ok) return;
+
+      const payload = await res.json();
+      setMessages(
+        payload.messages.map(
+          (message: { id: string; role: "user" | "assistant"; content: string; agentId?: string; createdAt?: string }) => ({
+            id: message.id,
+            role: message.role,
+            content: message.content,
+            agentId: message.agentId,
+            timestamp: message.createdAt,
+          })
+        )
+      );
     } catch {
-      // ignore
+      // Keep previous state untouched if fetching chat history fails.
     }
   };
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading || !activeAgent) return;
+    if (!input.trim() || !activeAgent || isLoading) return;
 
     const userMessage: MessageData = {
       id: `user-${Date.now()}`,
@@ -196,54 +272,79 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
       if (!res.ok) {
         let errorMessage = "Nao foi possivel processar sua mensagem agora. Tente novamente.";
         try {
-          const ep = await res.json();
-          if (typeof ep?.error === "string" && ep.error.trim()) errorMessage = ep.error;
-        } catch { /* ignore */ }
+          const payload = await res.json();
+          if (typeof payload?.error === "string" && payload.error.trim()) {
+            errorMessage = payload.error;
+          }
+        } catch {
+          // Fall back to generic error.
+        }
+
         setMessages((prev) => [
           ...prev,
-          { id: `error-${Date.now()}`, role: "assistant", content: errorMessage, agentId: activeAgent, timestamp: new Date().toISOString() },
+          {
+            id: `error-${Date.now()}`,
+            role: "assistant",
+            content: errorMessage,
+            agentId: activeAgent,
+            timestamp: new Date().toISOString(),
+          },
         ]);
         return;
       }
 
-      const d = await res.json();
-      setConversationId(d.conversationId);
+      const payload = await res.json();
+      setConversationId(payload.conversationId);
       setMessages((prev) => [
         ...prev,
-        { id: `assistant-${Date.now()}`, role: "assistant", content: d.reply, agentId: d.agentId, timestamp: new Date().toISOString() },
+        {
+          id: `assistant-${Date.now()}`,
+          role: "assistant",
+          content: payload.reply,
+          agentId: payload.agentId,
+          timestamp: new Date().toISOString(),
+        },
       ]);
     } catch {
       setMessages((prev) => [
         ...prev,
-        { id: `error-${Date.now()}`, role: "assistant", content: "Desculpe, ocorreu um erro. Tente novamente.", agentId: activeAgent, timestamp: new Date().toISOString() },
+        {
+          id: `error-${Date.now()}`,
+          role: "assistant",
+          content: "Desculpe, ocorreu um erro. Tente novamente.",
+          agentId: activeAgent,
+          timestamp: new Date().toISOString(),
+        },
       ]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const agent = agents.find((a) => a.id === activeAgent);
-  const agentEmojis: Record<string, string> = { airton: "🎯", iana: "📦", maria: "💰", iago: "🔧" };
-  const agentNames: Record<string, string> = { airton: "AIrton", iana: "IAna", maria: "marIA", iago: "IAgo" };
+  if (selectedAgent) {
+    const suggestionTexts = getSuggestionTexts(selectedAgent.id);
 
-  // Chat view
-  if (activeAgent && agent) {
     return (
       <div className="flex h-[calc(100vh-7rem)] flex-col">
         <div className="flex items-center gap-3 border-b border-gray-200 pb-4 dark:border-gray-800">
           <button
+            type="button"
             onClick={() => setActiveAgent(null)}
             className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <span className="text-2xl">{agent.emoji}</span>
+          <span className="text-2xl">{selectedAgent.emoji}</span>
           <div>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">{agent.name}</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">{agent.role}</p>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">{selectedAgent.name}</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{selectedAgent.role}</p>
           </div>
           <button
-            onClick={() => { setMessages([]); setConversationId(null); }}
+            type="button"
+            onClick={() => {
+              setMessages([]);
+              setConversationId(null);
+            }}
             className="ml-auto flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
           >
             <Plus className="h-4 w-4" />
@@ -251,68 +352,54 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto py-4 space-y-4">
+        <div className="flex-1 space-y-4 overflow-y-auto py-4">
           {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-full text-center px-8">
-              <div className="mb-4 text-5xl">{agent.emoji}</div>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">{agent.name}</h3>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{agent.description}</p>
+            <div className="flex h-full flex-col items-center justify-center px-8 text-center">
+              <div className="mb-4 text-5xl">{selectedAgent.emoji}</div>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">{selectedAgent.name}</h3>
+              <p className="mt-1 max-w-xl text-sm text-gray-500 dark:text-gray-400">{selectedAgent.description}</p>
               <div className="mt-6 flex flex-wrap justify-center gap-2">
-                {activeAgent === "airton" && (
-                  <>
-                    <SuggestionChip text="Como está o status dos meus processos?" onClick={(t) => setInput(t)} />
-                    <SuggestionChip text="Quais alertas preciso verificar?" onClick={(t) => setInput(t)} />
-                  </>
-                )}
-                {activeAgent === "iana" && (
-                  <>
-                    <SuggestionChip text="Qual NCM para peças automotivas?" onClick={(t) => setInput(t)} />
-                    <SuggestionChip text="Preciso de uma descrição blindada" onClick={(t) => setInput(t)} />
-                  </>
-                )}
-                {activeAgent === "maria" && (
-                  <>
-                    <SuggestionChip text="Qual a cotação do dólar hoje?" onClick={(t) => setInput(t)} />
-                    <SuggestionChip text="Resumo financeiro do mês" onClick={(t) => setInput(t)} />
-                  </>
-                )}
-                {activeAgent === "iago" && (
-                  <>
-                    <SuggestionChip text="Status dos servidores" onClick={(t) => setInput(t)} />
-                    <SuggestionChip text="Status das automações backend" onClick={(t) => setInput(t)} />
-                  </>
-                )}
+                {suggestionTexts.map((text) => (
+                  <SuggestionChip key={text} text={text} onClick={setInput} />
+                ))}
               </div>
             </div>
           )}
 
-          {messages.map((msg) => (
-            <ChatMessage key={msg.id} role={msg.role} content={msg.content} agentId={msg.agentId} timestamp={msg.timestamp} />
+          {messages.map((message) => (
+            <ChatMessage
+              key={message.id}
+              role={message.role}
+              content={message.content}
+              agentId={message.agentId}
+              timestamp={message.timestamp}
+            />
           ))}
 
-          {isLoading && <TypingIndicator agentId={activeAgent} />}
+          {isLoading ? <TypingIndicator agentId={selectedAgent.id} /> : null}
           <div ref={messagesEndRef} />
         </div>
 
         <div className="border-t border-gray-200 pt-4 dark:border-gray-800">
-          <div className="flex items-center gap-3">
+          <div className="flex gap-3">
             <input
               ref={inputRef}
               type="text"
               value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
+              onChange={(event) => setInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  void handleSend();
                 }
               }}
-              placeholder={`Pergunte ao ${agent.name}...`}
+              placeholder={`Pergunte ao ${selectedAgent.name}...`}
               className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500 dark:focus:bg-gray-800"
               disabled={isLoading}
             />
             <button
-              onClick={handleSend}
+              type="button"
+              onClick={() => void handleSend()}
               disabled={!input.trim() || isLoading}
               className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white transition-all hover:bg-blue-700 disabled:opacity-50"
               aria-label="Enviar"
@@ -325,15 +412,13 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
     );
   }
 
-  // Tabs view
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{i18n.nav.agents}</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">Agentes de IA e base de conhecimento</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Agentes de IA e base operacional do OpenClaw.</p>
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1 dark:border-gray-800 dark:bg-gray-900">
         {[
           { id: "agents" as const, label: "Agentes", icon: Bot },
@@ -341,6 +426,7 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
         ].map(({ id, label, icon: Icon }) => (
           <button
             key={id}
+            type="button"
             onClick={() => {
               setActiveTab(id);
               setSearchParams(id === "knowledge" ? { tab: "knowledge" } : {});
@@ -357,8 +443,7 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
         ))}
       </div>
 
-      {/* ── AGENTS TAB ──────────────────────────────────────────────────────── */}
-      {activeTab === "agents" && (
+      {activeTab === "agents" ? (
         <div className="space-y-6">
           <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
             <div className="flex flex-wrap items-center justify-between gap-4">
@@ -368,7 +453,7 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
                 </span>
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Guia de prompts</h2>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">5 princípios + templates prontos para melhorar a resposta dos agentes.</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">5 principios e templates prontos para conversar melhor com os agentes.</p>
                 </div>
               </div>
               <Link to="/knowledge/prompting" className="rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700">
@@ -378,19 +463,20 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            {agents.map((a) => (
+            {chatAgents.map((agent) => (
               <button
-                key={a.id}
-                onClick={() => handleStartChat(a.id)}
-                className={`group relative overflow-hidden rounded-xl border ${a.border} ${a.bg} p-6 text-left transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]`}
+                key={agent.id}
+                type="button"
+                onClick={() => handleStartChat(agent.id)}
+                className={`group relative overflow-hidden rounded-xl border ${agent.border} ${agent.bg} p-6 text-left transition-all hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]`}
               >
-                <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${a.color}`} />
+                <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${agent.color}`} />
                 <div className="flex items-start gap-4">
-                  <div className="text-4xl">{a.emoji}</div>
+                  <div className="text-4xl">{agent.emoji}</div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">{a.name}</h3>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{a.role}</p>
-                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">{a.description}</p>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">{agent.name}</h3>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{agent.role}</p>
+                    <p className="mt-2 text-xs leading-relaxed text-gray-500 dark:text-gray-400">{agent.description}</p>
                   </div>
                 </div>
                 <div className="mt-4 flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
@@ -401,24 +487,26 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
             ))}
           </div>
 
-          {conversations.length > 0 && (
+          {conversations.length > 0 ? (
             <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
               <div className="mb-4 flex items-center gap-2">
                 <Clock className="h-5 w-5 text-gray-500" />
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Conversas Recentes</h2>
               </div>
               <div className="space-y-2">
-                {conversations.map((conv) => (
+                {conversations.map((conversation) => (
                   <button
-                    key={conv.id}
-                    onClick={() => handleLoadConversation(conv.id, conv.agentId)}
+                    key={conversation.id}
+                    type="button"
+                    onClick={() => handleLoadConversation(conversation.id, conversation.agentId)}
                     className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-800"
                   >
-                    <span className="text-lg">{agentEmojis[conv.agentId] || "🤖"}</span>
+                    <span className="text-lg">{chatAgentLookup[conversation.agentId ?? ""]?.emoji ?? "🤖"}</span>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{conv.title || "Nova conversa"}</p>
+                      <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{conversation.title || "Nova conversa"}</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {agentNames[conv.agentId] || conv.agentId} • {new Date(conv.updatedAt).toLocaleDateString("pt-BR")}
+                        {chatAgentLookup[conversation.agentId ?? ""]?.name ?? conversation.agentId ?? "Agente"} •{" "}
+                        {new Date(conversation.updatedAt).toLocaleDateString("pt-BR")}
                       </p>
                     </div>
                     <MessageSquare className="h-4 w-4 shrink-0 text-gray-400" />
@@ -426,90 +514,159 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
                 ))}
               </div>
             </div>
-          )}
+          ) : null}
         </div>
-      )}
-
-
-      {/* ── KNOWLEDGE TAB ────────────────────────────────────────────────────── */}
-      {activeTab === "knowledge" && (
+      ) : (
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Conhecimento IA 🧠</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Conhecimento IA</h2>
 
-          {/* Model hierarchy */}
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Agentes especialistas</p>
+              <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-gray-100">{openClawOverview.agents.length}</p>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Lidos do openclaw.json e dos prompts de identidade.</p>
+            </div>
+            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Skills ativas</p>
+              <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-gray-100">{openClawOverview.skills.length}</p>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Runtime + skills locais do gateway.</p>
+            </div>
+            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Provider primario</p>
+              <p className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {modelLabels[openClawOverview.primaryModel]?.label ?? openClawOverview.primaryModel}
+              </p>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Fallbacks declarados: {openClawOverview.fallbackModels.length}</p>
+            </div>
+          </div>
+
           <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
             <div className="mb-3 flex items-center gap-2">
               <Zap className="h-5 w-5 text-amber-500" />
               <h3 className="font-semibold text-gray-900 dark:text-gray-100">Hierarquia de Modelos</h3>
             </div>
             <div className="space-y-2">
-              {[
-                { rank: "1", label: "Vertex Gemini 2.0 Flash", desc: "Primário — cadeia principal via Vertex AI", badge: "PRIMÁRIO", color: "text-fuchsia-600" },
-                { rank: "2", label: "Qwen 2.5 72B Free", desc: "Fallback gratuito 1 via OpenRouter", badge: "GRÁTIS", color: "text-sky-600" },
-                { rank: "3", label: "Llama 3.3 70B Free", desc: "Fallback gratuito 2 via OpenRouter", badge: "GRÁTIS", color: "text-blue-600" },
-                { rank: "4", label: "DeepSeek R1 Distill Free", desc: "Fallback gratuito 3 via OpenRouter", badge: "GRÁTIS", color: "text-cyan-600" },
-                { rank: "5", label: "DeepSeek Direct", desc: "Último recurso direto na API da DeepSeek", badge: "PAGO", color: "text-orange-600" },
-              ].map((m) => (
-                <div key={m.rank} className="flex items-center gap-3 rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-200 text-xs font-bold text-gray-600 dark:bg-gray-700 dark:text-gray-400">
-                    {m.rank}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{m.label}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{m.desc}</p>
+              {modelChain.map((modelId, index) => {
+                const model = modelLabels[modelId] ?? {
+                  label: modelId,
+                  badge: index === 0 ? "PRIMARIO" : "FALLBACK",
+                  badgeClass: index === 0 ? "text-fuchsia-600" : "text-slate-600",
+                  description: "Modelo configurado no runtime do OpenClaw.",
+                };
+
+                return (
+                  <div key={modelId} className="flex items-center gap-3 rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-200 text-xs font-bold text-gray-600 dark:bg-gray-700 dark:text-gray-400">
+                      {index + 1}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{model.label}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{model.description}</p>
+                    </div>
+                    <span className={`text-xs font-medium ${model.badgeClass}`}>{model.badge}</span>
                   </div>
-                  <span className={`text-xs font-medium ${m.color}`}>{m.badge}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
-          {/* Skills */}
           <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
             <div className="mb-3 flex items-center gap-2">
               <Bot className="h-5 w-5 text-blue-500" />
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100">Skills Ativas (openclaw.ai)</h3>
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100">Skills Ativas</h3>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { slug: "qmd", desc: "90% economia tokens memória" },
-                { slug: "web-search", desc: "Busca na web" },
-                { slug: "file-ops", desc: "Lê/escreve workspace" },
-                { slug: "reminders", desc: "Lembretes" },
-              ].map((s) => (
-                <div key={s.slug} className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-1.5 dark:border-green-800 dark:bg-green-900/20">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-                  <span className="text-xs font-medium text-green-700 dark:text-green-400">{s.slug}</span>
-                  <span className="text-xs text-green-600 dark:text-green-500">— {s.desc}</span>
+            <div className="grid gap-3 xl:grid-cols-2">
+              {openClawOverview.skills.map((skill) => (
+                <div key={skill.id} className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/70">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                        <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{skill.label}</h4>
+                      </div>
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{skill.description}</p>
+                    </div>
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium uppercase text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                      {skill.type === "built-in" ? "runtime" : "local"}
+                    </span>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {skill.alignedAgents.length > 0 ? (
+                      skill.alignedAgents.map((agentId) => (
+                        <span
+                          key={`${skill.id}-${agentId}`}
+                          className="rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-medium text-violet-700 dark:border-violet-800 dark:bg-violet-900/20 dark:text-violet-300"
+                        >
+                          {agentLabelById[agentId] ?? agentId}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-xs text-gray-400 dark:text-gray-500">Sem alinhamento declarado</span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Prompts */}
+          <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <div className="mb-3 flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-violet-500" />
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100">Agentes x Skills</h3>
+            </div>
+            <div className="grid gap-4 xl:grid-cols-2">
+              {openClawOverview.agents.map((agentInfo) => (
+                <div key={agentInfo.id} className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/70">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">{agentInfo.emoji}</span>
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{agentInfo.name}</h4>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{agentInfo.role}</p>
+                      </div>
+                    </div>
+                    <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-200">
+                      {agentInfo.alignedSkills.length} skills
+                    </span>
+                  </div>
+                  <div className="mt-3 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                    <div>Primario: {modelLabels[agentInfo.primaryModel]?.label ?? agentInfo.primaryModel}</div>
+                    <div>Fallbacks: {agentInfo.fallbacks.length > 0 ? agentInfo.fallbacks.join(" -> ") : "sem fallback"}</div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {agentInfo.alignedSkills.map((skillId) => {
+                      const skill = openClawOverview.skills.find((entry) => entry.id === skillId);
+                      return (
+                        <span
+                          key={`${agentInfo.id}-${skillId}`}
+                          className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-300"
+                        >
+                          {skill?.label ?? skillId}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
             <div className="mb-3 flex items-center gap-2">
               <Brain className="h-5 w-5 text-purple-500" />
               <h3 className="font-semibold text-gray-900 dark:text-gray-100">Prompts Carregados</h3>
             </div>
             <div className="space-y-2">
-              {[
-                { file: "SOUL.md", desc: "Personalidade, valores, diretrizes comportamentais" },
-                { file: "IDENTITY.md", desc: "Nome, timezone, idioma, assinatura" },
-                { file: "USER.md", desc: "Perfil do usuário e preferências" },
-                { file: "AGENTS.md", desc: "Manual de operação e protocolo de delegação" },
-                { file: "WORKING.md", desc: "Estado vivo de tarefas (atualizado a cada heartbeat)" },
-              ].map((p) => (
-                <div key={p.file} className="flex items-center gap-3">
+              {promptFiles.map((prompt) => (
+                <div key={prompt.file} className="flex items-center gap-3">
                   <span className="w-28 shrink-0 rounded bg-gray-100 px-2 py-0.5 text-center text-xs font-mono font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-                    {p.file}
+                    {prompt.file}
                   </span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">{p.desc}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{prompt.desc}</span>
                 </div>
               ))}
             </div>
           </div>
-
         </div>
       )}
     </div>
@@ -519,6 +676,7 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
 function SuggestionChip({ text, onClick }: { text: string; onClick: (text: string) => void }) {
   return (
     <button
+      type="button"
       onClick={() => onClick(text)}
       className="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs text-gray-600 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:border-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
     >

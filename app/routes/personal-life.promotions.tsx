@@ -531,6 +531,29 @@ export async function action({ request }: { request: Request }) {
     return data({ success: true, intent });
   }
 
+  if (intent === "update_contest") {
+    const id = (formData.get("id") as string | null)?.trim() || null;
+    const name = (formData.get("name") as string | null)?.trim();
+    const organizer = (formData.get("organizer") as string | null)?.trim() || null;
+    const theme = (formData.get("theme") as string | null)?.trim() || null;
+    const modality = (formData.get("modality") as string | null) || null;
+    const deadline = (formData.get("deadline") as string | null) || null;
+    const link = (formData.get("link") as string | null)?.trim() || null;
+    const prize = (formData.get("prize") as string | null)?.trim() || null;
+    const notes = (formData.get("notes") as string | null)?.trim() || null;
+
+    if (!id || !name) {
+      return data({ error: "Nome e obrigatorio" }, { status: 400 });
+    }
+
+    await db
+      .update(literaryContests)
+      .set({ name, organizer, theme, modality, deadline, link, prize, notes, updatedAt: new Date() })
+      .where(and(eq(literaryContests.id, id), eq(literaryContests.userId, user.id)));
+
+    return data({ success: true, intent });
+  }
+
   if (intent === "update_contest_status") {
     const id = formData.get("id") as string;
     const status = formData.get("status") as string;
@@ -1147,6 +1170,9 @@ export default function PromotionsPage({
 
   // Concursos state
   const [showContestForm, setShowContestForm] = useState(false);
+  const [editingContest, setEditingContest] = useState<LiteraryContest | null>(null);
+  const [contestExtracting, setContestExtracting] = useState(false);
+  const [contestExtractError, setContestExtractError] = useState<string | null>(null);
 
   // Loterias state
   const [showLotteryForm, setShowLotteryForm] = useState(false);
@@ -1175,6 +1201,14 @@ export default function PromotionsPage({
   const userLuckyNumbersRef = useRef<HTMLInputElement>(null);
   const officialLuckyNumberRef = useRef<HTMLInputElement>(null);
   const inferredLuckyNumberRef = useRef<HTMLInputElement>(null);
+  const contestNameRef = useRef<HTMLInputElement>(null);
+  const contestOrganizerRef = useRef<HTMLInputElement>(null);
+  const contestThemeRef = useRef<HTMLInputElement>(null);
+  const contestModalityRef = useRef<HTMLSelectElement>(null);
+  const contestDeadlineRef = useRef<HTMLInputElement>(null);
+  const contestPrizeRef = useRef<HTMLInputElement>(null);
+  const contestLinkRef = useRef<HTMLInputElement>(null);
+  const contestNotesRef = useRef<HTMLTextAreaElement>(null);
 
   const today = new Date().toISOString().split("T")[0];
 
@@ -1183,6 +1217,11 @@ export default function PromotionsPage({
     if (actionPayload.intent === "create") setShowForm(false);
     if (actionPayload.intent === "create_lottery") setShowLotteryForm(false);
     if (actionPayload.intent === "create_contest") setShowContestForm(false);
+    if (actionPayload.intent === "create_contest" || actionPayload.intent === "update_contest") {
+      setEditingContest(null);
+      setContestExtractError(null);
+      setShowContestForm(false);
+    }
   }, [actionPayload?.intent, actionPayload?.success]);
 
   useEffect(() => {
@@ -1230,6 +1269,45 @@ export default function PromotionsPage({
       setExtractError("Falha ao conectar com o servidor");
     } finally {
       setExtracting(false);
+    }
+  }
+
+  async function handleContestLinkExtract() {
+    const url = contestLinkRef.current?.value?.trim() || "";
+    if (!url) {
+      setContestExtractError("Informe o link do concurso para a leitura automatica.");
+      return;
+    }
+
+    setContestExtracting(true);
+    setContestExtractError(null);
+
+    try {
+      const fd = new FormData();
+      fd.append("url", url);
+      fd.append("mode", "literary");
+
+      const res = await fetch("/api/promotion-extract", { method: "POST", body: fd });
+      const json = await res.json() as { fields?: Record<string, string | null>; error?: string };
+
+      if (!res.ok || json.error) {
+        setContestExtractError(json.error || "Erro na leitura do link");
+        return;
+      }
+
+      const fields = json.fields ?? {};
+      if (contestNameRef.current && fields.name) contestNameRef.current.value = fields.name;
+      if (contestOrganizerRef.current && fields.organizer) contestOrganizerRef.current.value = fields.organizer;
+      if (contestThemeRef.current && fields.theme) contestThemeRef.current.value = fields.theme;
+      if (contestModalityRef.current && fields.modality) contestModalityRef.current.value = fields.modality;
+      if (contestDeadlineRef.current && fields.deadline) contestDeadlineRef.current.value = fields.deadline;
+      if (contestPrizeRef.current && fields.prize) contestPrizeRef.current.value = fields.prize;
+      if (contestLinkRef.current && fields.link) contestLinkRef.current.value = fields.link;
+      if (contestNotesRef.current && fields.notes) contestNotesRef.current.value = fields.notes;
+    } catch {
+      setContestExtractError("Falha ao conectar com o servidor");
+    } finally {
+      setContestExtracting(false);
     }
   }
 
@@ -2476,7 +2554,14 @@ export default function PromotionsPage({
                 <Award className="h-4 w-4 text-violet-500" />
                 Meus Literários ({contestsList.length})
               </h3>
-              <Button size="sm" onClick={() => setShowContestForm((v) => !v)}>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setEditingContest(null);
+                  setContestExtractError(null);
+                  setShowContestForm((v) => !v);
+                }}
+              >
                 <Plus className="mr-1 h-4 w-4" />
                 {showContestForm ? "Fechar" : "Registrar"}
               </Button>
@@ -2484,27 +2569,34 @@ export default function PromotionsPage({
 
             {/* Formulário de novo literário */}
             {showContestForm && (
-              <div className="rounded-xl border border-violet-200 bg-violet-50 p-4 dark:border-violet-900 dark:bg-violet-900/10">
+              <div key={editingContest?.id ?? "contest-form"} className="rounded-xl border border-violet-200 bg-violet-50 p-4 dark:border-violet-900 dark:bg-violet-900/10">
                 <Form method="post" className="space-y-3">
-                  <input type="hidden" name="_intent" value="create_contest" />
+                  <input type="hidden" name="_intent" value={editingContest ? "update_contest" : "create_contest"} />
+                  {editingContest ? <input type="hidden" name="id" value={editingContest.id} /> : null}
                   <div className="grid gap-3 sm:grid-cols-2">
                     <input
+                      ref={contestNameRef}
                       type="text"
                       name="name"
+                      defaultValue={editingContest?.name ?? ""}
                       placeholder="Nome do literário *"
                       required
                       className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
                     />
                     <input
+                      ref={contestOrganizerRef}
                       type="text"
                       name="organizer"
+                      defaultValue={editingContest?.organizer ?? ""}
                       placeholder="Organizador (ex: SESC, revista XYZ)"
                       className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
                     />
                   </div>
                   <div className="grid gap-3 sm:grid-cols-3">
                     <select
+                      ref={contestModalityRef}
                       name="modality"
+                      defaultValue={editingContest?.modality ?? ""}
                       className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
                     >
                       <option value="">Modalidade</option>
@@ -2515,40 +2607,71 @@ export default function PromotionsPage({
                       <option value="outro">Outro</option>
                     </select>
                     <input
+                      ref={contestDeadlineRef}
                       type="date"
                       name="deadline"
+                      defaultValue={editingContest?.deadline ?? ""}
                       className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
                     />
                     <input
+                      ref={contestPrizeRef}
                       type="text"
                       name="prize"
+                      defaultValue={editingContest?.prize ?? ""}
                       placeholder="Prêmio (ex: R$ 2.000)"
                       className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
                     />
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <input
+                      ref={contestThemeRef}
                       type="text"
                       name="theme"
+                      defaultValue={editingContest?.theme ?? ""}
                       placeholder="Tema (ex: Amor e perdão, Natureza)"
                       className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
                     />
-                    <input
-                      type="url"
-                      name="link"
-                      placeholder="Link do regulamento"
-                      className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-                    />
+                    <div className="flex gap-2">
+                      <input
+                        ref={contestLinkRef}
+                        type="url"
+                        name="link"
+                        defaultValue={editingContest?.link ?? ""}
+                        placeholder="Link do regulamento"
+                        className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                      />
+                      <Button type="button" variant="outline" size="sm" onClick={handleContestLinkExtract} disabled={contestExtracting}>
+                        {contestExtracting ? "Lendo..." : "Ler link com IA"}
+                      </Button>
+                    </div>
                   </div>
                   <textarea
+                    ref={contestNotesRef}
                     name="notes"
+                    defaultValue={editingContest?.notes ?? ""}
                     placeholder="Notas (limite de palavras, regras especiais, etc.)"
                     rows={2}
                     className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
                   />
+                  {contestExtractError ? (
+                    <p className="text-xs text-red-500">{contestExtractError}</p>
+                  ) : null}
                   <div className="flex gap-2">
-                    <Button type="submit" size="sm" disabled={isSubmitting}>Salvar</Button>
-                    <Button type="button" variant="outline" size="sm" onClick={() => setShowContestForm(false)}>Cancelar</Button>
+                    <Button type="submit" size="sm" disabled={isSubmitting}>
+                      {editingContest ? "Salvar alteracoes" : "Salvar"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setEditingContest(null);
+                        setContestExtractError(null);
+                        setShowContestForm(false);
+                      }}
+                    >
+                      Cancelar
+                    </Button>
                   </div>
                 </Form>
               </div>
@@ -2559,7 +2682,15 @@ export default function PromotionsPage({
               <div className="rounded-xl border border-dashed border-gray-300 py-12 text-center dark:border-gray-700">
                 <BookOpen className="mx-auto mb-3 h-10 w-10 text-gray-300 dark:text-gray-600" />
                 <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum literário registrado ainda.</p>
-                <Button className="mt-4" size="sm" onClick={() => setShowContestForm(true)}>
+                <Button
+                  className="mt-4"
+                  size="sm"
+                  onClick={() => {
+                    setEditingContest(null);
+                    setContestExtractError(null);
+                    setShowContestForm(true);
+                  }}
+                >
                   <Plus className="mr-2 h-4 w-4" />
                   Registrar literário
                 </Button>
@@ -2621,6 +2752,18 @@ export default function PromotionsPage({
                               <ExternalLink className="h-4 w-4" />
                             </a>
                           )}
+                          <button
+                            type="button"
+                            className="rounded p-1 text-gray-400 hover:text-violet-600"
+                            onClick={() => {
+                              setEditingContest(c);
+                              setContestExtractError(null);
+                              setShowContestForm(true);
+                            }}
+                            title="Editar concurso"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
                           <Form method="post">
                             <input type="hidden" name="_intent" value="update_contest_status" />
                             <input type="hidden" name="id" value={c.id} />

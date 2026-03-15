@@ -52,7 +52,6 @@ const mainNavItems: NavItem[] = [
   { labelKey: "crm", icon: Users, to: "/crm" },
   { labelKey: "processes", icon: FileText, to: "/processes" },
   { labelKey: "financial", icon: DollarSign, to: "/financial" },
-  { label: "Assinaturas", icon: DollarSign, to: "/subscriptions" },
   { labelKey: "publicProcurement", icon: Briefcase, to: "/public-procurement", requiredEmail: "luiz@lhfex.com.br" },
   { labelKey: "personalLife", icon: Heart, to: "/personal-life", requiredEmail: "luiz@lhfex.com.br" },
 ];

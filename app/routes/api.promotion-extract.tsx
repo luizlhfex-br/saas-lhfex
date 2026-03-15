@@ -1,11 +1,10 @@
 import { data } from "react-router";
 import type { Route } from "./+types/api.promotion-extract";
 import { requireAuth } from "~/lib/auth.server";
-import { parsePromotionText } from "~/lib/ai.server";
+import { parseLiteraryContestText, parsePromotionText } from "~/lib/ai.server";
 
-async function extractTextFromPdf(file: File): Promise<string> {
+async function extractTextFromPdfBytes(buffer: Buffer): Promise<string> {
   const { PDFParse } = await import("pdf-parse");
-  const buffer = Buffer.from(await file.arrayBuffer());
   const parser = new PDFParse({ data: buffer });
 
   try {
@@ -16,11 +15,49 @@ async function extractTextFromPdf(file: File): Promise<string> {
   }
 }
 
+async function extractTextFromPdf(file: File): Promise<string> {
+  return extractTextFromPdfBytes(Buffer.from(await file.arrayBuffer()));
+}
+
+function stripHtml(raw: string) {
+  return raw
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, "\"")
+    .replace(/&#39;/gi, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function extractTextFromUrl(url: string): Promise<string> {
+  const response = await fetch(url, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (compatible; LHFEXBot/1.0; +https://saas.lhfex.com.br)",
+      Accept: "text/html,application/pdf,text/plain;q=0.9,*/*;q=0.8",
+    },
+    signal: AbortSignal.timeout(15000),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Falha ao ler URL (${response.status})`);
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("pdf")) {
+    return extractTextFromPdfBytes(Buffer.from(await response.arrayBuffer()));
+  }
+
+  return stripHtml(await response.text());
+}
+
 export async function action({ request }: Route.ActionArgs) {
   const { checkRateLimit, RATE_LIMITS } = await import("~/lib/rate-limit.server");
   const { user } = await requireAuth(request);
 
-  // Rate limit: reutiliza o mesmo limite do OCR (10 req/min por usuário)
   const rateCheck = await checkRateLimit(
     `promotion-extract:${user.id}`,
     RATE_LIMITS.ocrExtract.maxAttempts,
@@ -30,7 +67,7 @@ export async function action({ request }: Route.ActionArgs) {
   if (!rateCheck.allowed) {
     return data(
       {
-        error: "Muitas extrações. Aguarde um momento antes de tentar novamente.",
+        error: "Muitas extracoes. Aguarde um momento antes de tentar novamente.",
         retryAfter: rateCheck.retryAfterSeconds,
       },
       {
@@ -42,36 +79,43 @@ export async function action({ request }: Route.ActionArgs) {
 
   const formData = await request.formData();
   const file = formData.get("file") as File;
+  const url = String(formData.get("url") || "").trim();
+  const mode = String(formData.get("mode") || "promotion").trim();
 
-  if (!file || file.size === 0) {
-    return data({ error: "Nenhum arquivo enviado" }, { status: 400 });
+  if ((!file || file.size === 0) && !url) {
+    return data({ error: "Envie um arquivo ou informe um link" }, { status: 400 });
   }
 
   try {
     let text = "";
 
-    if (file.type === "application/pdf") {
+    if (url) {
+      text = await extractTextFromUrl(url);
+    } else if (file.type === "application/pdf") {
       text = await extractTextFromPdf(file);
     } else {
-      // Texto plano ou HTML
       text = await file.text();
     }
 
     if (!text.trim()) {
-      return data({ error: "Não foi possível extrair texto do arquivo" }, { status: 400 });
+      return data({ error: "Nao foi possivel extrair texto do arquivo ou link" }, { status: 400 });
     }
 
-    const fields = await parsePromotionText(text, user.id);
+    const fields =
+      mode === "literary"
+        ? await parseLiteraryContestText(text, user.id, url || null)
+        : await parsePromotionText(text, user.id);
+
     return data({ success: true, fields, extractedText: text.slice(0, 20000) });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    console.error("[Promotion Extract] Error:", msg);
-    // Erros de API/provedor retornam mensagem útil; outros retornam genérico
-    const userMsg = msg.includes("API_KEY") || msg.includes("not configured")
-      ? "Serviço de IA não configurado no servidor. Contate o administrador."
-      : msg.includes("timeout") || msg.includes("AbortError")
-      ? "Tempo limite excedido. Tente novamente."
-      : "Falha ao processar documento";
-    return data({ error: userMsg }, { status: 500 });
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[Promotion Extract] Error:", message);
+    const userMessage = message.includes("API_KEY") || message.includes("not configured")
+      ? "Servico de IA nao configurado no servidor. Contate o administrador."
+      : message.includes("timeout") || message.includes("AbortError")
+        ? "Tempo limite excedido. Tente novamente."
+        : "Falha ao processar documento";
+
+    return data({ error: userMessage }, { status: 500 });
   }
 }

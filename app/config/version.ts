@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.10";
+export const APP_VERSION = "2.9.11";
 export const APP_RELEASE_DATE = "2026-03-15";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.11",
+    date: "2026-03-15",
+    title: "Skills visuais, assinaturas no financeiro e literario com IA",
+    items: [
+      { type: "feature", text: "Agentes: a aba Conhecimento IA agora le o openclaw.json e os prompts reais para exibir skills ativas, cadeia de modelos e matriz de alinhamento por agente" },
+      { type: "improvement", text: "Financeiro: Assinaturas saiu do menu principal e passou a viver como aba interna do modulo financeiro, mantendo o mesmo CRUD operacional" },
+      { type: "feature", text: "Promocoes/Literario: concursos cadastrados agora podem ser editados diretamente na lista" },
+      { type: "feature", text: "Promocoes/Literario: novo botao Ler link com IA busca o regulamento, extrai campos principais e preenche o formulario automaticamente" },
+    ],
+  },
   {
     version: "2.9.10",
     date: "2026-03-15",

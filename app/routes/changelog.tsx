@@ -29,6 +29,18 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-15",
+    version: "2.9.11",
+    type: "release",
+    title: "Skills visuais, financeiro integrado e literario com IA",
+    items: [
+      "Agentes: aba Conhecimento IA passou a ler openclaw.json e os prompts reais para mostrar skills ativas, hierarquia de modelos e alinhamento por agente",
+      "Financeiro: Assinaturas deixou o menu lateral principal e agora aparece como aba interna do fluxo financeiro",
+      "Promocoes/Literario: concursos cadastrados ganharam edicao direta pela lista",
+      "Promocoes/Literario: novo Ler link com IA busca a pagina do concurso, extrai os pontos relevantes e preenche o formulario automaticamente",
+    ],
+  },
+  {
+    date: "2026-03-15",
     version: "2.9.10",
     type: "release",
     title: "OpenClaw atualizado para 2026.3.13",

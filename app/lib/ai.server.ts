@@ -858,6 +858,57 @@ Retorne SOMENTE o objeto JSON, nada mais.`;
   return {};
 }
 
+export async function parseLiteraryContestText(
+  text: string,
+  userId: string,
+  sourceUrl?: string | null
+): Promise<Record<string, string | null>> {
+  const prompt = `Voce e um parser de concursos literarios brasileiros.
+Extraia os campos abaixo e retorne APENAS um objeto JSON valido.
+Nao use markdown. Nao explique nada fora do JSON.
+
+Campos:
+- name (string) - nome do concurso
+- organizer (string ou null) - organizador ou instituicao promotora
+- theme (string ou null) - tema principal, se houver
+- modality (string ou null) - "poema", "conto", "cronica", "microconto" ou "outro"
+- deadline (string ou null) - data final no formato YYYY-MM-DD
+- link (string ou null) - URL oficial do regulamento
+- prize (string ou null) - premio principal ou faixa de premiacao
+- notes (string ou null) - resumo util em ate 4 linhas com regras, limite de palavras, publico-alvo ou exigencias
+
+Se algum campo nao existir, use null.
+Se a modalidade nao encaixar nas opcoes, use "outro".
+Retorne SOMENTE o objeto JSON.`;
+
+  const result = await askAgent("openclaw", `${prompt}\n\nURL de origem: ${sourceUrl || "nao informada"}\n\n---\n${text}`, userId, {
+    feature: "ocr",
+  });
+
+  try {
+    const stripped = result.content
+      .replace(/```json\s*/gi, "")
+      .replace(/```\s*/g, "")
+      .trim();
+    const jsonMatch = stripped.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      const allowedModalities = new Set(["poema", "conto", "cronica", "microconto", "outro"]);
+      if (parsed.modality && !allowedModalities.has(parsed.modality)) {
+        parsed.modality = "outro";
+      }
+      if (!parsed.link && sourceUrl) {
+        parsed.link = sourceUrl;
+      }
+      return parsed;
+    }
+  } catch {
+    console.error("[Literary Contest Extract] Failed to parse AI response as JSON:", result.content.substring(0, 200));
+  }
+
+  return sourceUrl ? { link: sourceUrl } : {};
+}
+
 // --- Specialized: OpenClaw Telegram — Data Parsers ---
 
 /**

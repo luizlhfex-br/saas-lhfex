@@ -1,17 +1,47 @@
 {
   "release": {
-    "version": "v2.9.10",
+    "version": "v2.9.11",
     "date": "2026-03-15T00:00:00Z",
-    "type": "infra",
-    "title": "OpenClaw atualizado para 2026.3.13"
+    "type": "feature",
+    "title": "Skills visuais, financeiro integrado e literario com IA"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 0,
-    "filesModified": 6,
+    "filesCreated": 1,
+    "filesModified": 10,
     "routesAdded": 0,
-    "openclaw_changes": 4,
+    "openclaw_changes": 5,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_15_agents_finance_literario": {
+    "date": "2026-03-15",
+    "release_version": "2.9.11",
+    "objective": "Dar visibilidade operacional ao OpenClaw no SaaS, mover Assinaturas para Financeiro e destravar edicao/autofill da aba Literario",
+    "files_changed": [
+      "app/components/layout/mobile-nav.tsx",
+      "app/components/layout/sidebar.tsx",
+      "app/config/version.ts",
+      "app/lib/ai.server.ts",
+      "app/lib/openclaw-overview.server.ts",
+      "app/routes/agents.tsx",
+      "app/routes/api.promotion-extract.tsx",
+      "app/routes/changelog.tsx",
+      "app/routes/financial.tsx",
+      "app/routes/personal-life.promotions.tsx",
+      "app/routes/subscriptions.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "A aba Conhecimento IA passou a ler openclaw.json e os prompts reais do gateway para exibir skills ativas, cadeia de modelos e alinhamento por agente",
+      "Assinaturas saiu do menu lateral principal e passou a aparecer como aba interna do modulo Financeiro",
+      "Concursos Literarios agora podem ser editados depois do cadastro pela propria listagem",
+      "A rota api.promotion-extract passou a aceitar URL alem de arquivo e ganhou modo literary para extrair concursos por link",
+      "O formulario de Literario recebeu o botao Ler link com IA para preencher nome, organizador, tema, modalidade, prazo, premio e notas"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros"
+    ]
   },
   "session_2026_03_15_openclaw_upgrade": {
     "date": "2026-03-15",

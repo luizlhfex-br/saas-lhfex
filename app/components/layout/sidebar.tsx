@@ -56,7 +56,6 @@ const mainNavItems: NavItem[] = [
   { labelKey: "pipeline", icon: Kanban, to: "/crm/pipeline" },
   { labelKey: "processes", icon: FileText, to: "/processes" },
   { labelKey: "financial", icon: DollarSign, to: "/financial" },
-  { label: "Assinaturas", icon: DollarSign, to: "/subscriptions" },
   { labelKey: "personalLife", icon: Heart, to: "/personal-life", requiredEmail: "luiz@lhfex.com.br" },
 ];
 

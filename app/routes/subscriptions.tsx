@@ -1,5 +1,5 @@
 import { Fragment, useState } from "react";
-import { data, Form, redirect, useActionData, useNavigation } from "react-router";
+import { data, Form, Link, redirect, useActionData, useNavigation } from "react-router";
 import type { Route } from "./+types/subscriptions";
 import { requireAuth } from "~/lib/auth.server";
 import { getPrimaryCompanyId } from "~/lib/company-context.server";
@@ -8,7 +8,7 @@ import { subscriptions } from "drizzle/schema";
 import { and, eq, isNull, asc, desc } from "drizzle-orm";
 import { getSubscriptionHealth, resolveSubscriptionNextDueDate, summarizeSubscriptionTotals } from "~/lib/subscriptions.server";
 import { Button } from "~/components/ui/button";
-import { Ban, Calendar, ExternalLink, Pencil, Plus, RefreshCw } from "lucide-react";
+import { Ban, Calendar, DollarSign, ExternalLink, LayoutDashboard, Pencil, Plus, RefreshCw, TrendingUp } from "lucide-react";
 import { getCSRFFormState, requireValidCSRF } from "~/lib/csrf.server";
 
 const recurrenceOptions = [
@@ -320,13 +320,49 @@ export default function SubscriptionsPage({ loaderData }: Route.ComponentProps) 
           {actionData.error}
         </div>
       ) : null}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+
+      <div className="space-y-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Assinaturas</h1>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">Financeiro</p>
+          <h1 className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">Assinaturas</h1>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
             Controle de servicos pagos, renovacoes e alertas da operacao.
           </p>
         </div>
+
+        <div className="flex items-center gap-1 border-b border-gray-200 pb-0 dark:border-gray-800">
+          <Link
+            to="/financial"
+            className="flex items-center gap-1.5 rounded-t-lg border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+          >
+            <DollarSign className="h-4 w-4" />
+            Faturas
+          </Link>
+          <Link
+            to="/financial/cashflow"
+            className="flex items-center gap-1.5 rounded-t-lg border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+          >
+            <LayoutDashboard className="h-4 w-4" />
+            Controle de Caixa
+          </Link>
+          <Link
+            to="/financial/report"
+            className="flex items-center gap-1.5 rounded-t-lg border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+          >
+            <TrendingUp className="h-4 w-4" />
+            Relatorio
+          </Link>
+          <Link
+            to="/subscriptions"
+            className="flex items-center gap-1.5 rounded-t-lg border-b-2 border-violet-600 px-4 py-2.5 text-sm font-medium text-violet-600 dark:border-violet-500 dark:text-violet-400"
+          >
+            <DollarSign className="h-4 w-4" />
+            Assinaturas
+          </Link>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <Button onClick={() => setShowCreateForm((current) => !current)}>
           <Plus className="mr-2 h-4 w-4" />
           Nova assinatura
