@@ -1,17 +1,51 @@
 {
   "release": {
-    "version": "v2.9.13",
+    "version": "v2.9.14",
     "date": "2026-03-15T00:00:00Z",
-    "type": "feature",
-    "title": "Instagram nas promocoes, radio monitor ampliado e chat estabilizado"
+    "type": "fix",
+    "title": "Hardening de webhooks, diagnostico e escopo por empresa"
   },
   "summary": {
     "commits": 1,
     "filesCreated": 1,
-    "filesModified": 11,
+    "filesModified": 13,
     "routesAdded": 0,
     "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_15_security_hardening_webhooks_company_scope": {
+    "date": "2026-03-15",
+    "release_version": "2.9.14",
+    "objective": "Fechar superficies publicas desnecessarias, validar webhooks do Telegram e impedir acesso cross-company em CRM, processos e documentos",
+    "files_changed": [
+      "app/lib/webhook-security.server.ts",
+      "app/routes/api.ai-diagnostics.tsx",
+      "app/routes/api.chat-health.tsx",
+      "app/routes/api.document-download.tsx",
+      "app/routes/api.health.tsx",
+      "app/routes/api.monitor-openclaw.tsx",
+      "app/routes/api.openclaw-telegram-webhook.tsx",
+      "app/routes/api.telegram-webhook.tsx",
+      "app/routes/crm-contacts-edit.tsx",
+      "app/routes/crm-contacts-new.tsx",
+      "app/routes/crm-detail.tsx",
+      "app/routes/crm-edit.tsx",
+      "app/routes/processes-detail.tsx",
+      "app/routes/processes-edit.tsx",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "Os dois webhooks do Telegram passaram a validar o header X-Telegram-Bot-Api-Secret-Token e ganharam setup protegido por X-Webhook-Setup-Key",
+      "Os endpoints de diagnostico de IA e chat ficaram restritos a sessao do Luiz, e os health checks publicos deixaram de expor commit, release marker e URL interna do OpenClaw",
+      "As rotas de detalhe/edicao de CRM, contatos, processos e download de documentos agora exigem companyId antes de ler, alterar ou excluir registros",
+      "Foi criado um helper central para derivar e validar secrets de webhook a partir do ambiente sem hardcode de segredo no repositorio"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros"
+    ]
   },
   "session_2026_03_15_promotions_insta_radio_chat": {
     "date": "2026-03-15",

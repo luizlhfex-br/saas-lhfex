@@ -4,7 +4,16 @@
  * without exposing sensitive API keys
  */
 
-export async function loader() {
+import type { Route } from "./+types/api.ai-diagnostics";
+import { requireAuth } from "~/lib/auth.server";
+import { getUserRole, ROLES } from "~/lib/rbac.server";
+
+export async function loader({ request }: Route.LoaderArgs) {
+  const { user } = await requireAuth(request);
+  if (getUserRole(user.email) !== ROLES.LUIZ) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const diagnostics: {
     status: "healthy" | "degraded" | "unhealthy";
     providers: Record<string, {

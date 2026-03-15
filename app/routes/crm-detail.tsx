@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, Form, redirect, useNavigation, useSubmit } from "react-router";
 import type { Route } from "./+types/crm-detail";
 import { requireAuth } from "~/lib/auth.server";
+import { getPrimaryCompanyId } from "~/lib/company-context.server";
 import { db } from "~/lib/db.server";
 import { clients, contacts, auditLogs } from "../../drizzle/schema";
 import { eq, isNull, and } from "drizzle-orm";
@@ -26,6 +27,7 @@ import {
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
+  const companyId = await getPrimaryCompanyId(user.id);
 
   const cookieHeader = request.headers.get("cookie") || "";
   const localeMatch = cookieHeader.match(/locale=([^;]+)/);
@@ -34,33 +36,52 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const [client] = await db
     .select()
     .from(clients)
-    .where(and(eq(clients.id, params.id), isNull(clients.deletedAt)))
+    .where(and(eq(clients.id, params.id), eq(clients.companyId, companyId), isNull(clients.deletedAt)))
     .limit(1);
 
   if (!client) {
     throw new Response("Not Found", { status: 404 });
   }
 
-  const clientContacts = await db
-    .select()
+  const clientContactsRows = await db
+    .select({ contact: contacts })
     .from(contacts)
-    .where(and(eq(contacts.clientId, params.id), isNull(contacts.deletedAt)))
+    .innerJoin(clients, eq(contacts.clientId, clients.id))
+    .where(
+      and(
+        eq(contacts.clientId, params.id),
+        eq(clients.companyId, companyId),
+        isNull(contacts.deletedAt),
+        isNull(clients.deletedAt),
+      ),
+    )
     .orderBy(contacts.name);
 
-  return { client, contacts: clientContacts, locale };
+  return { client, contacts: clientContactsRows.map(({ contact }) => contact), locale };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
   const { user } = await requireAuth(request);
+  const companyId = await getPrimaryCompanyId(user.id);
   const formData = await request.formData();
   const intent = formData.get("intent");
 
   if (intent === "delete") {
+    const [client] = await db
+      .select({ id: clients.id })
+      .from(clients)
+      .where(and(eq(clients.id, params.id), eq(clients.companyId, companyId), isNull(clients.deletedAt)))
+      .limit(1);
+
+    if (!client) {
+      throw new Response("Not Found", { status: 404 });
+    }
+
     // Soft delete
     await db
       .update(clients)
       .set({ deletedAt: new Date() })
-      .where(eq(clients.id, params.id));
+      .where(and(eq(clients.id, params.id), eq(clients.companyId, companyId)));
 
     await db.insert(auditLogs).values({
       userId: user.id,

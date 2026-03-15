@@ -1,6 +1,7 @@
 import { Link, Form, useNavigation, useFetcher } from "react-router";
 import type { Route } from "./+types/processes-detail";
 import { requireAuth } from "~/lib/auth.server";
+import { getPrimaryCompanyId } from "~/lib/company-context.server";
 import { db } from "~/lib/db.server";
 import { processes, clients, processTimeline, processDocuments } from "../../drizzle/schema";
 import { t, type Locale } from "~/i18n";
@@ -22,17 +23,18 @@ const statusColors: Record<string, "default" | "info" | "warning" | "success" | 
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
+  const companyId = await getPrimaryCompanyId(user.id);
   const cookieHeader = request.headers.get("cookie") || "";
   const localeMatch = cookieHeader.match(/locale=([^;]+)/);
   const locale = (localeMatch ? localeMatch[1] : user.locale) as Locale;
 
   const [process] = await db.select().from(processes)
-    .where(and(eq(processes.id, params.id), isNull(processes.deletedAt)))
+    .where(and(eq(processes.id, params.id), eq(processes.companyId, companyId), isNull(processes.deletedAt)))
     .limit(1);
   if (!process) throw new Response("Not found", { status: 404 });
 
   const [[client], timeline, docs] = await Promise.all([
-    db.select().from(clients).where(eq(clients.id, process.clientId)).limit(1),
+    db.select().from(clients).where(and(eq(clients.id, process.clientId), eq(clients.companyId, companyId), isNull(clients.deletedAt))).limit(1),
     db.select().from(processTimeline).where(eq(processTimeline.processId, params.id)).orderBy(desc(processTimeline.createdAt)),
     db.select().from(processDocuments).where(eq(processDocuments.processId, params.id)).orderBy(desc(processDocuments.createdAt)),
   ]);
@@ -42,8 +44,22 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
 export async function action({ request, params }: Route.ActionArgs) {
   const { user } = await requireAuth(request);
+  const companyId = await getPrimaryCompanyId(user.id);
   const formData = await request.formData();
   const intent = formData.get("intent") as string;
+  const [currentProcess] = await db
+    .select({
+      id: processes.id,
+      reference: processes.reference,
+      status: processes.status,
+    })
+    .from(processes)
+    .where(and(eq(processes.id, params.id), eq(processes.companyId, companyId), isNull(processes.deletedAt)))
+    .limit(1);
+
+  if (!currentProcess) {
+    return data({ error: "Processo nao encontrado." }, { status: 404 });
+  }
 
   if (intent === "cancel-process") {
     const justification = String(formData.get("justification") || "").trim();
@@ -52,31 +68,21 @@ export async function action({ request, params }: Route.ActionArgs) {
       return data({ error: "Informe a justificativa do cancelamento." }, { status: 400 });
     }
 
-    const [proc] = await db
-      .select({ id: processes.id, reference: processes.reference, status: processes.status })
-      .from(processes)
-      .where(and(eq(processes.id, params.id), isNull(processes.deletedAt)))
-      .limit(1);
-
-    if (!proc) {
-      return data({ error: "Processo não encontrado." }, { status: 404 });
-    }
-
-    if (proc.status === "cancelled") {
+    if (currentProcess.status === "cancelled") {
       return data({ error: "Este processo já está cancelado." }, { status: 400 });
     }
 
-    if (proc.status === "completed") {
+    if (currentProcess.status === "completed") {
       return data({ error: "Processo concluído não pode ser cancelado." }, { status: 400 });
     }
 
     await db
       .update(processes)
       .set({ status: "cancelled", updatedAt: new Date() })
-      .where(eq(processes.id, params.id));
+      .where(and(eq(processes.id, params.id), eq(processes.companyId, companyId)));
 
     await db.insert(processTimeline).values({
-      processId: params.id,
+      processId: currentProcess.id,
       status: "cancelled",
       title: "Processo cancelado",
       description: `Justificativa: ${justification}`,
@@ -89,7 +95,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       entity: "process",
       entityId: params.id,
       changes: {
-        statusBefore: proc.status,
+        statusBefore: currentProcess.status,
         statusAfter: "cancelled",
         justification,
       },
@@ -108,10 +114,10 @@ export async function action({ request, params }: Route.ActionArgs) {
     }
 
     try {
-      const { key, url, size } = await uploadFile(file, `processes/${params.id}`);
+      const { url, size } = await uploadFile(file, `processes/${currentProcess.id}`);
 
       await db.insert(processDocuments).values({
-        processId: params.id,
+        processId: currentProcess.id,
         name: file.name,
         type: docType,
         fileUrl: url,
@@ -138,7 +144,27 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (intent === "delete-doc") {
     const docId = formData.get("docId") as string;
 
-    await db.delete(processDocuments).where(eq(processDocuments.id, docId));
+    const [document] = await db
+      .select({ id: processDocuments.id })
+      .from(processDocuments)
+      .innerJoin(processes, eq(processDocuments.processId, processes.id))
+      .where(
+        and(
+          eq(processDocuments.id, docId),
+          eq(processDocuments.processId, currentProcess.id),
+          eq(processes.companyId, companyId),
+          isNull(processes.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!document) {
+      return data({ error: "Documento nao encontrado." }, { status: 404 });
+    }
+
+    await db
+      .delete(processDocuments)
+      .where(and(eq(processDocuments.id, docId), eq(processDocuments.processId, currentProcess.id)));
 
     await logAudit({
       userId: user.id,

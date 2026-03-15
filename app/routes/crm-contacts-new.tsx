@@ -1,17 +1,19 @@
 import { Form, Link, redirect, useActionData, useNavigation } from "react-router";
 import type { Route } from "./+types/crm-contacts-new";
 import { requireAuth } from "~/lib/auth.server";
+import { getPrimaryCompanyId } from "~/lib/company-context.server";
 import { db } from "~/lib/db.server";
 import { clients, contacts } from "../../drizzle/schema";
 import { t, type Locale } from "~/i18n";
 import { Button } from "~/components/ui/button";
 import { ArrowLeft, Save, User } from "lucide-react";
 import { data } from "react-router";
-import { eq, isNull } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { logAudit } from "~/lib/audit.server";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  await requireAuth(request);
+  const { user } = await requireAuth(request);
+  const companyId = await getPrimaryCompanyId(user.id);
 
   const cookieHeader = request.headers.get("cookie") || "";
   const localeMatch = cookieHeader.match(/locale=([^;]+)/);
@@ -20,7 +22,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const [client] = await db
     .select({ id: clients.id, razaoSocial: clients.razaoSocial, nomeFantasia: clients.nomeFantasia })
     .from(clients)
-    .where(eq(clients.id, params.id))
+    .where(and(eq(clients.id, params.id), eq(clients.companyId, companyId), isNull(clients.deletedAt)))
     .limit(1);
 
   if (!client) throw new Response("Cliente não encontrado", { status: 404 });
@@ -30,6 +32,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
 export async function action({ request, params }: Route.ActionArgs) {
   const { user } = await requireAuth(request);
+  const companyId = await getPrimaryCompanyId(user.id);
   const formData = await request.formData();
 
   const name = (formData.get("name") as string)?.trim();
@@ -42,6 +45,16 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   if (!name || name.length < 2) {
     return data({ error: "Nome deve ter pelo menos 2 caracteres" }, { status: 400 });
+  }
+
+  const [client] = await db
+    .select({ id: clients.id })
+    .from(clients)
+    .where(and(eq(clients.id, params.id), eq(clients.companyId, companyId), isNull(clients.deletedAt)))
+    .limit(1);
+
+  if (!client) {
+    return data({ error: "Cliente não encontrado" }, { status: 404 });
   }
 
   const [newContact] = await db.insert(contacts).values({

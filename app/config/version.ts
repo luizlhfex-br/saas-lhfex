@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.13";
+export const APP_VERSION = "2.9.14";
 export const APP_RELEASE_DATE = "2026-03-15";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.14",
+    date: "2026-03-15",
+    title: "Hardening de webhooks, diagnostico e escopo por empresa",
+    items: [
+      { type: "fix", text: "Telegram: os webhooks do SaaS e do OpenClaw agora exigem o header secreto do Telegram e o setup do webhook passou a aceitar apenas requisicoes com chave administrativa" },
+      { type: "fix", text: "Autorizacao: detalhes e edicoes de CRM, contatos, processos e download de documentos passaram a validar companyId antes de ler ou alterar dados" },
+      { type: "fix", text: "Diagnostico: /api/ai-diagnostics e /api/chat-health agora exigem sessao do Luiz, enquanto /api/health e /api/monitor-openclaw deixaram de expor metadados internos" },
+      { type: "improvement", text: "Seguranca operacional: foi adicionado um helper central para derivar e validar secrets de webhook sem depender de segredos expostos no repositorio" },
+    ],
+  },
   {
     version: "2.9.13",
     date: "2026-03-15",

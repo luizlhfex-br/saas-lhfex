@@ -20,6 +20,11 @@ import {
   handleAbrirProcesso,
   handleCancelarProcesso,
 } from "~/lib/openclaw-telegram-actions.server";
+import {
+  getTelegramWebhookSecret,
+  hasValidTelegramWebhookRequest,
+  hasValidWebhookSetupRequest,
+} from "~/lib/webhook-security.server";
 
 interface TelegramFile {
   file_id: string;
@@ -89,12 +94,16 @@ function hasPaidApproval(chatId: number): boolean {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const botToken = process.env.OPENCLAW_TELEGRAM_TOKEN;
+  const botToken = process.env.OPENCLAW_TELEGRAM_TOKEN || process.env.TELEGRAM_OPENCLAW_BOT_TOKEN;
   const allowedChatId = process.env.OPENCLAW_CHAT_ID ? Number(process.env.OPENCLAW_CHAT_ID) : null;
 
   if (!botToken || !allowedChatId) {
     console.error("[OPENCLAW] Bot not configured (token or chat ID missing)");
     return data({ error: "Bot not configured" }, { status: 503 });
+  }
+
+  if (!hasValidTelegramWebhookRequest(request, "openclaw")) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   let update: TelegramUpdate;
@@ -399,6 +408,50 @@ Responda *sim* para continuar ou *não* para cancelar (válido por 10 min).`,
   }
 
   return data({ ok: true });
+}
+
+export async function loader({ request }: Route.LoaderArgs) {
+  const botToken = process.env.OPENCLAW_TELEGRAM_TOKEN || process.env.TELEGRAM_OPENCLAW_BOT_TOKEN;
+  const url = new URL(request.url);
+  const setup = url.searchParams.get("setup");
+
+  if (setup === "1" && botToken) {
+    if (!hasValidWebhookSetupRequest(request)) {
+      return data({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const appUrl = process.env.APP_URL || "https://saas.lhfex.com.br";
+    const webhookUrl = `${appUrl}/api/openclaw-telegram-webhook`;
+    const secretToken = getTelegramWebhookSecret("openclaw");
+
+    if (!secretToken) {
+      return data({ error: "Webhook secret not configured" }, { status: 503 });
+    }
+
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: webhookUrl,
+          secret_token: secretToken,
+          allowed_updates: ["message"],
+        }),
+      });
+
+      if (!res.ok) {
+        return data({ status: "error", message: "Telegram webhook setup failed" }, { status: 502 });
+      }
+
+      return data({ status: "ok", webhookConfigured: true }, {
+        headers: { "Cache-Control": "no-store" },
+      });
+    } catch (error) {
+      return data({ status: "error", message: String(error) }, { status: 500 });
+    }
+  }
+
+  return data({ status: "ok" }, { headers: { "Cache-Control": "no-store" } });
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

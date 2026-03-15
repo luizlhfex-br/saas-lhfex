@@ -1,6 +1,7 @@
 import { Form, Link, redirect, useActionData, useNavigation } from "react-router";
 import type { Route } from "./+types/processes-edit";
 import { requireAuth } from "~/lib/auth.server";
+import { getPrimaryCompanyId } from "~/lib/company-context.server";
 import { db } from "~/lib/db.server";
 import { processes, processTimeline, auditLogs, clients, contacts } from "../../drizzle/schema";
 import { sendProcessStatusUpdate } from "~/lib/email.server";
@@ -18,20 +19,26 @@ const isValidStatus = (v: string): v is ProcessStatus => (validStatuses as reado
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
+  const companyId = await getPrimaryCompanyId(user.id);
   const cookieHeader = request.headers.get("cookie") || "";
   const localeMatch = cookieHeader.match(/locale=([^;]+)/);
   const locale = (localeMatch ? localeMatch[1] : user.locale) as Locale;
 
-  const [process] = await db.select().from(processes).where(and(eq(processes.id, params.id), isNull(processes.deletedAt))).limit(1);
+  const [process] = await db.select().from(processes).where(and(eq(processes.id, params.id), eq(processes.companyId, companyId), isNull(processes.deletedAt))).limit(1);
   if (!process) throw new Response("Not found", { status: 404 });
 
-  const clientList = await db.select({ id: clients.id, razaoSocial: clients.razaoSocial, nomeFantasia: clients.nomeFantasia }).from(clients).where(isNull(clients.deletedAt)).orderBy(clients.razaoSocial);
+  const clientList = await db
+    .select({ id: clients.id, razaoSocial: clients.razaoSocial, nomeFantasia: clients.nomeFantasia })
+    .from(clients)
+    .where(and(eq(clients.companyId, companyId), isNull(clients.deletedAt)))
+    .orderBy(clients.razaoSocial);
 
   return { locale, process, clients: clientList };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
   const { user } = await requireAuth(request);
+  const companyId = await getPrimaryCompanyId(user.id);
   const formData = await request.formData();
 
   const raw: Record<string, unknown> = {};
@@ -48,6 +55,26 @@ export async function action({ request, params }: Route.ActionArgs) {
   const values = result.data;
   const oldStatus = (formData.get("_oldStatus") as string) || "draft";
   const newStatus = values.status || oldStatus;
+
+  const [existingProcess] = await db
+    .select({ id: processes.id, reference: processes.reference, clientId: processes.clientId })
+    .from(processes)
+    .where(and(eq(processes.id, params.id), eq(processes.companyId, companyId), isNull(processes.deletedAt)))
+    .limit(1);
+
+  if (!existingProcess) {
+    throw new Response("Not found", { status: 404 });
+  }
+
+  const [selectedClient] = await db
+    .select({ id: clients.id })
+    .from(clients)
+    .where(and(eq(clients.id, values.clientId), eq(clients.companyId, companyId), isNull(clients.deletedAt)))
+    .limit(1);
+
+  if (!selectedClient) {
+    return data({ errors: { clientId: "Cliente nao encontrado para sua empresa." }, fields: raw as Record<string, string> }, { status: 400 });
+  }
 
   await db.update(processes).set({
     processType: values.processType,
@@ -78,21 +105,29 @@ export async function action({ request, params }: Route.ActionArgs) {
     costNotes: formData.get("costControlEnabled") === "true" ? values.costNotes || null : null,
     notes: values.notes || null,
     updatedAt: new Date(),
-  }).where(eq(processes.id, params.id));
+  }).where(and(eq(processes.id, params.id), eq(processes.companyId, companyId)));
 
   if (newStatus !== oldStatus) {
     const statusLabels: Record<string, string> = { draft: "Rascunho", in_progress: "Em Andamento", awaiting_docs: "Aguardando Docs", customs_clearance: "Desembaraço", in_transit: "Em Trânsito", delivered: "Entregue", completed: "Concluído", cancelled: "Cancelado" };
     await db.insert(processTimeline).values({
-      processId: params.id, status: isValidStatus(newStatus) ? newStatus : "draft",
+      processId: existingProcess.id, status: isValidStatus(newStatus) ? newStatus : "draft",
       title: `Status alterado para: ${statusLabels[newStatus] || newStatus}`,
       createdBy: user.id,
     });
 
     // Send email notification to primary contact
     try {
-      const [proc] = await db.select({ reference: processes.reference, clientId: processes.clientId }).from(processes).where(eq(processes.id, params.id)).limit(1);
+      const [proc] = await db
+        .select({ reference: processes.reference, clientId: processes.clientId })
+        .from(processes)
+        .where(and(eq(processes.id, params.id), eq(processes.companyId, companyId), isNull(processes.deletedAt)))
+        .limit(1);
       if (proc) {
-        const [client] = await db.select({ razaoSocial: clients.razaoSocial }).from(clients).where(eq(clients.id, proc.clientId)).limit(1);
+        const [client] = await db
+          .select({ razaoSocial: clients.razaoSocial })
+          .from(clients)
+          .where(and(eq(clients.id, proc.clientId), eq(clients.companyId, companyId), isNull(clients.deletedAt)))
+          .limit(1);
         const [primaryContact] = await db.select({ email: contacts.email }).from(contacts).where(and(eq(contacts.clientId, proc.clientId), eq(contacts.isPrimary, true))).limit(1);
         const emailTo = primaryContact?.email || null;
 

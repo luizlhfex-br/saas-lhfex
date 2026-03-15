@@ -29,6 +29,18 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-15",
+    version: "2.9.14",
+    type: "release",
+    title: "Hardening de webhooks, diagnostico e escopo por empresa",
+    items: [
+      "Telegram: os webhooks do SaaS e do OpenClaw passaram a validar o header secreto do Telegram, e o setup do webhook agora exige chave administrativa",
+      "CRM e Processos: detalhes, edicoes, contatos e download de documentos agora confirmam companyId antes de ler, atualizar ou apagar dados",
+      "Diagnostico: /api/ai-diagnostics e /api/chat-health ficaram restritos a sessao do Luiz, e /api/health + /api/monitor-openclaw deixaram de expor detalhes internos da infraestrutura",
+      "Seguranca operacional: novo helper centraliza a derivacao e a validacao dos secrets de webhook sem depender de segredos hardcoded",
+    ],
+  },
+  {
+    date: "2026-03-15",
     version: "2.9.13",
     type: "release",
     title: "Instagram nas promocoes, radio monitor ampliado e chat estabilizado",

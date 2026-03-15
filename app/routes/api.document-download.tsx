@@ -1,19 +1,30 @@
 import type { Route } from "./+types/api.document-download";
 import { requireAuth } from "~/lib/auth.server";
+import { getPrimaryCompanyId } from "~/lib/company-context.server";
 import { db } from "~/lib/db.server";
-import { processDocuments } from "drizzle/schema";
-import { eq } from "drizzle-orm";
+import { processDocuments, processes } from "drizzle/schema";
+import { and, eq, isNull } from "drizzle-orm";
 import { getSignedDownloadUrl } from "~/lib/storage.server";
 import { logAudit } from "~/lib/audit.server";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
+  const companyId = await getPrimaryCompanyId(user.id);
 
-  const [doc] = await db
-    .select()
+  const [row] = await db
+    .select({ doc: processDocuments })
     .from(processDocuments)
-    .where(eq(processDocuments.id, params.id))
+    .innerJoin(processes, eq(processDocuments.processId, processes.id))
+    .where(
+      and(
+        eq(processDocuments.id, params.id),
+        eq(processes.companyId, companyId),
+        isNull(processes.deletedAt),
+      ),
+    )
     .limit(1);
+
+  const doc = row?.doc;
 
   if (!doc) {
     throw new Response("Document not found", { status: 404 });

@@ -52,7 +52,6 @@ export async function loader({ request }: Route.LoaderArgs) {
         ok: true,
         openclaw: "online",
         checkedAt: new Date().toISOString(),
-        checkedUrl: healthUrl,
       });
     }
 
@@ -64,7 +63,6 @@ export async function loader({ request }: Route.LoaderArgs) {
         openclaw: "offline",
         reason: `HTTP ${res.status}`,
         checkedAt: new Date().toISOString(),
-        checkedUrl: healthUrl,
       },
       { status: 503 }
     );
@@ -77,7 +75,6 @@ export async function loader({ request }: Route.LoaderArgs) {
         openclaw: "offline",
         reason,
         checkedAt: new Date().toISOString(),
-        checkedUrl: OPENCLAW_GATEWAY_URL,
       },
       { status: 503 }
     );

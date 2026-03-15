@@ -21,6 +21,11 @@ import {
   handleAbrirProcesso,
   handleCancelarProcesso,
 } from "~/lib/openclaw-telegram-actions.server";
+import {
+  getTelegramWebhookSecret,
+  hasValidTelegramWebhookRequest,
+  hasValidWebhookSetupRequest,
+} from "~/lib/webhook-security.server";
 
 interface TelegramUpdate {
   update_id: number;
@@ -110,6 +115,10 @@ export async function action({ request }: Route.ActionArgs) {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (!botToken) {
     return data({ error: "Bot not configured" }, { status: 503 });
+  }
+
+  if (!hasValidTelegramWebhookRequest(request, "saas")) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   let update: TelegramUpdate;
@@ -632,16 +641,40 @@ export async function loader({ request }: Route.LoaderArgs) {
   const setup = url.searchParams.get("setup");
 
   if (setup === "1" && botToken) {
+    if (!hasValidWebhookSetupRequest(request)) {
+      return data({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const appUrl = process.env.APP_URL || "https://saas.lhfex.com.br";
     const webhookUrl = `${appUrl}/api/telegram-webhook`;
+    const secretToken = getTelegramWebhookSecret("saas");
+
+    if (!secretToken) {
+      return data({ error: "Webhook secret not configured" }, { status: 503 });
+    }
+
     try {
-      const res = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook?url=${encodeURIComponent(webhookUrl)}`);
-      const result = await res.json();
-      return data({ status: "ok", webhook: webhookUrl, telegram: result });
+      const res = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: webhookUrl,
+          secret_token: secretToken,
+          allowed_updates: ["message"],
+        }),
+      });
+
+      if (!res.ok) {
+        return data({ status: "error", message: "Telegram webhook setup failed" }, { status: 502 });
+      }
+
+      return data({ status: "ok", webhookConfigured: true }, {
+        headers: { "Cache-Control": "no-store" },
+      });
     } catch (error) {
       return data({ status: "error", message: String(error) }, { status: 500 });
     }
   }
 
-  return data({ status: "ok", bot: !!botToken });
+  return data({ status: "ok" }, { headers: { "Cache-Control": "no-store" } });
 }

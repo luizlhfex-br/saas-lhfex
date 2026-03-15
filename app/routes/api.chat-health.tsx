@@ -1,3 +1,6 @@
+import type { Route } from "./+types/api.chat-health";
+import { requireAuth } from "~/lib/auth.server";
+import { getUserRole, ROLES } from "~/lib/rbac.server";
 import { db } from "~/lib/db.server";
 import { chatConversations } from "drizzle/schema";
 import { sql } from "drizzle-orm";
@@ -12,7 +15,12 @@ import { sql } from "drizzle-orm";
  * 
  * Returns detailed health status for diagnostics
  */
-export async function loader({ request }: { request: Request }) {
+export async function loader({ request }: Route.LoaderArgs) {
+  const { user } = await requireAuth(request);
+  if (getUserRole(user.email) !== ROLES.LUIZ) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const healthStatus: {
     status: "healthy" | "degraded" | "unhealthy";
     checks: Record<string, { status: "pass" | "fail"; message: string; details?: unknown }>;

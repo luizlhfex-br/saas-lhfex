@@ -1,6 +1,7 @@
 import { Form, Link, redirect, useActionData, useNavigation } from "react-router";
 import type { Route } from "./+types/crm-contacts-edit";
 import { requireAuth } from "~/lib/auth.server";
+import { getPrimaryCompanyId } from "~/lib/company-context.server";
 import { db } from "~/lib/db.server";
 import { clients, contacts } from "../../drizzle/schema";
 import { t, type Locale } from "~/i18n";
@@ -11,33 +12,45 @@ import { and, eq, isNull } from "drizzle-orm";
 import { logAudit } from "~/lib/audit.server";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  await requireAuth(request);
+  const { user } = await requireAuth(request);
+  const companyId = await getPrimaryCompanyId(user.id);
 
   const cookieHeader = request.headers.get("cookie") || "";
   const localeMatch = cookieHeader.match(/locale=([^;]+)/);
   const locale = (localeMatch ? localeMatch[1] : "pt-BR") as Locale;
 
-  const [contact] = await db
-    .select()
+  const [row] = await db
+    .select({
+      contact: contacts,
+      client: {
+        id: clients.id,
+        razaoSocial: clients.razaoSocial,
+        nomeFantasia: clients.nomeFantasia,
+      },
+    })
     .from(contacts)
-    .where(and(eq(contacts.id, params.contactId), isNull(contacts.deletedAt)))
+    .innerJoin(clients, eq(contacts.clientId, clients.id))
+    .where(
+      and(
+        eq(contacts.id, params.contactId),
+        eq(clients.id, params.id),
+        eq(clients.companyId, companyId),
+        isNull(contacts.deletedAt),
+        isNull(clients.deletedAt),
+      ),
+    )
     .limit(1);
 
-  if (!contact) throw new Response("Contato não encontrado", { status: 404 });
+  if (!row) {
+    throw new Response("Contato nao encontrado", { status: 404 });
+  }
 
-  const [client] = await db
-    .select({ id: clients.id, razaoSocial: clients.razaoSocial, nomeFantasia: clients.nomeFantasia })
-    .from(clients)
-    .where(and(eq(clients.id, contact.clientId), isNull(clients.deletedAt)))
-    .limit(1);
-
-  if (!client) throw new Response("Cliente não encontrado", { status: 404 });
-
-  return { locale, client, contact };
+  return { locale, client: row.client, contact: row.contact };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
   const { user } = await requireAuth(request);
+  const companyId = await getPrimaryCompanyId(user.id);
   const formData = await request.formData();
 
   const name = (formData.get("name") as string)?.trim();
@@ -55,11 +68,20 @@ export async function action({ request, params }: Route.ActionArgs) {
   const [existingContact] = await db
     .select({ id: contacts.id, clientId: contacts.clientId })
     .from(contacts)
-    .where(and(eq(contacts.id, params.contactId), isNull(contacts.deletedAt)))
+    .innerJoin(clients, eq(contacts.clientId, clients.id))
+    .where(
+      and(
+        eq(contacts.id, params.contactId),
+        eq(clients.id, params.id),
+        eq(clients.companyId, companyId),
+        isNull(contacts.deletedAt),
+        isNull(clients.deletedAt),
+      ),
+    )
     .limit(1);
 
   if (!existingContact) {
-    return data({ error: "Contato não encontrado" }, { status: 404 });
+    return data({ error: "Contato nao encontrado" }, { status: 404 });
   }
 
   await db
@@ -74,7 +96,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       isPrimary,
       updatedAt: new Date(),
     })
-    .where(eq(contacts.id, params.contactId));
+    .where(and(eq(contacts.id, params.contactId), eq(contacts.clientId, existingContact.clientId)));
 
   await logAudit({
     userId: user.id,

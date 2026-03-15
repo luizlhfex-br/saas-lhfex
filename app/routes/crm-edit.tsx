@@ -1,6 +1,7 @@
 import { Form, Link, redirect, useActionData, useNavigation } from "react-router";
 import type { Route } from "./+types/crm-edit";
 import { requireAuth } from "~/lib/auth.server";
+import { getPrimaryCompanyId } from "~/lib/company-context.server";
 import { db } from "~/lib/db.server";
 import { clients, auditLogs } from "../../drizzle/schema";
 import { clientSchema } from "~/lib/validators";
@@ -12,6 +13,7 @@ import { eq, and, isNull } from "drizzle-orm";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
+  const companyId = await getPrimaryCompanyId(user.id);
 
   const cookieHeader = request.headers.get("cookie") || "";
   const localeMatch = cookieHeader.match(/locale=([^;]+)/);
@@ -20,7 +22,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const [client] = await db
     .select()
     .from(clients)
-    .where(and(eq(clients.id, params.id), isNull(clients.deletedAt)))
+    .where(and(eq(clients.id, params.id), eq(clients.companyId, companyId), isNull(clients.deletedAt)))
     .limit(1);
 
   if (!client) {
@@ -32,6 +34,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
 export async function action({ request, params }: Route.ActionArgs) {
   const { user } = await requireAuth(request);
+  const companyId = await getPrimaryCompanyId(user.id);
   const formData = await request.formData();
 
   const raw: Record<string, unknown> = {};
@@ -52,6 +55,16 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   const values = result.data;
 
+  const [client] = await db
+    .select({ id: clients.id })
+    .from(clients)
+    .where(and(eq(clients.id, params.id), eq(clients.companyId, companyId), isNull(clients.deletedAt)))
+    .limit(1);
+
+  if (!client) {
+    throw new Response("Not found", { status: 404 });
+  }
+
   await db
     .update(clients)
     .set({
@@ -69,7 +82,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       notes: values.notes || null,
       updatedAt: new Date(),
     })
-    .where(eq(clients.id, params.id));
+    .where(and(eq(clients.id, params.id), eq(clients.companyId, companyId)));
 
   await db.insert(auditLogs).values({
     userId: user.id,
