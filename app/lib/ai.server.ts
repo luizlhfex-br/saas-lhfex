@@ -710,6 +710,7 @@ ${JSON.stringify(lifeContext, null, 2)}`;
   const agentName = agentId === "airton" ? "AIrton 🎯"
     : agentId === "iana" ? "IAna 📦"
     : agentId === "maria" ? "marIA 💰"
+    : agentId === "openclaw" ? "OpenClaw 🦞"
     : "IAgo 🔧";
 
   if (!allowPaidFallback) {

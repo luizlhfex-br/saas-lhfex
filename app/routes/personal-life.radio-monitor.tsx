@@ -59,6 +59,7 @@ export async function action({ request }: { request: Request }) {
         state: String(formData.get("state") || "").trim().toUpperCase() || null,
         streamUrl: String(formData.get("streamUrl") || "").trim() || null,
         websiteUrl: String(formData.get("websiteUrl") || "").trim() || null,
+        instagramUrl: String(formData.get("instagramUrl") || "").trim() || null,
         contactPhone: String(formData.get("contactPhone") || "").trim() || null,
         contactWhatsapp: String(formData.get("contactWhatsapp") || "").trim() || null,
         monitoringEnabled: String(formData.get("monitoringEnabled") || "false") === "true",
@@ -90,6 +91,7 @@ export async function action({ request }: { request: Request }) {
           state: String(formData.get("state") || "").trim().toUpperCase() || null,
           streamUrl: String(formData.get("streamUrl") || "").trim() || null,
           websiteUrl: String(formData.get("websiteUrl") || "").trim() || null,
+          instagramUrl: String(formData.get("instagramUrl") || "").trim() || null,
           contactPhone: String(formData.get("contactPhone") || "").trim() || null,
           contactWhatsapp: String(formData.get("contactWhatsapp") || "").trim() || null,
           monitoringEnabled: String(formData.get("monitoringEnabled") || "false") === "true",
@@ -279,6 +281,13 @@ function EditStationModal({
             placeholder="https://site-da-radio.com.br"
             className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
           />
+          <input
+            type="url"
+            name="instagramUrl"
+            defaultValue={station.instagramUrl ?? ""}
+            placeholder="https://instagram.com/nomedaradio"
+            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+          />
 
           <div className="grid gap-3 md:grid-cols-2">
             <input
@@ -317,6 +326,7 @@ function StationCard({ station, keywords }: { station: Station; keywords: Keywor
   const stationKws = keywords.filter(k => k.stationId === station.id);
   const activeCount = stationKws.filter(k => k.isActive).length;
   const websiteHref = station.websiteUrl || null;
+  const instagramHref = station.instagramUrl || null;
   const phoneHref = normalizePhoneHref(station.contactPhone);
   const whatsappHref = normalizeWhatsappHref(station.contactWhatsapp);
 
@@ -342,6 +352,11 @@ function StationCard({ station, keywords }: { station: Station; keywords: Keywor
               {websiteHref ? (
                 <a href={websiteHref} target="_blank" rel="noreferrer" className="rounded-full bg-gray-100 px-2 py-0.5 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200">
                   🔗 Site
+                </a>
+              ) : null}
+              {instagramHref ? (
+                <a href={instagramHref} target="_blank" rel="noreferrer" className="rounded-full bg-pink-100 px-2 py-0.5 text-pink-700 hover:bg-pink-200 dark:bg-pink-900/30 dark:text-pink-300">
+                  Instagram
                 </a>
               ) : null}
               {whatsappHref ? (
@@ -402,6 +417,12 @@ function StationCard({ station, keywords }: { station: Station; keywords: Keywor
                 <p className="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">Stream URL</p>
                 <span className="text-xs text-gray-600 dark:text-gray-300">
                   {station.streamUrl || <span className="italic text-gray-400">Não configurado</span>}
+                </span>
+              </div>
+              <div>
+                <p className="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">Instagram</p>
+                <span className="text-xs text-gray-600 dark:text-gray-300">
+                  {station.instagramUrl || "Nao configurado"}
                 </span>
               </div>
               <div>
@@ -579,6 +600,14 @@ export default function PersonalLifeRadioMonitorPage() {
                 placeholder="https://site-da-radio.com.br"
                 className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
               />
+              <input
+                type="url"
+                name="instagramUrl"
+                placeholder="https://instagram.com/nomedaradio"
+                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+              />
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
               <input
                 type="text"
                 name="contactPhone"

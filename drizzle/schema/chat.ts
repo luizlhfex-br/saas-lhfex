@@ -6,7 +6,7 @@ export const chatRoleEnum = pgEnum("chat_role", ["user", "assistant"]);
 export const chatConversations = pgTable("chat_conversations", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id").notNull().references(() => users.id),
-  agentId: varchar("agent_id", { length: 50 }).notNull(), // airton, iana, maria, iago
+  agentId: varchar("agent_id", { length: 50 }).notNull(), // airton, iana, maria, iago, openclaw
   title: varchar("title", { length: 255 }).default("Nova conversa"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

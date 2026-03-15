@@ -1,17 +1,50 @@
 {
   "release": {
-    "version": "v2.9.12",
+    "version": "v2.9.13",
     "date": "2026-03-15T00:00:00Z",
-    "type": "improvement",
-    "title": "Vida Pessoal prioriza Promocoes e Sorteios"
+    "type": "feature",
+    "title": "Instagram nas promocoes, radio monitor ampliado e chat estabilizado"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 0,
-    "filesModified": 4,
+    "filesCreated": 1,
+    "filesModified": 11,
     "routesAdded": 0,
     "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_15_promotions_insta_radio_chat": {
+    "date": "2026-03-15",
+    "release_version": "2.9.13",
+    "objective": "Adicionar fluxo de promocoes por Instagram, ampliar o Radio Monitor com links de Instagram e corrigir o chat interno com OpenClaw",
+    "files_changed": [
+      "app/lib/ai.server.ts",
+      "app/lib/csrf.server.ts",
+      "app/lib/validators.ts",
+      "app/lib/validators.test.ts",
+      "app/routes/api.promotion-extract.tsx",
+      "app/routes/personal-life.promotions.tsx",
+      "app/routes/personal-life.radio-monitor.tsx",
+      "drizzle/schema/radio-monitor.ts",
+      "drizzle/migrations/0010_calm_namorita.sql",
+      "tests/e2e/chat.spec.ts",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "Promocoes ganhou a aba Insta com separacao por origem, leitura de link com IA, status de participacao e comprovante textual",
+      "A extracao de promocoes por URL passou a aproveitar title e meta tags HTML, melhorando leitura de links publicos e posts do Instagram",
+      "Radio Monitor recebeu o campo instagramUrl no schema, na criacao, na edicao e nos cards das radios monitoradas",
+      "O schema do chat passou a aceitar o agente openclaw e o fallback nominal deixou de responder como IAgo quando o agente correto era OpenClaw",
+      "O helper de CSRF passou a usar cookie sem prefixo __Host- em desenvolvimento HTTP, restaurando login local e testes Playwright"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros",
+      "npx playwright test tests/e2e/auth.spec.ts --project=chromium passou",
+      "npx playwright test tests/e2e/chat.spec.ts --project=chromium --grep \"Chat Widget Integration\" passou"
+    ]
   },
   "session_2026_03_15_personal_life_order": {
     "date": "2026-03-15",

@@ -11,7 +11,7 @@ export const chatMessageSchema = z.object({
     .string()
     .min(AI_CONSTRAINTS.chat.minLength, "Mensagem é obrigatória")
     .max(AI_CONSTRAINTS.chat.maxLength, "Mensagem muito longa"),
-  agentId: z.enum(["airton", "iana", "maria", "iago"]),
+  agentId: z.enum(["airton", "iana", "maria", "iago", "openclaw"]),
   conversationId: z.preprocess(
     (value) => (value === null || value === "" ? undefined : value),
     z.string().uuid().optional()

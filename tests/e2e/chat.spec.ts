@@ -81,6 +81,37 @@ test.describe("Chat Widget Integration", () => {
     await expect(chatDialog(page).getByRole("button", { name: /IAna/i }).last()).toBeVisible();
   });
 
+  test("should send openclaw as selected agent", async ({ page }) => {
+    await page.route("**/api/chat", async (route) => {
+      const body = route.request().postDataJSON() as { agentId?: string; message?: string };
+      expect(body.agentId).toBe("openclaw");
+      expect(body.message).toBe("Acompanhe esta promocao do Instagram");
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          conversationId: "openclaw-conv-123",
+          reply: "Posso acompanhar essa promocao para voce.",
+          agentId: "openclaw",
+        }),
+      });
+    });
+
+    await openChat(page);
+
+    const agentSelector = page.getByRole("button", { name: /AIrton|IAna|marIA|IAgo|OpenClaw/i }).first();
+    await agentSelector.click();
+    await chatDialog(page).getByRole("button", { name: /OpenClaw/i }).last().click();
+
+    await chatInput(page).fill("Acompanhe esta promocao do Instagram");
+    await sendChatButton(page).click();
+
+    await expect(chatDialog(page).getByText("Posso acompanhar essa promocao para voce.", { exact: true })).toBeVisible({
+      timeout: 5000,
+    });
+  });
+
   test("should display error message on failure", async ({ page }) => {
     await page.route("**/api/chat", async (route) => {
       await route.fulfill({

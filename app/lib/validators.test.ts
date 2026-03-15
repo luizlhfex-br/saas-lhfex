@@ -149,5 +149,13 @@ describe("Validators", () => {
       });
       expect(result.success).toBe(true);
     });
+
+    it("should accept openclaw as chat agent", () => {
+      const result = chatMessageSchema.safeParse({
+        message: "Acompanhe minhas promocoes do Instagram",
+        agentId: "openclaw",
+      });
+      expect(result.success).toBe(true);
+    });
   });
 });

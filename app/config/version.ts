@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.12";
+export const APP_VERSION = "2.9.13";
 export const APP_RELEASE_DATE = "2026-03-15";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.13",
+    date: "2026-03-15",
+    title: "Instagram nas promocoes, radio monitor ampliado e chat estabilizado",
+    items: [
+      { type: "feature", text: "Promocoes: nova aba Insta registra posts oficiais do Instagram, separa os cards por origem e deixa a IA preencher datas, regras e observacoes a partir do link" },
+      { type: "improvement", text: "Radio Monitor: radios agora podem guardar tambem o link do Instagram, com edicao e atalhos diretos na listagem" },
+      { type: "fix", text: "Chat interno: OpenClaw passou a ser aceito no schema do /api/chat e ganhou cobertura E2E para evitar regressao no seletor de agente" },
+      { type: "fix", text: "CSRF local: o cookie saiu do prefixo __Host- em ambiente HTTP de desenvolvimento, restaurando login e suites E2E sem afetar producao" },
+    ],
+  },
   {
     version: "2.9.12",
     date: "2026-03-15",

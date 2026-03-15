@@ -33,6 +33,58 @@ function stripHtml(raw: string) {
     .trim();
 }
 
+function decodeHtmlEntities(raw: string) {
+  return raw
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, "\"")
+    .replace(/&#39;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">");
+}
+
+function extractMetaContent(rawHtml: string, selectors: string[]) {
+  for (const selector of selectors) {
+    const pattern = new RegExp(
+      `<meta[^>]+(?:name|property)=["']${selector}["'][^>]+content=["']([^"']+)["'][^>]*>`,
+      "i"
+    );
+    const match = rawHtml.match(pattern);
+    if (match?.[1]) {
+      return decodeHtmlEntities(match[1]).trim();
+    }
+  }
+  return null;
+}
+
+function extractTitle(rawHtml: string) {
+  const match = rawHtml.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  return match?.[1] ? decodeHtmlEntities(stripHtml(match[1])) : null;
+}
+
+function extractTextFromHtml(rawHtml: string, url: string) {
+  const title = extractTitle(rawHtml);
+  const description = extractMetaContent(rawHtml, ["description", "og:description", "twitter:description"]);
+  const publishedTime = extractMetaContent(rawHtml, ["article:published_time"]);
+  const siteName = extractMetaContent(rawHtml, ["og:site_name", "application-name"]);
+  const canonical = rawHtml.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["'][^>]*>/i)?.[1] ?? null;
+  const plainText = stripHtml(rawHtml);
+
+  const summaryParts = [
+    title ? `Titulo: ${title}` : null,
+    siteName ? `Origem: ${siteName}` : null,
+    description ? `Descricao: ${description}` : null,
+    publishedTime ? `Publicado em: ${publishedTime}` : null,
+    canonical ? `Canonical: ${canonical}` : null,
+    `URL: ${url}`,
+  ].filter(Boolean);
+
+  const priorityText = summaryParts.join("\n");
+  const slicedPlainText = plainText.slice(0, url.includes("instagram.com") ? 12000 : 20000);
+
+  return `${priorityText}\n\nConteudo extraido:\n${slicedPlainText}`.trim();
+}
+
 async function extractTextFromUrl(url: string): Promise<string> {
   const response = await fetch(url, {
     headers: {
@@ -51,7 +103,7 @@ async function extractTextFromUrl(url: string): Promise<string> {
     return extractTextFromPdfBytes(Buffer.from(await response.arrayBuffer()));
   }
 
-  return stripHtml(await response.text());
+  return extractTextFromHtml(await response.text(), url);
 }
 
 export async function action({ request }: Route.ActionArgs) {

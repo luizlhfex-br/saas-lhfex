@@ -14,12 +14,15 @@ import { createCookie } from "react-router";
 import crypto from "crypto";
 
 const CSRF_TOKEN_LENGTH = 32;
-const CSRF_COOKIE_NAME = "__Host-csrf";
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
+// "__Host-" cookies are only valid when Secure is enabled. In local HTTP dev,
+// use a regular cookie name so browsers don't silently reject the CSRF cookie.
+const CSRF_COOKIE_NAME = IS_PRODUCTION ? "__Host-csrf" : "lhfex-csrf";
 
 // Cookie for storing CSRF token (httpOnly, secure, sameSite)
 export const csrfCookie = createCookie(CSRF_COOKIE_NAME, {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
+  secure: IS_PRODUCTION,
   sameSite: "strict",
   path: "/",
   maxAge: 60 * 60 * 24, // 24 hours

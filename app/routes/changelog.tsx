@@ -29,6 +29,19 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-15",
+    version: "2.9.13",
+    type: "release",
+    title: "Instagram nas promocoes, radio monitor ampliado e chat estabilizado",
+    items: [
+      "Promocoes: nova aba Insta passou a registrar links oficiais de posts do Instagram e separar esse fluxo da lista manual",
+      "Promocoes: botao Ler link com IA agora aproveita metadados HTML para preencher melhor regras, datas e contexto de links publicos",
+      "Radio Monitor: radios agora aceitam tambem a URL do perfil no Instagram, com exibicao direta nos cards e no formulario de edicao",
+      "Chat interno: OpenClaw passou a ser aceito no payload do /api/chat, com fallback nominal correto e regressao coberta no E2E",
+      "CSRF local: o cookie de formulario deixou de usar o prefixo __Host- em ambiente de desenvolvimento HTTP, destravando login e suites Playwright locais",
+    ],
+  },
+  {
+    date: "2026-03-15",
     version: "2.9.12",
     type: "release",
     title: "Vida Pessoal prioriza Promocoes e Sorteios",

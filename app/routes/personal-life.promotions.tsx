@@ -318,12 +318,15 @@ export async function action({ request }: { request: Request }) {
     const name = formData.get("name") as string;
     const company = formData.get("company") as string;
     const type = (formData.get("type") as string) || "raffle";
+    const source = ((formData.get("source") as string) || "manual").trim() || "manual";
+    const participationStatus = ((formData.get("participationStatus") as string) || "pending").trim() || "pending";
     const startDateRaw = formData.get("startDate") as string;
     const endDateRaw = formData.get("endDate") as string;
     const prize = formData.get("prize") as string | null;
     const link = formData.get("link") as string | null;
     const rules = formData.get("rules") as string | null;
     const notes = formData.get("notes") as string | null;
+    const proofOfParticipation = (formData.get("proofOfParticipation") as string | null)?.trim() || null;
     const userLuckyNumbers = (formData.get("userLuckyNumbers") as string | null)?.trim() || null;
     const officialLuckyNumber = (formData.get("officialLuckyNumber") as string | null)?.trim() || null;
     const inferredLuckyNumber = (formData.get("inferredLuckyNumber") as string | null)?.trim() || null;
@@ -350,10 +353,12 @@ export async function action({ request }: { request: Request }) {
       link: link || null,
       rules: rules || notes || null,
       notes: notes || null,
+      proofOfParticipation,
       userLuckyNumbers,
       officialLuckyNumber,
       inferredLuckyNumber,
-      participationStatus: "pending",
+      participationStatus,
+      source,
     });
 
     return data({ success: true, intent });
@@ -1151,7 +1156,7 @@ export default function PromotionsPage({
   const isSubmitting = navigation.state === "submitting";
 
   // Tabs
-  const [activeTab, setActiveTab] = useState<"promocoes" | "loterias" | "pessoas" | "sites" | "literario" | "radio">("promocoes");
+  const [activeTab, setActiveTab] = useState<"promocoes" | "insta" | "loterias" | "pessoas" | "sites" | "literario" | "radio">("promocoes");
 
   // Sites state
   const [showSiteForm, setShowSiteForm] = useState(false);
@@ -1211,6 +1216,10 @@ export default function PromotionsPage({
   const contestNotesRef = useRef<HTMLTextAreaElement>(null);
 
   const today = new Date().toISOString().split("T")[0];
+  const instagramPromotions = promo.filter((item) => item.source === "instagram");
+  const regularPromotions = promo.filter((item) => item.source !== "instagram");
+  const visiblePromotions = activeTab === "insta" ? instagramPromotions : regularPromotions;
+  const isInstagramTab = activeTab === "insta";
 
   useEffect(() => {
     if (!actionPayload?.success) return;
@@ -1233,6 +1242,12 @@ export default function PromotionsPage({
 
     setPendingImportExternalId(null);
   }, [importFetcher.state, importFetcher.data, pendingImportExternalId]);
+
+  useEffect(() => {
+    if (activeTab !== "promocoes") {
+      setShowScpc(false);
+    }
+  }, [activeTab]);
 
   async function handlePdfExtract(file: File) {
     setExtracting(true);
@@ -1262,6 +1277,51 @@ export default function PromotionsPage({
 
       if (notesRef.current && f.luckyNumberRule && !notesRef.current.value.includes("Regra número da sorte:")) {
         notesRef.current.value = `${notesRef.current.value ? `${notesRef.current.value}\n\n` : ""}Regra número da sorte: ${f.luckyNumberRule}`;
+      }
+
+      setLastExtractedText(json.extractedText ?? null);
+    } catch {
+      setExtractError("Falha ao conectar com o servidor");
+    } finally {
+      setExtracting(false);
+    }
+  }
+
+  async function handlePromotionLinkExtract() {
+    const url = linkRef.current?.value?.trim() || "";
+    if (!url) {
+      setExtractError("Informe o link da promocao para a leitura automatica.");
+      return;
+    }
+
+    setExtracting(true);
+    setExtractError(null);
+    setStrategySuccess(false);
+
+    try {
+      const fd = new FormData();
+      fd.append("url", url);
+      fd.append("mode", "promotion");
+
+      const res = await fetch("/api/promotion-extract", { method: "POST", body: fd });
+      const json = await res.json() as { fields?: Record<string, string | null>; extractedText?: string; error?: string };
+      if (!res.ok || json.error) {
+        setExtractError(json.error || "Erro na leitura do link");
+        return;
+      }
+
+      const f = json.fields ?? {};
+      if (nameRef.current && f.name) nameRef.current.value = f.name;
+      if (companyRef.current && f.company) companyRef.current.value = f.company;
+      if (typeRef.current && f.type) typeRef.current.value = f.type;
+      if (prizeRef.current && f.prize) prizeRef.current.value = f.prize;
+      if (startDateRef.current && f.startDate) startDateRef.current.value = f.startDate;
+      if (endDateRef.current && f.endDate) endDateRef.current.value = f.endDate;
+      if (linkRef.current && f.link) linkRef.current.value = f.link;
+      if (notesRef.current && f.rules) notesRef.current.value = f.rules;
+      if (inferredLuckyNumberRef.current && f.inferredLuckyNumber) inferredLuckyNumberRef.current.value = f.inferredLuckyNumber;
+      if (notesRef.current && f.luckyNumberRule && !notesRef.current.value.includes("Regra numero da sorte:")) {
+        notesRef.current.value = `${notesRef.current.value ? `${notesRef.current.value}\n\n` : ""}Regra numero da sorte: ${f.luckyNumberRule}`;
       }
 
       setLastExtractedText(json.extractedText ?? null);
@@ -1396,6 +1456,23 @@ export default function PromotionsPage({
         </button>
         <button
           type="button"
+          onClick={() => setActiveTab("insta")}
+          className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === "insta"
+              ? "bg-white text-pink-700 shadow-sm dark:bg-gray-800 dark:text-pink-400"
+              : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          }`}
+        >
+          <Instagram className="h-4 w-4" />
+          Insta
+          {instagramPromotions.length > 0 && (
+            <span className="rounded-full bg-pink-100 px-1.5 py-0.5 text-xs font-semibold text-pink-700 dark:bg-pink-900/30 dark:text-pink-300">
+              {instagramPromotions.length}
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
           onClick={() => setActiveTab("pessoas")}
           className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
             activeTab === "pessoas"
@@ -1477,21 +1554,23 @@ export default function PromotionsPage({
       </div>
 
       {/* ── ABA PROMOÇÕES ── */}
-      {activeTab === "promocoes" && (
+      {(activeTab === "promocoes" || activeTab === "insta") && (
         <div className="space-y-6">
           {/* Botões */}
           <div className="flex gap-2 justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => { setShowScpc((v) => !v); setShowForm(false); }}
-            >
-              <Search className="mr-2 h-4 w-4" />
-              {showScpc ? "Fechar SCPC" : "🏛️ Buscar no SCPC"}
-            </Button>
+            {!isInstagramTab && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => { setShowScpc((v) => !v); setShowForm(false); }}
+              >
+                <Search className="mr-2 h-4 w-4" />
+                {showScpc ? "Fechar SCPC" : "🏛️ Buscar no SCPC"}
+              </Button>
+            )}
             <Button type="button" onClick={() => { setShowForm((v) => !v); setShowScpc(false); }}>
               <Plus className="mr-2 h-4 w-4" />
-              {showForm ? "Fechar" : "Nova Promoção"}
+              {showForm ? "Fechar" : isInstagramTab ? "Novo link do Insta" : "Nova Promoção"}
             </Button>
           </div>
 
@@ -1675,16 +1754,21 @@ export default function PromotionsPage({
           {/* Formulário inline */}
           {showForm && (
             <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-6 dark:border-indigo-900 dark:bg-indigo-950/30">
-              <h3 className="mb-4 font-semibold text-gray-900 dark:text-white">Nova Promoção / Sorteio</h3>
+              <h3 className="mb-4 font-semibold text-gray-900 dark:text-white">
+                {isInstagramTab ? "Nova promoção do Instagram" : "Nova Promoção / Sorteio"}
+              </h3>
               <Form method="post" action="/personal-life/promotions" className="space-y-4">
                 <input type="hidden" name="_intent" value="create" />
+                <input type="hidden" name="source" value={isInstagramTab ? "instagram" : "manual"} />
 
                 {/* Upload de regulamento PDF */}
                 <div className="rounded-lg border border-dashed border-indigo-300 bg-white p-3 dark:border-indigo-700 dark:bg-gray-900">
                   <div className="flex items-center justify-between gap-2">
                     <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
                       <FileText className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
-                      Anexar regulamento em PDF para auto-preencher os campos
+                      {isInstagramTab
+                        ? "Anexe regulamento ou use o link do post para preencher os campos"
+                        : "Anexar regulamento em PDF para auto-preencher os campos"}
                     </span>
                     <div className="flex items-center gap-2 shrink-0">
                       {extracting && <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-500" />}
@@ -1860,11 +1944,51 @@ export default function PromotionsPage({
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Link</label>
+                    <div className="flex gap-2">
+                      <input
+                        ref={linkRef}
+                        type="url"
+                        name="link"
+                        placeholder={isInstagramTab ? "https://instagram.com/p/..." : "https://..."}
+                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handlePromotionLinkExtract}
+                        disabled={extracting}
+                      >
+                        {extracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                        <span className="ml-2 hidden sm:inline">Ler link com IA</span>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                      Status da participação
+                    </label>
+                    <select
+                      name="participationStatus"
+                      defaultValue={isInstagramTab ? "participated" : "pending"}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                    >
+                      <option value="pending">Ainda vou participar</option>
+                      <option value="participated">Já participei</option>
+                      <option value="won">Ganhei</option>
+                      <option value="lost">Não ganhei</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                      Comprovante / observação da participação
+                    </label>
                     <input
-                      ref={linkRef}
-                      type="url"
-                      name="link"
-                      placeholder="https://..."
+                      type="text"
+                      name="proofOfParticipation"
+                      placeholder={isInstagramTab ? "Ex: comentei e marquei 2 amigos" : "Ex: cupom enviado por e-mail"}
                       className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
                     />
                   </div>
@@ -1888,7 +2012,7 @@ export default function PromotionsPage({
                     Cancelar
                   </Button>
                   <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? "Salvando..." : "Adicionar promoção"}
+                    {isSubmitting ? "Salvando..." : isInstagramTab ? "Salvar link do Insta" : "Adicionar promoção"}
                   </Button>
                 </div>
               </Form>
@@ -1918,22 +2042,24 @@ export default function PromotionsPage({
           </div>
 
           {/* Lista de promoções */}
-          {promo.length === 0 ? (
+          {visiblePromotions.length === 0 ? (
             <div className="rounded-lg border border-dashed border-gray-300 p-12 text-center dark:border-gray-700">
               <Gift className="mx-auto mb-3 h-10 w-10 text-gray-400" />
               <p className="text-gray-600 dark:text-gray-400">
-                {statusFilter === "active"
+                {isInstagramTab
+                  ? "Nenhum link de promoção do Instagram cadastrado."
+                  : statusFilter === "active"
                   ? "Nenhuma promoção ativa. Adicione uma!"
                   : "Nenhuma promoção nesta categoria."}
               </p>
               <Button type="button" className="mt-4" onClick={() => setShowForm(true)}>
                 <Plus className="mr-2 h-4 w-4" />
-                Adicionar promoção
+                {isInstagramTab ? "Adicionar link do Insta" : "Adicionar promoção"}
               </Button>
             </div>
           ) : (
             <div className="space-y-3">
-              {promo.map((p) => {
+              {visiblePromotions.map((p) => {
                 const days = daysUntilEnd(p.endDate);
                 const statusCfg = STATUS_CONFIG[p.participationStatus ?? "pending"] ?? STATUS_CONFIG.pending;
                 const isExpired = days < 0;
@@ -1958,6 +2084,11 @@ export default function PromotionsPage({
                             {statusCfg.icon}
                             {statusCfg.label}
                           </span>
+                          {p.source === "instagram" && (
+                            <span className="rounded-full bg-pink-100 px-2 py-0.5 text-xs text-pink-700 dark:bg-pink-900/30 dark:text-pink-300">
+                              Insta
+                            </span>
+                          )}
                           <span className="rounded-full border border-gray-200 px-2 py-0.5 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
                             {TYPE_LABELS[p.type] ?? p.type}
                           </span>
@@ -2000,6 +2131,11 @@ export default function PromotionsPage({
 
                         {p.notes && (
                           <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{p.notes}</p>
+                        )}
+                        {p.proofOfParticipation && (
+                          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                            <span className="font-medium">Comprovante:</span> {p.proofOfParticipation}
+                          </p>
                         )}
 
                         {(p.userLuckyNumbers || p.officialLuckyNumber || p.inferredLuckyNumber) && (
