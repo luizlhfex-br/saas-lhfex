@@ -1,17 +1,36 @@
 {
   "release": {
-    "version": "v2.9.11",
+    "version": "v2.9.12",
     "date": "2026-03-15T00:00:00Z",
-    "type": "feature",
-    "title": "Skills visuais, financeiro integrado e literario com IA"
+    "type": "improvement",
+    "title": "Vida Pessoal prioriza Promocoes e Sorteios"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 1,
-    "filesModified": 10,
+    "filesCreated": 0,
+    "filesModified": 4,
     "routesAdded": 0,
-    "openclaw_changes": 5,
+    "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_15_personal_life_order": {
+    "date": "2026-03-15",
+    "release_version": "2.9.12",
+    "objective": "Fazer a landing de Vida Pessoal abrir com Promocoes e Sorteios como primeira opcao visivel",
+    "files_changed": [
+      "app/routes/personal-life.tsx",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "A ordem dos grupos da landing de Vida Pessoal foi ajustada para mostrar Promocoes e Sorteios no topo",
+      "A rota /personal-life foi regravada com os mesmos modulos e navegacao, mas com textos saneados"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros"
+    ]
   },
   "session_2026_03_15_agents_finance_literario": {
     "date": "2026-03-15",

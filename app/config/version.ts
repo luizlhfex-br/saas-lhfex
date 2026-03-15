@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.11";
+export const APP_VERSION = "2.9.12";
 export const APP_RELEASE_DATE = "2026-03-15";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,15 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.12",
+    date: "2026-03-15",
+    title: "Vida Pessoal abre com Promocoes e Sorteios",
+    items: [
+      { type: "improvement", text: "Vida Pessoal: a secao Promocoes e Sorteios passou a ser a primeira exibida na landing do modulo" },
+      { type: "improvement", text: "UI: a rota principal /personal-life foi regravada com textos saneados e mesma navegacao dos modulos existentes" },
+    ],
+  },
   {
     version: "2.9.11",
     date: "2026-03-15",

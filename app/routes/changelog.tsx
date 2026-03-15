@@ -29,6 +29,16 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-15",
+    version: "2.9.12",
+    type: "release",
+    title: "Vida Pessoal prioriza Promocoes e Sorteios",
+    items: [
+      "A landing de Vida Pessoal agora abre com a secao Promocoes e Sorteios no topo",
+      "A rota /personal-life foi saneada para manter os mesmos modulos com textos e ordem mais limpos",
+    ],
+  },
+  {
+    date: "2026-03-15",
     version: "2.9.11",
     type: "release",
     title: "Skills visuais, financeiro integrado e literario com IA",
