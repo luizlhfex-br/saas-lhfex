@@ -323,7 +323,7 @@ echo "[openclaw] Cron jobs criados."
 
 if [ -n "$TELEGRAM_OPENCLAW_BOT_TOKEN" ] && [ -n "$TELEGRAM_LUIZ_CHAT_ID" ]; then
   DEPLOY_MSG="OpenClaw reiniciado - $(date '+%d/%m/%Y %H:%M') BRT%0A"
-  DEPLOY_MSG="${DEPLOY_MSG}Gateway v2026.3.2 - 8 agentes especialistas%0A"
+  DEPLOY_MSG="${DEPLOY_MSG}Gateway v2026.3.13 - 8 agentes especialistas%0A"
   DEPLOY_MSG="${DEPLOY_MSG}Chain: Vertex Gemini -> Qwen Free -> DeepSeek Direct"
   curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_OPENCLAW_BOT_TOKEN}/sendMessage" \
     -d "chat_id=${TELEGRAM_LUIZ_CHAT_ID}" \

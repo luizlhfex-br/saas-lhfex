@@ -1,17 +1,42 @@
 {
   "release": {
-    "version": "v2.9.9",
-    "date": "2026-03-14T00:00:00Z",
-    "type": "fix",
-    "title": "Smoke de producao resiliente ao boot do OpenClaw"
+    "version": "v2.9.10",
+    "date": "2026-03-15T00:00:00Z",
+    "type": "infra",
+    "title": "OpenClaw atualizado para 2026.3.13"
   },
   "summary": {
     "commits": 1,
     "filesCreated": 0,
-    "filesModified": 4,
+    "filesModified": 6,
     "routesAdded": 0,
-    "openclaw_changes": 0,
+    "openclaw_changes": 4,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_15_openclaw_upgrade": {
+    "date": "2026-03-15",
+    "release_version": "2.9.10",
+    "objective": "Atualizar o OpenClaw Gateway da versao 2026.3.2 para 2026.3.13 sem quebrar o runtime atual",
+    "files_changed": [
+      "openclaw-gateway/Dockerfile",
+      "openclaw-gateway/entrypoint.sh",
+      "openclaw-gateway/prompts/CHANGELOG.md",
+      "app/routes/api.openclaw-tools.tsx",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "Dockerfile do gateway foi atualizado para instalar openclaw@2026.3.13",
+      "Mensagem de deploy enviada ao Telegram agora anuncia Gateway v2026.3.13",
+      "Fallback de versionamento no endpoint system_status do SaaS passou para 2026.3.13",
+      "Changelog interno do OpenClaw foi atualizado para registrar o upgrade do runtime"
+    ],
+    "verification": [
+      "npm view openclaw version confirmou 2026.3.13 como versao publicada",
+      "Validacao previa no mesmo stack base node:22-slim confirmou instalacao de openclaw@2026.3.13",
+      "Apos o commit, o deploy automatico do OpenClaw deve ser monitorado ate o container novo ficar saudavel"
+    ]
   },
   "session_2026_03_14_smoke_retry_hotfix": {
     "date": "2026-03-14",

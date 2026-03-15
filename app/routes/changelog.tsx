@@ -28,6 +28,18 @@ type Entry = {
 
 const CHANGELOG: Entry[] = [
   {
+    date: "2026-03-15",
+    version: "2.9.10",
+    type: "release",
+    title: "OpenClaw atualizado para 2026.3.13",
+    items: [
+      "OpenClaw Gateway: Dockerfile passou a instalar openclaw@2026.3.13 no lugar da 2026.3.2",
+      "OpenClaw: mensagem de deploy enviada ao Telegram agora anuncia Gateway v2026.3.13",
+      "API: system_status do SaaS passou a exibir 2026.3.13 como fallback da versao do OpenClaw",
+      "Validacao operacional previa confirmou a instalacao de openclaw@2026.3.13 sobre node:22-slim com git e ca-certificates",
+    ],
+  },
+  {
     date: "2026-03-14",
     version: "2.9.9",
     type: "release",

@@ -6,6 +6,16 @@
 
 ---
 
+## v2.9.10 - 2026-03-15
+
+### Melhorias em voce (OpenClaw)
+- Runtime atualizado para OpenClaw `2026.3.13`
+- Dockerfile do gateway alinhado para instalar `openclaw@2026.3.13`
+- Mensagem de deploy do Telegram e status exposto pela API do SaaS passaram a refletir a nova versao
+- Validacao operacional previa confirmou que `openclaw@2026.3.13` instala corretamente sobre `node:22-slim` com `git` e `ca-certificates`
+
+---
+
 ## v2.9.2 - 2026-03-14 (deploy alvo atual)
 
 ### Melhorias em voce (OpenClaw)

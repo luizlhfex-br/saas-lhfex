@@ -382,7 +382,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     });
 
     return ok({
-      openclawVersion: process.env.OPENCLAW_VERSION ?? process.env.OPENCLAW_TARGET_VERSION ?? "2026.3.2",
+      openclawVersion: process.env.OPENCLAW_VERSION ?? process.env.OPENCLAW_TARGET_VERSION ?? "2026.3.13",
       saasVersion: APP_VERSION,
       openrouter,
       timestamp: now.toISOString(),

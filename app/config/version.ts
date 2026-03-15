@@ -3,8 +3,8 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.9";
-export const APP_RELEASE_DATE = "2026-03-14";
+export const APP_VERSION = "2.9.10";
+export const APP_RELEASE_DATE = "2026-03-15";
 export const APP_NAME = "LHFEX SaaS";
 
 export type ChangelogItemType = "feature" | "improvement" | "fix" | "infra";
@@ -20,6 +20,16 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.10",
+    date: "2026-03-15",
+    title: "OpenClaw atualizado para 2026.3.13",
+    items: [
+      { type: "infra", text: "OpenClaw Gateway: Dockerfile agora instala openclaw@2026.3.13, substituindo a versao 2026.3.2" },
+      { type: "improvement", text: "OpenClaw: mensagem de deploy do Telegram e o system_status exposto pelo SaaS passaram a refletir a versao 2026.3.13" },
+      { type: "infra", text: "Validacao previa confirmou que openclaw@2026.3.13 instala corretamente no mesmo stack base node:22-slim usado em producao" },
+    ],
+  },
   {
     version: "2.9.9",
     date: "2026-03-14",
