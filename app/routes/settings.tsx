@@ -11,9 +11,11 @@ import { eq, and, isNull } from "drizzle-orm";
 import { disconnectGoogle } from "~/lib/google.server";
 import { VERSION_HISTORY, type ChangelogEntry } from "~/config/version";
 import { useState } from "react";
+import { getCSRFFormState, requireValidCSRF } from "~/lib/csrf.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
+  const { csrfToken, csrfCookieHeader } = await getCSRFFormState(request);
 
   const cookieHeader = request.headers.get("cookie") || "";
   const localeMatch = cookieHeader.match(/locale=([^;]+)/);
@@ -75,36 +77,52 @@ export async function loader({ request }: Route.LoaderArgs) {
       }
     }
 
-    return {
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        locale: user.locale,
-        theme: user.theme,
+    return data(
+      {
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          locale: user.locale,
+          theme: user.theme,
+        },
+        locale,
+        googleConnected: !!googleToken,
+        company,
+        bankAccounts,
+        loadError: null,
+        csrfToken,
       },
-      locale,
-      googleConnected: !!googleToken,
-      company,
-      bankAccounts,
-      loadError: null,
-    };
+      {
+        headers: {
+          "Set-Cookie": csrfCookieHeader,
+        },
+      }
+    );
   } catch (error) {
     console.error("[settings.loader] failed", error);
-    return {
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        locale: user.locale,
-        theme: user.theme,
+    return data(
+      {
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          locale: user.locale,
+          theme: user.theme,
+        },
+        locale,
+        googleConnected: false,
+        company: null,
+        bankAccounts: [],
+        loadError: "Nao foi possivel carregar as configuracoes no momento.",
+        csrfToken,
       },
-      locale,
-      googleConnected: false,
-      company: null,
-      bankAccounts: [],
-      loadError: "Nao foi possivel carregar as configuracoes no momento.",
-    };
+      {
+        headers: {
+          "Set-Cookie": csrfCookieHeader,
+        },
+      }
+    );
   }
 }
 
@@ -113,6 +131,7 @@ export async function action({ request }: Route.ActionArgs) {
 
   try {
     const formData = await request.formData();
+    await requireValidCSRF(request, formData);
 
     // Handle Google disconnect
     const actionIntent = formData.get("action") as string;
@@ -205,10 +224,11 @@ const typeConfig = {
 interface CompanyProfileProps {
   company: any;
   isSubmitting: boolean;
+  csrfToken: string;
   bankAccounts?: any[];
 }
 
-function CompanyProfileSection({ company, isSubmitting, bankAccounts = [] }: CompanyProfileProps) {
+function CompanyProfileSection({ company, isSubmitting, csrfToken, bankAccounts = [] }: CompanyProfileProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showAddBank, setShowAddBank] = useState(false);
   const [banks, setBanks] = useState(bankAccounts || []);
@@ -217,6 +237,7 @@ function CompanyProfileSection({ company, isSubmitting, bankAccounts = [] }: Com
 
   return (
     <Form method="post">
+      <input type="hidden" name="csrf" value={csrfToken} />
       <input type="hidden" name="action" value="save_company" />
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
         {/* Compact Header */}
@@ -572,7 +593,7 @@ function CompanyProfileSection({ company, isSubmitting, bankAccounts = [] }: Com
 }
 
 export default function SettingsPage({ loaderData }: Route.ComponentProps) {
-  const { user, locale, company, bankAccounts } = loaderData;
+  const { user, locale, company, bankAccounts, csrfToken } = loaderData;
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
   const i18n = t(locale);
@@ -589,6 +610,7 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
       </div>
 
       <Form method="post" className="space-y-6">
+        <input type="hidden" name="csrf" value={csrfToken} />
         {/* Profile */}
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
           <div className="mb-4 flex items-center gap-2">
@@ -690,6 +712,7 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
                 </div>
               </div>
               <Form method="post">
+                <input type="hidden" name="csrf" value={csrfToken} />
                 <input type="hidden" name="action" value="disconnect_google" />
                 <Button type="submit" variant="destructive" size="sm">
                   <LogOut className="h-4 w-4" />
@@ -716,7 +739,7 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
       </Form>
 
       {/* Company Profile - Compact + Expandable */}
-      <CompanyProfileSection company={company} isSubmitting={isSubmitting} bankAccounts={bankAccounts} />
+      <CompanyProfileSection company={company} isSubmitting={isSubmitting} csrfToken={csrfToken} bankAccounts={bankAccounts} />
 
       {/* APIs & Consumo */}
       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">

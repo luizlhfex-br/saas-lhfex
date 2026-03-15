@@ -5,8 +5,14 @@ import { db } from "./db.server";
 import { users, sessions, userCompanies } from "../../drizzle/schema";
 import { hashToken } from "./crypto.server";
 
-const SESSION_COOKIE = "__session";
+const SESSION_COOKIE = process.env.NODE_ENV === "production" ? "__Host-session" : "__session";
+const LEGACY_SESSION_COOKIE = "__session";
 const SESSION_MAX_AGE = 30 * 24 * 60 * 60; // 30 days in seconds
+
+function buildSessionCookie(name: string, value: string, maxAge: number): string {
+  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+  return `${name}=${value}; HttpOnly${secure}; SameSite=Lax; Path=/; Max-Age=${maxAge}`;
+}
 
 export async function hashPassword(password: string): Promise<string> {
   return hash(password, 12);
@@ -40,18 +46,39 @@ export async function createSession(userId: string, request: Request): Promise<s
 }
 
 export function getSessionCookie(token: string): string {
-  return `${SESSION_COOKIE}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${SESSION_MAX_AGE}`;
+  return buildSessionCookie(SESSION_COOKIE, token, SESSION_MAX_AGE);
 }
 
 export function clearSessionCookie(): string {
-  return `${SESSION_COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`;
+  return buildSessionCookie(SESSION_COOKIE, "", 0);
+}
+
+export function getSessionCookieHeaders(token: string): string[] {
+  const cookies = [buildSessionCookie(SESSION_COOKIE, token, SESSION_MAX_AGE)];
+  if (LEGACY_SESSION_COOKIE !== SESSION_COOKIE) {
+    cookies.push(buildSessionCookie(LEGACY_SESSION_COOKIE, "", 0));
+  }
+  return cookies;
+}
+
+export function clearSessionCookieHeaders(): string[] {
+  return Array.from(new Set([SESSION_COOKIE, LEGACY_SESSION_COOKIE])).map((cookieName) =>
+    buildSessionCookie(cookieName, "", 0)
+  );
+}
+
+function parseCookieValue(cookie: string, name: string): string | null {
+  const match = cookie.match(new RegExp(`${name}=([^;]+)`));
+  return match ? match[1] : null;
 }
 
 function getTokenFromRequest(request: Request): string | null {
   const cookie = request.headers.get("cookie");
   if (!cookie) return null;
-  const match = cookie.match(new RegExp(`${SESSION_COOKIE}=([^;]+)`));
-  return match ? match[1] : null;
+  return (
+    parseCookieValue(cookie, SESSION_COOKIE) ||
+    (LEGACY_SESSION_COOKIE !== SESSION_COOKIE ? parseCookieValue(cookie, LEGACY_SESSION_COOKIE) : null)
+  );
 }
 
 export async function getSession(request: Request) {

@@ -331,5 +331,5 @@ if [ -n "$TELEGRAM_OPENCLAW_BOT_TOKEN" ] && [ -n "$TELEGRAM_LUIZ_CHAT_ID" ]; the
   echo "[openclaw] Deploy notification enviada."
 fi
 
-echo "[openclaw] Iniciando gateway na porta 18789..."
+echo "[openclaw] Iniciando gateway na porta 3000..."
 exec openclaw gateway

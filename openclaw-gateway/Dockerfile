@@ -41,6 +41,6 @@ COPY prompts/ ./prompts/
 COPY entrypoint.sh ./
 RUN chmod +x entrypoint.sh
 VOLUME ["/root/.openclaw/workspace", "/root/.openclaw/memory"]
-EXPOSE 18789
+EXPOSE 3000
 RUN npx playwright install chromium --with-deps 2>/dev/null || true
 CMD ["./entrypoint.sh"]

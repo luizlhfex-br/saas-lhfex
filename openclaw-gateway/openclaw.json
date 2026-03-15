@@ -164,7 +164,7 @@
     "mode": "local",
     "bind": "custom",
     "customBindHost": "0.0.0.0",
-    "port": 18789,
+    "port": 3000,
     "auth": {
       "rateLimit": {
         "maxAttempts": 10,

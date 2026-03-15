@@ -35,6 +35,7 @@ interface User {
 interface SidebarProps {
   user: User;
   locale: Locale;
+  csrfToken: string;
   currentPath: string;
   collapsed: boolean;
   onToggle: () => void;
@@ -79,7 +80,7 @@ const aiAutomationNavItems: NavItem[] = [
   { labelKey: "aiUsage", icon: Sparkles, to: "/ai-usage" },
 ];
 
-export function Sidebar({ user, locale, currentPath, collapsed, onToggle }: SidebarProps) {
+export function Sidebar({ user, locale, csrfToken, currentPath, collapsed, onToggle }: SidebarProps) {
   const i18n = t(locale);
   const [openGroups, setOpenGroups] = useState({
     comex: currentPath.startsWith("/calculator") || currentPath.startsWith("/ncm") || currentPath.startsWith("/ex-tarifarios") || currentPath.startsWith("/descricao-ncm"),
@@ -326,6 +327,7 @@ export function Sidebar({ user, locale, currentPath, collapsed, onToggle }: Side
             </NavLink>
             {/* Logout */}
             <Form method="post" action="/logout">
+              <input type="hidden" name="csrf" value={csrfToken} />
               <button
                 type="submit"
                 title={i18n.auth.logout}
@@ -370,6 +372,7 @@ export function Sidebar({ user, locale, currentPath, collapsed, onToggle }: Side
 
             {/* Logout */}
             <Form method="post" action="/logout">
+              <input type="hidden" name="csrf" value={csrfToken} />
               <button
                 type="submit"
                 className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-[var(--app-sidebar-muted)] transition-colors hover:bg-white/5 hover:text-white"

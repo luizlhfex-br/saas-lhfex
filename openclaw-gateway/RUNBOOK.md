@@ -87,7 +87,7 @@ exec openclaw gateway
   "mode": "local",
   "bind": "custom",
   "customBindHost": "0.0.0.0",
-  "port": 18789,
+  "port": 3000,
   "controlUi": {
     "dangerouslyAllowHostHeaderOriginFallback": true
   }

@@ -29,6 +29,19 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-14",
+    version: "2.9.8",
+    type: "release",
+    title: "CSRF reforcado, planejamento saneado e smoke pos-deploy concluido",
+    items: [
+      "Seguranca: formularios de login, logout, settings, CRM, processos e subscriptions passaram a validar CSRF e same-origin em todas as mutacoes POST",
+      "Sessao: producao passa a emitir __Host-session, mantendo leitura do cookie legado para evitar logout forcado no rollout",
+      "Documentacao: docs/ROADMAP.md, docs/AUTOMATIONS-ROADMAP.md e docs/IDEAS.md foram saneados para refletir o estado real do SaaS e do OpenClaw",
+      "CI: workflow ganhou o smoke-production para validar /login, /api/health e /api/monitor-openclaw apos os deploys",
+      "OpenClaw: gateway, Dockerfile e runbook foram alinhados para a porta 3000, eliminando o 502 causado pelo descompasso com o proxy do Coolify",
+    ],
+  },
+  {
+    date: "2026-03-14",
     version: "2.9.7",
     type: "release",
     title: "Smoke test de producao validado e entrypoint do OpenClaw endurecido",

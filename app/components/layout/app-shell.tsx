@@ -19,6 +19,7 @@ interface AppShellProps {
   user: User;
   locale: Locale;
   theme: string;
+  csrfToken: string;
   onThemeToggle?: () => void;
   onLocaleToggle?: () => void;
   children: React.ReactNode;
@@ -28,6 +29,7 @@ export function AppShell({
   user,
   locale,
   theme,
+  csrfToken,
   onThemeToggle,
   onLocaleToggle,
   children,
@@ -55,6 +57,7 @@ export function AppShell({
         <Sidebar
           user={user}
           locale={locale}
+          csrfToken={csrfToken}
           currentPath={location.pathname}
           collapsed={sidebarCollapsed}
           onToggle={toggleSidebar}
@@ -66,6 +69,7 @@ export function AppShell({
           onClose={() => setMobileMenuOpen(false)}
           user={user}
           locale={locale}
+          csrfToken={csrfToken}
           currentPath={location.pathname}
         />
 

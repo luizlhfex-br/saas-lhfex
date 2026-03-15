@@ -4,7 +4,7 @@ import {
   getSession, 
   verifyPassword, 
   createSession, 
-  getSessionCookie,
+  getSessionCookieHeaders,
   checkLoginAttempts,
   recordFailedLogin
 } from "~/lib/auth.server";
@@ -17,18 +17,32 @@ import { getClientIP } from "~/lib/rate-limit.server";
 import { t } from "~/i18n";
 import { Button } from "~/components/ui/button";
 import { data } from "react-router";
+import { getCSRFFormState, requireValidCSRF } from "~/lib/csrf.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const session = await getSession(request);
   if (session) {
     throw redirect("/");
   }
-  return {};
+  const { csrfToken, csrfCookieHeader } = await getCSRFFormState(request);
+  return data(
+    { csrfToken },
+    {
+      headers: {
+        "Set-Cookie": csrfCookieHeader,
+      },
+    }
+  );
 }
 
 export async function action({ request }: Route.ActionArgs) {
   const ip = getClientIP(request);
   const formData = await request.formData();
+  try {
+    await requireValidCSRF(request, formData);
+  } catch {
+    return data({ error: "Sessao do formulario expirou. Atualize a pagina e tente novamente." }, { status: 403 });
+  }
   const raw = {
     email: String(formData.get("email") ?? ""),
     password: String(formData.get("password") ?? ""),
@@ -109,20 +123,24 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   const token = await createSession(user.id, request);
-  const cookie = getSessionCookie(token);
+  const headers = new Headers();
+  for (const cookie of getSessionCookieHeaders(token)) {
+    headers.append("Set-Cookie", cookie);
+  }
 
   await logAudit({ userId: user.id, action: "login", entity: "session", details: { ip }, request });
 
   throw redirect("/", {
-    headers: { "Set-Cookie": cookie },
+    headers,
   });
 }
 
-export default function LoginPage() {
+export default function LoginPage({ loaderData }: Route.ComponentProps) {
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
   const i18n = t("pt-BR");
+  const fields = (actionData && "fields" in actionData ? actionData.fields : null) as { email?: string } | null;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[var(--app-bg)] px-4">
@@ -145,6 +163,7 @@ export default function LoginPage() {
         {/* Login card */}
         <div className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] p-8 shadow-[var(--app-card-shadow)]">
           <Form method="post" className="space-y-5">
+            <input type="hidden" name="csrf" value={loaderData.csrfToken} />
             {/* Error message */}
             {actionData?.error && (
               <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -166,7 +185,7 @@ export default function LoginPage() {
                 type="email"
                 autoComplete="email"
                 required
-                defaultValue={actionData?.fields?.email ?? ""}
+                defaultValue={fields?.email ?? ""}
                 className="block w-full rounded-lg border border-[var(--app-border-strong)] bg-white px-3 py-2.5 text-sm text-[var(--app-text)] placeholder:text-[var(--app-muted)] focus:border-[var(--app-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--app-accent)]/20"
                 placeholder="seu@email.com"
               />

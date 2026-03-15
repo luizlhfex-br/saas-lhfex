@@ -300,3 +300,21 @@ jobs:
       - name: Skip OpenClaw deployment
         if: steps.openclaw_changes.outputs.should_deploy != 'true'
         run: echo "No changes under openclaw-gateway/. Skipping OpenClaw deploy."
+
+  smoke-production:
+    name: Smoke Production
+    runs-on: ubuntu-latest
+    needs: [deploy-saas, deploy-openclaw]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Run production smoke checks
+        env:
+          SMOKE_BASE_URL: https://saas.lhfex.com.br
+        run: node scripts/smoke-production.mjs

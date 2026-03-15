@@ -1,5 +1,5 @@
 import { Fragment, useState } from "react";
-import { Form, redirect, useNavigation } from "react-router";
+import { data, Form, redirect, useActionData, useNavigation } from "react-router";
 import type { Route } from "./+types/subscriptions";
 import { requireAuth } from "~/lib/auth.server";
 import { getPrimaryCompanyId } from "~/lib/company-context.server";
@@ -9,6 +9,7 @@ import { and, eq, isNull, asc, desc } from "drizzle-orm";
 import { getSubscriptionHealth, resolveSubscriptionNextDueDate, summarizeSubscriptionTotals } from "~/lib/subscriptions.server";
 import { Button } from "~/components/ui/button";
 import { Ban, Calendar, ExternalLink, Pencil, Plus, RefreshCw } from "lucide-react";
+import { getCSRFFormState, requireValidCSRF } from "~/lib/csrf.server";
 
 const recurrenceOptions = [
   { value: "monthly", label: "Mensal" },
@@ -194,6 +195,7 @@ function SubscriptionFields({ subscription }: { subscription?: typeof subscripti
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
+  const { csrfToken, csrfCookieHeader } = await getCSRFFormState(request);
   const companyId = await getPrimaryCompanyId(user.id);
 
   const rows = await db
@@ -209,13 +211,25 @@ export async function loader({ request }: Route.LoaderArgs) {
     health: getSubscriptionHealth(subscription),
   }));
 
-  return { items, totals };
+  return data(
+    { items, totals, csrfToken },
+    {
+      headers: {
+        "Set-Cookie": csrfCookieHeader,
+      },
+    }
+  );
 }
 
 export async function action({ request }: Route.ActionArgs) {
   const { user } = await requireAuth(request);
   const companyId = await getPrimaryCompanyId(user.id);
   const formData = await request.formData();
+  try {
+    await requireValidCSRF(request, formData);
+  } catch {
+    return data({ error: "Sessao do formulario expirou. Atualize a pagina e tente novamente." }, { status: 403 });
+  }
   const intent = String(formData.get("intent") || "");
 
   if (intent === "create") {
@@ -292,7 +306,8 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function SubscriptionsPage({ loaderData }: Route.ComponentProps) {
-  const { items, totals } = loaderData;
+  const { items, totals, csrfToken } = loaderData;
+  const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -300,6 +315,11 @@ export default function SubscriptionsPage({ loaderData }: Route.ComponentProps) 
 
   return (
     <div className="space-y-6">
+      {actionData?.error ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">
+          {actionData.error}
+        </div>
+      ) : null}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Assinaturas</h1>
@@ -336,6 +356,7 @@ export default function SubscriptionsPage({ loaderData }: Route.ComponentProps) 
         <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-950">
           <div className="mb-4 text-sm font-semibold text-gray-900 dark:text-gray-100">Nova assinatura</div>
           <Form method="post" className="space-y-3">
+            <input type="hidden" name="csrf" value={csrfToken} />
             <input type="hidden" name="intent" value="create" />
             <SubscriptionFields />
             <div className="flex gap-2">
@@ -449,6 +470,7 @@ export default function SubscriptionsPage({ loaderData }: Route.ComponentProps) 
                           </Button>
                           {subscription.status === "cancelled" ? (
                             <Form method="post">
+                              <input type="hidden" name="csrf" value={csrfToken} />
                               <input type="hidden" name="intent" value="reactivate" />
                               <input type="hidden" name="subscriptionId" value={subscription.id} />
                               <Button type="submit" variant="outline" size="sm" disabled={isSubmitting}>
@@ -457,6 +479,7 @@ export default function SubscriptionsPage({ loaderData }: Route.ComponentProps) 
                             </Form>
                           ) : (
                             <Form method="post" onSubmit={(event) => { if (!confirm(`Cancelar ${subscription.name}?`)) event.preventDefault(); }}>
+                              <input type="hidden" name="csrf" value={csrfToken} />
                               <input type="hidden" name="intent" value="cancel" />
                               <input type="hidden" name="subscriptionId" value={subscription.id} />
                               <Button type="submit" variant="outline" size="sm" disabled={isSubmitting}>
@@ -471,6 +494,7 @@ export default function SubscriptionsPage({ loaderData }: Route.ComponentProps) 
                       <tr>
                         <td colSpan={6} className="bg-gray-50 px-4 py-4 dark:bg-gray-900/60">
                           <Form method="post" className="space-y-3">
+                            <input type="hidden" name="csrf" value={csrfToken} />
                             <input type="hidden" name="intent" value="update" />
                             <input type="hidden" name="subscriptionId" value={subscription.id} />
                             <SubscriptionFields subscription={subscription} />

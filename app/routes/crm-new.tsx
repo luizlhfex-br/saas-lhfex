@@ -12,6 +12,7 @@ import { ArrowLeft, Bot, Loader2, Plus, Save, Star, Trash2 } from "lucide-react"
 import { and, eq, isNull } from "drizzle-orm";
 import { data } from "react-router";
 import { fireTrigger } from "~/lib/automation-engine.server";
+import { getCSRFFormState, requireValidCSRF } from "~/lib/csrf.server";
 
 type ContactDraft = {
   id: string;
@@ -50,17 +51,30 @@ function sanitizeContacts(rawContacts: unknown): ContactDraft[] {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
+  const { csrfToken, csrfCookieHeader } = await getCSRFFormState(request);
 
   const cookieHeader = request.headers.get("cookie") || "";
   const localeMatch = cookieHeader.match(/locale=([^;]+)/);
   const locale = (localeMatch ? localeMatch[1] : user.locale) as Locale;
 
-  return { locale };
+  return data(
+    { locale, csrfToken },
+    {
+      headers: {
+        "Set-Cookie": csrfCookieHeader,
+      },
+    }
+  );
 }
 
 export async function action({ request }: Route.ActionArgs) {
   const { user } = await requireAuth(request);
   const formData = await request.formData();
+  try {
+    await requireValidCSRF(request, formData);
+  } catch {
+    return data({ errors: { _form: "Sessao do formulario expirou. Atualize a pagina e tente novamente." } }, { status: 403 });
+  }
 
   const raw: Record<string, unknown> = {};
   for (const [key, value] of formData.entries()) {
@@ -226,7 +240,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function CrmNewPage({ loaderData }: Route.ComponentProps) {
-  const { locale } = loaderData;
+  const { locale, csrfToken } = loaderData;
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
@@ -371,7 +385,14 @@ export default function CrmNewPage({ loaderData }: Route.ComponentProps) {
       </div>
 
       <Form method="post" className="space-y-8">
+        <input type="hidden" name="csrf" value={csrfToken} />
         <input type="hidden" name="contactsPayload" value={JSON.stringify(contactsDraft)} />
+
+        {errors._form ? (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">
+            {errors._form}
+          </div>
+        ) : null}
 
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
           <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">Identificação da Empresa</h2>

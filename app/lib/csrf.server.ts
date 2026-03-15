@@ -46,11 +46,34 @@ export async function getCSRFToken(request: Request): Promise<string> {
   return generateCSRFToken();
 }
 
+export async function getCSRFFormState(request: Request) {
+  const csrfToken = await getCSRFToken(request);
+  const csrfCookieHeader = await setCSRFCookie(csrfToken);
+  return { csrfToken, csrfCookieHeader };
+}
+
+function validateSameOrigin(request: Request): void {
+  const requestOrigin = new URL(request.url).origin;
+  const originHeader = request.headers.get("Origin");
+  const refererHeader = request.headers.get("Referer");
+  const candidate = originHeader || refererHeader;
+
+  if (!candidate) {
+    return;
+  }
+
+  const candidateOrigin = new URL(candidate).origin;
+  if (candidateOrigin !== requestOrigin) {
+    throw new Error("Cross-site request blocked");
+  }
+}
+
 /**
  * Validate CSRF token from form data against cookie token
  * @throws Error if token is missing or invalid
  */
 export async function validateCSRFToken(request: Request, formToken: string | null): Promise<void> {
+  validateSameOrigin(request);
   const cookieHeader = request.headers.get("Cookie");
   const cookieToken = await csrfCookie.parse(cookieHeader);
 
@@ -60,6 +83,10 @@ export async function validateCSRFToken(request: Request, formToken: string | nu
 
   if (!cookieToken) {
     throw new Error("CSRF token missing from cookie");
+  }
+
+  if (formToken.length !== cookieToken.length) {
+    throw new Error("CSRF token mismatch");
   }
 
   // Constant-time comparison to prevent timing attacks

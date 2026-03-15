@@ -10,9 +10,11 @@ import { ArrowLeft, Save } from "lucide-react";
 import { data } from "react-router";
 import { isNull, eq, sql } from "drizzle-orm";
 import { getPrimaryCompanyId } from "~/lib/company-context.server";
+import { getCSRFFormState, requireValidCSRF } from "~/lib/csrf.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
+  const { csrfToken, csrfCookieHeader } = await getCSRFFormState(request);
   const cookieHeader = request.headers.get("cookie") || "";
   const localeMatch = cookieHeader.match(/locale=([^;]+)/);
   const locale = (localeMatch ? localeMatch[1] : user.locale) as Locale;
@@ -23,12 +25,24 @@ export async function loader({ request }: Route.LoaderArgs) {
     .where(isNull(clients.deletedAt))
     .orderBy(clients.razaoSocial);
 
-  return { locale, clients: clientList };
+  return data(
+    { locale, clients: clientList, csrfToken },
+    {
+      headers: {
+        "Set-Cookie": csrfCookieHeader,
+      },
+    }
+  );
 }
 
 export async function action({ request }: Route.ActionArgs) {
   const { user } = await requireAuth(request);
   const formData = await request.formData();
+  try {
+    await requireValidCSRF(request, formData);
+  } catch {
+    return data({ error: "Sessao do formulario expirou. Atualize a pagina e tente novamente." }, { status: 403 });
+  }
 
   const normalizeNumericInput = (raw: unknown): string | null => {
     if (typeof raw !== "string") return null;
@@ -169,13 +183,13 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function ProcessesNewPage({ loaderData }: Route.ComponentProps) {
-  const { locale, clients: clientList } = loaderData;
+  const { locale, clients: clientList, csrfToken } = loaderData;
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
   const i18n = t(locale);
   const errors = actionData && "errors" in actionData ? actionData.errors : {};
-  const fields = actionData?.fields ?? {};
+  const fields = actionData && "fields" in actionData ? actionData.fields : {};
   const genericError = actionData && "error" in actionData ? actionData.error : null;
 
   return (
@@ -188,6 +202,7 @@ export default function ProcessesNewPage({ loaderData }: Route.ComponentProps) {
       </div>
 
       <Form method="post" className="space-y-8">
+        <input type="hidden" name="csrf" value={csrfToken} />
         {genericError && (
           <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">
             {genericError}

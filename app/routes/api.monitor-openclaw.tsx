@@ -41,26 +41,44 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
 
   try {
-    const res = await fetch(`${OPENCLAW_GATEWAY_URL}/health`, {
+    const healthUrl = new URL("/health", OPENCLAW_GATEWAY_URL).toString();
+    const res = await fetch(healthUrl, {
       method: "GET",
       signal: AbortSignal.timeout(8000),
     });
 
     if (res.ok) {
-      return data({ ok: true, openclaw: "online", checkedAt: new Date().toISOString() });
+      return data({
+        ok: true,
+        openclaw: "online",
+        checkedAt: new Date().toISOString(),
+        checkedUrl: healthUrl,
+      });
     }
 
     // Resposta com erro HTTP
     await sendOfflineAlert(`HTTP ${res.status}`);
     return data(
-      { ok: false, openclaw: "offline", reason: `HTTP ${res.status}`, checkedAt: new Date().toISOString() },
+      {
+        ok: false,
+        openclaw: "offline",
+        reason: `HTTP ${res.status}`,
+        checkedAt: new Date().toISOString(),
+        checkedUrl: healthUrl,
+      },
       { status: 503 }
     );
   } catch (err) {
     const reason = err instanceof Error ? err.message : "timeout";
     await sendOfflineAlert(reason);
     return data(
-      { ok: false, openclaw: "offline", reason, checkedAt: new Date().toISOString() },
+      {
+        ok: false,
+        openclaw: "offline",
+        reason,
+        checkedAt: new Date().toISOString(),
+        checkedUrl: OPENCLAW_GATEWAY_URL,
+      },
       { status: 503 }
     );
   }

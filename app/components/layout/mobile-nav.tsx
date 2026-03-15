@@ -34,6 +34,7 @@ interface MobileNavProps {
   onClose: () => void;
   user: User;
   locale: Locale;
+  csrfToken: string;
   currentPath: string;
 }
 
@@ -73,6 +74,7 @@ export function MobileNav({
   onClose,
   user,
   locale,
+  csrfToken,
   currentPath,
 }: MobileNavProps) {
   const i18n = t(locale);
@@ -234,6 +236,7 @@ export function MobileNav({
 
           {/* Logout */}
           <Form method="post" action="/logout">
+            <input type="hidden" name="csrf" value={csrfToken} />
             <button
               type="submit"
               className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-[var(--app-sidebar-muted)] transition-colors hover:bg-white/5 hover:text-white"

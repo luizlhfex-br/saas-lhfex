@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.7";
+export const APP_VERSION = "2.9.8";
 export const APP_RELEASE_DATE = "2026-03-14";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,18 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.8",
+    date: "2026-03-14",
+    title: "CSRF reforcado, planejamento saneado e smoke pos-deploy fechado",
+    items: [
+      { type: "fix", text: "Seguranca: login, logout, settings, CRM, processos e subscriptions agora validam CSRF e origem same-origin antes de aceitar POST" },
+      { type: "fix", text: "Sessao: cookie de autenticacao migrou para __Host-session em producao, com leitura legada mantida para nao derrubar sessoes existentes no rollout" },
+      { type: "improvement", text: "Documentacao: docs/ROADMAP.md, docs/AUTOMATIONS-ROADMAP.md e docs/IDEAS.md foram reescritos para refletir o estado real do produto e os proximos ciclos" },
+      { type: "infra", text: "CI: novo smoke-production valida /login, /api/health e /api/monitor-openclaw apos os deploys automaticos" },
+      { type: "infra", text: "OpenClaw: gateway passou a usar a porta 3000 no container, alinhando o runtime com o proxy do Coolify e eliminando o 502 do monitor publico" },
+    ],
+  },
   {
     version: "2.9.7",
     date: "2026-03-14",

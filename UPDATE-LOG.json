@@ -1,17 +1,67 @@
 {
   "release": {
-    "version": "v2.9.7",
+    "version": "v2.9.8",
     "date": "2026-03-14T00:00:00Z",
-    "type": "infra",
-    "title": "Smoke test em producao e hardening extra do OpenClaw"
+    "type": "fix",
+    "title": "CSRF reforcado, planejamento saneado e smoke pos-deploy fechado"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 0,
-    "filesModified": 5,
+    "filesCreated": 1,
+    "filesModified": 24,
     "routesAdded": 0,
-    "openclaw_changes": 1,
+    "openclaw_changes": 4,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_14_security_docs_smoke": {
+    "date": "2026-03-14",
+    "release_version": "2.9.8",
+    "objective": "Fechar o lote de planejamento com hardening de sessao/CSRF, documentacao saneada e smoke pos-deploy confiavel",
+    "files_changed": [
+      ".github/workflows/ci.yml",
+      "app/components/layout/app-shell.tsx",
+      "app/components/layout/mobile-nav.tsx",
+      "app/components/layout/sidebar.tsx",
+      "app/config/version.ts",
+      "app/lib/auth.server.ts",
+      "app/lib/csrf.server.ts",
+      "app/routes/api.monitor-openclaw.tsx",
+      "app/routes/app-layout.tsx",
+      "app/routes/changelog.tsx",
+      "app/routes/crm-new.tsx",
+      "app/routes/login.tsx",
+      "app/routes/logout.tsx",
+      "app/routes/processes-new.tsx",
+      "app/routes/settings.tsx",
+      "app/routes/subscriptions.tsx",
+      "docs/AUTOMATIONS-ROADMAP.md",
+      "docs/IDEAS.md",
+      "docs/ROADMAP.md",
+      "openclaw-gateway/Dockerfile",
+      "openclaw-gateway/RUNBOOK.md",
+      "openclaw-gateway/entrypoint.sh",
+      "openclaw-gateway/openclaw.json",
+      "scripts/smoke-production.mjs"
+    ],
+    "changes": [
+      "Sessao: cookie de autenticacao em producao passou para __Host-session, com leitura de fallback do cookie legado para nao encerrar sessoes durante a migracao",
+      "CSRF: login, logout, settings, CRM, processos e subscriptions passaram a validar token e same-origin em mutacoes POST",
+      "Layout autenticado agora emite csrfToken para os formularios de logout do desktop e mobile",
+      "ROADMAP, AUTOMATIONS-ROADMAP e IDEAS foram reescritos para refletir o estado real do SaaS, do OpenClaw e das proximas prioridades",
+      "Workflow ganhou o job smoke-production para validar /login, /api/health e /api/monitor-openclaw depois dos deploys automaticos",
+      "Diagnostico de producao confirmou que o 502 do OpenClaw vinha de um mismatch entre proxy 3000 e gateway 18789",
+      "OpenClaw foi alinhado no repo para ouvir na porta 3000, a mesma esperada pelo proxy do Coolify",
+      "api.monitor-openclaw agora registra checkedUrl no payload para facilitar diagnostico de ambiente"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros",
+      "openclaw-gateway/openclaw.json validado com parse JSON e gateway.port=3000"
+    ],
+    "pending_after_push": [
+      "Aguardar o redeploy automatico do SaaS e do OpenClaw no GitHub Actions",
+      "Executar o smoke publico apos o rollout para confirmar /api/monitor-openclaw respondendo sem 502"
+    ]
   },
   "session_2026_03_14_runtime_hardening": {
     "date": "2026-03-14",
