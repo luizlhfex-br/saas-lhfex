@@ -32,6 +32,11 @@
 ### Webhook mode para OpenClaw
 - Considerar se o volume do Telegram crescer o suficiente para justificar
 
+### Endurecimento de repositorio e segredos
+- Tornar o repositorio privado, mas so depois de confirmar que o Coolify continua autenticado para clonar o repo privado
+- Sanitizar mais documentos operacionais que ainda descrevem demais a infra e os fluxos internos
+- Rotacionar segredos expostos por superfícies publicas antigas, principalmente OPENCLAW_TOOLS_API_KEY e tokens de bot, com janela de troca planejada para nao derrubar integracoes
+
 ---
 
 ## Produto

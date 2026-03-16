@@ -1,17 +1,43 @@
 {
   "release": {
-    "version": "v2.9.15",
+    "version": "v2.9.16",
     "date": "2026-03-16T00:00:00Z",
     "type": "fix",
-    "title": "Fallback livre do OpenClaw alinhado com a OpenRouter atual"
+    "title": "Insta separado nas promocoes e teste real do Vertex"
   },
   "summary": {
     "commits": 1,
     "filesCreated": 1,
-    "filesModified": 15,
+    "filesModified": 6,
     "routesAdded": 0,
-    "openclaw_changes": 4,
+    "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_16_promotions_insta_vertex_diagnostics": {
+    "date": "2026-03-16",
+    "release_version": "2.9.16",
+    "objective": "Separar o fluxo da aba Insta em Promocoes e Sorteios, registrar o backlog de seguranca como ideia futura e validar o estado real do Vertex no ambiente local",
+    "files_changed": [
+      "app/routes/personal-life.promotions.tsx",
+      "scripts/test-vertex-provider.ts",
+      "package.json",
+      "docs/IDEAS.md",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "A aba Insta foi mantida no fim da navegacao e passou a usar KPI proprio, sem misturar seus totais com a aba principal de promocoes",
+      "O formulario de Instagram deixou de mostrar PDF, tipo, data inicial e campos de numero da sorte; o fluxo agora gira em torno do link do post oficial",
+      "Os cards da aba Insta passaram a mostrar apenas prazo final, link e status, ocultando campos sem relevancia para esse tipo de cadastro",
+      "Foi criado o comando npm run ops:test-vertex para testar o provider vertex_gemini forzado e a chain real usando o .env.codex local",
+      "Os itens de endurecimento de repositorio e rotacao de segredos foram movidos para docs/IDEAS.md como backlog futuro"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros",
+      "npm run ops:test-vertex confirmou falha de autenticacao no Vertex SDK e fallback valido para OpenRouter Free"
+    ]
   },
   "session_2026_03_16_openclaw_openrouter_free_router": {
     "date": "2026-03-16",

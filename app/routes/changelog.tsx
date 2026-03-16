@@ -29,6 +29,19 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-16",
+    version: "2.9.16",
+    type: "release",
+    title: "Insta separado nas promocoes e teste reproduzivel do Vertex",
+    items: [
+      "Promocoes: a aba Insta foi empurrada para o fim da navegacao e passou a usar KPI proprio, sem inflar os numeros da aba principal",
+      "Promocoes/Insta: formulario ficou focado em link do post, premio, prazo final, status e comprovante, removendo PDF, tipo, data inicial e numeros da sorte",
+      "Promocoes/Insta: cards do Instagram passaram a exibir so o que faz sentido para esse fluxo, como prazo final e link do post oficial",
+      "Operacao: novo comando npm run ops:test-vertex valida o Vertex forzado e a chain real usando o .env.codex local, mostrando claramente quando ha fallback para OpenRouter Free",
+      "Planejamento: os itens de endurecimento de repositorio e rotacao de segredos foram movidos para docs/IDEAS.md como backlog futuro",
+    ],
+  },
+  {
+    date: "2026-03-16",
     version: "2.9.15",
     type: "release",
     title: "Fallback livre do OpenClaw alinhado com a OpenRouter atual",

@@ -60,6 +60,9 @@ type PromoSite = typeof promotionSites.$inferSelect;
 type LiteraryContest = typeof literaryContests.$inferSelect;
 type PersonalLottery = typeof personalLotteries.$inferSelect;
 type SenhaEntry = { label: string; login: string; password: string };
+type PromotionKpis = { active: number; won: number; expiringSoon: number; total: number };
+const PROMOTION_TABS = ["promocoes", "loterias", "pessoas", "sites", "literario", "radio", "insta"] as const;
+type PromotionsTab = (typeof PROMOTION_TABS)[number];
 
 const TYPE_LABELS: Record<string, string> = {
   raffle: "Sorteio",
@@ -178,6 +181,25 @@ function normalizeDateInput(raw: string | null | undefined): string | null {
   return parsed.toISOString().slice(0, 10);
 }
 
+function buildPromotionKpis(items: Promotion[]): PromotionKpis {
+  const active = items.filter(
+    (promotion) =>
+      promotion.participationStatus === "pending" || promotion.participationStatus === "participated"
+  );
+  const won = items.filter((promotion) => promotion.participationStatus === "won");
+  const expiringSoon = active.filter((promotion) => {
+    const days = daysUntilEnd(promotion.endDate);
+    return days >= 0 && days <= 7;
+  });
+
+  return {
+    active: active.length,
+    won: won.length,
+    expiringSoon: expiringSoon.length,
+    total: items.length,
+  };
+}
+
 // ── Loader ─────────────────────────────────────────────────────────────────
 
 export async function loader({ request }: { request: Request }) {
@@ -186,6 +208,10 @@ export async function loader({ request }: { request: Request }) {
 
   const url = new URL(request.url);
   const statusFilter = url.searchParams.get("status") ?? "active";
+  const rawTab = url.searchParams.get("tab");
+  const initialTab: PromotionsTab = PROMOTION_TABS.includes(rawTab as PromotionsTab)
+    ? (rawTab as PromotionsTab)
+    : "promocoes";
   const pessoaSearch = url.searchParams.get("q") ?? "";
 
   const warnings: string[] = [];
@@ -206,10 +232,6 @@ export async function loader({ request }: { request: Request }) {
       (p) => p.participationStatus === "pending" || p.participationStatus === "participated"
     );
     const won = allPromotions.filter((p) => p.participationStatus === "won");
-    const expiringSoon = active.filter((p) => {
-      const days = daysUntilEnd(p.endDate);
-      return days >= 0 && days <= 7;
-    });
 
     const filtered =
       statusFilter === "active"
@@ -219,6 +241,9 @@ export async function loader({ request }: { request: Request }) {
         : statusFilter === "lost"
         ? allPromotions.filter((p) => p.participationStatus === "lost")
         : allPromotions;
+
+    const manualPromotions = allPromotions.filter((p) => p.source !== "instagram");
+    const instagramOnlyPromotions = allPromotions.filter((p) => p.source === "instagram");
 
   let pessoasList: Pessoa[] = [];
   try {
@@ -288,11 +313,10 @@ export async function loader({ request }: { request: Request }) {
   return {
     promotions: filtered as Promotion[],
     kpis: {
-      active: active.length,
-      won: won.length,
-      expiringSoon: expiringSoon.length,
-      total: allPromotions.length,
+      manual: buildPromotionKpis(manualPromotions),
+      instagram: buildPromotionKpis(instagramOnlyPromotions),
     },
+    initialTab,
     statusFilter,
     pessoasList,
     pessoaSearch,
@@ -317,28 +341,40 @@ export async function action({ request }: { request: Request }) {
   if (intent === "create") {
     const name = formData.get("name") as string;
     const company = formData.get("company") as string;
-    const type = (formData.get("type") as string) || "raffle";
     const source = ((formData.get("source") as string) || "manual").trim() || "manual";
+    const isInstagramSource = source === "instagram";
+    const type = isInstagramSource ? "giveaway" : (formData.get("type") as string) || "raffle";
     const participationStatus = ((formData.get("participationStatus") as string) || "pending").trim() || "pending";
     const startDateRaw = formData.get("startDate") as string;
     const endDateRaw = formData.get("endDate") as string;
     const prize = formData.get("prize") as string | null;
-    const link = formData.get("link") as string | null;
+    const link = (formData.get("link") as string | null)?.trim() || null;
     const rules = formData.get("rules") as string | null;
     const notes = formData.get("notes") as string | null;
     const proofOfParticipation = (formData.get("proofOfParticipation") as string | null)?.trim() || null;
-    const userLuckyNumbers = (formData.get("userLuckyNumbers") as string | null)?.trim() || null;
-    const officialLuckyNumber = (formData.get("officialLuckyNumber") as string | null)?.trim() || null;
-    const inferredLuckyNumber = (formData.get("inferredLuckyNumber") as string | null)?.trim() || null;
+    const userLuckyNumbers = isInstagramSource ? null : (formData.get("userLuckyNumbers") as string | null)?.trim() || null;
+    const officialLuckyNumber = isInstagramSource ? null : (formData.get("officialLuckyNumber") as string | null)?.trim() || null;
+    const inferredLuckyNumber = isInstagramSource ? null : (formData.get("inferredLuckyNumber") as string | null)?.trim() || null;
 
-    const startDate = normalizeDateInput(startDateRaw);
+    const explicitStartDate = normalizeDateInput(startDateRaw);
     const endDate = normalizeDateInput(endDateRaw);
+    const today = new Date().toISOString().slice(0, 10);
+    const startDate = isInstagramSource ? explicitStartDate || endDate || today : explicitStartDate;
 
-    if (!name || !company || !startDate || !endDate) {
+    if (!name || !company || !endDate || (!isInstagramSource && !startDate)) {
       return data({ error: "Campos obrigatórios faltando" }, { status: 400 });
     }
 
-    if (new Date(`${endDate}T12:00:00`) < new Date(`${startDate}T12:00:00`)) {
+    if (isInstagramSource && !link) {
+      return data({ error: "Informe o link do post do Instagram" }, { status: 400 });
+    }
+
+    if (
+      startDate &&
+      endDate &&
+      (!isInstagramSource || !!explicitStartDate) &&
+      new Date(`${endDate}T12:00:00`) < new Date(`${startDate}T12:00:00`)
+    ) {
       return data({ error: "Data final não pode ser menor que a data inicial" }, { status: 400 });
     }
 
@@ -347,10 +383,10 @@ export async function action({ request }: { request: Request }) {
       name,
       company,
       type,
-      startDate,
+      startDate: startDate!,
       endDate,
       prize: prize || null,
-      link: link || null,
+      link: link ?? undefined,
       rules: rules || notes || null,
       notes: notes || null,
       proofOfParticipation,
@@ -1151,12 +1187,12 @@ export default function PromotionsPage({
 }) {
   const actionData = useActionData<typeof action>();
   const actionPayload = actionData as { success?: boolean; intent?: string; error?: string } | undefined;
-  const { promotions: promo, kpis, statusFilter, pessoasList, pessoaSearch, sitesList, contestsList, lotteriesList, loadError } = loaderData;
+  const { promotions: promo, kpis, initialTab, statusFilter, pessoasList, pessoaSearch, sitesList, contestsList, lotteriesList, loadError } = loaderData;
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
 
   // Tabs
-  const [activeTab, setActiveTab] = useState<"promocoes" | "insta" | "loterias" | "pessoas" | "sites" | "literario" | "radio">("promocoes");
+  const [activeTab, setActiveTab] = useState<PromotionsTab>(initialTab);
 
   // Sites state
   const [showSiteForm, setShowSiteForm] = useState(false);
@@ -1220,6 +1256,7 @@ export default function PromotionsPage({
   const regularPromotions = promo.filter((item) => item.source !== "instagram");
   const visiblePromotions = activeTab === "insta" ? instagramPromotions : regularPromotions;
   const isInstagramTab = activeTab === "insta";
+  const currentKpis = isInstagramTab ? kpis.instagram : kpis.manual;
 
   useEffect(() => {
     if (!actionPayload?.success) return;
@@ -1248,6 +1285,18 @@ export default function PromotionsPage({
       setShowScpc(false);
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
+
+  useEffect(() => {
+    if (!showForm) {
+      setExtractError(null);
+      setStrategySuccess(false);
+      setLastExtractedText(null);
+    }
+  }, [showForm]);
 
   async function handlePdfExtract(file: File) {
     setExtracting(true);
@@ -1313,14 +1362,14 @@ export default function PromotionsPage({
       const f = json.fields ?? {};
       if (nameRef.current && f.name) nameRef.current.value = f.name;
       if (companyRef.current && f.company) companyRef.current.value = f.company;
-      if (typeRef.current && f.type) typeRef.current.value = f.type;
       if (prizeRef.current && f.prize) prizeRef.current.value = f.prize;
-      if (startDateRef.current && f.startDate) startDateRef.current.value = f.startDate;
       if (endDateRef.current && f.endDate) endDateRef.current.value = f.endDate;
       if (linkRef.current && f.link) linkRef.current.value = f.link;
       if (notesRef.current && f.rules) notesRef.current.value = f.rules;
-      if (inferredLuckyNumberRef.current && f.inferredLuckyNumber) inferredLuckyNumberRef.current.value = f.inferredLuckyNumber;
-      if (notesRef.current && f.luckyNumberRule && !notesRef.current.value.includes("Regra numero da sorte:")) {
+      if (!isInstagramTab && typeRef.current && f.type) typeRef.current.value = f.type;
+      if (!isInstagramTab && startDateRef.current && f.startDate) startDateRef.current.value = f.startDate;
+      if (!isInstagramTab && inferredLuckyNumberRef.current && f.inferredLuckyNumber) inferredLuckyNumberRef.current.value = f.inferredLuckyNumber;
+      if (!isInstagramTab && notesRef.current && f.luckyNumberRule && !notesRef.current.value.includes("Regra numero da sorte:")) {
         notesRef.current.value = `${notesRef.current.value ? `${notesRef.current.value}\n\n` : ""}Regra numero da sorte: ${f.luckyNumberRule}`;
       }
 
@@ -1448,9 +1497,9 @@ export default function PromotionsPage({
         >
           <Gift className="h-4 w-4" />
           Promoções
-          {kpis.active > 0 && (
+          {kpis.manual.active > 0 && (
             <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-xs font-semibold text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
-              {kpis.active}
+              {kpis.manual.active}
             </span>
           )}
         </button>
@@ -1465,9 +1514,9 @@ export default function PromotionsPage({
         >
           <Instagram className="h-4 w-4" />
           Insta
-          {instagramPromotions.length > 0 && (
+          {kpis.instagram.active > 0 && (
             <span className="rounded-full bg-pink-100 px-1.5 py-0.5 text-xs font-semibold text-pink-700 dark:bg-pink-900/30 dark:text-pink-300">
-              {instagramPromotions.length}
+              {kpis.instagram.active}
             </span>
           )}
         </button>
@@ -1731,23 +1780,23 @@ export default function PromotionsPage({
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900/50 dark:bg-blue-900/20">
               <p className="text-xs font-medium uppercase text-blue-700 dark:text-blue-400">Participando</p>
-              <p className="mt-2 text-2xl font-bold text-blue-900 dark:text-blue-200">{kpis.active}</p>
-              <p className="mt-1 text-xs text-blue-700 dark:text-blue-400">promoções ativas</p>
+              <p className="mt-2 text-2xl font-bold text-blue-900 dark:text-blue-200">{currentKpis.active}</p>
+              <p className="mt-1 text-xs text-blue-700 dark:text-blue-400">{isInstagramTab ? "posts acompanhados" : "promocoes ativas"}</p>
             </div>
             <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-900/50 dark:bg-yellow-900/20">
               <p className="text-xs font-medium uppercase text-yellow-700 dark:text-yellow-400">Encerrando em breve</p>
-              <p className="mt-2 text-2xl font-bold text-yellow-900 dark:text-yellow-200">{kpis.expiringSoon}</p>
+              <p className="mt-2 text-2xl font-bold text-yellow-900 dark:text-yellow-200">{currentKpis.expiringSoon}</p>
               <p className="mt-1 text-xs text-yellow-700 dark:text-yellow-400">nos próximos 7 dias</p>
             </div>
             <div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-900/50 dark:bg-green-900/20">
               <p className="text-xs font-medium uppercase text-green-700 dark:text-green-400">Ganhei!</p>
-              <p className="mt-2 text-2xl font-bold text-green-900 dark:text-green-200">{kpis.won}</p>
-              <p className="mt-1 text-xs text-green-700 dark:text-green-400">prêmios conquistados</p>
+              <p className="mt-2 text-2xl font-bold text-green-900 dark:text-green-200">{currentKpis.won}</p>
+              <p className="mt-1 text-xs text-green-700 dark:text-green-400">{isInstagramTab ? "posts premiados" : "premios conquistados"}</p>
             </div>
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900">
               <p className="text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Total cadastrado</p>
-              <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{kpis.total}</p>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">promoções registradas</p>
+              <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{currentKpis.total}</p>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{isInstagramTab ? "links do Instagram" : "promocoes registradas"}</p>
             </div>
           </div>
 
@@ -1762,13 +1811,11 @@ export default function PromotionsPage({
                 <input type="hidden" name="source" value={isInstagramTab ? "instagram" : "manual"} />
 
                 {/* Upload de regulamento PDF */}
-                <div className="rounded-lg border border-dashed border-indigo-300 bg-white p-3 dark:border-indigo-700 dark:bg-gray-900">
+                <div className={`rounded-lg border border-dashed border-indigo-300 bg-white p-3 dark:border-indigo-700 dark:bg-gray-900 ${isInstagramTab ? "hidden" : ""}`}>
                   <div className="flex items-center justify-between gap-2">
                     <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
                       <FileText className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
-                      {isInstagramTab
-                        ? "Anexe regulamento ou use o link do post para preencher os campos"
-                        : "Anexar regulamento em PDF para auto-preencher os campos"}
+                      Anexar regulamento em PDF para auto-preencher os campos
                     </span>
                     <div className="flex items-center gap-2 shrink-0">
                       {extracting && <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-500" />}
@@ -1823,6 +1870,12 @@ export default function PromotionsPage({
                   )}
                 </div>
 
+                {isInstagramTab && (
+                  <div className="rounded-lg border border-dashed border-pink-300 bg-white p-3 text-xs text-pink-700 dark:border-pink-800 dark:bg-gray-900 dark:text-pink-300">
+                    Cole o link do post oficial e use o botao "Ler link com IA" para preencher prazo, premio e regras.
+                  </div>
+                )}
+
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
@@ -1852,7 +1905,8 @@ export default function PromotionsPage({
                   </div>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-3">
+                {!isInstagramTab && (
+                  <div className="grid gap-4 sm:grid-cols-3">
                   <div>
                     <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
                       Meus números da sorte
@@ -1889,9 +1943,11 @@ export default function PromotionsPage({
                       className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
                     />
                   </div>
-                </div>
+                  </div>
+                )}
 
-                <div className="grid gap-4 sm:grid-cols-3">
+                {!isInstagramTab ? (
+                  <div className="grid gap-4 sm:grid-cols-3">
                   <div>
                     <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Tipo</label>
                     <select
@@ -1929,7 +1985,45 @@ export default function PromotionsPage({
                       className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
                     />
                   </div>
-                </div>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Link do post oficial *</label>
+                      <div className="flex gap-2">
+                        <input
+                          ref={linkRef}
+                          type="url"
+                          name="link"
+                          required
+                          placeholder="https://instagram.com/p/..."
+                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handlePromotionLinkExtract}
+                          disabled={extracting}
+                        >
+                          {extracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                          <span className="ml-2 hidden sm:inline">Ler link com IA</span>
+                        </Button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                        Data Fim *
+                      </label>
+                      <input
+                        ref={endDateRef}
+                        type="date"
+                        name="endDate"
+                        required
+                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
@@ -1942,29 +2036,57 @@ export default function PromotionsPage({
                       className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
                     />
                   </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Link</label>
-                    <div className="flex gap-2">
-                      <input
-                        ref={linkRef}
-                        type="url"
-                        name="link"
-                        placeholder={isInstagramTab ? "https://instagram.com/p/..." : "https://..."}
-                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-                      />
+                  {!isInstagramTab && (
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Link</label>
+                      <div className="flex gap-2">
+                        <input
+                          ref={linkRef}
+                          type="url"
+                          name="link"
+                          placeholder="https://..."
+                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handlePromotionLinkExtract}
+                          disabled={extracting}
+                        >
+                          {extracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                          <span className="ml-2 hidden sm:inline">Ler link com IA</span>
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {isInstagramTab && extractError && (
+                  <p className="text-xs text-red-500">{extractError}</p>
+                )}
+                {isInstagramTab && !extracting && !extractError && lastExtractedText && (
+                  <div className="flex items-center gap-2">
+                    {strategySuccess ? (
+                      <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Estrategia enviada no Telegram
+                      </span>
+                    ) : (
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={handlePromotionLinkExtract}
-                        disabled={extracting}
+                        size="sm"
+                        onClick={handleSendStrategy}
+                        disabled={strategyLoading}
                       >
-                        {extracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                        <span className="ml-2 hidden sm:inline">Ler link com IA</span>
+                        {strategyLoading
+                          ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                          : <MessageSquare className="mr-1 h-3.5 w-3.5 text-violet-500" />
+                        }
+                        {strategyLoading ? "Analisando..." : "Discutir estrategia com OpenClaw"}
                       </Button>
-                    </div>
+                    )}
                   </div>
-                </div>
-
+                )}
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
@@ -2029,7 +2151,7 @@ export default function PromotionsPage({
             ].map((f) => (
               <a
                 key={f.value}
-                href={`?status=${f.value}`}
+                href={`?status=${f.value}&tab=${activeTab}`}
                 className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                   statusFilter === f.value
                     ? "bg-indigo-600 text-white"
@@ -2089,9 +2211,11 @@ export default function PromotionsPage({
                               Insta
                             </span>
                           )}
-                          <span className="rounded-full border border-gray-200 px-2 py-0.5 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
-                            {TYPE_LABELS[p.type] ?? p.type}
-                          </span>
+                          {p.source !== "instagram" && (
+                            <span className="rounded-full border border-gray-200 px-2 py-0.5 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                              {TYPE_LABELS[p.type] ?? p.type}
+                            </span>
+                          )}
                         </div>
 
                         <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
@@ -2100,7 +2224,7 @@ export default function PromotionsPage({
                         </p>
 
                         <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-                          <span>📅 {formatDate(p.startDate)} → {formatDate(p.endDate)}</span>
+                          <span>📅 {p.source === "instagram" ? `Encerra em ${formatDate(p.endDate)}` : `${formatDate(p.startDate)} → ${formatDate(p.endDate)}`}</span>
                           {!isExpired && (p.participationStatus === "pending" || p.participationStatus === "participated") && (
                             <span className={days <= 3 ? "font-semibold text-red-500" : days <= 7 ? "text-yellow-600" : ""}>
                               {days === 0 ? "Encerra hoje!" : days === 1 ? "Encerra amanhã" : `${days} dias restantes`}
@@ -2138,7 +2262,7 @@ export default function PromotionsPage({
                           </p>
                         )}
 
-                        {(p.userLuckyNumbers || p.officialLuckyNumber || p.inferredLuckyNumber) && (
+                        {p.source !== "instagram" && (p.userLuckyNumbers || p.officialLuckyNumber || p.inferredLuckyNumber) && (
                           <div className="mt-2 space-y-1 text-xs text-gray-600 dark:text-gray-300">
                             {p.userLuckyNumbers && (
                               <p>

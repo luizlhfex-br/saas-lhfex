@@ -20,6 +20,7 @@
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx drizzle/seed.ts",
     "ops:health-watchdog": "node scripts/health-watchdog.mjs",
+    "ops:test-vertex": "tsx scripts/test-vertex-provider.ts",
     "ops:smoke-prod": "node scripts/smoke-prod.mjs",
     "ops:env-audit": "node scripts/coolify-env-audit.mjs"
   },

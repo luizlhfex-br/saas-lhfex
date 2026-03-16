@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.15";
+export const APP_VERSION = "2.9.16";
 export const APP_RELEASE_DATE = "2026-03-16";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,18 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.16",
+    date: "2026-03-16",
+    title: "Insta separado nas promocoes e teste real do Vertex",
+    items: [
+      { type: "fix", text: "Promocoes: a aba Insta passou a ficar no fim da navegacao, com KPI separado da aba principal e preservacao de tab ao trocar o filtro de status" },
+      { type: "fix", text: "Promocoes/Insta: o formulario deixou de exibir PDF, tipo, data inicial e numeros da sorte; agora o fluxo usa link do post e prazo final como base" },
+      { type: "improvement", text: "Promocoes/Insta: cards do Instagram deixaram de mostrar tipo e data inicial, reduzindo ruido no acompanhamento dos posts cadastrados" },
+      { type: "improvement", text: "Infra/IA: novo script ops:test-vertex testa o provider Vertex forzado e a chain real com o .env.codex local, registrando claramente quando cai para OpenRouter Free" },
+      { type: "improvement", text: "Planejamento: endurecimento de repo/segredos foi movido para docs/IDEAS.md como backlog futuro, para revisao manual posterior" },
+    ],
+  },
   {
     version: "2.9.15",
     date: "2026-03-16",
