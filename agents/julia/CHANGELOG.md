@@ -6,6 +6,15 @@
 
 ---
 
+## v2.9.15 - 2026-03-16
+
+### Melhorias em voce (OpenClaw)
+- Fallback gratuito do gateway saiu do slug fixo quebrado do Qwen e passou para `openrouter/free`
+- O roteador free da OpenRouter agora escolhe automaticamente um modelo gratuito disponivel em runtime
+- Mensagens do Telegram e documentacao do gateway foram alinhadas com a cadeia real: Vertex Gemini -> OpenRouter Free -> DeepSeek Direct
+
+---
+
 ## v2.9.10 - 2026-03-15
 
 ### Melhorias em voce (OpenClaw)
@@ -22,9 +31,7 @@
 - 8 agentes especialistas ativos com workspaces dedicados: AIrton, IAna, marIA, IAgo, IAra, SofIA, mAI e JULia
 - Nova cadeia de modelos:
   - Primario: Vertex Gemini 2.0 Flash
-  - Fallback 1: Qwen 2.5 72B Free
-  - Fallback 2: Llama 3.3 70B Free
-  - Fallback 3: DeepSeek R1 Distill Free
+  - Fallback 1: OpenRouter Free Router
   - Ultimo recurso: DeepSeek Direct
 - Skills locais novas: `lhfex-comex-expert`, `lhfex-licitacoes` e `lhfex-promocoes`
 - Cron de update check toda segunda 9h BRT com pedido de autorizacao antes de atualizar
@@ -55,7 +62,7 @@
 - OpenClaw multiagente configurado com 8 identidades especializadas e workspaces dedicados
 - SAAS skill, SOUL.md, AGENTS.md e entrypoint reescritos sem segredos hardcoded
 - Cron de update check alinhado para segunda-feira 9h BRT
-- Integracao com a nova chain do SaaS: Vertex Gemini -> Qwen Free -> Llama Free -> DeepSeek R1 Free -> DeepSeek Direct
+- Integracao com a nova chain do SaaS: Vertex Gemini -> OpenRouter Free -> DeepSeek Direct
 
 ---
 
@@ -75,7 +82,7 @@
 |---|---|
 | Conversa multiagente | Ativo |
 | Vertex Gemini 2.0 Flash | Ativo |
-| Qwen / Llama / DeepSeek R1 Free | Ativo |
+| OpenRouter Free Router | Ativo |
 | DeepSeek Direct | Ativo |
 | Transcricao de audio (Groq Whisper) | Ativo quando `GROQ_API_KEY` existir |
 | Analise de imagens | Ativo |

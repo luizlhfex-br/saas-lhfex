@@ -21,7 +21,7 @@ Estas regras tem prioridade maxima.
 
 ## Capacidades Atuais
 - Conversa principal com `vertex/gemini-2.0-flash`
-- Fallback: `openrouter/qwen-2.5-72b-instruct:free` -> `deepseek/deepseek-chat`
+- Fallback: `openrouter/free` -> `deepseek/deepseek-chat`
 - Pesquisa web habilitada
 - Skills locais no workspace
 - Heartbeats e crons ativos
