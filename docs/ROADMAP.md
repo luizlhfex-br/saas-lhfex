@@ -11,7 +11,7 @@
 | Processos / Comex | OK | Referencias `A/M/C` por modal ativas |
 | Financeiro corporativo | OK | Faturas, cashflow e relatorios em producao |
 | NCM / Classificacao | OK | Chain principal estabilizada |
-| IA / Providers | OK | Vertex -> Qwen Free -> Llama Free -> R1 Free -> DeepSeek Direct |
+| IA / Providers | OK | Vertex -> OpenRouter Free -> DeepSeek Direct |
 | OpenClaw multiagente | OK | Deploy automatico e entrypoint endurecido |
 | OpenClaw Telegram | OK | Cliente por CNPJ e processo por cliente + modal ativos |
 | Squad Room | OK | `/squad` publicado |

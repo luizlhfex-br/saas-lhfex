@@ -32,7 +32,7 @@ type AIFeature = "chat" | "ncm_classification" | "ocr" | "enrichment" | "telegra
 const VERTEX_GEMINI_MODEL = process.env.GEMINI_VERTEX_MODEL?.trim() || "gemini-2.0-flash";
 const VERTEX_GEMINI_LOCATION = process.env.GEMINI_VERTEX_LOCATION?.trim() || process.env.GOOGLE_CLOUD_LOCATION?.trim() || "us-central1";
 const VERTEX_TOKEN_GUARD_THRESHOLD = Number(process.env.GEMINI_VERTEX_TOKEN_GUARD_THRESHOLD || 10000);
-const OPENROUTER_QWEN_MODEL = process.env.OPENROUTER_QWEN_MODEL?.trim() || "qwen/qwen-2.5-72b-instruct:free";
+const OPENROUTER_QWEN_MODEL = process.env.OPENROUTER_QWEN_MODEL?.trim() || "openrouter/free";
 const OPENROUTER_LLAMA_MODEL = process.env.OPENROUTER_LLAMA_MODEL?.trim() || "meta-llama/llama-3.3-70b-instruct:free";
 const OPENROUTER_DEEPSEEK_FREE_MODEL = process.env.OPENROUTER_DEEPSEEK_FREE_MODEL?.trim() || "deepseek/deepseek-r1-distill-llama-70b:free";
 const DEEPSEEK_DIRECT_MODEL = process.env.DEEPSEEK_DIRECT_MODEL?.trim() || "deepseek-chat";
@@ -715,7 +715,7 @@ ${JSON.stringify(lifeContext, null, 2)}`;
 
   if (!allowPaidFallback) {
     return {
-      content: `Sou o ${agentName}. Nao consegui responder com Vertex e OpenRouter Free agora. Se quiser, posso tentar novamente com o fallback pago na proxima mensagem.`,
+      content: `Sou o ${agentName}. Nao consegui responder com Vertex e OpenRouter Free agora. Se quiser liberar o ultimo recurso pago nesta conversa, envie /pago ou /deepseek.`,
       model: "fallback-free-only",
       provider: "vertex_gemini",
     };

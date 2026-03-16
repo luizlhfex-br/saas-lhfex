@@ -92,7 +92,7 @@ export default function AIUsagePage({ loaderData }: Route.ComponentProps) {
 
   const providerConfig: Record<string, { label: string; color: string; badge: string }> = {
     vertex_gemini: { label: "Vertex Gemini", color: "bg-fuchsia-500", badge: "info" },
-    openrouter_qwen: { label: "Qwen Free", color: "bg-sky-500", badge: "success" },
+    openrouter_qwen: { label: "OpenRouter Free", color: "bg-sky-500", badge: "success" },
     openrouter_llama: { label: "Llama Free", color: "bg-blue-500", badge: "success" },
     openrouter_deepseek_free: { label: "R1 Free", color: "bg-cyan-500", badge: "success" },
     deepseek_direct: { label: "DeepSeek Direct", color: "bg-orange-500", badge: "warning" },

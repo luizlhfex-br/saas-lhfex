@@ -5,7 +5,7 @@
       "model": {
         "primary": "vertex/gemini-2.0-flash",
         "fallbacks": [
-          "openrouter/qwen-2.5-72b-instruct:free",
+          "openrouter/free",
           "deepseek/deepseek-chat"
         ]
       },
@@ -17,8 +17,8 @@
         "vertex/gemini-2.0-flash": {
           "alias": "default"
         },
-        "openrouter/qwen-2.5-72b-instruct:free": {
-          "alias": "free-qwen"
+        "openrouter/free": {
+          "alias": "free-router"
         },
         "openrouter/meta-llama/llama-3.3-70b-instruct:free": {
           "alias": "free-llama"
@@ -76,7 +76,7 @@
         "model": {
           "primary": "vertex/gemini-2.0-flash",
           "fallbacks": [
-            "openrouter/qwen-2.5-72b-instruct:free",
+            "openrouter/free",
             "deepseek/deepseek-chat"
           ]
         }
@@ -87,7 +87,7 @@
         "model": {
           "primary": "vertex/gemini-2.0-flash",
           "fallbacks": [
-            "openrouter/qwen-2.5-72b-instruct:free",
+            "openrouter/free",
             "deepseek/deepseek-chat"
           ]
         }
@@ -98,7 +98,7 @@
         "model": {
           "primary": "vertex/gemini-2.0-flash",
           "fallbacks": [
-            "openrouter/qwen-2.5-72b-instruct:free",
+            "openrouter/free",
             "deepseek/deepseek-chat"
           ]
         }
@@ -109,7 +109,7 @@
         "model": {
           "primary": "vertex/gemini-2.0-flash",
           "fallbacks": [
-            "openrouter/qwen-2.5-72b-instruct:free",
+            "openrouter/free",
             "deepseek/deepseek-chat"
           ]
         }
@@ -120,7 +120,7 @@
         "model": {
           "primary": "vertex/gemini-2.0-flash",
           "fallbacks": [
-            "openrouter/qwen-2.5-72b-instruct:free",
+            "openrouter/free",
             "deepseek/deepseek-chat"
           ]
         }
@@ -131,7 +131,7 @@
         "model": {
           "primary": "vertex/gemini-2.0-flash",
           "fallbacks": [
-            "openrouter/qwen-2.5-72b-instruct:free",
+            "openrouter/free",
             "deepseek/deepseek-chat"
           ]
         }
@@ -142,7 +142,7 @@
         "model": {
           "primary": "vertex/gemini-2.0-flash",
           "fallbacks": [
-            "openrouter/qwen-2.5-72b-instruct:free",
+            "openrouter/free",
             "deepseek/deepseek-chat"
           ]
         }
@@ -153,7 +153,7 @@
         "model": {
           "primary": "vertex/gemini-2.0-flash",
           "fallbacks": [
-            "openrouter/qwen-2.5-72b-instruct:free",
+            "openrouter/free",
             "deepseek/deepseek-chat"
           ]
         }

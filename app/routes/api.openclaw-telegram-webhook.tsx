@@ -14,6 +14,7 @@
 import { data } from "react-router";
 import type { Route } from "./+types/api.openclaw-telegram-webhook";
 import { askAgent } from "~/lib/ai.server";
+import { getAiProviderBadge } from "~/lib/ai-provider-presentation";
 import {
   handleCadastrarPessoa,
   handleNovoCliente,
@@ -386,12 +387,7 @@ Responda *sim* para continuar ou *não* para cancelar (válido por 10 min).`,
     });
 
     // Provider badge
-    const providerBadge = response.provider === "vertex_gemini" ? "🟣 Vertex"
-      : response.provider === "openrouter_qwen" ? "🔵 Qwen Free"
-      : response.provider === "openrouter_llama" ? "🔵 Llama Free"
-      : response.provider === "openrouter_deepseek_free" ? "🔵 R1 Free"
-      : response.provider === "deepseek_direct" ? "🟠 DeepSeek Direct"
-      : "⚪";
+    const providerBadge = getAiProviderBadge(response.provider, response.model);
 
     let responseText = response.content;
     if (responseText.length > 3900) {

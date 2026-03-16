@@ -3,8 +3,8 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.14";
-export const APP_RELEASE_DATE = "2026-03-15";
+export const APP_VERSION = "2.9.15";
+export const APP_RELEASE_DATE = "2026-03-16";
 export const APP_NAME = "LHFEX SaaS";
 
 export type ChangelogItemType = "feature" | "improvement" | "fix" | "infra";
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.15",
+    date: "2026-03-16",
+    title: "Fallback livre do OpenClaw alinhado com a OpenRouter atual",
+    items: [
+      { type: "fix", text: "OpenClaw: openclaw.json deixou de apontar para o slug invalido do Qwen Free e passou a usar openrouter/free como fallback gratuito" },
+      { type: "fix", text: "Telegram: badges e mensagens dos bots foram alinhados com o provider real, evitando respostas marcadas como Vertex quando a tentativa free falhou" },
+      { type: "improvement", text: "IA: o primeiro fallback livre do SaaS agora usa o roteador openrouter/free, que esta respondendo no ambiente atual com selecao automatica do modelo gratuito" },
+      { type: "improvement", text: "UI: painel de agentes e dashboard de uso passaram a exibir OpenRouter Free em vez do rotulo antigo de Qwen Free" },
+    ],
+  },
   {
     version: "2.9.14",
     date: "2026-03-15",

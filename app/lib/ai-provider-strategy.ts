@@ -224,7 +224,7 @@ export async function selectNextProvider(
         provider === "vertex_gemini"
           ? "Vertex Gemini disponível"
           : provider === "openrouter_qwen"
-            ? "Qwen Free disponível (fallback 1)"
+            ? "OpenRouter Free disponível (fallback 1)"
             : provider === "openrouter_llama"
               ? "Llama Free disponível (fallback 2)"
               : provider === "openrouter_deepseek_free"

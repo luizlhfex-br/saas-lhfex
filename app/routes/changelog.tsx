@@ -28,6 +28,18 @@ type Entry = {
 
 const CHANGELOG: Entry[] = [
   {
+    date: "2026-03-16",
+    version: "2.9.15",
+    type: "release",
+    title: "Fallback livre do OpenClaw alinhado com a OpenRouter atual",
+    items: [
+      "OpenClaw: o gateway deixou de usar o slug quebrado do Qwen Free e passou a apontar para openrouter/free como fallback gratuito estavel",
+      "SaaS: o primeiro fallback livre da chain tambem passou a usar openrouter/free, reduzindo falhas causadas por slugs free que perderam endpoints na OpenRouter",
+      "Telegram: badges e mensagem de erro ficaram coerentes com o provider real, sem marcar como Vertex um retorno de free indisponivel",
+      "UI: a aba Conhecimento IA e o dashboard de uso agora mostram OpenRouter Free no lugar do rotulo antigo de Qwen Free",
+    ],
+  },
+  {
     date: "2026-03-15",
     version: "2.9.14",
     type: "release",

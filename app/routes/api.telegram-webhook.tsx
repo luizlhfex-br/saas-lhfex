@@ -16,6 +16,7 @@
 import { data } from "react-router";
 import type { Route } from "./+types/api.telegram-webhook";
 import { askAgent } from "~/lib/ai.server";
+import { getAiProviderBadge } from "~/lib/ai-provider-presentation";
 import {
   handleNovoCliente,
   handleAbrirProcesso,
@@ -319,12 +320,7 @@ Responda *sim* para continuar ou *não* para cancelar (válido por 10 min).`,
         feature: "telegram",
         allowPaidFallback,
       });
-      const providerBadge = agentResponse.provider === "vertex_gemini" ? "🟣 Vertex"
-        : agentResponse.provider === "openrouter_qwen" ? "🔵 Qwen Free"
-        : agentResponse.provider === "openrouter_llama" ? "🔵 Llama Free"
-        : agentResponse.provider === "openrouter_deepseek_free" ? "🔵 R1 Free"
-        : agentResponse.provider === "deepseek_direct" ? "🟠 DeepSeek Direct"
-        : "⚪";
+      const providerBadge = getAiProviderBadge(agentResponse.provider, agentResponse.model);
       let responseText = agentResponse.content;
       if (responseText.length > 3900) responseText = responseText.slice(0, 3890) + "...\n_(truncado)_";
       responseText += `\n\n_🎤 Transcrição: "${transcription.slice(0, 100)}${transcription.length > 100 ? "..." : ""}"_\n${providerBadge} · _${agentResponse.model}_`;
@@ -353,12 +349,7 @@ Responda *sim* para continuar ou *não* para cancelar (válido por 10 min).`,
         feature: "telegram",
         allowPaidFallback,
       });
-      const providerBadge = agentResponse.provider === "vertex_gemini" ? "🟣 Vertex"
-        : agentResponse.provider === "openrouter_qwen" ? "🔵 Qwen Free"
-        : agentResponse.provider === "openrouter_llama" ? "🔵 Llama Free"
-        : agentResponse.provider === "openrouter_deepseek_free" ? "🔵 R1 Free"
-        : agentResponse.provider === "deepseek_direct" ? "🟠 DeepSeek Direct"
-        : "⚪";
+      const providerBadge = getAiProviderBadge(agentResponse.provider, agentResponse.model);
       let responseText = agentResponse.content;
       if (responseText.length > 3950) responseText = responseText.slice(0, 3940) + "...\n_(truncado)_";
       responseText += `\n\n${providerBadge} · _${agentResponse.model}_`;
@@ -378,12 +369,7 @@ Responda *sim* para continuar ou *não* para cancelar (válido por 10 min).`,
     });
 
     // Add provider badge to response
-    const providerBadge = response.provider === "vertex_gemini" ? "🟣 Vertex"
-      : response.provider === "openrouter_qwen" ? "🔵 Qwen Free"
-      : response.provider === "openrouter_llama" ? "🔵 Llama Free"
-      : response.provider === "openrouter_deepseek_free" ? "🔵 R1 Free"
-      : response.provider === "deepseek_direct" ? "🟠 DeepSeek Direct"
-      : "⚪";
+    const providerBadge = getAiProviderBadge(response.provider, response.model);
 
     // Limit to Telegram max (4096 chars)
     let responseText = response.content;

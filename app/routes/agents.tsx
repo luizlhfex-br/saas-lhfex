@@ -89,11 +89,11 @@ const modelLabels: Record<string, { label: string; badge: string; badgeClass: st
     badgeClass: "text-fuchsia-600",
     description: "Cadeia principal do gateway via Vertex AI.",
   },
-  "openrouter/qwen-2.5-72b-instruct:free": {
-    label: "Qwen 2.5 72B Free",
+  "openrouter/free": {
+    label: "OpenRouter Free Router",
     badge: "FREE",
     badgeClass: "text-sky-600",
-    description: "Fallback gratuito via OpenRouter.",
+    description: "Roteador gratuito da OpenRouter, com selecao automatica do modelo disponivel.",
   },
   "openrouter/meta-llama/llama-3.3-70b-instruct:free": {
     label: "Llama 3.3 70B Free",

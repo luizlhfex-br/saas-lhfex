@@ -82,7 +82,7 @@ A entrada mais recente vai no topo do array `CHANGELOG`.
 
 - Timezone padrao no contexto de IA: `America/Sao_Paulo`
 - Nao usar `openrouter_paid`
-- Chain atual do SAAS: Vertex Gemini -> Qwen Free -> Llama Free -> DeepSeek R1 Free -> DeepSeek Direct
+- Chain atual do SAAS: Vertex Gemini -> OpenRouter Free -> DeepSeek Direct
 - Mudancas em IA devem preservar esse comportamento
 
 ## Seguranca operacional

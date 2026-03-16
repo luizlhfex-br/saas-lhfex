@@ -1,17 +1,52 @@
 {
   "release": {
-    "version": "v2.9.14",
-    "date": "2026-03-15T00:00:00Z",
+    "version": "v2.9.15",
+    "date": "2026-03-16T00:00:00Z",
     "type": "fix",
-    "title": "Hardening de webhooks, diagnostico e escopo por empresa"
+    "title": "Fallback livre do OpenClaw alinhado com a OpenRouter atual"
   },
   "summary": {
     "commits": 1,
     "filesCreated": 1,
-    "filesModified": 13,
+    "filesModified": 15,
     "routesAdded": 0,
-    "openclaw_changes": 0,
+    "openclaw_changes": 4,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_16_openclaw_openrouter_free_router": {
+    "date": "2026-03-16",
+    "release_version": "2.9.15",
+    "objective": "Corrigir a cadeia de IA do OpenClaw e do bot do SaaS depois que o slug free antigo da OpenRouter deixou de ser aceito ou perdeu endpoints",
+    "files_changed": [
+      "app/lib/ai-provider-presentation.ts",
+      "app/lib/ai-provider-strategy.ts",
+      "app/lib/ai.server.ts",
+      "app/routes/agents.tsx",
+      "app/routes/ai-usage.tsx",
+      "app/routes/api.openclaw-telegram-webhook.tsx",
+      "app/routes/api.telegram-webhook.tsx",
+      "openclaw-gateway/entrypoint.sh",
+      "openclaw-gateway/openclaw.json",
+      "openclaw-gateway/prompts/CHANGELOG.md",
+      "openclaw-gateway/prompts/SOUL.md",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "CLAUDE.md",
+      "docs/ROADMAP.md",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "OpenClaw deixou de usar openrouter/qwen-2.5-72b-instruct:free e passou a usar openrouter/free como fallback gratuito real",
+      "O primeiro fallback livre do SaaS tambem foi movido para openrouter/free para evitar 404 de endpoints free descontinuados",
+      "Os badges e rotulos do Telegram e das telas internas passaram a mostrar OpenRouter Free em vez de Qwen Free",
+      "A mensagem de falha free-only agora orienta liberar o DeepSeek Direct com /pago ou /deepseek quando necessario",
+      "CLAUDE.md e docs/ROADMAP.md foram alinhados com a chain atual Vertex Gemini -> OpenRouter Free -> DeepSeek Direct"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros",
+      "Teste direto dos providers confirmou openrouter/free = 200 e deepseek-chat = 200"
+    ]
   },
   "session_2026_03_15_security_hardening_webhooks_company_scope": {
     "date": "2026-03-15",
