@@ -338,7 +338,8 @@ export async function action({ request }: { request: Request }) {
     const intent = formData.get("_intent") as string;
 
   // ── Promoções ──
-  if (intent === "create") {
+  if (intent === "create" || intent === "edit_promotion") {
+    const promotionId = (formData.get("promotionId") as string | null)?.trim() || null;
     const name = formData.get("name") as string;
     const company = formData.get("company") as string;
     const source = ((formData.get("source") as string) || "manual").trim() || "manual";
@@ -378,8 +379,7 @@ export async function action({ request }: { request: Request }) {
       return data({ error: "Data final não pode ser menor que a data inicial" }, { status: 400 });
     }
 
-    await db.insert(promotions).values({
-      userId: user.id,
+    const promotionPayload = {
       name,
       company,
       type,
@@ -395,7 +395,24 @@ export async function action({ request }: { request: Request }) {
       inferredLuckyNumber,
       participationStatus,
       source,
-    });
+      updatedAt: new Date(),
+    };
+
+    if (intent === "edit_promotion") {
+      if (!promotionId) {
+        return data({ error: "Promocao invalida" }, { status: 400 });
+      }
+
+      await db
+        .update(promotions)
+        .set(promotionPayload)
+        .where(and(eq(promotions.id, promotionId), eq(promotions.userId, user.id)));
+    } else {
+      await db.insert(promotions).values({
+        userId: user.id,
+        ...promotionPayload,
+      });
+    }
 
     return data({ success: true, intent });
   }
@@ -660,28 +677,53 @@ export async function action({ request }: { request: Request }) {
   }
 
   // ── Loterias (manual) ──
-  if (intent === "create_lottery") {
+  if (intent === "create_lottery" || intent === "edit_lottery") {
+    const lotteryId = (formData.get("lotteryId") as string | null)?.trim() || null;
     const gameType = (formData.get("gameType") as string | null)?.trim() || "other";
     const gameName = (formData.get("gameName") as string | null)?.trim();
     const drawDate = (formData.get("drawDate") as string | null) || null;
     const betNumbers = (formData.get("betNumbers") as string | null)?.trim() || null;
+    const drawResults = (formData.get("drawResults") as string | null)?.trim() || null;
+    const status = (formData.get("status") as string | null)?.trim() || "pending";
+    const winAmountRaw = (formData.get("winAmount") as string | null)?.trim() || "";
+    const winAmount = winAmountRaw ? winAmountRaw : null;
     const notes = (formData.get("notes") as string | null)?.trim() || null;
+    const hasWon = status === "won";
+    const isChecked = status !== "pending";
 
     if (!gameName) {
       return data({ error: "Nome da loteria é obrigatório" }, { status: 400 });
     }
 
-    await db.insert(personalLotteries).values({
-      userId: user.id,
+    const lotteryPayload = {
       gameType,
       gameName,
       drawDate,
       betNumbers,
+      drawResults,
+      winAmount,
       notes,
-      status: "pending",
-      isChecked: false,
-      hasWon: false,
-    });
+      status,
+      isChecked,
+      hasWon,
+      updatedAt: new Date(),
+    };
+
+    if (intent === "edit_lottery") {
+      if (!lotteryId) {
+        return data({ error: "Loteria invÃ¡lida" }, { status: 400 });
+      }
+
+      await db
+        .update(personalLotteries)
+        .set(lotteryPayload)
+        .where(and(eq(personalLotteries.id, lotteryId), eq(personalLotteries.userId, user.id)));
+    } else {
+      await db.insert(personalLotteries).values({
+        userId: user.id,
+        ...lotteryPayload,
+      });
+    }
 
     return data({ success: true, intent });
   }
@@ -1200,6 +1242,7 @@ export default function PromotionsPage({
 
   // Promoções state
   const [showForm, setShowForm] = useState(false);
+  const [editingPromotion, setEditingPromotion] = useState<Promotion | null>(null);
   const [extracting, setExtracting] = useState(false);
   const [extractError, setExtractError] = useState<string | null>(null);
   const [strategyLoading, setStrategyLoading] = useState(false);
@@ -1217,6 +1260,7 @@ export default function PromotionsPage({
 
   // Loterias state
   const [showLotteryForm, setShowLotteryForm] = useState(false);
+  const [editingLottery, setEditingLottery] = useState<PersonalLottery | null>(null);
 
   // SCPC state
   const scpcFetcher = useFetcher<{ results?: ScpcPromoMapeada[]; total?: number; showing?: number; error?: string }>();
@@ -1257,11 +1301,18 @@ export default function PromotionsPage({
   const visiblePromotions = activeTab === "insta" ? instagramPromotions : regularPromotions;
   const isInstagramTab = activeTab === "insta";
   const currentKpis = isInstagramTab ? kpis.instagram : kpis.manual;
+  const promotionNotesDefault = editingPromotion?.notes ?? editingPromotion?.rules ?? "";
 
   useEffect(() => {
     if (!actionPayload?.success) return;
-    if (actionPayload.intent === "create") setShowForm(false);
-    if (actionPayload.intent === "create_lottery") setShowLotteryForm(false);
+    if (actionPayload.intent === "create" || actionPayload.intent === "edit_promotion") {
+      setShowForm(false);
+      setEditingPromotion(null);
+    }
+    if (actionPayload.intent === "create_lottery" || actionPayload.intent === "edit_lottery") {
+      setShowLotteryForm(false);
+      setEditingLottery(null);
+    }
     if (actionPayload.intent === "create_contest") setShowContestForm(false);
     if (actionPayload.intent === "create_contest" || actionPayload.intent === "update_contest") {
       setEditingContest(null);
@@ -1611,13 +1662,29 @@ export default function PromotionsPage({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => { setShowScpc((v) => !v); setShowForm(false); }}
+                onClick={() => {
+                  setShowScpc((v) => !v);
+                  setShowForm(false);
+                  setEditingPromotion(null);
+                }}
               >
                 <Search className="mr-2 h-4 w-4" />
                 {showScpc ? "Fechar SCPC" : "🏛️ Buscar no SCPC"}
               </Button>
             )}
-            <Button type="button" onClick={() => { setShowForm((v) => !v); setShowScpc(false); }}>
+            <Button
+              type="button"
+              onClick={() => {
+                setShowForm((v) => {
+                  const next = !v;
+                  if (next) {
+                    setEditingPromotion(null);
+                  }
+                  return next;
+                });
+                setShowScpc(false);
+              }}
+            >
               <Plus className="mr-2 h-4 w-4" />
               {showForm ? "Fechar" : isInstagramTab ? "Novo link do Insta" : "Nova Promoção"}
             </Button>
@@ -1806,9 +1873,15 @@ export default function PromotionsPage({
               <h3 className="mb-4 font-semibold text-gray-900 dark:text-white">
                 {isInstagramTab ? "Nova promoção do Instagram" : "Nova Promoção / Sorteio"}
               </h3>
-              <Form method="post" action="/personal-life/promotions" className="space-y-4">
-                <input type="hidden" name="_intent" value="create" />
-                <input type="hidden" name="source" value={isInstagramTab ? "instagram" : "manual"} />
+              <Form
+                key={`${activeTab}-${editingPromotion?.id ?? "novo"}`}
+                method="post"
+                action="/personal-life/promotions"
+                className="space-y-4"
+              >
+                <input type="hidden" name="_intent" value={editingPromotion ? "edit_promotion" : "create"} />
+                {editingPromotion ? <input type="hidden" name="promotionId" value={editingPromotion.id} /> : null}
+                <input type="hidden" name="source" value={editingPromotion?.source ?? (isInstagramTab ? "instagram" : "manual")} />
 
                 {/* Upload de regulamento PDF */}
                 <div className={`rounded-lg border border-dashed border-indigo-300 bg-white p-3 dark:border-indigo-700 dark:bg-gray-900 ${isInstagramTab ? "hidden" : ""}`}>
@@ -1886,6 +1959,7 @@ export default function PromotionsPage({
                       type="text"
                       name="name"
                       required
+                      defaultValue={editingPromotion?.name ?? ""}
                       placeholder="Ex: Sorteio Natal Natura"
                       className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
                     />
@@ -1899,6 +1973,7 @@ export default function PromotionsPage({
                       type="text"
                       name="company"
                       required
+                      defaultValue={editingPromotion?.company ?? ""}
                       placeholder="Ex: Natura, Amazon, Magazine Luiza"
                       className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
                     />
@@ -1915,6 +1990,7 @@ export default function PromotionsPage({
                       ref={userLuckyNumbersRef}
                       type="text"
                       name="userLuckyNumbers"
+                      defaultValue={editingPromotion?.userLuckyNumbers ?? ""}
                       placeholder="Ex: 00-12345, 03-77881, 88420"
                       className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
                     />
@@ -1927,6 +2003,7 @@ export default function PromotionsPage({
                       ref={officialLuckyNumberRef}
                       type="text"
                       name="officialLuckyNumber"
+                      defaultValue={editingPromotion?.officialLuckyNumber ?? ""}
                       placeholder="Ex: 07-54321"
                       className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
                     />
@@ -1939,6 +2016,7 @@ export default function PromotionsPage({
                       ref={inferredLuckyNumberRef}
                       type="text"
                       name="inferredLuckyNumber"
+                      defaultValue={editingPromotion?.inferredLuckyNumber ?? ""}
                       placeholder="Preenchido via regulamento"
                       className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
                     />
@@ -1953,6 +2031,7 @@ export default function PromotionsPage({
                     <select
                       ref={typeRef}
                       name="type"
+                      defaultValue={editingPromotion?.type ?? "raffle"}
                       className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
                     >
                       {Object.entries(TYPE_LABELS).map(([val, label]) => (
@@ -1969,7 +2048,7 @@ export default function PromotionsPage({
                       type="date"
                       name="startDate"
                       required
-                      defaultValue={today}
+                      defaultValue={editingPromotion?.startDate ?? today}
                       className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
                     />
                   </div>
@@ -1982,6 +2061,7 @@ export default function PromotionsPage({
                       type="date"
                       name="endDate"
                       required
+                      defaultValue={editingPromotion?.endDate ?? ""}
                       className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
                     />
                   </div>
@@ -1996,6 +2076,7 @@ export default function PromotionsPage({
                           type="url"
                           name="link"
                           required
+                          defaultValue={editingPromotion?.link ?? ""}
                           placeholder="https://instagram.com/p/..."
                           className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
                         />
@@ -2019,6 +2100,7 @@ export default function PromotionsPage({
                         type="date"
                         name="endDate"
                         required
+                        defaultValue={editingPromotion?.endDate ?? ""}
                         className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
                       />
                     </div>
@@ -2032,6 +2114,7 @@ export default function PromotionsPage({
                       ref={prizeRef}
                       type="text"
                       name="prize"
+                      defaultValue={editingPromotion?.prize ?? ""}
                       placeholder="Ex: iPhone 16, R$ 1.000, Viagem"
                       className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
                     />
@@ -2044,6 +2127,7 @@ export default function PromotionsPage({
                           ref={linkRef}
                           type="url"
                           name="link"
+                          defaultValue={editingPromotion?.link ?? ""}
                           placeholder="https://..."
                           className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
                         />
@@ -2094,7 +2178,7 @@ export default function PromotionsPage({
                     </label>
                     <select
                       name="participationStatus"
-                      defaultValue={isInstagramTab ? "participated" : "pending"}
+                      defaultValue={editingPromotion?.participationStatus ?? (isInstagramTab ? "participated" : "pending")}
                       className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
                     >
                       <option value="pending">Ainda vou participar</option>
@@ -2110,6 +2194,7 @@ export default function PromotionsPage({
                     <input
                       type="text"
                       name="proofOfParticipation"
+                      defaultValue={editingPromotion?.proofOfParticipation ?? ""}
                       placeholder={isInstagramTab ? "Ex: comentei e marquei 2 amigos" : "Ex: cupom enviado por e-mail"}
                       className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
                     />
@@ -2124,13 +2209,21 @@ export default function PromotionsPage({
                     ref={notesRef}
                     name="notes"
                     rows={2}
+                    defaultValue={promotionNotesDefault}
                     placeholder="Regras, como participar, código de participação..."
                     className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
                   />
                 </div>
 
                 <div className="flex justify-end gap-3">
-                  <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setShowForm(false);
+                      setEditingPromotion(null);
+                    }}
+                  >
                     Cancelar
                   </Button>
                   <Button type="submit" disabled={isSubmitting}>
@@ -2305,6 +2398,19 @@ export default function PromotionsPage({
                           </select>
                         </Form>
 
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingPromotion(p);
+                            setShowForm(true);
+                            setShowScpc(false);
+                          }}
+                          className="rounded p-1.5 text-gray-400 hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-900/20"
+                          title="Editar"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+
                         <Form
                           method="post"
                           onSubmit={(e) => !confirm("Remover esta promoção?") && e.preventDefault()}
@@ -2336,7 +2442,19 @@ export default function PromotionsPage({
             <p className="text-sm text-gray-500 dark:text-gray-400">
               Controle manual: cadastrar aposta, conferir resultado e fechar com/sem ganho.
             </p>
-            <Button type="button" size="sm" onClick={() => setShowLotteryForm((v) => !v)}>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                setShowLotteryForm((v) => {
+                  const next = !v;
+                  if (next) {
+                    setEditingLottery(null);
+                  }
+                  return next;
+                });
+              }}
+            >
               <Plus className="mr-1 h-4 w-4" />
               {showLotteryForm ? "Fechar" : "Nova Aposta"}
             </Button>
@@ -2365,12 +2483,18 @@ export default function PromotionsPage({
 
           {showLotteryForm && (
             <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 dark:border-indigo-900 dark:bg-indigo-900/10">
-              <Form method="post" action="/personal-life/promotions" className="space-y-3">
-                <input type="hidden" name="_intent" value="create_lottery" />
+              <Form
+                key={editingLottery?.id ?? "new-lottery"}
+                method="post"
+                action="/personal-life/promotions"
+                className="space-y-3"
+              >
+                <input type="hidden" name="_intent" value={editingLottery ? "edit_lottery" : "create_lottery"} />
+                {editingLottery ? <input type="hidden" name="lotteryId" value={editingLottery.id} /> : null}
                 <div className="grid gap-3 sm:grid-cols-3">
                   <select
                     name="gameType"
-                    defaultValue="mega_sena"
+                    defaultValue={editingLottery?.gameType ?? "mega_sena"}
                     className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
                   >
                     <option value="mega_sena">Mega-Sena</option>
@@ -2383,32 +2507,71 @@ export default function PromotionsPage({
                     type="text"
                     name="gameName"
                     required
+                    defaultValue={editingLottery?.gameName ?? ""}
                     placeholder="Nome da aposta *"
                     className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
                   />
                   <input
                     type="date"
                     name="drawDate"
+                    defaultValue={editingLottery?.drawDate ?? ""}
                     className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
                   />
                 </div>
                 <textarea
                   name="betNumbers"
                   rows={2}
+                  defaultValue={editingLottery?.betNumbers ?? ""}
                   placeholder="Numeros apostados (ex: 05 10 22 31 44 60)"
                   className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
                 />
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <select
+                    name="status"
+                    defaultValue={editingLottery?.status ?? "pending"}
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                  >
+                    <option value="pending">Pendente</option>
+                    <option value="closed_no_win">Encerrada sem ganho</option>
+                    <option value="won">Ganhei</option>
+                  </select>
+                  <input
+                    type="text"
+                    name="drawResults"
+                    defaultValue={editingLottery?.drawResults ?? ""}
+                    placeholder="Resultado"
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                  />
+                  <input
+                    type="text"
+                    name="winAmount"
+                    defaultValue={editingLottery?.winAmount ?? ""}
+                    placeholder="Valor ganho (R$)"
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                  />
+                </div>
                 <textarea
                   name="notes"
                   rows={2}
+                  defaultValue={editingLottery?.notes ?? ""}
                   placeholder="Observacoes"
                   className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
                 />
                 <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" size="sm" onClick={() => setShowLotteryForm(false)}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setShowLotteryForm(false);
+                      setEditingLottery(null);
+                    }}
+                  >
                     Cancelar
                   </Button>
-                  <Button type="submit" size="sm" disabled={isSubmitting}>Salvar</Button>
+                  <Button type="submit" size="sm" disabled={isSubmitting}>
+                    {editingLottery ? "Salvar alteracoes" : "Salvar"}
+                  </Button>
                 </div>
               </Form>
             </div>
@@ -2467,6 +2630,18 @@ export default function PromotionsPage({
                         />
                         <Button type="submit" size="sm" variant="outline">Salvar</Button>
                       </Form>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingLottery(lottery);
+                          setShowLotteryForm(true);
+                        }}
+                        className="rounded p-1.5 text-gray-400 hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-900/20"
+                        title="Editar"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
 
                       <Form method="post" onSubmit={(e) => !confirm("Remover esta aposta?") && e.preventDefault()}>
                         <input type="hidden" name="_intent" value="delete_lottery" />

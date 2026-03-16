@@ -29,6 +29,18 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-16",
+    version: "2.9.17",
+    type: "release",
+    title: "Edicao completa em promocoes e prioridade para distribuicao por NCM",
+    items: [
+      "Calculadora: a distribuicao por NCM foi movida para o topo da coluna de entrada, virando o primeiro bloco de preenchimento em /calculator",
+      "Promocoes e Insta: os cards agora oferecem edicao completa do cadastro, reutilizando o formulario principal com dados ja preenchidos",
+      "Loterias: as apostas passaram a ter edicao completa de tipo, nome, data, numeros, status, resultado, premio e observacoes",
+      "Operacao: a resposta sobre Vertex ficou apoiada no teste real do provider, que segue falhando por autenticacao do SDK e nao por prompt ou quota",
+    ],
+  },
+  {
+    date: "2026-03-16",
     version: "2.9.16",
     type: "release",
     title: "Insta separado nas promocoes e teste reproduzivel do Vertex",

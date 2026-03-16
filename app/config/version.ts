@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.16";
+export const APP_VERSION = "2.9.17";
 export const APP_RELEASE_DATE = "2026-03-16";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.17",
+    date: "2026-03-16",
+    title: "Edicao completa em promocoes e prioridade para distribuicao por NCM",
+    items: [
+      { type: "improvement", text: "Calculadora: o bloco de distribuicao por NCM passou a abrir a coluna de entrada, ficando como primeiro item do preenchimento em /calculator" },
+      { type: "feature", text: "Promocoes e Insta: os registros ganharam modo de edicao reaproveitando o formulario principal, com ajuste de nome, empresa, datas, premio, link, status, comprovante e observacoes" },
+      { type: "feature", text: "Loterias: o formulario passou a servir para criar e editar aposta, incluindo tipo de jogo, data, numeros, status, resultado, valor ganho e notas" },
+      { type: "improvement", text: "Promocoes: os cards passaram a expor acao direta de editar sem depender apenas da troca rapida de status" },
+    ],
+  },
   {
     version: "2.9.16",
     date: "2026-03-16",

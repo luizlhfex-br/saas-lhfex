@@ -1,17 +1,39 @@
 {
   "release": {
-    "version": "v2.9.16",
+    "version": "v2.9.17",
     "date": "2026-03-16T00:00:00Z",
-    "type": "fix",
-    "title": "Insta separado nas promocoes e teste real do Vertex"
+    "type": "improvement",
+    "title": "Edicao completa em promocoes e prioridade para distribuicao por NCM"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 1,
-    "filesModified": 6,
+    "filesCreated": 0,
+    "filesModified": 5,
     "routesAdded": 0,
     "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_16_promotions_edit_ncm_priority": {
+    "date": "2026-03-16",
+    "release_version": "2.9.17",
+    "objective": "Colocar a distribuicao por NCM como primeiro passo da calculadora e liberar edicao completa para promocoes, Insta e loterias",
+    "files_changed": [
+      "app/routes/calculator.tsx",
+      "app/routes/personal-life.promotions.tsx",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "A calculadora passou a abrir com o bloco de distribuicao por NCM antes dos demais campos de entrada",
+      "Promocoes e Insta ganharam edicao pelo mesmo formulario de cadastro, com reaproveitamento dos dados ja salvos",
+      "Loterias passaram a ter formulario completo de edicao, incluindo status, resultado e valor ganho",
+      "Os cards de promocoes e loterias receberam acao direta de editar"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros"
+    ]
   },
   "session_2026_03_16_promotions_insta_vertex_diagnostics": {
     "date": "2026-03-16",
