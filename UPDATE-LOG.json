@@ -1,17 +1,38 @@
 {
   "release": {
-    "version": "v2.9.20",
+    "version": "v2.9.21",
     "date": "2026-03-17T00:00:00Z",
-    "type": "feature",
-    "title": "Catalogo NCM local integrado ao lookup da calculadora"
+    "type": "improvement",
+    "title": "Calculadora com resumo FOB por NCM e lookup visual melhorado"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 2,
-    "filesModified": 5,
+    "filesCreated": 0,
+    "filesModified": 4,
     "routesAdded": 0,
     "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_17_calculator_ncm_visual_summary": {
+    "date": "2026-03-17",
+    "release_version": "2.9.21",
+    "objective": "Mostrar o somatorio FOB da distribuicao por NCM e melhorar o retorno visual do lookup com codigo casado e vigencia da base",
+    "files_changed": [
+      "app/routes/calculator.tsx",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "A distribuicao por NCM passou a exibir o total FOB somado das linhas e a diferenca contra o FOB principal informado",
+      "Cada linha multi-NCM agora mostra tipo de match, codigo casado, base vigente e ato quando o catalogo local encontra a NCM",
+      "O card principal de NCM passou a mostrar codigo casado, match exato ou por prefixo, base vigente e ato normativo da tabela",
+      "O resumo visual do lookup ficou mais legivel para conferencia rapida durante a simulacao"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros"
+    ]
   },
   "session_2026_03_17_ncm_catalog_local_lookup": {
     "date": "2026-03-17",

@@ -40,6 +40,10 @@ type NcmAllocation = {
   cofinsRate: number;
   description?: string;
   source?: string;
+  matchedCode?: string;
+  matchType?: string;
+  catalogUpdatedAt?: string;
+  catalogAct?: string;
 };
 
 type NcmTaxLookupResponse = {
@@ -51,6 +55,10 @@ type NcmTaxLookupResponse = {
   ncmDescription?: string | null;
   description?: string | null;
   source?: string;
+  catalogMatchType?: string | null;
+  catalogMatchedCode?: string | null;
+  catalogUpdatedAt?: string | null;
+  catalogAct?: string | null;
 };
 
 function normalizeNcmCode(value: string): string {
@@ -69,6 +77,12 @@ function getNcmSourceLabel(source?: string): string {
   if (source === "catalog_default") return "Catalogo NCM local + padrao estimado";
   if (source === "tec_table") return "Tabela estimada";
   if (source === "default") return "Padrao estimado";
+  return "";
+}
+
+function getNcmMatchLabel(matchType?: string | null): string {
+  if (matchType === "exact") return "Match exato";
+  if (matchType === "parent") return "Match por prefixo pai";
   return "";
 }
 
@@ -216,6 +230,10 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
   const [ncmDescription, setNcmDescription] = useState("");
   const [ncmLoading, setNcmLoading] = useState(false);
   const [ncmSource, setNcmSource] = useState("");
+  const [ncmMatchedCode, setNcmMatchedCode] = useState("");
+  const [ncmMatchType, setNcmMatchType] = useState("");
+  const [ncmCatalogUpdatedAt, setNcmCatalogUpdatedAt] = useState("");
+  const [ncmCatalogAct, setNcmCatalogAct] = useState("");
 
   // Modal
   const [modal, setModal] = useState<ModalType>("sea_fcl");
@@ -486,6 +504,10 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
     setNcm("");
     setNcmDescription("");
     setNcmSource("");
+    setNcmMatchedCode("");
+    setNcmMatchType("");
+    setNcmCatalogUpdatedAt("");
+    setNcmCatalogAct("");
     setFreightAir(0);
     setDespachangeAir(2500);
     setSiscomexAir(214.5);
@@ -534,6 +556,10 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
       setCofinsRate(data.cofins);
       setNcmDescription(data.ncmDescription || data.description || "");
       setNcmSource(getNcmSourceLabel(data.source));
+      setNcmMatchedCode(data.catalogMatchedCode || "");
+      setNcmMatchType(getNcmMatchLabel(data.catalogMatchType));
+      setNcmCatalogUpdatedAt(data.catalogUpdatedAt || "");
+      setNcmCatalogAct(data.catalogAct || "");
     } catch {
       // Ignore
     } finally {
@@ -559,6 +585,10 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
         cofinsRate: data.cofins,
         description: data.ncmDescription || data.description || "",
         source: getNcmSourceLabel(data.source),
+        matchedCode: data.catalogMatchedCode || "",
+        matchType: getNcmMatchLabel(data.catalogMatchType),
+        catalogUpdatedAt: data.catalogUpdatedAt || "",
+        catalogAct: data.catalogAct || "",
       });
     } catch {
       // Ignore
@@ -571,6 +601,10 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
     setNcm(formatNcmCode(value));
     setNcmDescription("");
     setNcmSource("");
+    setNcmMatchedCode("");
+    setNcmMatchType("");
+    setNcmCatalogUpdatedAt("");
+    setNcmCatalogAct("");
   };
 
   useEffect(() => {
@@ -579,6 +613,10 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
       if (clean.length === 0) {
         setNcmDescription("");
         setNcmSource("");
+        setNcmMatchedCode("");
+        setNcmMatchType("");
+        setNcmCatalogUpdatedAt("");
+        setNcmCatalogAct("");
       }
       return;
     }
@@ -622,6 +660,9 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
       }
     };
   }, [ncmAllocations, lookupNcmAllocation, resolvedNcmAllocationCodes]);
+
+  const ncmAllocationTotalUsd = ncmAllocations.reduce((sum, row) => sum + (Number(row.merchandiseValueUsd) || 0), 0);
+  const ncmAllocationDeltaUsd = ncmAllocationTotalUsd - fob;
 
   const colors = colorClasses[currentModal.color as keyof typeof colorClasses];
 
@@ -721,6 +762,10 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
                               code: formatNcmCode(e.target.value),
                               description: "",
                               source: "",
+                              matchedCode: "",
+                              matchType: "",
+                              catalogUpdatedAt: "",
+                              catalogAct: "",
                             })
                           }
                           onBlur={() => void lookupNcmAllocation(row.id, row.code)}
@@ -782,7 +827,7 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
                         </button>
                       </div>
 
-                      {(isLoading || row.description || row.source) && (
+                      {(isLoading || row.description || row.source || row.matchedCode || row.catalogUpdatedAt) && (
                         <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400">
                           {isLoading && (
                             <>
@@ -792,11 +837,31 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
                           )}
                           {!isLoading && row.description && <span>{row.description}</span>}
                           {!isLoading && row.source && <span>Fonte: {row.source}</span>}
+                          {!isLoading && row.matchType && <span>{row.matchType}</span>}
+                          {!isLoading && row.matchedCode && <span>Codigo casado: {row.matchedCode}</span>}
+                          {!isLoading && row.catalogUpdatedAt && <span>Base: {row.catalogUpdatedAt}</span>}
+                          {!isLoading && row.catalogAct && <span>Ato: {row.catalogAct}</span>}
                         </div>
                       )}
                     </div>
                   );
                 })}
+                <div className="rounded-lg border border-dashed border-blue-200 bg-blue-50/70 px-3 py-2 text-xs text-blue-900 dark:border-blue-900/40 dark:bg-blue-900/10 dark:text-blue-100">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-semibold">Total FOB distribuido</span>
+                    <span className="font-mono">USD {fmt(ncmAllocationTotalUsd)}</span>
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                    <span>FOB principal informado</span>
+                    <span className="font-mono">USD {fmt(fob)}</span>
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                    <span>Diferenca</span>
+                    <span className={`font-mono ${Math.abs(ncmAllocationDeltaUsd) < 0.01 ? "text-green-700 dark:text-green-300" : "text-amber-700 dark:text-amber-300"}`}>
+                      USD {fmt(ncmAllocationDeltaUsd)}
+                    </span>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -832,14 +897,23 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
                 Buscar
               </Button>
             </div>
-            {ncmDescription && (
+            {(ncmDescription || ncmMatchedCode || ncmCatalogUpdatedAt) && (
               <div className="mt-3 rounded-lg bg-purple-50 p-3 dark:bg-purple-900/20">
-                <p className="text-xs font-medium text-purple-700 dark:text-purple-400">
-                  {ncmDescription}
-                </p>
+                {ncmDescription && (
+                  <p className="text-xs font-medium text-purple-700 dark:text-purple-400">
+                    {ncmDescription}
+                  </p>
+                )}
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-purple-600 dark:text-purple-300">
+                  {ncmSource && <span>Fonte: {ncmSource}</span>}
+                  {ncmMatchType && <span>{ncmMatchType}</span>}
+                  {ncmMatchedCode && <span>Código casado: {ncmMatchedCode}</span>}
+                  {ncmCatalogUpdatedAt && <span>Base: {ncmCatalogUpdatedAt}</span>}
+                  {ncmCatalogAct && <span>Ato: {ncmCatalogAct}</span>}
+                </div>
                 {ncmSource && (
-                  <p className="mt-1 text-xs text-purple-500">
-                    Fonte: {ncmSource} — alíquotas preenchidas automaticamente (editáveis)
+                  <p className="mt-2 text-xs text-purple-500">
+                    Alíquotas preenchidas automaticamente para simulação e continuam editáveis.
                   </p>
                 )}
               </div>

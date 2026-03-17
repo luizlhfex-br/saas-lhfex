@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.20";
+export const APP_VERSION = "2.9.21";
 export const APP_RELEASE_DATE = "2026-03-17";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.21",
+    date: "2026-03-17",
+    title: "Calculadora com resumo FOB por NCM e lookup visual melhorado",
+    items: [
+      { type: "feature", text: "Calculadora: a distribuicao por NCM agora mostra o total FOB somado das linhas e a diferenca contra o FOB principal informado" },
+      { type: "improvement", text: "Calculadora: cada linha multi-NCM passou a exibir codigo casado, tipo de match e vigencia da base quando o catalogo local encontra a NCM" },
+      { type: "improvement", text: "Calculadora: o bloco principal de lookup de NCM agora mostra codigo casado, match exato ou por prefixo, base vigente e ato normativo da tabela" },
+      { type: "improvement", text: "Calculadora: o resumo do lookup principal ficou mais legivel para uso operacional rapido sem abrir outra tela" },
+    ],
+  },
   {
     version: "2.9.20",
     date: "2026-03-17",

@@ -29,6 +29,18 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-17",
+    version: "2.9.21",
+    type: "release",
+    title: "Calculadora com resumo FOB e lookup de NCM mais visual",
+    items: [
+      "Calculadora: a distribuicao por NCM passou a mostrar o total FOB distribuido e a diferenca contra o FOB principal informado",
+      "Calculadora: cada linha da distribuicao agora exibe codigo casado, tipo de match e base vigente quando o catalogo local encontra a NCM",
+      "Lookup principal: o card de NCM passou a mostrar codigo casado, match exato ou por prefixo, base vigente e ato normativo da tabela",
+      "Uso operacional: o retorno do lookup ficou mais visual para conferencia rapida sem precisar sair da calculadora",
+    ],
+  },
+  {
+    date: "2026-03-17",
     version: "2.9.20",
     type: "release",
     title: "Catalogo NCM local integrado ao lookup da calculadora",
