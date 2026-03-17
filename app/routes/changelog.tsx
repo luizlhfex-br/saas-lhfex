@@ -28,6 +28,19 @@ type Entry = {
 
 const CHANGELOG: Entry[] = [
   {
+    date: "2026-03-17",
+    version: "2.9.18",
+    type: "release",
+    title: "Vertex via ADC e Express Mode isolado para diagnostico",
+    items: [
+      "IA: vertex_gemini deixou de depender de GEMINI_VERTEX_API_KEY no fluxo principal e passou a inicializar com autenticacao Google de servidor via ADC ou arquivo de service account",
+      "IA: strategy, /api/ai-diagnostics e /api/chat-health agora diferenciam project configurado de credencial realmente presente, evitando falso positivo de Vertex disponivel",
+      "Operacao: novo helper app/lib/vertex-auth.server.ts centraliza a leitura de GOOGLE_PROJECT_ID, GOOGLE_APPLICATION_CREDENTIALS e do arquivo local application_default_credentials.json",
+      "Operacao: npm run ops:test-vertex-express foi criado com o SDK oficial @google/genai para validar Express Mode com API key sem mexer na chain principal do SaaS",
+      "Diagnostico real: o ambiente local segue sem ADC carregado e a chave atual de API nao esta sendo aceita como chave de Vertex AI Express Mode",
+    ],
+  },
+  {
     date: "2026-03-16",
     version: "2.9.17",
     type: "release",

@@ -3,8 +3,8 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.17";
-export const APP_RELEASE_DATE = "2026-03-16";
+export const APP_VERSION = "2.9.18";
+export const APP_RELEASE_DATE = "2026-03-17";
 export const APP_NAME = "LHFEX SaaS";
 
 export type ChangelogItemType = "feature" | "improvement" | "fix" | "infra";
@@ -20,6 +20,18 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.18",
+    date: "2026-03-17",
+    title: "Vertex alinhado para ADC e teste separado de Express Mode",
+    items: [
+      { type: "fix", text: "IA: o provider vertex_gemini deixou de depender de GEMINI_VERTEX_API_KEY e agora usa autenticacao Google de servidor via ADC ou arquivo de service account" },
+      { type: "improvement", text: "IA: a estrategia de providers e os endpoints de diagnostico passaram a diferenciar project configurado de credencial realmente presente, evitando anunciar Vertex como pronto quando o ADC estiver ausente" },
+      { type: "feature", text: "Operacao: novo helper vertex-auth.server centraliza projectId, arquivo GOOGLE_APPLICATION_CREDENTIALS e presenca do ADC local padrao" },
+      { type: "feature", text: "Operacao: npm run ops:test-vertex-express foi criado com o SDK oficial @google/genai para validar Express Mode em separado sem contaminar o fluxo principal do SaaS" },
+      { type: "improvement", text: "Docs de ambiente: .env.example passou a documentar GOOGLE_PROJECT_ID, GOOGLE_APPLICATION_CREDENTIALS e as envs dedicadas do teste de Express Mode" },
+    ],
+  },
   {
     version: "2.9.17",
     date: "2026-03-16",

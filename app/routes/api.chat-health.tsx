@@ -4,6 +4,7 @@ import { getUserRole, ROLES } from "~/lib/rbac.server";
 import { db } from "~/lib/db.server";
 import { chatConversations } from "drizzle/schema";
 import { sql } from "drizzle-orm";
+import { getVertexAuthState, isVertexConfigured } from "~/lib/vertex-auth.server";
 
 /**
  * Chat Health Check Endpoint
@@ -64,8 +65,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
 
   // Check 3: AI Provider Configuration
+  const vertexAuth = getVertexAuthState();
   const providers: Record<string, boolean> = {
-    vertex_gemini: Boolean(process.env.GEMINI_VERTEX_API_KEY && process.env.GOOGLE_PROJECT_ID),
+    vertex_gemini: isVertexConfigured(),
     openrouter_qwen: Boolean(process.env.OPENROUTER_API_KEY),
     openrouter_llama: Boolean(process.env.OPENROUTER_API_KEY),
     openrouter_deepseek_free: Boolean(process.env.OPENROUTER_API_KEY),
@@ -87,7 +89,17 @@ export async function loader({ request }: Route.LoaderArgs) {
     healthStatus.checks.aiProviders = {
       status: "pass",
       message: `${activeProviders.length} provider(s) configured`,
-      details: { active: activeProviders },
+      details: {
+        active: activeProviders,
+        vertex: {
+          authMode: vertexAuth.authMode,
+          projectConfigured: Boolean(vertexAuth.projectId),
+          credentialsPathConfigured: Boolean(vertexAuth.credentialsPath),
+          credentialsFileExists: vertexAuth.credentialsFileExists,
+          defaultCredentialsPathConfigured: Boolean(vertexAuth.defaultCredentialsPath),
+          defaultCredentialsFileExists: vertexAuth.defaultCredentialsFileExists,
+        },
+      },
     };
   }
 

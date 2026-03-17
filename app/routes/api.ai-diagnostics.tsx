@@ -7,6 +7,7 @@
 import type { Route } from "./+types/api.ai-diagnostics";
 import { requireAuth } from "~/lib/auth.server";
 import { getUserRole, ROLES } from "~/lib/rbac.server";
+import { getVertexAuthState, isVertexConfigured } from "~/lib/vertex-auth.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
@@ -21,6 +22,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       status: "available" | "unavailable" | "unknown";
       features: string[];
       priority: number;
+      details?: Record<string, unknown>;
     }>;
     features: Record<string, {
       status: "enabled" | "disabled";
@@ -42,15 +44,30 @@ export async function loader({ request }: Route.LoaderArgs) {
   };
 
   // Check Provider Configuration
-  const vertexConfigured = Boolean(process.env.GEMINI_VERTEX_API_KEY && process.env.GOOGLE_PROJECT_ID);
+  const vertexAuth = getVertexAuthState();
+  const vertexConfigured = isVertexConfigured();
   const openrouterConfigured = Boolean(process.env.OPENROUTER_API_KEY);
   const deepseekConfigured = Boolean(process.env.DEEPSEEK_API_KEY);
 
   diagnostics.providers.vertex_gemini = {
     configured: vertexConfigured,
-    status: vertexConfigured ? "available" : "unavailable",
+    status: !vertexAuth.projectId
+      ? "unavailable"
+      : vertexAuth.authMode === "service-account-file" || vertexAuth.authMode === "application-default-credentials"
+        ? "available"
+        : vertexAuth.authMode === "service-account-file-missing" || vertexAuth.authMode === "application-default-credentials-missing"
+          ? "unavailable"
+          : "unknown",
     features: ["chat", "ncm_classification", "life_agent", "ocr"],
     priority: 1,
+    details: {
+      authMode: vertexAuth.authMode,
+      projectConfigured: Boolean(vertexAuth.projectId),
+      credentialsPathConfigured: Boolean(vertexAuth.credentialsPath),
+      credentialsFileExists: vertexAuth.credentialsFileExists,
+      defaultCredentialsPathConfigured: Boolean(vertexAuth.defaultCredentialsPath),
+      defaultCredentialsFileExists: vertexAuth.defaultCredentialsFileExists,
+    },
   };
 
   diagnostics.providers.openrouter_qwen = {

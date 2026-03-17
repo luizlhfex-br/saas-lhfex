@@ -5,6 +5,7 @@
 import { db } from "~/lib/db.server";
 import { aiUsageLogs } from "drizzle/schema";
 import { sql } from "drizzle-orm";
+import { getVertexAuthState, isVertexConfigured } from "~/lib/vertex-auth.server";
 
 // ── Configuração de Orçamentos ──
 
@@ -15,7 +16,7 @@ export const PROVIDER_BUDGETS = {
     alertAt: 0.8,
     costPerMTok: 0,
     priority: 1,
-    requiredEnvs: ["GEMINI_VERTEX_API_KEY", "GOOGLE_PROJECT_ID"],
+    requiredEnvs: [],
   },
   openrouter_qwen: {
     monthlyBudget: Number.POSITIVE_INFINITY,
@@ -155,6 +156,36 @@ export async function isProviderAvailable(
   const costToday = await getCostToday(provider);
   const costMonth = await getCostThisMonth(provider);
   const percentOfMonth = (costMonth / config.monthlyBudget) * 100;
+
+  if (provider === "vertex_gemini") {
+    const vertexAuth = getVertexAuthState();
+    if (!isVertexConfigured()) {
+      return {
+        provider,
+        available: false,
+        costToday,
+        costMonth,
+        percentOfMonth: 0,
+        reason: vertexAuth.projectId
+          ? vertexAuth.authMode === "service-account-file-missing"
+            ? "GOOGLE_APPLICATION_CREDENTIALS aponta para arquivo inexistente"
+            : "ADC ausente: rode gcloud auth application-default login ou configure GOOGLE_APPLICATION_CREDENTIALS"
+          : "Env ausente: GOOGLE_PROJECT_ID",
+      };
+    }
+
+    return {
+      provider,
+      available: true,
+      costToday,
+      costMonth,
+      percentOfMonth: 0,
+      reason:
+        vertexAuth.authMode === "service-account-file"
+          ? "Service account configurada para Vertex"
+          : "Vertex aguardando ADC/identidade anexada no runtime",
+    };
+  }
 
   const missingEnv = config.requiredEnvs.find((envName) => !process.env[envName]?.trim());
   if (missingEnv) {

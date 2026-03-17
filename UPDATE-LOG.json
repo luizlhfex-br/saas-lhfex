@@ -1,17 +1,51 @@
 {
   "release": {
-    "version": "v2.9.17",
-    "date": "2026-03-16T00:00:00Z",
+    "version": "v2.9.18",
+    "date": "2026-03-17T00:00:00Z",
     "type": "improvement",
-    "title": "Edicao completa em promocoes e prioridade para distribuicao por NCM"
+    "title": "Vertex alinhado para ADC e Express Mode isolado para diagnostico"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 0,
-    "filesModified": 5,
+    "filesCreated": 2,
+    "filesModified": 11,
     "routesAdded": 0,
     "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_17_vertex_adc_express_mode": {
+    "date": "2026-03-17",
+    "release_version": "2.9.18",
+    "objective": "Trocar o fluxo principal do Vertex para ADC/service account e criar um teste separado de Express Mode por API key",
+    "files_changed": [
+      "app/lib/vertex-auth.server.ts",
+      "app/lib/ai.server.ts",
+      "app/lib/ai-provider-strategy.ts",
+      "app/routes/api.ai-diagnostics.tsx",
+      "app/routes/api.chat-health.tsx",
+      "scripts/test-vertex-provider.ts",
+      "scripts/test-vertex-express-mode.ts",
+      "package.json",
+      "package-lock.json",
+      ".env.example",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "Vertex principal passou a usar autenticacao Google de servidor, sem depender mais de GEMINI_VERTEX_API_KEY no runtime normal do SaaS",
+      "Foi criado um helper compartilhado para detectar project ID, arquivo GOOGLE_APPLICATION_CREDENTIALS e o arquivo local de ADC application_default_credentials.json",
+      "A estrategia de providers passou a pular Vertex quando o projeto existe mas o ADC ou o arquivo de service account ainda nao estao presentes",
+      "Os endpoints internos de diagnostico agora mostram authMode, presenca de project, arquivo configurado e ADC local encontrado ou ausente",
+      "Foi criado o comando npm run ops:test-vertex-express usando o SDK oficial @google/genai para validar Express Mode com API key de forma isolada",
+      "O .env.example passou a documentar as envs do Vertex por ADC e as envs opcionais do teste de Express Mode"
+    ],
+    "verification": [
+      "npm run ops:test-vertex confirmou project configurado, ADC ausente e fallback automatico valido para OpenRouter Free",
+      "npm run ops:test-vertex-express confirmou que a API key atual nao esta sendo aceita como chave de Vertex AI Express Mode",
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros"
+    ]
   },
   "session_2026_03_16_promotions_edit_ncm_priority": {
     "date": "2026-03-16",

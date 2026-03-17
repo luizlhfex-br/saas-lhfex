@@ -10,6 +10,7 @@ import { processes, invoices, clients, aiUsageLogs, personalFinance, personalInv
 import { isNull, and, notInArray, sql, eq, desc, asc } from "drizzle-orm";
 import { recordFailure, recordSuccess, checkAndAlert } from "~/lib/ai-metrics.server";
 import { selectNextProvider, logProviderDecision, type ProviderType, type StrategyDecision } from "~/lib/ai-provider-strategy";
+import { getVertexAuthState, getVertexProjectId } from "~/lib/vertex-auth.server";
 
 // --- Types ---
 
@@ -317,31 +318,20 @@ function buildVertexCountTokensPayload(userMessage: string): CountTokensRequest 
   };
 }
 
-function getVertexProjectId(): string | null {
-  return (
-    process.env.GOOGLE_PROJECT_ID?.trim() ||
-    process.env.GOOGLE_CLOUD_PROJECT?.trim() ||
-    process.env.GCLOUD_PROJECT?.trim() ||
-    null
-  );
-}
-
 function getVertexClient(): VertexAI {
   if (vertexClient) return vertexClient;
 
-  const apiKey = process.env.GEMINI_VERTEX_API_KEY?.trim();
   const project = getVertexProjectId();
-  if (!apiKey) throw new Error("GEMINI_VERTEX_API_KEY not configured");
-  if (!project) throw new Error("GOOGLE_PROJECT_ID not configured");
+  const authState = getVertexAuthState();
+  if (!project) throw new Error("GOOGLE_PROJECT_ID (ou equivalente) not configured");
+  if (authState.authMode === "service-account-file-missing") {
+    throw new Error(`GOOGLE_APPLICATION_CREDENTIALS points to a missing file: ${authState.credentialsPath}`);
+  }
 
   vertexClient = new VertexAI({
     project,
     location: VERTEX_GEMINI_LOCATION,
     apiEndpoint: VERTEX_API_ENDPOINT || undefined,
-    googleAuthOptions: {
-      apiKey,
-      projectId: project,
-    },
   });
 
   return vertexClient;

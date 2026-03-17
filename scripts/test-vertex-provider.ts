@@ -39,9 +39,28 @@ if (existsSync(envPath)) {
   loadEnvFile(envPath);
 }
 
+const { getVertexAuthState } = await import("../app/lib/vertex-auth.server");
 const { askAgent } = await import("../app/lib/ai.server");
 
 async function run() {
+  const authState = getVertexAuthState();
+
+  console.log("=== Ambiente Vertex (ADC) ===");
+  console.log(
+    JSON.stringify(
+      {
+        projectId: authState.projectId,
+        authMode: authState.authMode,
+        credentialsPathConfigured: Boolean(authState.credentialsPath),
+        credentialsFileExists: authState.credentialsFileExists,
+        defaultCredentialsPathConfigured: Boolean(authState.defaultCredentialsPath),
+        defaultCredentialsFileExists: authState.defaultCredentialsFileExists,
+      },
+      null,
+      2,
+    ),
+  );
+
   console.log("=== Teste 1: Vertex forçado ===");
   try {
     const vertex = await askAgent("airton", "Responda apenas OK.", "", {
