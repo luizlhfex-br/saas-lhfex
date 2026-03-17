@@ -1,17 +1,38 @@
 {
   "release": {
-    "version": "v2.9.18",
+    "version": "v2.9.19",
     "date": "2026-03-17T00:00:00Z",
     "type": "improvement",
-    "title": "Vertex alinhado para ADC e Express Mode isolado para diagnostico"
+    "title": "Calculadora com NCM automatico e distribuicao saneada"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 2,
-    "filesModified": 11,
+    "filesCreated": 0,
+    "filesModified": 4,
     "routesAdded": 0,
     "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_17_calculator_ncm_auto_fill": {
+    "date": "2026-03-17",
+    "release_version": "2.9.19",
+    "objective": "Corrigir o texto quebrado da distribuicao por NCM e puxar automaticamente aliquotas estimadas ao informar o NCM na calculadora",
+    "files_changed": [
+      "app/routes/calculator.tsx",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "O bloco principal de distribuicao por NCM foi saneado e o trecho duplicado morto foi removido da rota",
+      "O campo principal de NCM passou a consultar automaticamente o endpoint interno de aliquotas estimadas enquanto o usuario digita",
+      "Cada linha da distribuicao por NCM agora formata o codigo, busca automaticamente descricao e aliquotas estimadas e informa a fonte da previsao",
+      "O preenchimento automatico continua editavel para manter a calculadora como simulacao operacional, sem travar o usuario nos valores sugeridos"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros"
+    ]
   },
   "session_2026_03_17_vertex_adc_express_mode": {
     "date": "2026-03-17",

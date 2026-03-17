@@ -29,6 +29,18 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-17",
+    version: "2.9.19",
+    type: "release",
+    title: "Calculadora com NCM automatico e distribuicao saneada",
+    items: [
+      "Calculadora: o bloco de distribuicao por NCM deixou de exibir texto corrompido e o duplicado morto foi removido da rota",
+      "Calculadora: o campo principal de NCM agora consulta automaticamente as aliquotas estimadas de II, IPI, PIS e COFINS enquanto o codigo e digitado",
+      "Calculadora: cada linha da distribuicao por NCM passou a buscar a previsao de aliquotas, descricao e fonte sem depender de preenchimento manual completo",
+      "Simulacao: as aliquotas continuam editaveis apos o autopreenchimento para permitir ajuste operacional sem prender o usuario ao valor sugerido",
+    ],
+  },
+  {
+    date: "2026-03-17",
     version: "2.9.18",
     type: "release",
     title: "Vertex via ADC e Express Mode isolado para diagnostico",

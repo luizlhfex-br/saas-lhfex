@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type { Route } from "./+types/calculator";
 import { requireAuth } from "~/lib/auth.server";
 import { t, type Locale } from "~/i18n";
@@ -38,7 +38,37 @@ type NcmAllocation = {
   ipiRate: number;
   pisRate: number;
   cofinsRate: number;
+  description?: string;
+  source?: string;
 };
+
+type NcmTaxLookupResponse = {
+  code: string;
+  ii: number;
+  ipi: number;
+  pis: number;
+  cofins: number;
+  ncmDescription?: string | null;
+  description?: string | null;
+  source?: string;
+};
+
+function normalizeNcmCode(value: string): string {
+  return value.replace(/\D/g, "").slice(0, 8);
+}
+
+function formatNcmCode(value: string): string {
+  const digits = normalizeNcmCode(value);
+  if (digits.length <= 4) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 4)}.${digits.slice(4)}`;
+  return `${digits.slice(0, 4)}.${digits.slice(4, 6)}.${digits.slice(6)}`;
+}
+
+function getNcmSourceLabel(source?: string): string {
+  if (source === "tec_table") return "Tabela estimada";
+  if (source === "default") return "Padrao estimado";
+  return "";
+}
 
 // ─── Tipos de Modalidade ────────────────────────────────────────────────────
 type ModalType = "air_formal" | "courier" | "sea_lcl" | "sea_fcl";
@@ -229,6 +259,8 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
   const [icmsRate, setIcmsRate] = useState(currentModal.icmsRate);
   const [ncmAllocations, setNcmAllocations] = useState<NcmAllocation[]>([]);
   const [nextNcmAllocationId, setNextNcmAllocationId] = useState(1);
+  const [ncmAllocationLoadingIds, setNcmAllocationLoadingIds] = useState<number[]>([]);
+  const [resolvedNcmAllocationCodes, setResolvedNcmAllocationCodes] = useState<Record<number, string>>({});
 
   // Modal-specific values
   // Aéreo Formal
@@ -298,12 +330,27 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
   };
 
   const removeNcmAllocation = (id: number) => {
+    setResolvedNcmAllocationCodes((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
     setNcmAllocations((prev) => prev.filter((row) => row.id !== id));
   };
 
   const updateNcmAllocation = (id: number, patch: Partial<NcmAllocation>) => {
     setNcmAllocations((prev) => prev.map((row) => (row.id === id ? { ...row, ...patch } : row)));
   };
+
+  const fetchNcmTaxes = useCallback(async (code: string): Promise<NcmTaxLookupResponse | null> => {
+    const clean = normalizeNcmCode(code);
+    if (clean.length < 4) return null;
+
+    const res = await fetch(`/api/ncm-taxes?code=${encodeURIComponent(clean)}`);
+    if (!res.ok) return null;
+
+    return res.json() as Promise<NcmTaxLookupResponse>;
+  }, []);
 
   // ─── Cálculos por modalidade ─────────────────────────────────────────────
   const calcResult = (() => {
@@ -472,35 +519,107 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
 
   // NCM lookup
   const lookupNCM = useCallback(async (code: string) => {
-    const clean = code.replace(/[.\s-]/g, "");
+    const clean = normalizeNcmCode(code);
     if (clean.length < 4) return;
     setNcmLoading(true);
     try {
-      const res = await fetch(`/api/ncm-taxes?code=${encodeURIComponent(clean)}`);
-      if (res.ok) {
-        const data = await res.json();
-        setIiRate(data.ii);
-        setIpiRate(data.ipi);
-        setPisRate(data.pis);
-        setCofinsRate(data.cofins);
-        setNcmDescription(data.ncmDescription || data.description || "");
-        setNcmSource(data.source === "tec_table" ? "TEC" : "Padrão");
-      }
+      const data = await fetchNcmTaxes(clean);
+      if (!data) return;
+      setNcm(formatNcmCode(clean));
+      setIiRate(data.ii);
+      setIpiRate(data.ipi);
+      setPisRate(data.pis);
+      setCofinsRate(data.cofins);
+      setNcmDescription(data.ncmDescription || data.description || "");
+      setNcmSource(getNcmSourceLabel(data.source));
     } catch {
       // Ignore
     } finally {
       setNcmLoading(false);
     }
-  }, []);
+  }, [fetchNcmTaxes]);
+
+  const lookupNcmAllocation = useCallback(async (id: number, code: string) => {
+    const clean = normalizeNcmCode(code);
+    if (clean.length < 4) return;
+
+    setNcmAllocationLoadingIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    try {
+      const data = await fetchNcmTaxes(clean);
+      if (!data) return;
+
+      setResolvedNcmAllocationCodes((prev) => ({ ...prev, [id]: clean }));
+      updateNcmAllocation(id, {
+        code: formatNcmCode(clean),
+        iiRate: data.ii,
+        ipiRate: data.ipi,
+        pisRate: data.pis,
+        cofinsRate: data.cofins,
+        description: data.ncmDescription || data.description || "",
+        source: getNcmSourceLabel(data.source),
+      });
+    } catch {
+      // Ignore
+    } finally {
+      setNcmAllocationLoadingIds((prev) => prev.filter((itemId) => itemId !== id));
+    }
+  }, [fetchNcmTaxes]);
 
   const handleNcmChange = (value: string) => {
-    const digits = value.replace(/\D/g, "").slice(0, 8);
-    let formatted = digits;
-    if (digits.length > 4) formatted = digits.slice(0, 4) + "." + digits.slice(4);
-    if (digits.length > 6)
-      formatted = digits.slice(0, 4) + "." + digits.slice(4, 6) + "." + digits.slice(6);
-    setNcm(formatted);
+    setNcm(formatNcmCode(value));
+    setNcmDescription("");
+    setNcmSource("");
   };
+
+  useEffect(() => {
+    const clean = normalizeNcmCode(ncm);
+    if (clean.length < 4) {
+      if (clean.length === 0) {
+        setNcmDescription("");
+        setNcmSource("");
+      }
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      void lookupNCM(clean);
+    }, 450);
+
+    return () => window.clearTimeout(timer);
+  }, [ncm, lookupNCM]);
+
+  useEffect(() => {
+    const timers: number[] = [];
+
+    for (const row of ncmAllocations) {
+      const clean = normalizeNcmCode(row.code);
+      if (clean.length < 4) {
+        if (resolvedNcmAllocationCodes[row.id]) {
+          setResolvedNcmAllocationCodes((prev) => {
+            const next = { ...prev };
+            delete next[row.id];
+            return next;
+          });
+        }
+        continue;
+      }
+
+      if (resolvedNcmAllocationCodes[row.id] === clean && (row.description || row.source)) {
+        continue;
+      }
+
+      const timer = window.setTimeout(() => {
+        void lookupNcmAllocation(row.id, clean);
+      }, 450);
+      timers.push(timer);
+    }
+
+    return () => {
+      for (const timer of timers) {
+        window.clearTimeout(timer);
+      }
+    };
+  }, [ncmAllocations, lookupNcmAllocation, resolvedNcmAllocationCodes]);
 
   const colors = colorClasses[currentModal.color as keyof typeof colorClasses];
 
@@ -573,83 +692,109 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
         <div className="space-y-6">
           <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">DistribuiÃ§Ã£o por NCM</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Distribuicao por NCM</h2>
               <Button type="button" variant="outline" size="sm" onClick={addNcmAllocation}>
                 <Plus className="h-4 w-4" />
                 Adicionar NCM
               </Button>
             </div>
             <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
-              Use quando houver embarque com vÃ¡rios NCMs. Informe o valor de mercadoria por NCM e as alÃ­quotas II/IPI/PIS/COFINS de cada item.
+              Use quando houver embarque com varios NCMs. Informe o valor de mercadoria por NCM e as aliquotas II/IPI/PIS/COFINS de cada item.
             </p>
             {ncmAllocations.length === 0 ? (
-              <p className="text-xs text-gray-400 dark:text-gray-500">Sem distribuiÃ§Ã£o ativa. O cÃ¡lculo usa as alÃ­quotas globais acima.</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">Sem distribuicao ativa. O calculo usa as aliquotas globais abaixo.</p>
             ) : (
               <div className="space-y-2">
-                {ncmAllocations.map((row) => (
-                  <div key={row.id} className="grid grid-cols-2 gap-2 rounded-lg border border-gray-200 p-2 dark:border-gray-700 sm:grid-cols-7">
-                    <input
-                      type="text"
-                      value={row.code}
-                      onChange={(e) => updateNcmAllocation(row.id, { code: e.target.value })}
-                      placeholder="NCM"
-                      className="rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={row.merchandiseValueUsd || ""}
-                      onChange={(e) => updateNcmAllocation(row.id, { merchandiseValueUsd: parseFloat(e.target.value) || 0 })}
-                      placeholder="Valor USD"
-                      className="rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={row.iiRate || ""}
-                      onChange={(e) => updateNcmAllocation(row.id, { iiRate: parseFloat(e.target.value) || 0 })}
-                      placeholder="II %"
-                      className="rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={row.ipiRate || ""}
-                      onChange={(e) => updateNcmAllocation(row.id, { ipiRate: parseFloat(e.target.value) || 0 })}
-                      placeholder="IPI %"
-                      className="rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={row.pisRate || ""}
-                      onChange={(e) => updateNcmAllocation(row.id, { pisRate: parseFloat(e.target.value) || 0 })}
-                      placeholder="PIS %"
-                      className="rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={row.cofinsRate || ""}
-                      onChange={(e) => updateNcmAllocation(row.id, { cofinsRate: parseFloat(e.target.value) || 0 })}
-                      placeholder="COFINS %"
-                      className="rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeNcmAllocation(row.id)}
-                      className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-                      title="Remover NCM"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
+                {ncmAllocations.map((row) => {
+                  const isLoading = ncmAllocationLoadingIds.includes(row.id);
+
+                  return (
+                    <div key={row.id} className="rounded-lg border border-gray-200 p-2 dark:border-gray-700">
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-7">
+                        <input
+                          type="text"
+                          value={row.code}
+                          onChange={(e) =>
+                            updateNcmAllocation(row.id, {
+                              code: formatNcmCode(e.target.value),
+                              description: "",
+                              source: "",
+                            })
+                          }
+                          onBlur={() => void lookupNcmAllocation(row.id, row.code)}
+                          placeholder="NCM"
+                          className="rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={row.merchandiseValueUsd || ""}
+                          onChange={(e) => updateNcmAllocation(row.id, { merchandiseValueUsd: parseFloat(e.target.value) || 0 })}
+                          placeholder="Valor USD"
+                          className="rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={row.iiRate || ""}
+                          onChange={(e) => updateNcmAllocation(row.id, { iiRate: parseFloat(e.target.value) || 0 })}
+                          placeholder="II %"
+                          className="rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={row.ipiRate || ""}
+                          onChange={(e) => updateNcmAllocation(row.id, { ipiRate: parseFloat(e.target.value) || 0 })}
+                          placeholder="IPI %"
+                          className="rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={row.pisRate || ""}
+                          onChange={(e) => updateNcmAllocation(row.id, { pisRate: parseFloat(e.target.value) || 0 })}
+                          placeholder="PIS %"
+                          className="rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={row.cofinsRate || ""}
+                          onChange={(e) => updateNcmAllocation(row.id, { cofinsRate: parseFloat(e.target.value) || 0 })}
+                          placeholder="COFINS %"
+                          className="rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeNcmAllocation(row.id)}
+                          className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                          title="Remover NCM"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      {(isLoading || row.description || row.source) && (
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400">
+                          {isLoading && (
+                            <>
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              <span>Buscando aliquotas estimadas...</span>
+                            </>
+                          )}
+                          {!isLoading && row.description && <span>{row.description}</span>}
+                          {!isLoading && row.source && <span>Fonte: {row.source}</span>}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -1001,98 +1146,13 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
                 </p>
               </div>
             </div>
-            <div className="mt-4">
+          <div className="mt-4">
               <Button variant="outline" onClick={reset}>
                 <RotateCcw className="h-4 w-4" />
                 {i18n.calculator.reset}
               </Button>
             </div>
           </div>
-
-          {false && (
-          <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Distribuição por NCM</h2>
-              <Button type="button" variant="outline" size="sm" onClick={addNcmAllocation}>
-                <Plus className="h-4 w-4" />
-                Adicionar NCM
-              </Button>
-            </div>
-            <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
-              Use quando houver embarque com vários NCMs. Informe o valor de mercadoria por NCM e as alíquotas II/IPI/PIS/COFINS de cada item.
-            </p>
-            {ncmAllocations.length === 0 ? (
-              <p className="text-xs text-gray-400 dark:text-gray-500">Sem distribuição ativa. O cálculo usa as alíquotas globais acima.</p>
-            ) : (
-              <div className="space-y-2">
-                {ncmAllocations.map((row) => (
-                  <div key={row.id} className="grid grid-cols-2 gap-2 rounded-lg border border-gray-200 p-2 dark:border-gray-700 sm:grid-cols-7">
-                    <input
-                      type="text"
-                      value={row.code}
-                      onChange={(e) => updateNcmAllocation(row.id, { code: e.target.value })}
-                      placeholder="NCM"
-                      className="rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={row.merchandiseValueUsd || ""}
-                      onChange={(e) => updateNcmAllocation(row.id, { merchandiseValueUsd: parseFloat(e.target.value) || 0 })}
-                      placeholder="Valor USD"
-                      className="rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={row.iiRate || ""}
-                      onChange={(e) => updateNcmAllocation(row.id, { iiRate: parseFloat(e.target.value) || 0 })}
-                      placeholder="II %"
-                      className="rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={row.ipiRate || ""}
-                      onChange={(e) => updateNcmAllocation(row.id, { ipiRate: parseFloat(e.target.value) || 0 })}
-                      placeholder="IPI %"
-                      className="rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={row.pisRate || ""}
-                      onChange={(e) => updateNcmAllocation(row.id, { pisRate: parseFloat(e.target.value) || 0 })}
-                      placeholder="PIS %"
-                      className="rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={row.cofinsRate || ""}
-                      onChange={(e) => updateNcmAllocation(row.id, { cofinsRate: parseFloat(e.target.value) || 0 })}
-                      placeholder="COFINS %"
-                      className="rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeNcmAllocation(row.id)}
-                      className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-                      title="Remover NCM"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          )}
         </div>
 
         {/* ── Coluna Direita: Resultado (sticky) ── */}

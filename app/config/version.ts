@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.18";
+export const APP_VERSION = "2.9.19";
 export const APP_RELEASE_DATE = "2026-03-17";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.19",
+    date: "2026-03-17",
+    title: "Calculadora com NCM automatico e distribuicao saneada",
+    items: [
+      { type: "fix", text: "Calculadora: o bloco de distribuicao por NCM teve o texto saneado e o duplicado morto foi removido da pagina" },
+      { type: "feature", text: "Calculadora: o campo principal de NCM passou a buscar automaticamente as aliquotas estimadas de II, IPI, PIS e COFINS enquanto o codigo e digitado" },
+      { type: "feature", text: "Calculadora: cada linha da distribuicao por NCM agora consulta automaticamente as aliquotas estimadas e exibe descricao e fonte da previsao" },
+      { type: "improvement", text: "Calculadora: as aliquotas preenchidas continuam editaveis, mantendo o uso como simulacao rapida e nao como enquadramento fiscal definitivo" },
+    ],
+  },
   {
     version: "2.9.18",
     date: "2026-03-17",
