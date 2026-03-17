@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.21";
+export const APP_VERSION = "2.9.22";
 export const APP_RELEASE_DATE = "2026-03-17";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,18 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.22",
+    date: "2026-03-17",
+    title: "Google OAuth alinhado ao client JSON e callback protegido",
+    items: [
+      { type: "fix", text: "Google OAuth: o fluxo passou a usar state em cookie httpOnly e validacao no callback, bloqueando retornos sem correlacao valida" },
+      { type: "fix", text: "Google OAuth: a leitura do token salvo deixou de ignorar userId e voltou a buscar apenas o token ativo do usuario autenticado" },
+      { type: "improvement", text: "Google OAuth: o backend agora aceita GOOGLE_OAUTH_CLIENT_JSON_PATH como fonte local do client web, com fallback para GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET" },
+      { type: "improvement", text: "Google OAuth: o redirect URI passou a ser resolvido pela origem da requisicao ou APP_URL quando GOOGLE_REDIRECT_URI estiver vazio" },
+      { type: "improvement", text: "Docs de ambiente: .env.example passou a documentar as variaveis de OAuth do Google, incluindo o uso opcional do JSON baixado do Google Cloud" },
+    ],
+  },
   {
     version: "2.9.21",
     date: "2026-03-17",

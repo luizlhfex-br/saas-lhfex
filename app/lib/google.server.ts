@@ -1,57 +1,229 @@
+import crypto from "crypto";
+import { readFile } from "fs/promises";
+import { createCookie } from "react-router";
+import { and, eq, isNull } from "drizzle-orm";
 import { google } from "googleapis";
 import { db } from "./db.server";
 import { googleTokens } from "../../drizzle/schema";
-import { eq, isNull } from "drizzle-orm";
 
-const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI;
+const GOOGLE_OAUTH_SCOPES = [
+  "https://www.googleapis.com/auth/drive",
+  "https://www.googleapis.com/auth/drive.file",
+  "https://www.googleapis.com/auth/spreadsheets",
+  "https://www.googleapis.com/auth/calendar.events",
+];
 
-if (!CLIENT_ID || !CLIENT_SECRET || !REDIRECT_URI) {
-  console.warn("⚠️  Google OAuth credentials not fully configured");
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
+const GOOGLE_OAUTH_STATE_COOKIE_NAME = IS_PRODUCTION
+  ? "__Host-google-oauth-state"
+  : "lhfex-google-oauth-state";
+
+const googleOAuthStateCookie = createCookie(GOOGLE_OAUTH_STATE_COOKIE_NAME, {
+  httpOnly: true,
+  secure: IS_PRODUCTION,
+  sameSite: "lax",
+  path: "/",
+  maxAge: 10 * 60,
+});
+
+type GoogleOAuthClientPayload = {
+  web?: {
+    client_id?: string;
+    client_secret?: string;
+    redirect_uris?: string[];
+    javascript_origins?: string[];
+    project_id?: string;
+  };
+  installed?: {
+    client_id?: string;
+    client_secret?: string;
+    redirect_uris?: string[];
+    javascript_origins?: string[];
+    project_id?: string;
+  };
+};
+
+type GoogleOAuthConfig = {
+  clientId: string;
+  clientSecret: string;
+  redirectUri: string;
+  configuredRedirectUris: string[];
+  projectId?: string;
+  source: "env" | "json";
+};
+
+type GoogleTokenExchangeResult = {
+  accessToken: string;
+  refreshToken?: string;
+  expiresAt: Date;
+  scope?: string;
+};
+
+function buildGoogleCallbackUrl(origin: string): string {
+  return `${origin.replace(/\/$/, "")}/api/google/callback`;
 }
 
-export const oauth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
-
-/**
- * Gera URL de autorização do Google
- */
-export function getAuthorizationUrl(): string {
-  const scopes = [
-    "https://www.googleapis.com/auth/drive",
-    "https://www.googleapis.com/auth/drive.file",
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/calendar.events",
-  ];
-
-  return oauth2Client.generateAuthUrl({
-    access_type: "offline",
-    scope: scopes,
-    prompt: "consent", // força reconsentimento pra garantir refresh token
-  });
+function getAppOrigin(): string | null {
+  const appUrl = process.env.APP_URL?.trim();
+  return appUrl ? appUrl.replace(/\/$/, "") : null;
 }
 
-/**
- * Troca código de autorização por tokens
- */
-export async function exchangeCodeForTokens(code: string) {
+async function loadGoogleOAuthClientPayload(): Promise<GoogleOAuthClientPayload | null> {
+  const jsonPath = process.env.GOOGLE_OAUTH_CLIENT_JSON_PATH?.trim();
+  if (!jsonPath) return null;
+
   try {
-    const { tokens } = await oauth2Client.getToken(code);
-    return {
-      accessToken: tokens.access_token!,
-      refreshToken: tokens.refresh_token,
-      expiresAt: new Date(tokens.expiry_date!),
-      scope: tokens.scope,
-    };
+    const raw = await readFile(jsonPath, "utf8");
+    return JSON.parse(raw) as GoogleOAuthClientPayload;
   } catch (error) {
-    console.error("❌ Error exchanging Google auth code:", error);
-    throw new Error("Failed to authenticate with Google");
+    console.error("[google] nao foi possivel ler GOOGLE_OAUTH_CLIENT_JSON_PATH", error);
+    return null;
   }
 }
 
-/**
- * Salva token no banco pra usuário
- */
+function pickClientSource(payload: GoogleOAuthClientPayload | null) {
+  return payload?.web ?? payload?.installed ?? null;
+}
+
+function resolveRedirectUri(request?: Request, configuredRedirectUris: string[] = []): string | null {
+  const envRedirect = process.env.GOOGLE_REDIRECT_URI?.trim();
+  if (envRedirect) {
+    return envRedirect;
+  }
+
+  const configuredRedirect = configuredRedirectUris.find((value) => value.trim().length > 0);
+  if (configuredRedirect) {
+    return configuredRedirect;
+  }
+
+  if (request) {
+    return buildGoogleCallbackUrl(new URL(request.url).origin);
+  }
+
+  const appOrigin = getAppOrigin();
+  return appOrigin ? buildGoogleCallbackUrl(appOrigin) : null;
+}
+
+async function getGoogleOAuthConfig(request?: Request): Promise<GoogleOAuthConfig> {
+  const payload = await loadGoogleOAuthClientPayload();
+  const clientSource = pickClientSource(payload);
+
+  const clientId = process.env.GOOGLE_CLIENT_ID?.trim() || clientSource?.client_id?.trim();
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim() || clientSource?.client_secret?.trim();
+  const configuredRedirectUris = (clientSource?.redirect_uris ?? [])
+    .map((uri) => uri.trim())
+    .filter((uri) => uri.length > 0);
+  const redirectUri = resolveRedirectUri(request, configuredRedirectUris);
+
+  if (!clientId || !clientSecret || !redirectUri) {
+    console.warn("[google] credenciais OAuth incompletas");
+    throw new Error("Google OAuth nao configurado completamente");
+  }
+
+  return {
+    clientId,
+    clientSecret,
+    redirectUri,
+    configuredRedirectUris,
+    projectId: clientSource?.project_id?.trim(),
+    source: clientSource ? "json" : "env",
+  };
+}
+
+async function createGoogleOAuthClient(request?: Request) {
+  const config = await getGoogleOAuthConfig(request);
+  const oauth2Client = new google.auth.OAuth2(
+    config.clientId,
+    config.clientSecret,
+    config.redirectUri,
+  );
+
+  if (
+    config.source === "json" &&
+    config.configuredRedirectUris.length > 0 &&
+    !config.configuredRedirectUris.includes(config.redirectUri)
+  ) {
+    console.warn(
+      `[google] redirect URI ${config.redirectUri} nao esta listada no client OAuth salvo em JSON`,
+    );
+  }
+
+  return { oauth2Client, config };
+}
+
+function generateGoogleOAuthState(): string {
+  return crypto.randomBytes(32).toString("base64url");
+}
+
+export async function startGoogleOAuth(request: Request) {
+  const { oauth2Client, config } = await createGoogleOAuthClient(request);
+  const state = generateGoogleOAuthState();
+
+  const authorizationUrl = oauth2Client.generateAuthUrl({
+    access_type: "offline",
+    include_granted_scopes: true,
+    prompt: "consent",
+    scope: GOOGLE_OAUTH_SCOPES,
+    state,
+  });
+
+  return {
+    authorizationUrl,
+    redirectUri: config.redirectUri,
+    stateCookieHeader: await googleOAuthStateCookie.serialize(state),
+  };
+}
+
+export async function clearGoogleOAuthStateCookie(): Promise<string> {
+  return googleOAuthStateCookie.serialize("", { maxAge: 0 });
+}
+
+export async function validateGoogleOAuthState(request: Request, returnedState: string | null) {
+  const cookieHeader = request.headers.get("cookie");
+  const expectedState = await googleOAuthStateCookie.parse(cookieHeader);
+
+  if (!returnedState || typeof expectedState !== "string" || expectedState.length === 0) {
+    throw new Error("Google OAuth state ausente");
+  }
+
+  if (returnedState.length !== expectedState.length) {
+    throw new Error("Google OAuth state invalido");
+  }
+
+  if (
+    !crypto.timingSafeEqual(
+      Buffer.from(returnedState, "utf8"),
+      Buffer.from(expectedState, "utf8"),
+    )
+  ) {
+    throw new Error("Google OAuth state invalido");
+  }
+}
+
+export async function exchangeCodeForTokens(
+  code: string,
+  request: Request,
+): Promise<GoogleTokenExchangeResult> {
+  try {
+    const { oauth2Client } = await createGoogleOAuthClient(request);
+    const { tokens } = await oauth2Client.getToken(code);
+
+    if (!tokens.access_token || !tokens.expiry_date) {
+      throw new Error("Google nao retornou access_token ou expiry_date");
+    }
+
+    return {
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token ?? undefined,
+      expiresAt: new Date(tokens.expiry_date),
+      scope: tokens.scope ?? undefined,
+    };
+  } catch (error) {
+    console.error("[google] erro ao trocar codigo por tokens", error);
+    throw new Error("Falha ao autenticar com Google");
+  }
+}
+
 export async function saveGoogleToken(
   userId: string,
   accessToken: string,
@@ -59,13 +231,9 @@ export async function saveGoogleToken(
   expiresAt: Date,
   scope: string | undefined,
 ) {
-  // Delete old token if exists
-  await db
-    .delete(googleTokens)
-    .where(eq(googleTokens.userId, userId));
+  await db.delete(googleTokens).where(eq(googleTokens.userId, userId));
 
-  // Insert new token
-  return await db.insert(googleTokens).values({
+  return db.insert(googleTokens).values({
     userId,
     accessToken,
     refreshToken,
@@ -74,34 +242,33 @@ export async function saveGoogleToken(
   });
 }
 
-/**
- * Busca token válido do usuário
- */
 export async function getValidGoogleToken(userId: string) {
   const token = await db.query.googleTokens.findFirst({
-    where: (t) => (eq(t.userId, userId), isNull(t.disconnectedAt)),
+    where: (t, { and, eq, isNull }) => and(eq(t.userId, userId), isNull(t.disconnectedAt)),
   });
 
   if (!token) return null;
 
-  // Se expirou, tenta refresh
   if (token.expiresAt < new Date()) {
     if (!token.refreshToken) {
-      // Token expirou e não tem refresh → desconecta
       await disconnectGoogle(userId);
       return null;
     }
 
     try {
+      const { oauth2Client } = await createGoogleOAuthClient();
       oauth2Client.setCredentials({
         refresh_token: token.refreshToken,
       });
 
       const { credentials } = await oauth2Client.refreshAccessToken();
-      const newAccessToken = credentials.access_token!;
-      const newExpiresAt = new Date(credentials.expiry_date!);
+      if (!credentials.access_token || !credentials.expiry_date) {
+        throw new Error("Refresh do Google retornou credenciais incompletas");
+      }
 
-      // Atualiza no banco
+      const newAccessToken = credentials.access_token;
+      const newExpiresAt = new Date(credentials.expiry_date);
+
       await db
         .update(googleTokens)
         .set({
@@ -113,7 +280,7 @@ export async function getValidGoogleToken(userId: string) {
 
       return { ...token, accessToken: newAccessToken, expiresAt: newExpiresAt };
     } catch (error) {
-      console.error("❌ Error refreshing Google token:", error);
+      console.error("[google] erro ao renovar token", error);
       await disconnectGoogle(userId);
       return null;
     }
@@ -122,59 +289,42 @@ export async function getValidGoogleToken(userId: string) {
   return token;
 }
 
-/**
- * Desconecta Google (soft delete)
- */
 export async function disconnectGoogle(userId: string) {
-  return await db
+  return db
     .update(googleTokens)
     .set({ disconnectedAt: new Date() })
-    .where(eq(googleTokens.userId, userId));
+    .where(and(eq(googleTokens.userId, userId), isNull(googleTokens.disconnectedAt)));
 }
 
-/**
- * Cria Google Sheets API client autenticado
- */
+async function buildAuthorizedGoogleClient(userId: string) {
+  const token = await getValidGoogleToken(userId);
+  if (!token) return null;
+
+  const { oauth2Client } = await createGoogleOAuthClient();
+  oauth2Client.setCredentials({
+    access_token: token.accessToken,
+    refresh_token: token.refreshToken ?? undefined,
+  });
+
+  return oauth2Client;
+}
+
 export async function getAuthenticatedSheetsClient(userId: string) {
-  const token = await getValidGoogleToken(userId);
-  if (!token) return null;
-
-  oauth2Client.setCredentials({
-    access_token: token.accessToken,
-    refresh_token: token.refreshToken,
-  });
-
-  return google.sheets({ version: "v4", auth: oauth2Client });
+  const auth = await buildAuthorizedGoogleClient(userId);
+  if (!auth) return null;
+  return google.sheets({ version: "v4", auth });
 }
 
-/**
- * Cria Google Drive API client autenticado
- */
 export async function getAuthenticatedDriveClient(userId: string) {
-  const token = await getValidGoogleToken(userId);
-  if (!token) return null;
-
-  oauth2Client.setCredentials({
-    access_token: token.accessToken,
-    refresh_token: token.refreshToken,
-  });
-
-  return google.drive({ version: "v3", auth: oauth2Client });
+  const auth = await buildAuthorizedGoogleClient(userId);
+  if (!auth) return null;
+  return google.drive({ version: "v3", auth });
 }
 
-/**
- * Cria Google Calendar API client autenticado
- */
 export async function getAuthenticatedCalendarClient(userId: string) {
-  const token = await getValidGoogleToken(userId);
-  if (!token) return null;
-
-  oauth2Client.setCredentials({
-    access_token: token.accessToken,
-    refresh_token: token.refreshToken,
-  });
-
-  return google.calendar({ version: "v3", auth: oauth2Client });
+  const auth = await buildAuthorizedGoogleClient(userId);
+  if (!auth) return null;
+  return google.calendar({ version: "v3", auth });
 }
 
 type CalendarEventInput = {
@@ -187,9 +337,6 @@ type CalendarEventInput = {
   remindersMinutes?: number[];
 };
 
-/**
- * Cria evento no Google Calendar principal do usuário
- */
 export async function createGoogleCalendarEvent(userId: string, input: CalendarEventInput) {
   const calendarClient = await getAuthenticatedCalendarClient(userId);
   if (!calendarClient) return null;
@@ -225,14 +372,11 @@ export async function createGoogleCalendarEvent(userId: string, input: CalendarE
       status: event.data.status,
     };
   } catch (error) {
-    console.error("❌ Error creating Google Calendar event:", error);
+    console.error("[google] erro ao criar evento no Calendar", error);
     return null;
   }
 }
 
-/**
- * Cria novo Google Sheet na pasta configurada
- */
 export async function createGoogleSheet(
   userId: string,
   title: string,
@@ -241,19 +385,20 @@ export async function createGoogleSheet(
   const sheetsClient = await getAuthenticatedSheetsClient(userId);
   const driveClient = await getAuthenticatedDriveClient(userId);
 
-  if (!sheetsClient || !driveClient) return null;
+  if (!sheetsClient || !driveClient || !folderId) return null;
 
   try {
-    // 1. Cria a planilha
     const spreadsheet = await sheetsClient.spreadsheets.create({
       requestBody: {
         properties: { title },
       },
     });
 
-    const spreadsheetId = spreadsheet.data.spreadsheetId!;
+    const spreadsheetId = spreadsheet.data.spreadsheetId;
+    if (!spreadsheetId) {
+      throw new Error("Google Sheets nao retornou spreadsheetId");
+    }
 
-    // 2. Move pra pasta configurada
     await driveClient.files.update({
       fileId: spreadsheetId,
       addParents: folderId,
@@ -261,7 +406,6 @@ export async function createGoogleSheet(
       fields: "id, parents",
     });
 
-    // 3. Compartilha como viewer (link público)
     await driveClient.permissions.create({
       fileId: spreadsheetId,
       requestBody: {
@@ -270,15 +414,14 @@ export async function createGoogleSheet(
       },
     });
 
-    const shareLink = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit?usp=sharing`;
-
     return {
       spreadsheetId,
       title,
-      shareLink,
+      shareLink: `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit?usp=sharing`,
     };
   } catch (error) {
-    console.error("❌ Error creating Google Sheet:", error);
+    console.error("[google] erro ao criar Google Sheet", error);
     return null;
   }
 }
+

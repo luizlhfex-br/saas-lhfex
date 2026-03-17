@@ -1,56 +1,81 @@
 import { redirect } from "react-router";
 import { requireAuth } from "~/lib/auth.server";
-import { exchangeCodeForTokens, saveGoogleToken, getValidGoogleToken } from "~/lib/google.server";
-import { data } from "react-router";
+import {
+  clearGoogleOAuthStateCookie,
+  exchangeCodeForTokens,
+  getValidGoogleToken,
+  saveGoogleToken,
+  validateGoogleOAuthState,
+} from "~/lib/google.server";
 
 /**
  * GET /api/google/callback
- * Recebe código de autorização do Google e troca por tokens
+ * Recebe o codigo de autorizacao do Google e salva os tokens do usuario.
  */
 export async function loader({ request }: { request: Request }) {
   const { user } = await requireAuth(request);
+  const clearStateCookie = await clearGoogleOAuthStateCookie();
 
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const error = url.searchParams.get("error");
   const state = url.searchParams.get("state");
 
-  // Usuário cancelou autenticação
   if (error) {
-    const errorDescription = url.searchParams.get("error_description") || "Unknown error";
-    console.warn(`⚠️  Google auth cancelled: ${errorDescription}`);
-    throw redirect(`/settings?error=google_auth_cancelled`);
+    const errorDescription = url.searchParams.get("error_description") || "unknown_error";
+    console.warn(`[google] autenticacao cancelada: ${errorDescription}`);
+    throw redirect("/settings?error=google_auth_cancelled", {
+      headers: {
+        "Set-Cookie": clearStateCookie,
+      },
+    });
   }
 
-  // Nenhum código recebido
   if (!code) {
-    console.error("❌ No authorization code received from Google");
-    throw redirect(`/settings?error=no_auth_code`);
+    console.error("[google] nenhum authorization code recebido");
+    throw redirect("/settings?error=no_auth_code", {
+      headers: {
+        "Set-Cookie": clearStateCookie,
+      },
+    });
   }
 
   try {
-    // 1. Troca código por tokens
-    const tokens = await exchangeCodeForTokens(code);
+    await validateGoogleOAuthState(request, state);
 
-    // 2. Salva no banco
+    const tokens = await exchangeCodeForTokens(code, request);
+
     await saveGoogleToken(
       user.id,
       tokens.accessToken,
-      tokens.refreshToken || undefined,
+      tokens.refreshToken,
       tokens.expiresAt,
       tokens.scope,
     );
 
-    // 3. Verifica que foi salvo corretamente
-    const saved = await getValidGoogleToken(user.id);
-    if (!saved) {
-      throw new Error("Failed to verify saved token");
+    const savedToken = await getValidGoogleToken(user.id);
+    if (!savedToken) {
+      throw new Error("Falha ao confirmar token salvo");
     }
 
-    console.log(`✅ Google OAuth successful for user ${user.email}`);
-    throw redirect(`/settings?success=google_connected`);
+    console.log(`[google] OAuth concluido para ${user.email}`);
+    throw redirect("/settings?success=google_connected", {
+      headers: {
+        "Set-Cookie": clearStateCookie,
+      },
+    });
   } catch (error) {
-    console.error("❌ Google OAuth callback error:", error);
-    throw redirect(`/settings?error=google_auth_failed`);
+    console.error("[google] erro no callback OAuth", error);
+
+    const errorCode = error instanceof Error && error.message.toLowerCase().includes("state")
+      ? "google_auth_state"
+      : "google_auth_failed";
+
+    throw redirect(`/settings?error=${errorCode}`, {
+      headers: {
+        "Set-Cookie": clearStateCookie,
+      },
+    });
   }
 }
+

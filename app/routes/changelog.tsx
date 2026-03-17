@@ -29,6 +29,19 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-17",
+    version: "2.9.22",
+    type: "release",
+    title: "Google OAuth com client JSON, state valido e lookup correto de token",
+    items: [
+      "Google OAuth: o backend passou a aceitar GOOGLE_OAUTH_CLIENT_JSON_PATH como fonte local do client web baixado no Google Cloud",
+      "Seguranca: o inicio do fluxo agora grava state em cookie httpOnly e o callback valida esse state antes de trocar o code por tokens",
+      "Google OAuth: o redirect URI passou a ser resolvido pela origem da requisicao ou pelo APP_URL quando GOOGLE_REDIRECT_URI estiver vazio",
+      "Integracao: a busca de token Google deixou de ignorar userId e voltou a consultar apenas o token ativo do usuario atual",
+      "Docs: .env.example passou a documentar GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_OAUTH_CLIENT_JSON_PATH, GOOGLE_REDIRECT_URI e GOOGLE_DRIVE_FOLDER_ID",
+    ],
+  },
+  {
+    date: "2026-03-17",
     version: "2.9.21",
     type: "release",
     title: "Calculadora com resumo FOB e lookup de NCM mais visual",

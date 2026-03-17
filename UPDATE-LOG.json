@@ -1,17 +1,43 @@
 {
   "release": {
-    "version": "v2.9.21",
+    "version": "v2.9.22",
     "date": "2026-03-17T00:00:00Z",
-    "type": "improvement",
-    "title": "Calculadora com resumo FOB por NCM e lookup visual melhorado"
+    "type": "fix",
+    "title": "Google OAuth com client JSON e callback protegido"
   },
   "summary": {
     "commits": 1,
     "filesCreated": 0,
-    "filesModified": 4,
+    "filesModified": 7,
     "routesAdded": 0,
     "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_17_google_oauth_json_state": {
+    "date": "2026-03-17",
+    "release_version": "2.9.22",
+    "objective": "Usar o client secret web baixado do Google Cloud da forma correta no SaaS, endurecendo o fluxo de OAuth e corrigindo a leitura do token salvo",
+    "files_changed": [
+      "app/lib/google.server.ts",
+      "app/routes/api.google-auth.tsx",
+      "app/routes/api.google-callback.tsx",
+      ".env.example",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "O client OAuth deixou de ser global e passou a ser criado por requisicao, com suporte a GOOGLE_OAUTH_CLIENT_JSON_PATH e fallback por GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET",
+      "O redirect URI agora e resolvido com prioridade para GOOGLE_REDIRECT_URI e, quando vazio, usa a origem da requisicao ou o APP_URL para montar /api/google/callback",
+      "O fluxo de autenticacao passou a gravar state em cookie httpOnly e a validar esse state no callback antes de trocar o code por tokens",
+      "A leitura do token Google salvo voltou a respeitar userId e disconnectedAt corretamente, removendo o bug que ignorava o usuario na query",
+      "O .env.example passou a documentar as variaveis do Google OAuth, e o .env.codex local foi preparado para usar o JSON baixado do Google Cloud"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros",
+      "Smoke tecnico do startGoogleOAuth confirmou callback https://saas.lhfex.com.br/api/google/callback, state presente na URL e cookie de state emitido"
+    ]
   },
   "session_2026_03_17_calculator_ncm_visual_summary": {
     "date": "2026-03-17",
