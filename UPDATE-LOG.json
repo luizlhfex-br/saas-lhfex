@@ -1,17 +1,41 @@
 {
   "release": {
-    "version": "v2.9.19",
+    "version": "v2.9.20",
     "date": "2026-03-17T00:00:00Z",
-    "type": "improvement",
-    "title": "Calculadora com NCM automatico e distribuicao saneada"
+    "type": "feature",
+    "title": "Catalogo NCM local integrado ao lookup da calculadora"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 0,
-    "filesModified": 4,
+    "filesCreated": 2,
+    "filesModified": 5,
     "routesAdded": 0,
     "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_17_ncm_catalog_local_lookup": {
+    "date": "2026-03-17",
+    "release_version": "2.9.20",
+    "objective": "Integrar a tabela JSON local da NCM ao backend da calculadora para usar descricao oficial e facilitar atualizacao manual da base",
+    "files_changed": [
+      "app/lib/ncm-catalog.server.ts",
+      "app/routes/api.ncm-taxes.tsx",
+      "app/routes/calculator.tsx",
+      "data/ncm/Tabela_NCM_Vigente_20260317.json",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "Novo helper ncm-catalog.server carrega automaticamente o JSON mais recente em data/ncm e indexa os codigos em memoria",
+      "O endpoint /api/ncm-taxes passou a consultar primeiro o catalogo local para preencher descricao, codigo casado e metadata da tabela vigente",
+      "A calculadora passou a informar quando a resposta veio do catalogo NCM local combinado com a tabela estimada de aliquotas",
+      "A base local pode ser renovada no futuro trocando o JSON em data/ncm sem precisar reescrever a regra principal de lookup"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros"
+    ]
   },
   "session_2026_03_17_calculator_ncm_auto_fill": {
     "date": "2026-03-17",

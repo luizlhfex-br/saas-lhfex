@@ -29,6 +29,18 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-17",
+    version: "2.9.20",
+    type: "release",
+    title: "Catalogo NCM local integrado ao lookup da calculadora",
+    items: [
+      "Calculadora: o lookup de NCM passou a consultar primeiro o arquivo local oficial em data/ncm antes de tentar descricao externa",
+      "Backend: novo helper app/lib/ncm-catalog.server.ts carrega o JSON vigente mais recente e monta um indice em memoria por codigo e por prefixo pai",
+      "Simulacao: a origem exibida na calculadora agora diferencia quando a descricao veio do catalogo NCM local somada a tabela estimada de aliquotas",
+      "Operacao: o catalogo pode ser atualizado trocando o JSON em data/ncm, sem mexer de novo na regra do endpoint",
+    ],
+  },
+  {
+    date: "2026-03-17",
     version: "2.9.19",
     type: "release",
     title: "Calculadora com NCM automatico e distribuicao saneada",

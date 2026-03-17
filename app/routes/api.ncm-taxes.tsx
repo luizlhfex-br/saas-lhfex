@@ -1,6 +1,7 @@
 import type { Route } from "./+types/api.ncm-taxes";
 import { requireAuth } from "~/lib/auth.server";
 import { jsonApiError } from "~/lib/api-error";
+import { findNcmCatalogEntry } from "~/lib/ncm-catalog.server";
 
 // Common NCM tax rates (TEC - Tarifa Externa Comum)
 // Format: [II%, IPI%, PIS%, COFINS%]
@@ -45,7 +46,7 @@ const NCM_TAX_TABLE: Record<string, { ii: number; ipi: number; pis: number; cofi
   "4819": { ii: 16, ipi: 5, pis: 2.10, cofins: 9.65, description: "Caixas de papel/cartão" },
 };
 
-// Cache for BrasilAPI NCM descriptions
+// Fallback cache for remote descriptions when the local NCM catalog is unavailable.
 const descriptionCache = new Map<string, { description: string; timestamp: number }>();
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -116,15 +117,26 @@ export async function loader({ request }: Route.LoaderArgs) {
     }
   }
 
-  // Fetch description from BrasilAPI
-  const ncmDescription = await fetchNCMDescription(code);
+  const catalogMatch = await findNcmCatalogEntry(code);
+  const ncmDescription = catalogMatch?.entry.description ?? await fetchNCMDescription(code);
+  const source = taxes
+    ? catalogMatch
+      ? "catalog_tec_table"
+      : "tec_table"
+    : catalogMatch
+      ? "catalog_default"
+      : "default";
 
   if (taxes) {
     return Response.json({
       code,
       ...taxes,
       ncmDescription: ncmDescription || taxes.description || null,
-      source: "tec_table",
+      catalogMatchType: catalogMatch?.matchType ?? null,
+      catalogMatchedCode: catalogMatch?.entry.code ?? null,
+      catalogUpdatedAt: catalogMatch?.updatedAt ?? null,
+      catalogAct: catalogMatch?.act ?? null,
+      source,
     }, {
       headers: { "Cache-Control": "public, max-age=86400" },
     });
@@ -139,7 +151,11 @@ export async function loader({ request }: Route.LoaderArgs) {
     cofins: 9.65,
     ncmDescription: ncmDescription || null,
     description: "Alíquotas padrão — verifique na TEC/TIPI",
-    source: "default",
+    catalogMatchType: catalogMatch?.matchType ?? null,
+    catalogMatchedCode: catalogMatch?.entry.code ?? null,
+    catalogUpdatedAt: catalogMatch?.updatedAt ?? null,
+    catalogAct: catalogMatch?.act ?? null,
+    source,
   }, {
     headers: { "Cache-Control": "public, max-age=86400" },
   });

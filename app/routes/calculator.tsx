@@ -65,6 +65,8 @@ function formatNcmCode(value: string): string {
 }
 
 function getNcmSourceLabel(source?: string): string {
+  if (source === "catalog_tec_table") return "Catalogo NCM local + tabela estimada";
+  if (source === "catalog_default") return "Catalogo NCM local + padrao estimado";
   if (source === "tec_table") return "Tabela estimada";
   if (source === "default") return "Padrao estimado";
   return "";

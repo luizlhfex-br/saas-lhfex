@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.19";
+export const APP_VERSION = "2.9.20";
 export const APP_RELEASE_DATE = "2026-03-17";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.20",
+    date: "2026-03-17",
+    title: "Catalogo NCM local integrado ao lookup da calculadora",
+    items: [
+      { type: "feature", text: "Calculadora: o endpoint de NCM passou a consultar primeiro o catalogo local oficial em data/ncm, em vez de depender so de descricao externa" },
+      { type: "feature", text: "Backend: novo helper app/lib/ncm-catalog.server.ts carrega automaticamente o arquivo JSON mais recente da tabela vigente e monta indice em memoria por codigo" },
+      { type: "improvement", text: "Calculadora: a origem da sugestao agora informa quando a descricao veio do catalogo NCM local combinada com a tabela estimada de aliquotas" },
+      { type: "improvement", text: "Operacao: o catalogo local continua substituivel por arquivo mais novo, sem precisar alterar codigo para renovar a base de NCM" },
+    ],
+  },
   {
     version: "2.9.19",
     date: "2026-03-17",
