@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.25";
+export const APP_VERSION = "2.9.26";
 export const APP_RELEASE_DATE = "2026-03-17";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,15 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.26",
+    date: "2026-03-17",
+    title: "CSRF dos processos ajustado para proxy reverso",
+    items: [
+      { type: "fix", text: "CSRF: a validacao same-origin passou a considerar X-Forwarded-Host e X-Forwarded-Proto, evitando falso expirado ao criar processo atras do Coolify" },
+      { type: "improvement", text: "Processos: o formulario de novo processo voltou a aceitar o POST normalmente em producao sem perder a protecao contra origem cruzada" },
+    ],
+  },
   {
     version: "2.9.25",
     date: "2026-03-17",

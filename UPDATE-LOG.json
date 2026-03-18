@@ -1,17 +1,36 @@
 {
   "release": {
-    "version": "v2.9.25",
+    "version": "v2.9.26",
     "date": "2026-03-17T00:00:00Z",
     "type": "feature",
-    "title": "OpenClaw com observabilidade operacional por agente"
+    "title": "CSRF dos processos ajustado para proxy reverso"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 3,
-    "filesModified": 8,
+    "filesCreated": 0,
+    "filesModified": 4,
     "routesAdded": 0,
     "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_17_processes_csrf_proxy_fix": {
+    "date": "2026-03-17",
+    "release_version": "2.9.26",
+    "objective": "Corrigir a validacao CSRF do formulario de novo processo para considerar a origem publica atras do proxy reverso",
+    "files_changed": [
+      "app/lib/csrf.server.ts",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "A validacao same-origin passou a considerar X-Forwarded-Host e X-Forwarded-Proto, evitando falso expirado ao criar processo atras do Coolify",
+      "O formulario de novo processo voltou a aceitar o POST normalmente em producao sem perder a protecao contra origem cruzada"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros"
+    ]
   },
   "session_2026_03_17_openclaw_observability_foundation": {
     "date": "2026-03-17",

@@ -29,6 +29,16 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-17",
+    version: "2.9.26",
+    type: "release",
+    title: "CSRF dos processos ajustado para proxy reverso",
+    items: [
+      "CSRF: a validacao same-origin passou a considerar X-Forwarded-Host e X-Forwarded-Proto, evitando falso expirado ao criar processo atras do Coolify",
+      "Processos: o formulario de novo processo voltou a aceitar o POST normalmente em producao sem perder a protecao contra origem cruzada",
+    ],
+  },
+  {
+    date: "2026-03-17",
     version: "2.9.25",
     type: "release",
     title: "OpenClaw com observabilidade operacional por agente",

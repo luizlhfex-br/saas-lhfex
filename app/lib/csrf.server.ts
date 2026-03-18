@@ -55,8 +55,24 @@ export async function getCSRFFormState(request: Request) {
   return { csrfToken, csrfCookieHeader };
 }
 
+function getPublicRequestOrigin(request: Request): string {
+  const forwardedProto = request.headers.get("X-Forwarded-Proto") || request.headers.get("x-forwarded-proto");
+  const forwardedHost = request.headers.get("X-Forwarded-Host") || request.headers.get("x-forwarded-host");
+  const host = forwardedHost || request.headers.get("Host") || request.headers.get("host");
+
+  if (forwardedProto && host) {
+    const proto = forwardedProto.split(",")[0].trim();
+    const hostname = host.split(",")[0].trim();
+    if (proto && hostname) {
+      return `${proto}://${hostname}`;
+    }
+  }
+
+  return new URL(request.url).origin;
+}
+
 function validateSameOrigin(request: Request): void {
-  const requestOrigin = new URL(request.url).origin;
+  const requestOrigin = getPublicRequestOrigin(request);
   const originHeader = request.headers.get("Origin");
   const refererHeader = request.headers.get("Referer");
   const candidate = originHeader || refererHeader;
