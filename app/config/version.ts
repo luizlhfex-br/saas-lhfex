@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.22";
+export const APP_VERSION = "2.9.23";
 export const APP_RELEASE_DATE = "2026-03-17";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,18 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.23",
+    date: "2026-03-17",
+    title: "Arquitetura operacional do OpenClaw estruturada por agente",
+    items: [
+      { type: "feature", text: "OpenClaw: novo agents.catalog.json versiona dominio, responsabilidades, tools, permissoes, gatilhos e KPIs dos 8 agentes do squad" },
+      { type: "feature", text: "OpenClaw: cada agente passou a ter README, SOUL, AGENTS, HEARTBEAT e WORKING proprios, deixando de depender apenas de IDENTITY.md" },
+      { type: "improvement", text: "Runtime: o entrypoint do gateway agora preserva WORKING.md entre restarts e copia o catalogo para os workspaces em execucao" },
+      { type: "improvement", text: "SaaS: a tela /agents passou a ler o catalogo estruturado e a exibir melhor o pacote operacional e os arquivos carregados do squad" },
+      { type: "improvement", text: "Planejamento: docs/OPENCLAW-ARCHITECTURE-PLAN.md consolidou o roadmap de absorcao do awesome-openclaw-agents e docs/IDEAS.md guardou as referencias externas e o backlog de embeddings" },
+    ],
+  },
   {
     version: "2.9.22",
     date: "2026-03-17",

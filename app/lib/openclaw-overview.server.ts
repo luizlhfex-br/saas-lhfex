@@ -22,6 +22,24 @@ type OpenClawConfig = {
   };
 };
 
+type AgentCatalogEntry = {
+  id: string;
+  name?: string;
+  role?: string;
+  domain?: string;
+  purpose?: string;
+  responsibilities?: string[];
+  skills?: string[];
+  tools?: string[];
+  permissions?: Record<string, string>;
+  triggers?: string[];
+  kpis?: string[];
+};
+
+type AgentCatalog = {
+  agents?: AgentCatalogEntry[];
+};
+
 type SkillMeta = {
   label: string;
   description: string;
@@ -39,6 +57,13 @@ export type OpenClawAgentOverview = {
   name: string;
   emoji: string;
   role: string;
+  domain?: string;
+  purpose?: string;
+  responsibilities: string[];
+  tools: string[];
+  permissions: Record<string, string>;
+  triggers: string[];
+  kpis: string[];
   primaryModel: string;
   fallbacks: string[];
   alignedSkills: string[];
@@ -53,6 +78,7 @@ export type OpenClawOverview = {
 
 const OPENCLAW_ROOT = path.join(process.cwd(), "openclaw-gateway");
 const CONFIG_PATH = path.join(OPENCLAW_ROOT, "openclaw.json");
+const CATALOG_PATH = path.join(OPENCLAW_ROOT, "agents.catalog.json");
 const AGENTS_DIR = path.join(OPENCLAW_ROOT, "prompts", "agents");
 const SKILLS_DIR = path.join(OPENCLAW_ROOT, "prompts", "skills");
 
@@ -137,6 +163,16 @@ async function readOpenClawConfig(): Promise<OpenClawConfig> {
   return JSON.parse(raw) as OpenClawConfig;
 }
 
+async function readAgentCatalog(): Promise<Map<string, AgentCatalogEntry>> {
+  try {
+    const raw = await readFile(CATALOG_PATH, "utf-8");
+    const catalog = JSON.parse(raw) as AgentCatalog;
+    return new Map((catalog.agents ?? []).map((entry) => [entry.id, entry]));
+  } catch {
+    return new Map();
+  }
+}
+
 async function readLocalSkillIds() {
   const files = await readdir(SKILLS_DIR, { withFileTypes: true });
   return files
@@ -165,6 +201,7 @@ async function readAgentIdentity(agentId: string) {
 
 export async function getOpenClawOverview(): Promise<OpenClawOverview> {
   const config = await readOpenClawConfig();
+  const catalog = await readAgentCatalog();
   const defaultModel = config.agents?.defaults?.model ?? {};
 
   const builtInSkills = Object.entries(config.skills?.entries ?? {})
@@ -205,13 +242,21 @@ export async function getOpenClawOverview(): Promise<OpenClawOverview> {
   const agents = await Promise.all(
     configuredAgents.map(async (agent) => {
       const identity = await readAgentIdentity(agent.id);
+      const catalogEntry = catalog.get(agent.id);
       const model = agent.model ?? defaultModel;
 
       return {
         id: agent.id,
-        name: identity.name,
+        name: catalogEntry?.name ?? identity.name,
         emoji: identity.emoji,
-        role: identity.role,
+        role: catalogEntry?.role ?? identity.role,
+        domain: catalogEntry?.domain,
+        purpose: catalogEntry?.purpose,
+        responsibilities: catalogEntry?.responsibilities ?? [],
+        tools: catalogEntry?.tools ?? [],
+        permissions: catalogEntry?.permissions ?? {},
+        triggers: catalogEntry?.triggers ?? [],
+        kpis: catalogEntry?.kpis ?? [],
         primaryModel: model.primary ?? defaultModel.primary ?? "vertex/gemini-2.0-flash",
         fallbacks: model.fallbacks ?? defaultModel.fallbacks ?? [],
         alignedSkills: skills

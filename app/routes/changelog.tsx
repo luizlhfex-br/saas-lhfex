@@ -29,6 +29,19 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-17",
+    version: "2.9.23",
+    type: "release",
+    title: "OpenClaw estruturado como squad operacional versionado",
+    items: [
+      "OpenClaw: agents.catalog.json passou a registrar dominio, responsabilidades, tools, permissoes, gatilhos e KPIs dos 8 agentes",
+      "OpenClaw: cada agente ganhou README, SOUL, AGENTS, HEARTBEAT e WORKING proprios, deixando de depender so de IDENTITY.md",
+      "Runtime: o entrypoint agora preserva WORKING.md entre restarts e copia o catalogo para os workspaces em execucao",
+      "SaaS: a tela /agents passou a ler o catalogo estruturado e a mostrar arquivos operacionais, tools e proposito por agente",
+      "Planejamento: docs/OPENCLAW-ARCHITECTURE-PLAN.md consolidou o plano de absorcao do awesome-openclaw-agents e docs/IDEAS.md guardou as referencias externas e o backlog de embeddings",
+    ],
+  },
+  {
+    date: "2026-03-17",
     version: "2.9.22",
     type: "release",
     title: "Google OAuth com client JSON, state valido e lookup correto de token",

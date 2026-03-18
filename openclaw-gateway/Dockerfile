@@ -37,6 +37,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /root/.openclaw
 COPY openclaw.json ./
+COPY agents.catalog.json ./
 COPY prompts/ ./prompts/
 COPY entrypoint.sh ./
 RUN chmod +x entrypoint.sh

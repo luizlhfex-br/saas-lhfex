@@ -116,10 +116,13 @@ const modelLabels: Record<string, { label: string; badge: string; badgeClass: st
 };
 
 const promptFiles = [
+  { file: "agents.catalog.json", desc: "Catalogo versionado do squad com dominio, tools, permissoes, gatilhos e KPIs." },
   { file: "SOUL.md", desc: "Personalidade, autonomia, seguranca e escopo do gateway." },
   { file: "IDENTITY.md", desc: "Nome, funcao, timezone e idioma de cada agente." },
   { file: "USER.md", desc: "Perfil, preferencia e tom operacional do usuario." },
   { file: "AGENTS.md", desc: "Manual de delegacao entre especialistas e regras do projeto." },
+  { file: "README.md", desc: "Missao, escopo, entregas esperadas e fora de escopo de cada agente." },
+  { file: "HEARTBEAT.md", desc: "Checklist recorrente para saude, escalacao e auto-revisao do agente." },
   { file: "WORKING.md", desc: "Estado vivo da sessao e memoria recente do gateway." },
 ];
 
@@ -524,7 +527,7 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
             <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Agentes especialistas</p>
               <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-gray-100">{openClawOverview.agents.length}</p>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Lidos do openclaw.json e dos prompts de identidade.</p>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Lidos do openclaw.json, agents.catalog.json e prompts por agente.</p>
             </div>
             <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Skills ativas</p>
@@ -623,6 +626,9 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
                       <div>
                         <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{agentInfo.name}</h4>
                         <p className="text-xs text-gray-500 dark:text-gray-400">{agentInfo.role}</p>
+                        {agentInfo.domain ? (
+                          <p className="text-[11px] text-gray-400 dark:text-gray-500">{agentInfo.domain}</p>
+                        ) : null}
                       </div>
                     </div>
                     <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-200">
@@ -633,6 +639,21 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
                     <div>Primario: {modelLabels[agentInfo.primaryModel]?.label ?? agentInfo.primaryModel}</div>
                     <div>Fallbacks: {agentInfo.fallbacks.length > 0 ? agentInfo.fallbacks.join(" -> ") : "sem fallback"}</div>
                   </div>
+                  {agentInfo.purpose ? (
+                    <p className="mt-3 text-xs leading-relaxed text-gray-500 dark:text-gray-400">{agentInfo.purpose}</p>
+                  ) : null}
+                  {agentInfo.tools.length > 0 ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {agentInfo.tools.slice(0, 4).map((toolId) => (
+                        <span
+                          key={`${agentInfo.id}-tool-${toolId}`}
+                          className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300"
+                        >
+                          {toolId}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                   <div className="mt-3 flex flex-wrap gap-2">
                     {agentInfo.alignedSkills.map((skillId) => {
                       const skill = openClawOverview.skills.find((entry) => entry.id === skillId);
@@ -652,10 +673,10 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
           </div>
 
           <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <div className="mb-3 flex items-center gap-2">
-              <Brain className="h-5 w-5 text-purple-500" />
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100">Prompts Carregados</h3>
-            </div>
+              <div className="mb-3 flex items-center gap-2">
+                <Brain className="h-5 w-5 text-purple-500" />
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">Arquivos Operacionais</h3>
+              </div>
             <div className="space-y-2">
               {promptFiles.map((prompt) => (
                 <div key={prompt.file} className="flex items-center gap-3">

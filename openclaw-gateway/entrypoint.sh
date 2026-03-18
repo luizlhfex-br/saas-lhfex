@@ -16,12 +16,17 @@ ROOT_DIR=/root/.openclaw
 PROMPTS_DIR="$ROOT_DIR/prompts"
 WORKSPACE="$ROOT_DIR/workspace"
 AGENTS_DIR="$WORKSPACE/agents"
+CATALOG_SOURCE="$ROOT_DIR/agents.catalog.json"
 
 mkdir -p "$WORKSPACE" "$AGENTS_DIR"
 
 seed_working_file() {
   target="$1"
   session_key="$2"
+
+  if [ -f "$target/WORKING.md" ]; then
+    return
+  fi
 
   cat > "$target/WORKING.md" <<EOF
 # WORKING.md - Estado Atual
@@ -62,12 +67,31 @@ Sistema inicializado. Aguardando instrucoes do Luiz ou crons agendados.
 EOF
 }
 
+seed_agent_file_if_missing() {
+  source_file="$1"
+  target_file="$2"
+
+  if [ -f "$source_file" ] && [ ! -f "$target_file" ]; then
+    cp "$source_file" "$target_file"
+  fi
+}
+
+copy_catalog_if_available() {
+  target="$1"
+
+  if [ -f "$CATALOG_SOURCE" ]; then
+    cp "$CATALOG_SOURCE" "$target/agents.catalog.json"
+  fi
+}
+
 copy_shared_workspace_files() {
   target="$1"
   identity_source="$2"
   session_key="$3"
+  agent_prompt_dir="$4"
 
   mkdir -p "$target" "$target/memory" "$target/skills"
+  copy_catalog_if_available "$target"
 
   for file in SOUL.md USER.md AGENTS.md CHANGELOG.md; do
     if [ -f "$PROMPTS_DIR/$file" ]; then
@@ -81,6 +105,14 @@ copy_shared_workspace_files() {
     cp "$PROMPTS_DIR/IDENTITY.md" "$target/IDENTITY.md"
   fi
 
+  if [ -n "$agent_prompt_dir" ] && [ -d "$agent_prompt_dir" ]; then
+    for file in README.md SOUL.md AGENTS.md HEARTBEAT.md IDENTITY.md; do
+      if [ -f "$agent_prompt_dir/$file" ]; then
+        cp "$agent_prompt_dir/$file" "$target/$file"
+      fi
+    done
+  fi
+
   if [ -d "$PROMPTS_DIR/skills" ]; then
     cp -r "$PROMPTS_DIR/skills/." "$target/skills/"
   fi
@@ -91,16 +123,21 @@ copy_shared_workspace_files() {
     fi
   done
 
+  if [ -n "$agent_prompt_dir" ] && [ -d "$agent_prompt_dir" ]; then
+    seed_agent_file_if_missing "$agent_prompt_dir/WORKING.md" "$target/WORKING.md"
+  fi
+
   seed_working_file "$target" "$session_key"
 }
 
-copy_shared_workspace_files "$WORKSPACE" "$PROMPTS_DIR/IDENTITY.md" "agent:openclaw:main"
+copy_shared_workspace_files "$WORKSPACE" "$PROMPTS_DIR/IDENTITY.md" "agent:openclaw:main" ""
 
 for agent_id in airton iana maria iago iara sofia mai julia; do
   copy_shared_workspace_files \
     "$AGENTS_DIR/$agent_id" \
     "$PROMPTS_DIR/agents/$agent_id/IDENTITY.md" \
-    "agent:$agent_id:main"
+    "agent:$agent_id:main" \
+    "$PROMPTS_DIR/agents/$agent_id"
 done
 
 echo "[openclaw] Workspaces prontos: principal + 8 agentes."

@@ -78,6 +78,39 @@ Use o agente especialista certo quando a tarefa pedir profundidade tecnica:
 - mAI: licitacoes, PNCP, edital, checklist, proposta tecnica
 - JULia: promocoes, sorteios, vencimentos, relatorios de oportunidade
 
+## Arquitetura Operacional
+- A fonte unica de verdade do squad fica em `agents.catalog.json`
+- Cada agente deve operar como pacote local com `IDENTITY.md`, `README.md`, `SOUL.md`, `AGENTS.md`, `HEARTBEAT.md` e `WORKING.md`
+- Antes de delegar, consulte o catalogo e o `README.md` do agente para confirmar escopo, tools, permissoes e criterios de pronto
+- `WORKING.md` e memoria local do agente devem ser preservados; nao resetar estado sem motivo real
+
+## Contrato de Handoff
+Toda delegacao entre agentes deve carregar:
+- contexto atual
+- objetivo da chamada
+- dados reais ja consultados
+- entrega esperada
+- criterio de pronto
+- risco conhecido ou limite de escopo
+
+Formato padrao:
+
+```md
+## Handoff
+- Contexto:
+- Objetivo:
+- Dados reais:
+- Entrega esperada:
+- Criterio de pronto:
+- Risco conhecido:
+```
+
+## Heartbeat e Estado
+- Use `HEARTBEAT.md` como checklist rapido de saude do agente
+- Use `WORKING.md` para registrar progresso, bloqueios e proximas acoes
+- Atualize `WORKING.md` quando houver mudanca de estado real, decisao relevante ou bloqueio persistente
+- Nao declarar tarefa concluida sem evidencia real ou consulta ao SaaS quando o dado depender do sistema
+
 ## Controles de Seguranca
 - Nunca exponha API keys, tokens ou senhas
 - Nunca peca ao Luiz variaveis que ja existem como env no container
