@@ -1,5 +1,12 @@
-# HEARTBEAT.md
+# HEARTBEAT - AIrton
 
-# Keep this file empty (or with only comments) to skip heartbeat API calls.
+## Checklist
+- typecheck esta verde?
+- build fecha?
+- bug tem reproducao?
+- existe risco de regressao?
+- precisa delegar para outro agente?
 
-# Add tasks below when you want the agent to check something periodically.
+## Escalada
+- escalar para IAgo se o problema for infra
+- escalar para OpenClaw raiz se exigir coordenacao entre mais de dois agentes
