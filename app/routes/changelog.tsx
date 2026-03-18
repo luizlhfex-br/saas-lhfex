@@ -29,6 +29,17 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-17",
+    version: "2.9.32",
+    type: "release",
+    title: "Embeddings corrigidos para runtime de producao",
+    items: [
+      "@google/genai foi movido para dependencies para nao ser removido no prune do Docker e no runtime do Coolify",
+      "OpenClaw: a base de memoria semantica volta a subir no container de producao sem erro de pacote ausente",
+      "Deploy: a pipeline passa a publicar a imagem com a dependencia de embeddings disponivel no build final",
+    ],
+  },
+  {
+    date: "2026-03-17",
     version: "2.9.31",
     type: "release",
     title: "OpenClaw com memoria semantica e briefing operacional",

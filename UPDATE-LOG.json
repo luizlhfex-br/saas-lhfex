@@ -1,9 +1,9 @@
 {
   "release": {
-    "version": "v2.9.31",
+    "version": "v2.9.32",
     "date": "2026-03-17T00:00:00Z",
-    "type": "feature",
-    "title": "OpenClaw com memoria semantica e briefing operacional"
+    "type": "fix",
+    "title": "Embeddings corrigidos para runtime de producao"
   },
   "summary": {
     "commits": 1,
@@ -13,31 +13,23 @@
     "openclaw_changes": 0,
     "coolify_env_vars_added": 0
   },
-  "session_2026_03_17_openclaw_semantic_memory": {
+  "session_2026_03_17_openclaw_embeddings_runtime_fix": {
     "date": "2026-03-17",
-    "release_version": "2.9.31",
-    "objective": "Adicionar memoria semantica ao SaaS e reforcar a camada proativa do OpenClaw com briefing diario e alertas operacionais",
+    "release_version": "2.9.32",
+    "objective": "Garantir que a dependencia de embeddings permaneça no runtime de producao e nao seja removida pelo prune do Docker",
     "files_changed": [
-      "app/lib/embeddings.server.ts",
-      "app/lib/embedding-sync.server.ts",
-      "app/lib/cron.server.ts",
-      "app/lib/openclaw-observability.server.ts",
-      "app/routes/knowledge.embeddings.tsx",
-      "app/routes/agents.tsx",
-      "drizzle/schema/embeddings.ts",
-      "drizzle/migrations/0012_embeddings.sql",
+      "package.json",
+      "package-lock.json",
       "app/config/version.ts",
       "app/routes/changelog.tsx",
       "UPDATE-LOG.json"
     ],
     "changes": [
-      "Embeddings: o SaaS ganhou a fundacao vetorial com pgvector, jobs de indexacao e busca semantica por cliente, processo e documento",
-      "Memoria: a nova tela de conhecimento semantico permite consultar contexto recuperado e acionar backfill inicial do CRM e dos processos",
-      "OpenClaw: o cron operacional passou a gerar briefing diario com alertas, work items e resumo de saude do squad",
-      "Observabilidade: o painel de agentes passou a exibir alertas recentes e informacoes mais ricas sobre o estado do squad"
+      "@google/genai foi movido para dependencies para nao ser removido no prune do Docker e no runtime do Coolify",
+      "OpenClaw: a base de memoria semantica volta a subir no container de producao sem erro de pacote ausente",
+      "Deploy: a pipeline passa a publicar a imagem com a dependencia de embeddings disponivel no build final"
     ],
     "verification": [
-      "npx tsc --noEmit passou sem erros",
       "npm run build passou sem erros"
     ]
   },

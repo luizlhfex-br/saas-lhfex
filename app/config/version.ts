@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.31";
+export const APP_VERSION = "2.9.32";
 export const APP_RELEASE_DATE = "2026-03-17";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,16 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.32",
+    date: "2026-03-17",
+    title: "Embeddings corrigidos para runtime de producao",
+    items: [
+      { type: "fix", text: "@google/genai foi movido para dependencies para nao ser removido no prune do Docker e no runtime do Coolify" },
+      { type: "fix", text: "OpenClaw: a base de memoria semantica volta a subir no container de producao sem erro de pacote ausente" },
+      { type: "improvement", text: "Deploy: a pipeline passa a publicar a imagem com a dependencia de embeddings disponivel no build final" },
+    ],
+  },
   {
     version: "2.9.31",
     date: "2026-03-17",
