@@ -193,6 +193,7 @@ export async function action() {
 export default function AgentsPage({ loaderData }: Route.ComponentProps) {
   const { locale, conversations, openClawOverview, openClawObservability } = loaderData;
   const i18n = t(locale);
+  const alertSummary = openClawObservability.alertSummary;
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<"agents" | "knowledge">(
@@ -478,9 +479,14 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
                   <p className="text-sm text-gray-500 dark:text-gray-400">5 principios e templates prontos para conversar melhor com os agentes.</p>
                 </div>
               </div>
-              <Link to="/knowledge/prompting" className="rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700">
-                Abrir guia
-              </Link>
+              <div className="flex flex-wrap gap-2">
+                <Link to="/knowledge/prompting" className="rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700">
+                  Abrir guia
+                </Link>
+                <Link to="/knowledge/embeddings" className="rounded-full border border-blue-200 px-4 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/20">
+                  Memória semântica
+                </Link>
+              </div>
             </div>
           </div>
 
@@ -597,7 +603,7 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
               <Clock className="h-5 w-5 text-emerald-500" />
               <h3 className="font-semibold text-gray-900 dark:text-gray-100">Observabilidade OpenClaw</h3>
             </div>
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-3 md:grid-cols-4">
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/70">
                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Heartbeats</p>
                 <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-gray-100">{openClawObservability.heartbeatCounts.total}</p>
@@ -619,8 +625,49 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
                   {openClawObservability.workItemCounts.inProgress} em progresso, {openClawObservability.workItemCounts.blocked} bloqueados, {openClawObservability.workItemCounts.done} prontos
                 </p>
               </div>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/70">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Alertas</p>
+                <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-gray-100">{alertSummary.total}</p>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  {alertSummary.critical} criticos, {alertSummary.warning} avisos
+                </p>
+              </div>
             </div>
             <div className="mt-4 grid gap-4 xl:grid-cols-2">
+              <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 dark:border-rose-900/40 dark:bg-rose-900/10 xl:col-span-2">
+                <div className="flex items-center justify-between gap-3">
+                  <h4 className="text-sm font-semibold text-rose-900 dark:text-rose-100">Alertas recentes</h4>
+                  <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-medium text-rose-700 dark:bg-rose-900/30 dark:text-rose-200">
+                    {alertSummary.total}
+                  </span>
+                </div>
+                <div className="mt-3 grid gap-2 md:grid-cols-2">
+                  {alertSummary.recent.length > 0 ? (
+                    alertSummary.recent.map((alert) => (
+                      <div key={alert.id} className="rounded-lg border border-rose-200 bg-white px-3 py-2 text-xs dark:border-rose-900/30 dark:bg-gray-950">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-medium text-gray-900 dark:text-gray-100">{alert.title}</p>
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
+                            alert.level === "critical"
+                              ? "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200"
+                              : alert.level === "warning"
+                                ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200"
+                                : "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-200"
+                          }`}>
+                            {alert.level}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-gray-600 dark:text-gray-400">{alert.detail}</p>
+                        <p className="mt-1 text-[10px] uppercase tracking-wide text-gray-400">
+                          {alert.agentId} • {alert.source}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-rose-700 dark:text-rose-200">Sem alertas ativos agora.</p>
+                  )}
+                </div>
+              </div>
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/70">
                 <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Ultimos heartbeats</h4>
                 <div className="mt-3 space-y-2">
@@ -770,9 +817,16 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
                         ) : null}
                       </div>
                     </div>
-                    <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-200">
-                      {agentInfo.alignedSkills.length} skills
-                    </span>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-200">
+                        {agentInfo.alignedSkills.length} skills
+                      </span>
+                      {(alertSummary.byAgent[agentInfo.id] ?? 0) > 0 ? (
+                        <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-rose-700 dark:bg-rose-900/30 dark:text-rose-200">
+                          {(alertSummary.byAgent[agentInfo.id] ?? 0)} alertas
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
                   <div className="mt-3 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
                     <div>Primario: {modelLabels[agentInfo.primaryModel]?.label ?? agentInfo.primaryModel}</div>

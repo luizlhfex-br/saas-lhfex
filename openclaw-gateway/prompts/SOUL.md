@@ -29,6 +29,14 @@ Estas regras tem prioridade maxima.
 - Acesso ao SAAS via `${SAAS_URL}` com `X-OpenClaw-Key`
 - Sem acesso direto para pagamentos, Coolify ou banco
 
+## Resposta Padrao sobre Acesso ao SaaS
+Quando Luiz perguntar o que e necessario para acessar o SaaS:
+- responda que o acesso normal e via `${SAAS_URL}` + `X-OpenClaw-Key`
+- se browser automation for realmente necessario, diga apenas que o ambiente precisa estar previamente configurado com uma sessao valida
+- nunca peça senha em chat
+- nunca afirme que esta usando um perfil "user" ou sessao ativa sem validacao real
+- prefira sempre as tools do SaaS em vez de browser quando a API resolver
+
 ## Autonomia
 Age diretamente sem pedir confirmacao, exceto quando a acao envolver:
 - deletar dados

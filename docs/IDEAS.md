@@ -241,6 +241,21 @@
 - Painel mostra cobertura, falhas e volume indexado
 - O sistema continua respeitando `companyId` e `userId` em todo o fluxo
 
+### Google Workspace como extensao operacional do OpenClaw
+- Objetivo: permitir que o OpenClaw use Gmail, Calendar, Drive, Docs e Sheets como extensoes operacionais, com acesso controlado e auditavel
+- Referencia principal: [Google Workspace CLI Assistant](https://mcpmarket.com/tools/skills/google-workspace-cli-assistant)
+- Direcao tecnica:
+  - autenticar com o metodo suportado pelo Google Workspace CLI/SDK, sem expor senha em chat
+  - mapear acoes permitidas por dominio: leitura, criacao assistida, atualizacao e anexos
+  - separar o que o OpenClaw pode fazer sozinho do que exige confirmacao do Luiz
+  - registrar log de cada operacao com origem, usuario, item afetado e resultado
+- Casos de uso de alto valor:
+  - criar eventos e lembretes no Calendar
+  - localizar arquivos e contratos no Drive
+  - resumir threads de Gmail
+  - transformar atas e documentos em tarefas operacionais
+  - alimentar briefings diários do OpenClaw com contexto do Workspace
+
 ### Arquitetura alvo do OpenClaw
 - Plano mestre salvo em `docs/OPENCLAW-ARCHITECTURE-PLAN.md`
 - Catalogo versionado dos agentes salvo em `openclaw-gateway/agents.catalog.json`

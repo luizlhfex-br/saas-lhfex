@@ -2,10 +2,11 @@ import { data } from "react-router";
 import type { Route } from "./+types/api.approve-process";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
-import { processes, processTimeline } from "../../drizzle/schema";
+import { processes, processTimeline, clients } from "../../drizzle/schema";
 import { logAudit } from "~/lib/audit.server";
 import { eq } from "drizzle-orm";
 import { fireTrigger } from "~/lib/automation-engine.server";
+import { syncProcessEmbedding } from "~/lib/embedding-sync.server";
 
 export async function action({ request }: Route.ActionArgs) {
   const { user } = await requireAuth(request);
@@ -18,7 +19,37 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ error: "Missing required fields" }, { status: 400 });
   }
 
-  const [proc] = await db.select().from(processes).where(eq(processes.id, processId)).limit(1);
+  const [proc] = await db
+    .select({
+      id: processes.id,
+      reference: processes.reference,
+      status: processes.status,
+      processType: processes.processType,
+      description: processes.description,
+      hsCode: processes.hsCode,
+      incoterm: processes.incoterm,
+      originCountry: processes.originCountry,
+      destinationCountry: processes.destinationCountry,
+      portOfOrigin: processes.portOfOrigin,
+      portOfDestination: processes.portOfDestination,
+      vessel: processes.vessel,
+      bl: processes.bl,
+      diNumber: processes.diNumber,
+      customsBroker: processes.customsBroker,
+      currency: processes.currency,
+      totalValue: processes.totalValue,
+      totalWeight: processes.totalWeight,
+      containerCount: processes.containerCount,
+      containerType: processes.containerType,
+      costNotes: processes.costNotes,
+      notes: processes.notes,
+      clientName: clients.razaoSocial,
+      companyId: processes.companyId,
+    })
+    .from(processes)
+    .leftJoin(clients, eq(processes.clientId, clients.id))
+    .where(eq(processes.id, processId))
+    .limit(1);
   if (!proc) {
     return data({ error: "Process not found" }, { status: 404 });
   }
@@ -42,6 +73,38 @@ export async function action({ request }: Route.ActionArgs) {
       description: notes || `Aprovado por ${user.name}`,
       createdBy: user.id,
     });
+
+    try {
+      await syncProcessEmbedding({
+        companyId: proc.companyId,
+        userId: user.id,
+        processId,
+        reference: proc.reference,
+        clientName: proc.clientName,
+        processType: proc.processType,
+        status: "in_progress",
+        description: proc.description,
+        hsCode: proc.hsCode,
+        incoterm: proc.incoterm,
+        originCountry: proc.originCountry,
+        destinationCountry: proc.destinationCountry,
+        portOfOrigin: proc.portOfOrigin,
+        portOfDestination: proc.portOfDestination,
+        vessel: proc.vessel,
+        bl: proc.bl,
+        diNumber: proc.diNumber,
+        customsBroker: proc.customsBroker,
+        currency: proc.currency,
+        totalValue: proc.totalValue,
+        totalWeight: proc.totalWeight,
+        containerCount: proc.containerCount,
+        containerType: proc.containerType,
+        costNotes: proc.costNotes,
+        notes: proc.notes,
+      });
+    } catch (error) {
+      console.error("[EMBEDDINGS] Failed to reindex approved process:", error);
+    }
 
     try {
       await fireTrigger({
@@ -70,6 +133,38 @@ export async function action({ request }: Route.ActionArgs) {
       description: notes || `Rejeitado por ${user.name}`,
       createdBy: user.id,
     });
+
+    try {
+      await syncProcessEmbedding({
+        companyId: proc.companyId,
+        userId: user.id,
+        processId,
+        reference: proc.reference,
+        clientName: proc.clientName,
+        processType: proc.processType,
+        status: "draft",
+        description: proc.description,
+        hsCode: proc.hsCode,
+        incoterm: proc.incoterm,
+        originCountry: proc.originCountry,
+        destinationCountry: proc.destinationCountry,
+        portOfOrigin: proc.portOfOrigin,
+        portOfDestination: proc.portOfDestination,
+        vessel: proc.vessel,
+        bl: proc.bl,
+        diNumber: proc.diNumber,
+        customsBroker: proc.customsBroker,
+        currency: proc.currency,
+        totalValue: proc.totalValue,
+        totalWeight: proc.totalWeight,
+        containerCount: proc.containerCount,
+        containerType: proc.containerType,
+        costNotes: proc.costNotes,
+        notes: proc.notes,
+      });
+    } catch (error) {
+      console.error("[EMBEDDINGS] Failed to reindex rejected process:", error);
+    }
 
     try {
       await fireTrigger({

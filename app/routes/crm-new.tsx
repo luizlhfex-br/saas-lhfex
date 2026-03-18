@@ -13,6 +13,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { data } from "react-router";
 import { fireTrigger } from "~/lib/automation-engine.server";
 import { getCSRFFormState, requireValidCSRF } from "~/lib/csrf.server";
+import { syncClientEmbedding } from "~/lib/embedding-sync.server";
 
 type ContactDraft = {
   id: string;
@@ -199,6 +200,27 @@ export async function action({ request }: Route.ActionArgs) {
   }));
 
   await db.insert(contacts).values(contactsToInsert);
+
+  try {
+    await syncClientEmbedding({
+      companyId: await getPrimaryCompanyId(user.id),
+      userId: user.id,
+      clientId: newClient.id,
+      razaoSocial: values.razaoSocial,
+      nomeFantasia: values.nomeFantasia || null,
+      cnpj: cleanCnpj,
+      cnaeCode: values.cnaeCode || null,
+      cnaeDescription: values.cnaeDescription || null,
+      address: values.address || null,
+      city: values.city || null,
+      state: values.state || null,
+      status: values.status,
+      notes: values.notes || null,
+      contacts: contactsToInsert,
+    });
+  } catch (error) {
+    console.error("[EMBEDDINGS] Failed to index new client:", error);
+  }
 
   try {
     await fireTrigger({

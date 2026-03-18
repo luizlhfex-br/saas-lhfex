@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.30";
+export const APP_VERSION = "2.9.31";
 export const APP_RELEASE_DATE = "2026-03-17";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.31",
+    date: "2026-03-17",
+    title: "OpenClaw com memoria semantica e briefing operacional",
+    items: [
+      { type: "feature", text: "Embeddings: o SaaS ganhou a fundacao vetorial com pgvector, jobs de indexacao e busca semantica por cliente, processo e documento" },
+      { type: "feature", text: "Memoria: a nova tela de conhecimento semantico permite consultar contexto recuperado e acionar backfill inicial do CRM e dos processos" },
+      { type: "feature", text: "OpenClaw: o cron operacional passou a gerar briefing diario com alertas, work items e resumo de saude do squad" },
+      { type: "improvement", text: "Observabilidade: o painel de agentes passou a exibir alertas recentes e informacoes mais ricas sobre o estado do squad" },
+    ],
+  },
   {
     version: "2.9.30",
     date: "2026-03-17",

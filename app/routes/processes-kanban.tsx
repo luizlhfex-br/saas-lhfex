@@ -7,6 +7,7 @@ import { eq, isNull, desc } from "drizzle-orm";
 import { data } from "react-router";
 import { Plus, ArrowLeft } from "lucide-react";
 import { Button } from "~/components/ui/button";
+import { syncProcessEmbedding } from "~/lib/embedding-sync.server";
 
 const STAGES = [
   { id: "draft",             label: "Rascunho",         color: "border-t-gray-400",    bg: "bg-gray-50 dark:bg-gray-800/30",       dot: "bg-gray-400" },
@@ -72,6 +73,72 @@ export async function action({ request }: Route.ActionArgs) {
       .update(processes)
       .set({ status: newStatus as StageId, updatedAt: new Date() })
       .where(eq(processes.id, processId));
+
+    try {
+      const [updatedProcess] = await db
+        .select({
+          id: processes.id,
+          reference: processes.reference,
+          processType: processes.processType,
+          status: processes.status,
+          description: processes.description,
+          hsCode: processes.hsCode,
+          incoterm: processes.incoterm,
+          originCountry: processes.originCountry,
+          destinationCountry: processes.destinationCountry,
+          portOfOrigin: processes.portOfOrigin,
+          portOfDestination: processes.portOfDestination,
+          vessel: processes.vessel,
+          bl: processes.bl,
+          diNumber: processes.diNumber,
+          customsBroker: processes.customsBroker,
+          currency: processes.currency,
+          totalValue: processes.totalValue,
+          totalWeight: processes.totalWeight,
+          containerCount: processes.containerCount,
+          containerType: processes.containerType,
+          costNotes: processes.costNotes,
+          notes: processes.notes,
+          clientName: clients.razaoSocial,
+          companyId: processes.companyId,
+        })
+        .from(processes)
+        .leftJoin(clients, eq(processes.clientId, clients.id))
+        .where(eq(processes.id, processId))
+        .limit(1);
+
+      if (updatedProcess) {
+        await syncProcessEmbedding({
+          companyId: updatedProcess.companyId,
+          userId: user.id,
+          processId: updatedProcess.id,
+          reference: updatedProcess.reference,
+          clientName: updatedProcess.clientName,
+          processType: updatedProcess.processType,
+          status: newStatus,
+          description: updatedProcess.description,
+          hsCode: updatedProcess.hsCode,
+          incoterm: updatedProcess.incoterm,
+          originCountry: updatedProcess.originCountry,
+          destinationCountry: updatedProcess.destinationCountry,
+          portOfOrigin: updatedProcess.portOfOrigin,
+          portOfDestination: updatedProcess.portOfDestination,
+          vessel: updatedProcess.vessel,
+          bl: updatedProcess.bl,
+          diNumber: updatedProcess.diNumber,
+          customsBroker: updatedProcess.customsBroker,
+          currency: updatedProcess.currency,
+          totalValue: updatedProcess.totalValue,
+          totalWeight: updatedProcess.totalWeight,
+          containerCount: updatedProcess.containerCount,
+          containerType: updatedProcess.containerType,
+          costNotes: updatedProcess.costNotes,
+          notes: updatedProcess.notes,
+        });
+      }
+    } catch (error) {
+      console.error("[EMBEDDINGS] Failed to reindex kanban process:", error);
+    }
 
     return data({ success: true });
   }

@@ -3,13 +3,14 @@ import type { Route } from "./+types/crm-edit";
 import { requireAuth } from "~/lib/auth.server";
 import { getPrimaryCompanyId } from "~/lib/company-context.server";
 import { db } from "~/lib/db.server";
-import { clients, auditLogs } from "../../drizzle/schema";
+import { clients, contacts, auditLogs } from "../../drizzle/schema";
 import { clientSchema } from "~/lib/validators";
 import { t, type Locale } from "~/i18n";
 import { Button } from "~/components/ui/button";
 import { ArrowLeft, Save } from "lucide-react";
 import { data } from "react-router";
 import { eq, and, isNull } from "drizzle-orm";
+import { syncClientEmbedding } from "~/lib/embedding-sync.server";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
@@ -83,6 +84,38 @@ export async function action({ request, params }: Route.ActionArgs) {
       updatedAt: new Date(),
     })
     .where(and(eq(clients.id, params.id), eq(clients.companyId, companyId)));
+
+  const contactRows = await db
+    .select({
+      name: contacts.name,
+      role: contacts.role,
+      email: contacts.email,
+      phone: contacts.phone,
+      isPrimary: contacts.isPrimary,
+    })
+    .from(contacts)
+    .where(and(eq(contacts.clientId, params.id), isNull(contacts.deletedAt)));
+
+  try {
+    await syncClientEmbedding({
+      companyId,
+      userId: user.id,
+      clientId: params.id,
+      razaoSocial: values.razaoSocial,
+      nomeFantasia: values.nomeFantasia || null,
+      cnpj: values.cnpj,
+      cnaeCode: values.cnaeCode || null,
+      cnaeDescription: values.cnaeDescription || null,
+      address: values.address || null,
+      city: values.city || null,
+      state: values.state || null,
+      status: values.status,
+      notes: values.notes || null,
+      contacts: contactRows,
+    });
+  } catch (error) {
+    console.error("[EMBEDDINGS] Failed to reindex client:", error);
+  }
 
   await db.insert(auditLogs).values({
     userId: user.id,

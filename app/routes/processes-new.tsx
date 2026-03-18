@@ -8,9 +8,10 @@ import { t, type Locale } from "~/i18n";
 import { Button } from "~/components/ui/button";
 import { ArrowLeft, Save } from "lucide-react";
 import { data } from "react-router";
-import { isNull, eq, sql } from "drizzle-orm";
+import { and, isNull, eq, sql } from "drizzle-orm";
 import { getPrimaryCompanyId } from "~/lib/company-context.server";
 import { getCSRFFormState, requireValidCSRF } from "~/lib/csrf.server";
+import { syncProcessEmbedding } from "~/lib/embedding-sync.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
@@ -80,6 +81,7 @@ export async function action({ request }: Route.ActionArgs) {
 
   try {
     const values = result.data;
+    const companyId = await getPrimaryCompanyId(user.id);
     const modalReference = (formData.get("referenceModal") as string | null) ?? "sea";
     const modalPrefixMap: Record<string, string> = {
       air: "A",
@@ -117,9 +119,18 @@ export async function action({ request }: Route.ActionArgs) {
     const estimatedCost = normalizeNumericInput(values.estimatedCost);
     const actualCost = normalizeNumericInput(values.actualCost);
     const containerCount = normalizeIntegerInput(values.containerCount);
+    const [selectedClient] = await db
+      .select({ id: clients.id, razaoSocial: clients.razaoSocial })
+      .from(clients)
+      .where(and(eq(clients.id, values.clientId), eq(clients.companyId, companyId), isNull(clients.deletedAt)))
+      .limit(1);
+
+    if (!selectedClient) {
+      return data({ errors: { clientId: "Cliente nao encontrado para sua empresa." }, fields: raw as Record<string, string> }, { status: 400 });
+    }
 
     const [newProcess] = await db.insert(processes).values({
-      companyId: await getPrimaryCompanyId(user.id),
+      companyId,
       reference,
       processType: values.processType,
       status: initialStatus,
@@ -152,6 +163,37 @@ export async function action({ request }: Route.ActionArgs) {
       notes: values.notes || null,
       createdBy: user.id,
     }).returning({ id: processes.id });
+
+    try {
+      await syncProcessEmbedding({
+        companyId,
+        userId: user.id,
+        processId: newProcess.id,
+        reference,
+        clientName: selectedClient.razaoSocial,
+        processType: values.processType,
+        status: initialStatus,
+        description: values.description || null,
+        hsCode: values.hsCode || null,
+        incoterm: values.incoterm || null,
+        originCountry: values.originCountry || null,
+        destinationCountry: values.destinationCountry || "Brasil",
+        portOfOrigin: values.portOfOrigin || null,
+        portOfDestination: values.portOfDestination || null,
+        vessel: values.vessel || null,
+        bl: values.bl || null,
+        customsBroker: values.customsBroker || null,
+        currency: values.currency || "USD",
+        totalValue,
+        totalWeight,
+        containerCount,
+        containerType: values.containerType || null,
+        costNotes: costControlEnabled ? values.costNotes || null : null,
+        notes: values.notes || null,
+      });
+    } catch (error) {
+      console.error("[EMBEDDINGS] Failed to index new process:", error);
+    }
 
     await db.insert(processTimeline).values({
       processId: newProcess.id,

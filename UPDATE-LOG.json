@@ -1,9 +1,9 @@
 {
   "release": {
-    "version": "v2.9.30",
+    "version": "v2.9.31",
     "date": "2026-03-17T00:00:00Z",
-    "type": "improvement",
-    "title": "Processos abrem com Todos os status por padrao"
+    "type": "feature",
+    "title": "OpenClaw com memoria semantica e briefing operacional"
   },
   "summary": {
     "commits": 1,
@@ -13,20 +13,28 @@
     "openclaw_changes": 0,
     "coolify_env_vars_added": 0
   },
-  "session_2026_03_17_processes_default_all_status": {
+  "session_2026_03_17_openclaw_semantic_memory": {
     "date": "2026-03-17",
-    "release_version": "2.9.30",
-    "objective": "Abrir a tela de processos em Todos os status por padrao, mantendo os filtros para refinamento posterior",
+    "release_version": "2.9.31",
+    "objective": "Adicionar memoria semantica ao SaaS e reforcar a camada proativa do OpenClaw com briefing diario e alertas operacionais",
     "files_changed": [
-      "app/routes/processes.tsx",
+      "app/lib/embeddings.server.ts",
+      "app/lib/embedding-sync.server.ts",
+      "app/lib/cron.server.ts",
+      "app/lib/openclaw-observability.server.ts",
+      "app/routes/knowledge.embeddings.tsx",
+      "app/routes/agents.tsx",
+      "drizzle/schema/embeddings.ts",
+      "drizzle/migrations/0012_embeddings.sql",
       "app/config/version.ts",
       "app/routes/changelog.tsx",
       "UPDATE-LOG.json"
     ],
     "changes": [
-      "Processos: a tela inicial agora abre em Todos os status para dar visao geral do fluxo sem filtro aplicado",
-      "Processos: o filtro continua funcionando normalmente para refinar a lista depois da visao geral inicial",
-      "Processos: o estado padrao do select foi alinhado com a expectativa operacional de ver tudo primeiro"
+      "Embeddings: o SaaS ganhou a fundacao vetorial com pgvector, jobs de indexacao e busca semantica por cliente, processo e documento",
+      "Memoria: a nova tela de conhecimento semantico permite consultar contexto recuperado e acionar backfill inicial do CRM e dos processos",
+      "OpenClaw: o cron operacional passou a gerar briefing diario com alertas, work items e resumo de saude do squad",
+      "Observabilidade: o painel de agentes passou a exibir alertas recentes e informacoes mais ricas sobre o estado do squad"
     ],
     "verification": [
       "npx tsc --noEmit passou sem erros",

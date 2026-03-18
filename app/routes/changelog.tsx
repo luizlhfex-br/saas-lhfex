@@ -29,6 +29,18 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-17",
+    version: "2.9.31",
+    type: "release",
+    title: "OpenClaw com memoria semantica e briefing operacional",
+    items: [
+      "Embeddings: o SaaS ganhou a fundacao vetorial com pgvector, jobs de indexacao e busca semantica por cliente, processo e documento",
+      "Memoria: a nova tela de conhecimento semantico permite consultar contexto recuperado e acionar backfill inicial do CRM e dos processos",
+      "OpenClaw: o cron operacional passou a gerar briefing diario com alertas, work items e resumo de saude do squad",
+      "Observabilidade: o painel de agentes passou a exibir alertas recentes e informacoes mais ricas sobre o estado do squad",
+    ],
+  },
+  {
+    date: "2026-03-17",
     version: "2.9.30",
     type: "release",
     title: "Processos abrem com Todos os status por padrao",

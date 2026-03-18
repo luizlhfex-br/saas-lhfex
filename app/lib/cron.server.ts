@@ -4,14 +4,14 @@
  */
 
 import { db } from "./db.server";
-import { invoices, processes, clients, automationLogs, automations, auditLogs, personalFinance } from "../../drizzle/schema";
+import { invoices, processes, clients, automationLogs, automations, auditLogs, personalFinance, openclawAgentWorkItems } from "../../drizzle/schema";
 import { bills } from "../../drizzle/schema/bills";
 import { eq, lt, isNull, and, sql, lte, gte, desc } from "drizzle-orm";
 import { fireTrigger } from "./automation-engine.server";
 import { enrichCNPJ, askAgent } from "./ai.server";
 import { runRadioMonitor } from "./radio-monitor.server";
 import { getPrimaryCompanyId } from "~/lib/company-context.server";
-import { getOpenClawObservabilitySnapshot, recordOpenClawHeartbeat, recordOpenClawRun } from "~/lib/openclaw-observability.server";
+import { getOpenClawObservabilitySnapshot, recordOpenClawHeartbeat, recordOpenClawRun, recordOpenClawWorkItem } from "~/lib/openclaw-observability.server";
 import os from "node:os";
 import fs from "node:fs";
 
@@ -786,6 +786,8 @@ async function sendOpenClawOperationalBriefing() {
       }),
     ]);
 
+    await createOpenClawFollowUps(companyId, userId, snapshot, failedAutomations);
+
     console.log(`[CRON] openclaw_operational_briefing: enviado — saúde ${snapshot.heartbeatCounts.healthy}/${snapshot.heartbeatCounts.degraded}/${snapshot.heartbeatCounts.offline}`);
   } catch (error) {
     console.error("[CRON] openclaw_operational_briefing error:", error);
@@ -810,6 +812,122 @@ async function sendOpenClawOperationalBriefing() {
     } catch (heartbeatError) {
       console.error("[CRON] openclaw_operational_briefing heartbeat error:", heartbeatError);
     }
+  }
+}
+
+async function createOpenClawFollowUps(
+  companyId: string,
+  userId: string,
+  snapshot: Awaited<ReturnType<typeof getOpenClawObservabilitySnapshot>>,
+  failedAutomations: Array<{ automationId: string; automationName: string | null; errorCount: number; lastErrorAt: string | null }>,
+) {
+  const candidates = [
+    snapshot.heartbeatCounts.degraded + snapshot.heartbeatCounts.offline > 0
+      ? {
+          source: "openclaw_operational_briefing:agents",
+          agentId: "iago",
+          title: "Revisar saúde dos agentes OpenClaw",
+          description: "Há agentes com heartbeat degradado ou offline no briefing diário.",
+          priority: "high" as const,
+          context: {
+            degraded: snapshot.heartbeatCounts.degraded,
+            offline: snapshot.heartbeatCounts.offline,
+          },
+        }
+      : null,
+    failedAutomations.length > 0
+      ? {
+          source: "openclaw_operational_briefing:automations",
+          agentId: "airton",
+          title: "Corrigir automações com falhas recentes",
+          description: "O briefing encontrou automações com erro nas últimas 24h.",
+          priority: "high" as const,
+          context: {
+            failedAutomations: failedAutomations.map((row) => ({
+              automationId: row.automationId,
+              automationName: row.automationName,
+              errorCount: row.errorCount,
+              lastErrorAt: row.lastErrorAt,
+            })),
+          },
+        }
+      : null,
+    snapshot.workItemCounts.blocked > 0
+      ? {
+          source: "openclaw_operational_briefing:blocked_work_items",
+          agentId: "openclaw",
+          title: "Desbloquear work items críticos do OpenClaw",
+          description: "O briefing encontrou work items em estado bloqueado.",
+          priority: "medium" as const,
+          context: {
+            blocked: snapshot.workItemCounts.blocked,
+            review: snapshot.workItemCounts.review,
+          },
+        }
+      : null,
+    snapshot.recentWorkItems.some((item) => {
+      const ageHours = Math.max(0, (Date.now() - item.updatedAt.getTime()) / (1000 * 60 * 60));
+      return item.status !== "done" && item.status !== "archived" && ageHours >= 48;
+    })
+      ? {
+          source: "openclaw_operational_briefing:stale_work_items",
+          agentId: "openclaw",
+          title: "Revisar work items envelhecidos",
+          description: "O briefing encontrou tarefas do OpenClaw sem atualizacao ha mais de 48h.",
+          priority: "medium" as const,
+          context: {
+            staleWorkItems: snapshot.recentWorkItems
+              .filter((item) => {
+                const ageHours = Math.max(0, (Date.now() - item.updatedAt.getTime()) / (1000 * 60 * 60));
+                return item.status !== "done" && item.status !== "archived" && ageHours >= 48;
+              })
+              .map((item) => ({
+                id: item.id,
+                title: item.title,
+                agentId: item.agentId,
+                status: item.status,
+                priority: item.priority,
+                updatedAt: item.updatedAt.toISOString(),
+              })),
+          },
+        }
+      : null,
+  ].filter(Boolean) as Array<{
+    source: string;
+    agentId: string;
+    title: string;
+    description: string;
+    priority: "medium" | "high";
+    context: Record<string, unknown>;
+  }>;
+
+  for (const candidate of candidates) {
+    const [existing] = await db
+      .select({ id: openclawAgentWorkItems.id })
+      .from(openclawAgentWorkItems)
+      .where(
+        and(
+          eq(openclawAgentWorkItems.companyId, companyId),
+          eq(openclawAgentWorkItems.source, candidate.source),
+          isNull(openclawAgentWorkItems.deletedAt),
+          isNull(openclawAgentWorkItems.completedAt),
+        ),
+      )
+      .limit(1);
+
+    if (existing) continue;
+
+    await recordOpenClawWorkItem({
+      companyId,
+      agentId: candidate.agentId,
+      title: candidate.title,
+      description: candidate.description,
+      status: "backlog",
+      priority: candidate.priority,
+      source: candidate.source,
+      context: candidate.context,
+      createdBy: userId,
+    });
   }
 }
 

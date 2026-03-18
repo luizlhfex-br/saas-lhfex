@@ -12,6 +12,7 @@ import { ArrowLeft, Save } from "lucide-react";
 import { data } from "react-router";
 import { eq, isNull, and } from "drizzle-orm";
 import { fireTrigger } from "~/lib/automation-engine.server";
+import { syncProcessEmbedding } from "~/lib/embedding-sync.server";
 
 const validStatuses = ["draft", "in_progress", "awaiting_docs", "customs_clearance", "in_transit", "delivered", "completed", "cancelled"] as const;
 type ProcessStatus = typeof validStatuses[number];
@@ -106,6 +107,71 @@ export async function action({ request, params }: Route.ActionArgs) {
     notes: values.notes || null,
     updatedAt: new Date(),
   }).where(and(eq(processes.id, params.id), eq(processes.companyId, companyId)));
+
+  try {
+    const [updatedProcess] = await db
+      .select({
+        id: processes.id,
+        reference: processes.reference,
+        processType: processes.processType,
+        status: processes.status,
+        description: processes.description,
+        hsCode: processes.hsCode,
+        incoterm: processes.incoterm,
+        originCountry: processes.originCountry,
+        destinationCountry: processes.destinationCountry,
+        portOfOrigin: processes.portOfOrigin,
+        portOfDestination: processes.portOfDestination,
+        vessel: processes.vessel,
+        bl: processes.bl,
+        diNumber: processes.diNumber,
+        customsBroker: processes.customsBroker,
+        currency: processes.currency,
+        totalValue: processes.totalValue,
+        totalWeight: processes.totalWeight,
+        containerCount: processes.containerCount,
+        containerType: processes.containerType,
+        costNotes: processes.costNotes,
+        notes: processes.notes,
+        clientName: clients.razaoSocial,
+      })
+      .from(processes)
+      .innerJoin(clients, eq(processes.clientId, clients.id))
+      .where(and(eq(processes.id, params.id), eq(processes.companyId, companyId), isNull(processes.deletedAt)))
+      .limit(1);
+
+    if (updatedProcess) {
+      await syncProcessEmbedding({
+        companyId,
+        userId: user.id,
+        processId: updatedProcess.id,
+        reference: updatedProcess.reference,
+        clientName: updatedProcess.clientName,
+        processType: updatedProcess.processType,
+        status: updatedProcess.status,
+        description: updatedProcess.description,
+        hsCode: updatedProcess.hsCode,
+        incoterm: updatedProcess.incoterm,
+        originCountry: updatedProcess.originCountry,
+        destinationCountry: updatedProcess.destinationCountry,
+        portOfOrigin: updatedProcess.portOfOrigin,
+        portOfDestination: updatedProcess.portOfDestination,
+        vessel: updatedProcess.vessel,
+        bl: updatedProcess.bl,
+        diNumber: updatedProcess.diNumber,
+        customsBroker: updatedProcess.customsBroker,
+        currency: updatedProcess.currency,
+        totalValue: updatedProcess.totalValue,
+        totalWeight: updatedProcess.totalWeight,
+        containerCount: updatedProcess.containerCount,
+        containerType: updatedProcess.containerType,
+        costNotes: updatedProcess.costNotes,
+        notes: updatedProcess.notes,
+      });
+    }
+  } catch (error) {
+    console.error("[EMBEDDINGS] Failed to reindex process:", error);
+  }
 
   if (newStatus !== oldStatus) {
     const statusLabels: Record<string, string> = { draft: "Rascunho", in_progress: "Em Andamento", awaiting_docs: "Aguardando Docs", customs_clearance: "Desembaraço", in_transit: "Em Trânsito", delivered: "Entregue", completed: "Concluído", cancelled: "Cancelado" };

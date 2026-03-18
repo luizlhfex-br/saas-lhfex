@@ -113,6 +113,22 @@ export type OpenClawObservabilitySnapshot = {
   recentHandoffs: OpenClawHandoffRecord[];
   recentWorkItems: OpenClawWorkItemRecord[];
   latestHeartbeatsByAgent: OpenClawHeartbeatRecord[];
+  alertSummary: {
+    total: number;
+    critical: number;
+    warning: number;
+    info: number;
+    byAgent: Record<string, number>;
+    recent: Array<{
+      id: string;
+      agentId: string;
+      level: "critical" | "warning" | "info";
+      title: string;
+      detail: string;
+      source: string;
+      createdAt: string;
+    }>;
+  };
 };
 
 function normalizeJson(value: unknown): RecordJson {
@@ -368,6 +384,88 @@ export async function getOpenClawObservabilitySnapshot(companyId: string): Promi
       }, new Map<string, (typeof heartbeats)[number]>()),
   ).map(([, heartbeat]) => heartbeat);
 
+  const now = Date.now();
+  const recentAlerts: Array<{
+    id: string;
+    agentId: string;
+    level: "critical" | "warning" | "info";
+    title: string;
+    detail: string;
+    source: string;
+    createdAt: string;
+  }> = [];
+
+  for (const heartbeat of latestHeartbeatsByAgent) {
+    if (heartbeat.status === "degraded" || heartbeat.status === "offline") {
+      recentAlerts.push({
+        id: `hb-${heartbeat.id}`,
+        agentId: heartbeat.agentId,
+        level: heartbeat.status === "offline" ? "critical" : "warning",
+        title: `Heartbeat ${heartbeat.status}`,
+        detail: heartbeat.summary || "Agente precisa de atenção.",
+        source: "heartbeat",
+        createdAt: heartbeat.checkedAt.toISOString(),
+      });
+    }
+  }
+
+  for (const run of runs) {
+    if (run.status === "error") {
+      recentAlerts.push({
+        id: `run-${run.id}`,
+        agentId: run.agentId,
+        level: "critical",
+        title: "Run com erro",
+        detail: run.errorMessage || "A execução terminou com erro.",
+        source: "run",
+        createdAt: run.startedAt.toISOString(),
+      });
+    }
+  }
+
+  for (const item of workItems) {
+    const ageHours = Math.max(0, (now - item.updatedAt.getTime()) / (1000 * 60 * 60));
+    if (item.status === "blocked" || (item.status !== "done" && item.status !== "archived" && ageHours >= 48)) {
+      recentAlerts.push({
+        id: `work-${item.id}`,
+        agentId: item.agentId,
+        level: item.status === "blocked" ? "critical" : "warning",
+        title: item.status === "blocked" ? "Work item bloqueado" : "Work item envelhecido",
+        detail: item.title,
+        source: "work_item",
+        createdAt: item.updatedAt.toISOString(),
+      });
+    }
+  }
+
+  for (const handoff of handoffs) {
+    if (handoff.status === "blocked") {
+      recentAlerts.push({
+        id: `handoff-${handoff.id}`,
+        agentId: handoff.toAgentId,
+        level: "warning",
+        title: "Handoff bloqueado",
+        detail: handoff.objective,
+        source: "handoff",
+        createdAt: handoff.createdAt.toISOString(),
+      });
+    }
+  }
+
+  const alertSummary = {
+    total: recentAlerts.length,
+    critical: recentAlerts.filter((item) => item.level === "critical").length,
+    warning: recentAlerts.filter((item) => item.level === "warning").length,
+    info: recentAlerts.filter((item) => item.level === "info").length,
+    byAgent: recentAlerts.reduce<Record<string, number>>((acc, item) => {
+      acc[item.agentId] = (acc[item.agentId] || 0) + 1;
+      return acc;
+    }, {}),
+    recent: recentAlerts
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+      .slice(0, 12),
+  };
+
   return {
     heartbeatCounts: heartbeatCounts[0] ?? { healthy: 0, degraded: 0, offline: 0, total: 0 },
     runCounts: runCounts[0] ?? { queued: 0, running: 0, success: 0, error: 0, skipped: 0, total: 0 },
@@ -395,5 +493,6 @@ export async function getOpenClawObservabilitySnapshot(companyId: string): Promi
       ...row,
       details: normalizeJson(row.details),
     })) as OpenClawHeartbeatRecord[],
+    alertSummary,
   };
 }

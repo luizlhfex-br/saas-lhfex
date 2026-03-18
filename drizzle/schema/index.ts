@@ -29,3 +29,4 @@ export * from "./productivity";
 export * from "./description-ncm";
 export * from "./subscriptions";
 export * from "./openclaw-observability";
+export * from "./embeddings";

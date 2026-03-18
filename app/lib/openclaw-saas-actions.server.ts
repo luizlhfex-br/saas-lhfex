@@ -3,6 +3,7 @@ import { db } from "./db.server";
 import { enrichCNPJ } from "./ai.server";
 import { formatCNPJ } from "./utils";
 import { clients, contacts, processes, processTimeline } from "../../drizzle/schema";
+import { syncClientEmbedding, syncProcessEmbedding } from "./embedding-sync.server";
 
 export type OpenClawProcessType = "import" | "export" | "services";
 export type OpenClawProcessStatus =
@@ -317,6 +318,36 @@ export async function createClientFromOpenClaw(params: {
     });
   }
 
+  try {
+    await syncClientEmbedding({
+      companyId,
+      userId,
+      clientId: client.id,
+      razaoSocial,
+      nomeFantasia,
+      cnpj: cnpj || null,
+      cnaeCode,
+      cnaeDescription,
+      address,
+      city,
+      state,
+      notes,
+      contacts: shouldCreateContact
+        ? [
+            {
+              name: contactName || razaoSocial,
+              role: contactRole,
+              email: contactEmail,
+              phone: contactPhone,
+              isPrimary: true,
+            },
+          ]
+        : [],
+    });
+  } catch (error) {
+    console.error("[EMBEDDINGS] Failed to index OpenClaw client:", error);
+  }
+
   return {
     success: true as const,
     clientId: client.id,
@@ -391,6 +422,28 @@ export async function openProcessFromOpenClaw(params: {
     createdBy: userId,
   });
 
+  try {
+    await syncProcessEmbedding({
+      companyId,
+      userId,
+      processId: process.id,
+      reference,
+      clientName: client.razaoSocial,
+      processType,
+      status: "draft",
+      description: getOptionalString(input.description),
+      hsCode: getOptionalString(input.hsCode),
+      incoterm: getOptionalString(input.incoterm)?.toUpperCase() ?? null,
+      originCountry: getOptionalString(input.originCountry),
+      destinationCountry: getOptionalString(input.destinationCountry) ?? "Brasil",
+      currency: normalizeCurrency(input.currency),
+      totalValue: normalizeDecimal(input.totalValue ?? input.valueAmount),
+      notes: getOptionalString(input.notes),
+    });
+  } catch (error) {
+    console.error("[EMBEDDINGS] Failed to index OpenClaw process:", error);
+  }
+
   return {
     success: true as const,
     processId: process.id,
@@ -417,8 +470,30 @@ export async function updateProcessFromOpenClaw(params: {
       id: processes.id,
       reference: processes.reference,
       status: processes.status,
+      processType: processes.processType,
+      description: processes.description,
+      hsCode: processes.hsCode,
+      incoterm: processes.incoterm,
+      originCountry: processes.originCountry,
+      destinationCountry: processes.destinationCountry,
+      portOfOrigin: processes.portOfOrigin,
+      portOfDestination: processes.portOfDestination,
+      vessel: processes.vessel,
+      bl: processes.bl,
+      diNumber: processes.diNumber,
+      customsBroker: processes.customsBroker,
+      currency: processes.currency,
+      totalValue: processes.totalValue,
+      totalWeight: processes.totalWeight,
+      containerCount: processes.containerCount,
+      containerType: processes.containerType,
+      costNotes: processes.costNotes,
+      notes: processes.notes,
+      companyId: processes.companyId,
+      clientName: clients.razaoSocial,
     })
     .from(processes)
+    .leftJoin(clients, eq(processes.clientId, clients.id))
     .where(and(eq(processes.companyId, companyId), eq(processes.reference, reference), isNull(processes.deletedAt)))
     .limit(1);
 
@@ -503,6 +578,38 @@ export async function updateProcessFromOpenClaw(params: {
     description: buildProcessChangeSummary(changedFields, note),
     createdBy: userId,
   });
+
+  try {
+    await syncProcessEmbedding({
+      companyId,
+      userId,
+      processId: currentProcess.id,
+      reference: currentProcess.reference,
+      clientName: currentProcess.clientName,
+      processType: currentProcess.processType,
+      status: finalStatus,
+      description: currentProcess.description,
+      hsCode: currentProcess.hsCode,
+      incoterm: currentProcess.incoterm,
+      originCountry: currentProcess.originCountry,
+      destinationCountry: currentProcess.destinationCountry,
+      portOfOrigin: currentProcess.portOfOrigin,
+      portOfDestination: currentProcess.portOfDestination,
+      vessel: currentProcess.vessel,
+      bl: currentProcess.bl,
+      diNumber: currentProcess.diNumber,
+      customsBroker: currentProcess.customsBroker,
+      currency: currentProcess.currency,
+      totalValue: currentProcess.totalValue,
+      totalWeight: currentProcess.totalWeight,
+      containerCount: currentProcess.containerCount,
+      containerType: currentProcess.containerType,
+      costNotes: currentProcess.costNotes,
+      notes: currentProcess.notes,
+    });
+  } catch (error) {
+    console.error("[EMBEDDINGS] Failed to reindex OpenClaw process:", error);
+  }
 
   return {
     success: true as const,

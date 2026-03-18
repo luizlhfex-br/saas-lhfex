@@ -20,6 +20,8 @@
   - skill meta para descobrir, avaliar e instalar outras skills
 - [MCP Market Leaderboard](https://mcpmarket.com/tools/skills/leaderboard)
   - fonte viva para encontrar skills em alta
+- [Google Workspace CLI Assistant](https://mcpmarket.com/tools/skills/google-workspace-cli-assistant)
+  - referencia para dar ao OpenClaw mais acesso operacional a Workspace via CLI e automacoes assistidas
 
 ## Google Cloud / GCP
 
