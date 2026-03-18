@@ -5,13 +5,16 @@ import { db } from "~/lib/db.server";
 import { users, googleTokens, companyProfile, companyBankAccounts } from "../../drizzle/schema";
 import { t, type Locale } from "~/i18n";
 import { Button } from "~/components/ui/button";
-import { Save, User, Globe, Palette, Sparkles, Bug, Wrench, Rocket, CheckCircle2, Clock, Zap, LogOut, Building2, CreditCard, ChevronDown, Shield, ArrowRight, ExternalLink } from "lucide-react";
+import { Save, User, Globe, Palette, Sparkles, Bug, Wrench, Rocket, CheckCircle2, Clock, Zap, LogOut, Building2, CreditCard, ChevronDown, Shield, ArrowRight, ExternalLink, Plus, Trash2 } from "lucide-react";
 import { data } from "react-router";
 import { eq, and, isNull } from "drizzle-orm";
 import { disconnectGoogle } from "~/lib/google.server";
 import { VERSION_HISTORY, type ChangelogEntry } from "~/config/version";
 import { useState } from "react";
 import { getCSRFFormState, requireValidCSRF } from "~/lib/csrf.server";
+import { CompanyProfileCard } from "~/components/settings/company-profile-card";
+import { getOrCreatePrimaryCompanyProfile } from "~/lib/company-profile.server";
+import { enrichCNPJ } from "~/lib/ai.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
@@ -27,9 +30,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       where: and(eq(googleTokens.userId, user.id), isNull(googleTokens.disconnectedAt)),
     });
 
-    // Load company profile
-    let profiles = await db.select().from(companyProfile).limit(1);
-    let company = profiles[0] || null;
+    let company = await getOrCreatePrimaryCompanyProfile();
 
     // Load bank accounts
     let bankAccounts: typeof companyBankAccounts.$inferSelect[] = [];
@@ -40,37 +41,28 @@ export async function loader({ request }: Route.LoaderArgs) {
         .where(eq(companyBankAccounts.companyId, company.id));
     }
 
-    // Auto-enrich CNPJ if it's LHFEX and not yet filled
-    if (
-      company &&
-      company.cnpj === "62.180.992/0001-33" &&
-      !company.razaoSocial
-    ) {
+    // Auto-enrich CNPJ if key registration data is still missing
+    if (company?.cnpj && (!company.razaoSocial || !company.cnae || !company.address)) {
       try {
-        const enrichRes = await fetch(
-          `${new URL(request.url).origin}/api/enrich-cnpj?cnpj=62.180.992/0001-33`,
-          { headers: { Authorization: request.headers.get("cookie") || "" } }
-        );
-        if (enrichRes.ok) {
-          const enrichData = await enrichRes.json();
-          if (enrichData.cnpj) {
-            // Update company with enriched data
-            await db
-              .update(companyProfile)
-              .set({
-                razaoSocial: enrichData.razaoSocial || company.razaoSocial,
-                nomeFantasia: enrichData.nomeFantasia || company.nomeFantasia,
-                city: enrichData.city || company.city,
-                state: enrichData.state || company.state,
-                zipCode: enrichData.zipCode || company.zipCode,
-                cnae: enrichData.cnae || company.cnae,
-                cnaeDescription: enrichData.cnaeDescription || company.cnaeDescription,
-                updatedAt: new Date(),
-              });
-            // Reload from DB
-            profiles = await db.select().from(companyProfile).limit(1);
-            company = profiles[0] || null;
-          }
+        const enrichData = await enrichCNPJ(company.cnpj);
+        if (enrichData) {
+          await db
+            .update(companyProfile)
+            .set({
+              razaoSocial: company.razaoSocial || enrichData.razaoSocial || null,
+              nomeFantasia: company.nomeFantasia || enrichData.nomeFantasia || null,
+              address: company.address || enrichData.address || null,
+              city: company.city || enrichData.city || null,
+              state: company.state || enrichData.state || null,
+              zipCode: company.zipCode || enrichData.zipCode || null,
+              cnae: company.cnae || enrichData.cnaeCode || null,
+              cnaeDescription: company.cnaeDescription || enrichData.cnaeDescription || null,
+              updatedAt: new Date(),
+            })
+            .where(eq(companyProfile.id, company.id));
+
+          const refreshed = await db.select().from(companyProfile).where(eq(companyProfile.id, company.id)).limit(1);
+          company = refreshed[0] || company;
         }
       } catch (err) {
         console.warn("Auto-enrich CNPJ failed:", err);
@@ -145,39 +137,131 @@ export async function action({ request }: Route.ActionArgs) {
       }
     }
 
-    // Handle company profile update
     if (actionIntent === "save_company") {
+      const profile = await getOrCreatePrimaryCompanyProfile();
+      const cnpj = String(formData.get("cnpj") || "").trim() || null;
+      const enriched = cnpj ? await enrichCNPJ(cnpj) : null;
+
       const companyValues = {
-        cnpj: String(formData.get("cnpj") || "").trim() || null,
-        razaoSocial: String(formData.get("razaoSocial") || "").trim() || null,
-        nomeFantasia: String(formData.get("nomeFantasia") || "").trim() || null,
-        address: String(formData.get("address") || "").trim() || null,
-        city: String(formData.get("city") || "").trim() || null,
-        state: String(formData.get("state") || "").trim() || null,
-        zipCode: String(formData.get("zipCode") || "").trim() || null,
+        cnpj,
+        razaoSocial: String(formData.get("razaoSocial") || "").trim() || enriched?.razaoSocial || null,
+        nomeFantasia: String(formData.get("nomeFantasia") || "").trim() || enriched?.nomeFantasia || null,
+        address: String(formData.get("address") || "").trim() || enriched?.address || null,
+        city: String(formData.get("city") || "").trim() || enriched?.city || null,
+        state: String(formData.get("state") || "").trim() || enriched?.state || null,
+        zipCode: String(formData.get("zipCode") || "").trim() || enriched?.zipCode || null,
         country: String(formData.get("country") || "Brasil").trim() || "Brasil",
+        contactName: String(formData.get("contactName") || "").trim() || null,
+        contactRole: String(formData.get("contactRole") || "").trim() || null,
+        contactRegistration: String(formData.get("contactRegistration") || "").trim() || null,
         phone: String(formData.get("phone") || "").trim() || null,
         email: String(formData.get("email") || "").trim() || null,
         website: String(formData.get("website") || "").trim() || null,
         ie: String(formData.get("ie") || "").trim() || null,
         im: String(formData.get("im") || "").trim() || null,
-        cnae: String(formData.get("cnae") || "").trim() || null,
-        cnaeDescription: String(formData.get("cnaeDescription") || "").trim() || null,
+        cnae: String(formData.get("cnae") || "").trim() || enriched?.cnaeCode || null,
+        cnaeDescription: String(formData.get("cnaeDescription") || "").trim() || enriched?.cnaeDescription || null,
         bankName: String(formData.get("bankName") || "").trim() || null,
+        bankHolder: String(formData.get("bankHolder") || "").trim() || null,
         bankAgency: String(formData.get("bankAgency") || "").trim() || null,
         bankAccount: String(formData.get("bankAccount") || "").trim() || null,
         bankPix: String(formData.get("bankPix") || "").trim() || null,
         updatedAt: new Date(),
       };
 
-      const existing = await db.select({ id: companyProfile.id }).from(companyProfile).limit(1);
-      if (existing.length > 0) {
-        await db.update(companyProfile).set(companyValues);
-      } else {
-        await db.insert(companyProfile).values(companyValues);
+      await db.update(companyProfile).set(companyValues).where(eq(companyProfile.id, profile.id));
+
+      if (companyValues.bankName && companyValues.bankAgency && companyValues.bankAccount) {
+        const [defaultBank] = await db
+          .select()
+          .from(companyBankAccounts)
+          .where(and(eq(companyBankAccounts.companyId, profile.id), eq(companyBankAccounts.isDefault, true)))
+          .limit(1);
+
+        const defaultBankValues = {
+          companyId: profile.id,
+          bankName: companyValues.bankName,
+          accountHolder: companyValues.bankHolder,
+          bankAgency: companyValues.bankAgency,
+          bankAccount: companyValues.bankAccount,
+          bankPix: companyValues.bankPix,
+          isDefault: true,
+          updatedAt: new Date(),
+        };
+
+        if (defaultBank) {
+          await db
+            .update(companyBankAccounts)
+            .set(defaultBankValues)
+            .where(eq(companyBankAccounts.id, defaultBank.id));
+        } else {
+          await db.insert(companyBankAccounts).values(defaultBankValues);
+        }
       }
 
       return data({ success: true, section: "company" });
+    }
+
+    if (actionIntent === "add_bank_account") {
+      const profile = await getOrCreatePrimaryCompanyProfile();
+      const bankName = String(formData.get("extraBankName") || "").trim();
+      const accountHolder = String(formData.get("extraAccountHolder") || "").trim() || null;
+      const bankAgency = String(formData.get("extraBankAgency") || "").trim();
+      const bankAccount = String(formData.get("extraBankAccount") || "").trim();
+      const bankPix = String(formData.get("extraBankPix") || "").trim() || null;
+
+      if (!bankName || !bankAgency || !bankAccount) {
+        return data({ error: "Preencha banco, agencia e conta para adicionar uma nova conta bancaria." }, { status: 400 });
+      }
+
+      await db.insert(companyBankAccounts).values({
+        companyId: profile.id,
+        bankName,
+        accountHolder,
+        bankAgency,
+        bankAccount,
+        bankPix,
+        isDefault: false,
+        updatedAt: new Date(),
+      });
+
+      return data({ success: true, section: "bank_accounts" });
+    }
+
+    if (actionIntent === "update_bank_account") {
+      const profile = await getOrCreatePrimaryCompanyProfile();
+      const bankId = String(formData.get("bankId") || "").trim();
+      const bankName = String(formData.get("bankName") || "").trim();
+      const accountHolder = String(formData.get("accountHolder") || "").trim() || null;
+      const bankAgency = String(formData.get("bankAgency") || "").trim();
+      const bankAccount = String(formData.get("bankAccount") || "").trim();
+      const bankPix = String(formData.get("bankPix") || "").trim() || null;
+
+      if (!bankId || !bankName || !bankAgency || !bankAccount) {
+        return data({ error: "Preencha banco, agencia e conta para salvar a conta bancaria." }, { status: 400 });
+      }
+
+      await db
+        .update(companyBankAccounts)
+        .set({ bankName, accountHolder, bankAgency, bankAccount, bankPix, updatedAt: new Date() })
+        .where(and(eq(companyBankAccounts.id, bankId), eq(companyBankAccounts.companyId, profile.id), eq(companyBankAccounts.isDefault, false)));
+
+      return data({ success: true, section: "bank_accounts" });
+    }
+
+    if (actionIntent === "delete_bank_account") {
+      const profile = await getOrCreatePrimaryCompanyProfile();
+      const bankId = String(formData.get("bankId") || "").trim();
+
+      if (!bankId) {
+        return data({ error: "Conta bancaria invalida." }, { status: 400 });
+      }
+
+      await db
+        .delete(companyBankAccounts)
+        .where(and(eq(companyBankAccounts.id, bankId), eq(companyBankAccounts.companyId, profile.id), eq(companyBankAccounts.isDefault, false)));
+
+      return data({ success: true, section: "bank_accounts" });
     }
 
     // Handle profile update
@@ -216,7 +300,7 @@ const changelog: ChangelogEntry[] = VERSION_HISTORY;
 const typeConfig = {
   feature: { icon: Sparkles, label: "Novo", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
   improvement: { icon: Rocket, label: "Melhoria", color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
-  fix: { icon: Bug, label: "Correção", color: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" },
+  fix: { icon: Bug, label: "CorreÃ§Ã£o", color: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" },
   infra: { icon: Wrench, label: "Infra", color: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400" },
 };
 
@@ -228,368 +312,8 @@ interface CompanyProfileProps {
   bankAccounts?: any[];
 }
 
-function CompanyProfileSection({ company, isSubmitting, csrfToken, bankAccounts = [] }: CompanyProfileProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [showAddBank, setShowAddBank] = useState(false);
-  const [banks, setBanks] = useState(bankAccounts || []);
-
-  if (!company) return null;
-
-  return (
-    <Form method="post">
-      <input type="hidden" name="csrf" value={csrfToken} />
-      <input type="hidden" name="action" value="save_company" />
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
-        {/* Compact Header */}
-        <div
-          className="flex cursor-pointer items-center justify-between p-6 hover:bg-gray-50 dark:hover:bg-gray-800/50"
-          onClick={() => setIsExpanded(!isExpanded)}
-        >
-          <div className="flex items-center gap-3">
-            <Building2 className="h-5 w-5 text-gray-500" />
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {company.nomeFantasia || "Dados Cadastrais"}
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {company.cnpj || "CNPJ não configurado"}
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="transition-transform"
-            style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)" }}
-          >
-            <ChevronDown className="h-5 w-5 text-gray-400" />
-          </button>
-        </div>
-
-        {/* Expanded Form */}
-        {isExpanded && (
-          <>
-            <div className="border-t border-gray-200 p-6 dark:border-gray-800">
-              {/* Identification */}
-              <div className="mb-5">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                  Identificação
-                </p>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      CNPJ
-                    </label>
-                    <input
-                      type="text"
-                      name="cnpj"
-                      defaultValue={company?.cnpj || ""}
-                      placeholder="00.000.000/0001-00"
-                      className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Razão Social
-                    </label>
-                    <input
-                      type="text"
-                      name="razaoSocial"
-                      defaultValue={company?.razaoSocial || ""}
-                      placeholder="Nome completo da empresa"
-                      className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Nome Fantasia
-                    </label>
-                    <input
-                      type="text"
-                      name="nomeFantasia"
-                      defaultValue={company?.nomeFantasia || ""}
-                      placeholder="Nome comercial"
-                      className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      E-mail
-                    </label>
-                    <input
-                      type="email"
-                      name="email"
-                      defaultValue={company?.email || ""}
-                      placeholder="contato@empresa.com.br"
-                      className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Telefone
-                    </label>
-                    <input
-                      type="text"
-                      name="phone"
-                      defaultValue={company?.phone || ""}
-                      placeholder="(31) 99999-9999"
-                      className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Site
-                    </label>
-                    <input
-                      type="url"
-                      name="website"
-                      defaultValue={company?.website || ""}
-                      placeholder="https://www.empresa.com.br"
-                      className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Address */}
-              <div className="mb-5">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                  Endereço
-                </p>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="sm:col-span-2">
-                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Logradouro
-                    </label>
-                    <input
-                      type="text"
-                      name="address"
-                      defaultValue={company?.address || ""}
-                      placeholder="Rua, número, complemento"
-                      className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Cidade
-                    </label>
-                    <input
-                      type="text"
-                      name="city"
-                      defaultValue={company?.city || ""}
-                      placeholder="Belo Horizonte"
-                      className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Estado
-                    </label>
-                    <select
-                      name="state"
-                      defaultValue={company?.state || "MG"}
-                      className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    >
-                      {["AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE", "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO"].map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      CEP
-                    </label>
-                    <input
-                      type="text"
-                      name="zipCode"
-                      defaultValue={company?.zipCode || ""}
-                      placeholder="30000-000"
-                      className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Fiscal */}
-              <div className="mb-5">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                  Dados Fiscais
-                </p>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      IE
-                    </label>
-                    <input
-                      type="text"
-                      name="ie"
-                      defaultValue={company?.ie || ""}
-                      placeholder="Isento"
-                      className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      IM
-                    </label>
-                    <input
-                      type="text"
-                      name="im"
-                      defaultValue={company?.im || ""}
-                      placeholder="IM"
-                      className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      CNAE
-                    </label>
-                    <input
-                      type="text"
-                      name="cnae"
-                      defaultValue={company?.cnae || ""}
-                      placeholder="0000000"
-                      className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Descrição CNAE
-                    </label>
-                    <input
-                      type="text"
-                      name="cnaeDescription"
-                      defaultValue={company?.cnaeDescription || ""}
-                      placeholder="Descrição"
-                      className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Banking - Default Account */}
-              <div className="mb-5">
-                <div className="mb-3 flex items-center gap-2">
-                  <CreditCard className="h-4 w-4 text-gray-400" />
-                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                    Conta Bancária Principal
-                  </p>
-                </div>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Banco
-                    </label>
-                    <input
-                      type="text"
-                      name="bankName"
-                      defaultValue={company?.bankName || ""}
-                      placeholder="Banco Inter"
-                      className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Agência
-                    </label>
-                    <input
-                      type="text"
-                      name="bankAgency"
-                      defaultValue={company?.bankAgency || ""}
-                      placeholder="0001"
-                      className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Conta
-                    </label>
-                    <input
-                      type="text"
-                      name="bankAccount"
-                      defaultValue={company?.bankAccount || ""}
-                      placeholder="123456-7"
-                      className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      PIX
-                    </label>
-                    <input
-                      type="text"
-                      name="bankPix"
-                      defaultValue={company?.bankPix || ""}
-                      placeholder="CNPJ ou e-mail"
-                      className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Banking - Multiple Accounts */}
-              {banks && banks.length > 0 && (
-                <div className="mb-5 rounded-lg bg-gray-50 p-4 dark:bg-gray-800/50">
-                  <div className="mb-3 flex items-center justify-between">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                      Contas Adicionais ({banks.length})
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setShowAddBank(!showAddBank)}
-                      className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400"
-                    >
-                      {showAddBank ? "Cancelar" : "+ Adicionar Conta"}
-                    </button>
-                  </div>
-
-                  {showAddBank && (
-                    <div className="mb-4 rounded border border-blue-200 bg-blue-50 p-3 dark:border-blue-900 dark:bg-blue-900/20">
-                      <p className="mb-2 text-xs text-gray-600 dark:text-gray-400">
-                        Novos bancos serão adicionados em breve
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="space-y-2">
-                    {banks.map((bank, idx) => (
-                      <div
-                        key={bank.id || idx}
-                        className="flex items-center justify-between rounded border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900"
-                      >
-                        <div className="flex-1">
-                          <p className="font-medium text-gray-900 dark:text-gray-100">
-                            {bank.bankName}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {bank.bankAgency} • {bank.bankAccount}
-                            {bank.bankPix && ` • PIX: ${bank.bankPix.substring(0, 10)}...`}
-                          </p>
-                        </div>
-                        {bank.isDefault && (
-                          <div className="ml-2 rounded bg-green-100 px-2 py-1 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                            Padrão
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-end">
-                <Button type="submit" loading={isSubmitting}>
-                  <Save className="h-4 w-4" />
-                  Salvar Alterações
-                </Button>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-    </Form>
-  );
+function CompanyProfileSection(props: CompanyProfileProps) {
+  return <CompanyProfileCard {...props} />;
 }
 
 export default function SettingsPage({ loaderData }: Route.ComponentProps) {
@@ -691,7 +415,7 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
           <div className="mb-4 flex items-center gap-2">
             <Zap className="h-5 w-5 text-gray-500" />
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Integrações com Google
+              IntegraÃ§Ãµes com Google
             </h2>
           </div>
           <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
@@ -704,10 +428,10 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
                 <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
                 <div>
                   <p className="text-sm font-medium text-green-900 dark:text-green-300">
-                    ✓ Google Conectado
+                    âœ“ Google Conectado
                   </p>
                   <p className="text-xs text-green-700 dark:text-green-400">
-                    Você pode gerar relatórios em Google Sheets
+                    VocÃª pode gerar relatÃ³rios em Google Sheets
                   </p>
                 </div>
               </div>
@@ -739,7 +463,7 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
       </Form>
 
       {/* Company Profile - Compact + Expandable */}
-      <CompanyProfileSection company={company} isSubmitting={isSubmitting} csrfToken={csrfToken} bankAccounts={bankAccounts} />
+      <CompanyProfileCard company={company} isSubmitting={isSubmitting} csrfToken={csrfToken} bankAccounts={bankAccounts} />
 
       {/* APIs & Consumo */}
       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
@@ -837,7 +561,7 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
             <div>
               <h2 className="text-base font-semibold text-gray-900 dark:text-white">Logs de Auditoria</h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Registro de todas as ações realizadas no sistema
+                Registro de todas as aÃ§Ãµes realizadas no sistema
               </p>
             </div>
           </div>

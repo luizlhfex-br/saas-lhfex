@@ -1,17 +1,45 @@
 {
   "release": {
-    "version": "v2.9.32",
-    "date": "2026-03-17T00:00:00Z",
-    "type": "fix",
-    "title": "Embeddings corrigidos para runtime de producao"
+    "version": "v2.9.33",
+    "date": "2026-03-18T00:00:00Z",
+    "type": "feature",
+    "title": "Settings com cadastro enriquecido da empresa e contas extras"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 0,
-    "filesModified": 4,
+    "filesCreated": 2,
+    "filesModified": 8,
     "routesAdded": 0,
     "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_18_settings_company_profile_enriched": {
+    "date": "2026-03-18",
+    "release_version": "2.9.33",
+    "objective": "Preencher o cadastro interno da LHFEX em Settings com CNPJ enriquecido, dados de contato reais e contas bancarias editaveis, incluindo suporte a contas adicionais",
+    "files_changed": [
+      "app/components/settings/company-profile-card.tsx",
+      "app/routes/settings.tsx",
+      "app/routes/api.company-profile.tsx",
+      "drizzle/schema/company-profile.ts",
+      "drizzle/schema/company-bank-accounts.ts",
+      "drizzle/migrations/0013_company_profile_contacts.sql",
+      "drizzle/migrations/0014_company_bank_holder.sql",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "Settings ganhou um componente novo para editar CNPJ, contato principal, registro profissional, endereco e conta bancaria principal com titular",
+      "Contas bancarias adicionais passaram a ser criadas, editadas e excluidas diretamente na tela de configuracoes",
+      "Schema e API do company profile foram atualizados para persistir dados de contato enriquecidos e titular bancario",
+      "O cadastro interno da LHFEX foi preenchido no banco com CNPJ 62.180.992/0001-33, dados de contato reais e conta Inter padrao"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "Migrations 0013 e 0014 aplicadas com sucesso no banco configurado em .env.codex",
+      "Perfil da empresa e conta bancaria padrao atualizados no banco com dados reais da LHFEX"
+    ]
   },
   "session_2026_03_17_openclaw_embeddings_runtime_fix": {
     "date": "2026-03-17",

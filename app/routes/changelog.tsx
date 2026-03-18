@@ -28,6 +28,18 @@ type Entry = {
 
 const CHANGELOG: Entry[] = [
   {
+    date: "2026-03-18",
+    version: "2.9.33",
+    type: "release",
+    title: "Settings com cadastro enriquecido da empresa e contas extras",
+    items: [
+      "Settings: o bloco da empresa passou a editar contato principal, cargo, registro profissional e titular da conta principal",
+      "Settings: contas bancarias adicionais agora podem ser criadas, editadas e excluidas na propria tela",
+      "API e schema do company profile foram alinhados para persistir contato enriquecido e titular bancario sem atualizar tudo de forma cega",
+      "Cadastro interno da LHFEX foi preenchido com CNPJ, endereco, contato e conta Inter para a tela nao abrir mais como CNPJ nao configurado",
+    ],
+  },
+  {
     date: "2026-03-17",
     version: "2.9.32",
     type: "release",

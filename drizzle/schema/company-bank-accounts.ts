@@ -7,6 +7,7 @@ export const companyBankAccounts = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     companyId: uuid("company_id").notNull(),
     bankName: varchar("bank_name", { length: 100 }).notNull(),
+    accountHolder: varchar("account_holder", { length: 255 }),
     bankAgency: varchar("bank_agency", { length: 20 }).notNull(),
     bankAccount: varchar("bank_account", { length: 30 }).notNull(),
     bankPix: varchar("bank_pix", { length: 255 }),

@@ -3,8 +3,8 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.32";
-export const APP_RELEASE_DATE = "2026-03-17";
+export const APP_VERSION = "2.9.33";
+export const APP_RELEASE_DATE = "2026-03-18";
 export const APP_NAME = "LHFEX SaaS";
 
 export type ChangelogItemType = "feature" | "improvement" | "fix" | "infra";
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.33",
+    date: "2026-03-18",
+    title: "Settings com cadastro enriquecido da empresa e contas extras",
+    items: [
+      { type: "feature", text: "Settings: o bloco da empresa passou a editar contato principal, cargo, registro profissional e titular da conta principal" },
+      { type: "feature", text: "Settings: contas bancarias adicionais agora podem ser criadas, editadas e excluidas na propria tela" },
+      { type: "fix", text: "API e schema do company profile foram alinhados para persistir contato enriquecido e titular bancario sem atualizar tudo de forma cega" },
+      { type: "improvement", text: "Cadastro interno da LHFEX foi preenchido com CNPJ, endereco, contato e conta Inter para a tela nao abrir mais como CNPJ nao configurado" },
+    ],
+  },
   {
     version: "2.9.32",
     date: "2026-03-17",

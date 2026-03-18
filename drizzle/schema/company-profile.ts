@@ -13,6 +13,9 @@ export const companyProfile = pgTable("company_profile", {
   zipCode: varchar("zip_code", { length: 10 }),
   country: varchar("country", { length: 100 }).notNull().default("Brasil"),
   // Contato
+  contactName: varchar("contact_name", { length: 255 }),
+  contactRole: varchar("contact_role", { length: 255 }),
+  contactRegistration: varchar("contact_registration", { length: 255 }),
   phone: varchar("phone", { length: 30 }),
   email: varchar("email", { length: 255 }),
   website: varchar("website", { length: 500 }),
@@ -23,6 +26,7 @@ export const companyProfile = pgTable("company_profile", {
   cnaeDescription: varchar("cnae_description", { length: 500 }),
   // Bancário
   bankName: varchar("bank_name", { length: 100 }),
+  bankHolder: varchar("bank_holder", { length: 255 }),
   bankAgency: varchar("bank_agency", { length: 20 }),
   bankAccount: varchar("bank_account", { length: 30 }),
   bankPix: varchar("bank_pix", { length: 255 }),
