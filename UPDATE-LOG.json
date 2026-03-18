@@ -1,17 +1,60 @@
 {
   "release": {
-    "version": "v2.9.28",
+    "version": "v2.9.30",
     "date": "2026-03-17T00:00:00Z",
-    "type": "feature",
-    "title": "Briefing operacional diario do OpenClaw"
+    "type": "improvement",
+    "title": "Processos abrem com Todos os status por padrao"
   },
   "summary": {
     "commits": 1,
     "filesCreated": 0,
-    "filesModified": 5,
+    "filesModified": 4,
     "routesAdded": 0,
     "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_17_processes_default_all_status": {
+    "date": "2026-03-17",
+    "release_version": "2.9.30",
+    "objective": "Abrir a tela de processos em Todos os status por padrao, mantendo os filtros para refinamento posterior",
+    "files_changed": [
+      "app/routes/processes.tsx",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "Processos: a tela inicial agora abre em Todos os status para dar visao geral do fluxo sem filtro aplicado",
+      "Processos: o filtro continua funcionando normalmente para refinar a lista depois da visao geral inicial",
+      "Processos: o estado padrao do select foi alinhado com a expectativa operacional de ver tudo primeiro"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros"
+    ]
+  },
+  "session_2026_03_17_openclaw_access_response_hardening": {
+    "date": "2026-03-17",
+    "release_version": "2.9.29",
+    "objective": "Endurecer a resposta do OpenClaw sobre acesso ao SaaS para pedir o minimo necessario, evitar pedidos de senha e nao assumir browser/sessao sem validacao real",
+    "files_changed": [
+      "openclaw-gateway/prompts/IDENTITY.md",
+      "openclaw-gateway/prompts/SOUL.md",
+      "openclaw-gateway/prompts/AGENTS.md",
+      "openclaw-gateway/prompts/skills/SAAS.md",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "IDENTITY.md deixou de prometer acesso total e passou a descrever o acesso real pelos fluxos autorizados do gateway",
+      "SOUL.md ganhou uma resposta padrao para perguntas sobre acesso ao SaaS, priorizando API/tools e evitando pedidos de senha",
+      "AGENTS.md e a skill SAAS foram alinhados para nao sugerir browser/session sem validacao real"
+    ],
+    "verification": [
+      "Pendente: npx tsc --noEmit",
+      "Pendente: npm run build"
+    ]
   },
   "session_2026_03_17_openclaw_operational_briefing": {
     "date": "2026-03-17",

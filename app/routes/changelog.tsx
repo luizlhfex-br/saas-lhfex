@@ -29,6 +29,28 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-17",
+    version: "2.9.30",
+    type: "release",
+    title: "Processos abrem com Todos os status por padrao",
+    items: [
+      "Processos: a tela inicial agora abre em Todos os status para dar visao geral do fluxo sem filtro aplicado",
+      "Processos: o filtro continua funcionando normalmente para refinar a lista depois da visao geral inicial",
+      "Processos: o estado padrao do select foi alinhado com a expectativa operacional de ver tudo primeiro",
+    ],
+  },
+  {
+    date: "2026-03-17",
+    version: "2.9.29",
+    type: "release",
+    title: "OpenClaw com resposta de acesso mais segura e objetiva",
+    items: [
+      "OpenClaw: a resposta sobre acesso ao SaaS agora pede o minimo necessario e nao sugere senha em chat",
+      "SOUL.md, AGENTS.md e a skill SAAS foram ajustados para priorizar API/tools e nao assumir browser/sessao sem validacao real",
+      "IDENTITY.md foi refinado para remover a promessa de acesso total e deixar claro o contrato operacional real",
+    ],
+  },
+  {
+    date: "2026-03-17",
     version: "2.9.28",
     type: "release",
     title: "Briefing operacional diario do OpenClaw",

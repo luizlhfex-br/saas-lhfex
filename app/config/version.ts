@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.28";
+export const APP_VERSION = "2.9.30";
 export const APP_RELEASE_DATE = "2026-03-17";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,26 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.30",
+    date: "2026-03-17",
+    title: "Processos abrem com Todos os status por padrao",
+    items: [
+      { type: "improvement", text: "Processos: a tela inicial agora abre em Todos os status para dar visao geral do fluxo sem filtro aplicado" },
+      { type: "improvement", text: "Processos: o filtro continua funcionando normalmente para refinar a lista depois da visao geral inicial" },
+      { type: "improvement", text: "Processos: o estado padrao do select foi alinhado com a expectativa operacional de ver tudo primeiro" },
+    ],
+  },
+  {
+    version: "2.9.29",
+    date: "2026-03-17",
+    title: "OpenClaw com resposta de acesso mais segura e objetiva",
+    items: [
+      { type: "improvement", text: "OpenClaw: a resposta sobre acesso ao SaaS agora pede o minimo necessario e nao sugere senha em chat" },
+      { type: "improvement", text: "SOUL.md, AGENTS.md e a skill SAAS foram ajustados para priorizar API/tools e nao assumir browser/sessao sem validacao real" },
+      { type: "improvement", text: "IDENTITY.md foi refinado para remover a promessa de acesso total e deixar claro o contrato operacional real" },
+    ],
+  },
   {
     version: "2.9.28",
     date: "2026-03-17",

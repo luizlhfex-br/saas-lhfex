@@ -41,7 +41,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const page = Math.max(1, parseInt(url.searchParams.get("page") || "1"));
   const search = url.searchParams.get("search") || "";
-  const statusFilter = url.searchParams.get("status") || "in_progress";
+  const statusParam = url.searchParams.get("status");
+  const statusFilter = statusParam === null || statusParam === "all" || isValidStatus(statusParam) ? statusParam || "all" : "all";
   const typeFilter = url.searchParams.get("type") || "";
 
   const conditions = [isNull(processes.deletedAt), eq(processes.companyId, await getPrimaryCompanyId(user.id))];
@@ -90,9 +91,10 @@ export default function ProcessesPage({ loaderData }: Route.ComponentProps) {
   const i18n = t(locale);
 
   const currentSearch = searchParams.get("search") || "";
-  const currentStatus = searchParams.get("status") || "in_progress";
+  const currentStatusParam = searchParams.get("status");
+  const currentStatus = currentStatusParam === null || currentStatusParam === "all" || isValidStatus(currentStatusParam) ? currentStatusParam || "all" : "all";
   const currentType = searchParams.get("type") || "";
-  const hasFilters = currentSearch || currentType || (currentStatus && currentStatus !== "in_progress");
+  const hasFilters = currentSearch || currentType || currentStatus !== "all";
 
   const statusLabels: Record<string, string> = {
     draft: i18n.processes.draft, in_progress: i18n.processes.inProgress,
