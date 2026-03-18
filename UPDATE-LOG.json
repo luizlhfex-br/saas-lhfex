@@ -1,9 +1,9 @@
 {
   "release": {
-    "version": "v2.9.27",
+    "version": "v2.9.28",
     "date": "2026-03-17T00:00:00Z",
     "type": "feature",
-    "title": "OpenClaw com matriz de permissões e playbooks por agente"
+    "title": "Briefing operacional diario do OpenClaw"
   },
   "summary": {
     "commits": 1,
@@ -12,6 +12,27 @@
     "routesAdded": 0,
     "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_17_openclaw_operational_briefing": {
+    "date": "2026-03-17",
+    "release_version": "2.9.28",
+    "objective": "Criar um briefing operacional diario do OpenClaw baseado na observabilidade do squad, automatizando o envio de saude, handoffs, work items e falhas recentes para o Telegram",
+    "files_changed": [
+      "app/lib/cron.server.ts",
+      "app/routes/automations-overview.tsx",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "O scheduler do OpenClaw ganhou um cron diario de briefing operacional com resumo de saude dos agentes, work items, handoffs e falhas recentes",
+      "A visao geral de automacoes passou a exibir o Briefing Operacional OpenClaw na secao de cron jobs",
+      "O envio do briefing agora registra run e heartbeat na fundacao de observabilidade do OpenClaw"
+    ],
+    "verification": [
+      "Pendente: npx tsc --noEmit",
+      "Pendente: npm run build"
+    ]
   },
   "session_2026_03_17_openclaw_playbooks_permissions": {
     "date": "2026-03-17",

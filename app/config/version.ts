@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.27";
+export const APP_VERSION = "2.9.28";
 export const APP_RELEASE_DATE = "2026-03-17";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,16 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.28",
+    date: "2026-03-17",
+    title: "Briefing operacional diário do OpenClaw",
+    items: [
+      { type: "feature", text: "OpenClaw: o cron diario passou a enviar um briefing operacional com saude dos agentes, work items, handoffs e falhas recentes" },
+      { type: "improvement", text: "/automations/overview agora exibe o Briefing Operacional OpenClaw na secao de cron jobs em producao" },
+      { type: "improvement", text: "OpenClaw: o briefing registra run e heartbeat na fundacao de observabilidade para manter a trilha auditavel" },
+    ],
+  },
   {
     version: "2.9.27",
     date: "2026-03-17",

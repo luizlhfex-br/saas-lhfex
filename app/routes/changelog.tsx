@@ -29,6 +29,17 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-17",
+    version: "2.9.28",
+    type: "release",
+    title: "Briefing operacional diario do OpenClaw",
+    items: [
+      "OpenClaw: o cron diario passou a enviar um briefing operacional com saude dos agentes, work items, handoffs e falhas recentes",
+      "/automations/overview agora exibe o Briefing Operacional OpenClaw na secao de cron jobs em producao",
+      "OpenClaw: o briefing registra run e heartbeat na fundacao de observabilidade para manter a trilha auditavel",
+    ],
+  },
+  {
+    date: "2026-03-17",
     version: "2.9.27",
     type: "release",
     title: "OpenClaw com matriz de permissoes e playbooks por agente",

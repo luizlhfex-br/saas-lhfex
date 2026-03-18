@@ -4,12 +4,14 @@
  */
 
 import { db } from "./db.server";
-import { invoices, processes, clients, automationLogs, auditLogs, personalFinance } from "../../drizzle/schema";
+import { invoices, processes, clients, automationLogs, automations, auditLogs, personalFinance } from "../../drizzle/schema";
 import { bills } from "../../drizzle/schema/bills";
-import { eq, lt, isNull, and, sql, lte, gte } from "drizzle-orm";
+import { eq, lt, isNull, and, sql, lte, gte, desc } from "drizzle-orm";
 import { fireTrigger } from "./automation-engine.server";
 import { enrichCNPJ, askAgent } from "./ai.server";
 import { runRadioMonitor } from "./radio-monitor.server";
+import { getPrimaryCompanyId } from "~/lib/company-context.server";
+import { getOpenClawObservabilitySnapshot, recordOpenClawHeartbeat, recordOpenClawRun } from "~/lib/openclaw-observability.server";
 import os from "node:os";
 import fs from "node:fs";
 
@@ -104,6 +106,11 @@ const jobs: CronJob[] = [
     name: "personal_finance_weekly",
     cronExpression: "0 8 * * 1", // Toda segunda às 8h
     handler: sendWeeklyPersonalFinanceSummary,
+  },
+  {
+    name: "openclaw_operational_briefing",
+    cronExpression: "0 8 * * *", // Diário às 8h
+    handler: sendOpenClawOperationalBriefing,
   },
   ...(!UNIFIED_DEADLINE_ALERTS ? [{
     name: "bills_alert",
@@ -644,6 +651,165 @@ async function sendWeeklyPersonalFinanceSummary() {
     console.log("[CRON] personal_finance_weekly: resumo enviado");
   } catch (error) {
     console.error("[CRON] personal_finance_weekly error:", error);
+  }
+}
+
+/**
+ * Briefing operacional diário do OpenClaw
+ * Consolida saúde dos agentes, work items, handoffs e falhas de automações em um resumo curto.
+ */
+async function sendOpenClawOperationalBriefing() {
+  const botToken = process.env.OPENCLAW_TELEGRAM_TOKEN || process.env.MONITOR_BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.OPENCLAW_CHAT_ID || process.env.MONITOR_BOT_CHAT_ID;
+  const userId = process.env.OPENCLAW_USER_ID;
+
+  if (!botToken || !chatId || !userId) {
+    console.log("[CRON] openclaw_operational_briefing: env vars não configuradas — pulando");
+    return;
+  }
+
+  try {
+    const companyId = await getPrimaryCompanyId(userId);
+    const snapshot = await getOpenClawObservabilitySnapshot(companyId);
+    const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const failedAutomations = await db
+      .select({
+        automationId: automationLogs.automationId,
+        automationName: automations.name,
+        errorCount: sql<number>`count(*)::int`,
+        lastErrorAt: sql<string | null>`max(${automationLogs.executedAt})::text`,
+      })
+      .from(automationLogs)
+      .leftJoin(automations, eq(automationLogs.automationId, automations.id))
+      .where(and(eq(automations.companyId, companyId), eq(automationLogs.status, "error" as any), gte(automationLogs.executedAt, since24h)))
+      .groupBy(automationLogs.automationId, automations.name)
+      .orderBy(desc(sql`count(*)`))
+      .limit(3);
+
+    const openItems = snapshot.recentWorkItems
+      .filter((item) => ["blocked", "review", "in_progress"].includes(item.status))
+      .slice(0, 3);
+
+    const openHandoffs = snapshot.recentHandoffs
+      .filter((handoff) => ["requested", "blocked"].includes(handoff.status))
+      .slice(0, 3);
+
+    const alertAgents = snapshot.latestHeartbeatsByAgent
+      .filter((heartbeat) => heartbeat.status !== "healthy")
+      .slice(0, 3);
+
+    const formatObjective = (value: string) => {
+      if (!value) return "sem objetivo";
+      return value.length > 80 ? `${value.slice(0, 77)}...` : value;
+    };
+
+    const summaryLines = [
+      "🦞 *BRIEFING OPERACIONAL OPENCLAW*",
+      `_${new Date().toLocaleString("pt-BR", { dateStyle: "full", timeStyle: "short" })}_`,
+      "",
+      `*Saúde:* ${snapshot.heartbeatCounts.healthy} saudáveis | ${snapshot.heartbeatCounts.degraded} degradados | ${snapshot.heartbeatCounts.offline} offline`,
+      `*Execuções:* ${snapshot.runCounts.success} sucesso | ${snapshot.runCounts.error} erro | ${snapshot.runCounts.running} rodando`,
+      `*Work items:* ${snapshot.workItemCounts.backlog} backlog | ${snapshot.workItemCounts.ready} ready | ${snapshot.workItemCounts.blocked} bloqueados | ${snapshot.workItemCounts.review} revisão`,
+      "",
+      "*Pontos de atenção*",
+      ...(alertAgents.length > 0
+        ? alertAgents.map((agent) => `• ${agent.agentName || agent.agentId}: ${agent.status}`)
+        : ["• Nenhum agente degradado nas últimas leituras"]),
+      ...(failedAutomations.length > 0
+        ? ["", "*Falhas recentes de automação*", ...failedAutomations.map((row) => `• ${row.automationName || row.automationId}: ${row.errorCount} erro(s)`)]
+        : []),
+      ...(openItems.length > 0
+        ? ["", "*Work items em aberto*", ...openItems.map((item) => `• ${item.agentId}: ${item.title} [${item.status}]`)]
+        : []),
+      ...(openHandoffs.length > 0
+        ? ["", "*Handoffs em aberto*", ...openHandoffs.map((handoff) => `• ${handoff.fromAgentId || "openclaw"} → ${handoff.toAgentId}: ${formatObjective(handoff.objective)}`)]
+        : []),
+    ];
+
+    const message = summaryLines.join("\n").slice(0, 3900);
+
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: Number(chatId),
+        text: message,
+        parse_mode: "Markdown",
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+
+    await Promise.all([
+      recordOpenClawRun({
+        companyId,
+        agentId: "openclaw",
+        agentName: "OpenClaw",
+        agentRole: "briefing_operacional",
+        provider: "cron",
+        model: "scheduled_briefing",
+        status: "success",
+        input: {
+          source: "cron",
+          job: "openclaw_operational_briefing",
+          companyId,
+        },
+        output: {
+          summary: {
+            healthyAgents: snapshot.heartbeatCounts.healthy,
+            degradedAgents: snapshot.heartbeatCounts.degraded,
+            offlineAgents: snapshot.heartbeatCounts.offline,
+            blockedWorkItems: snapshot.workItemCounts.blocked,
+            reviewWorkItems: snapshot.workItemCounts.review,
+            failedAutomations: failedAutomations.length,
+          },
+          messagePreview: message.slice(0, 500),
+        },
+        startedAt: new Date(),
+        finishedAt: new Date(),
+        createdBy: userId,
+      }),
+      recordOpenClawHeartbeat({
+        companyId,
+        agentId: "openclaw",
+        agentName: "OpenClaw",
+        status: "healthy",
+        provider: "cron",
+        model: "scheduled_briefing",
+        summary: "Briefing operacional enviado com sucesso",
+        details: {
+          job: "openclaw_operational_briefing",
+          failedAutomations: failedAutomations.length,
+        },
+        checkedAt: new Date(),
+        createdBy: userId,
+      }),
+    ]);
+
+    console.log(`[CRON] openclaw_operational_briefing: enviado — saúde ${snapshot.heartbeatCounts.healthy}/${snapshot.heartbeatCounts.degraded}/${snapshot.heartbeatCounts.offline}`);
+  } catch (error) {
+    console.error("[CRON] openclaw_operational_briefing error:", error);
+
+    try {
+      const companyId = await getPrimaryCompanyId(userId);
+      await recordOpenClawHeartbeat({
+        companyId,
+        agentId: "openclaw",
+        agentName: "OpenClaw",
+        status: "degraded",
+        provider: "cron",
+        model: "scheduled_briefing",
+        summary: "Falha ao enviar briefing operacional",
+        details: {
+          job: "openclaw_operational_briefing",
+          error: error instanceof Error ? error.message : "unknown_error",
+        },
+        checkedAt: new Date(),
+        createdBy: userId,
+      });
+    } catch (heartbeatError) {
+      console.error("[CRON] openclaw_operational_briefing heartbeat error:", heartbeatError);
+    }
   }
 }
 

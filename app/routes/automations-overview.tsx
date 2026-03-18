@@ -139,6 +139,16 @@ const CRON_CATALOG: CronEntry[] = [
     category: "infra",
     icon: <BarChart3 className="h-5 w-5" />,
   },
+  {
+    id: "openclaw_operational_briefing",
+    name: "Briefing Operacional OpenClaw",
+    description:
+      "Resume saúde dos agentes, work items, handoffs e falhas recentes em um briefing diário no Telegram para manter o squad sob controle.",
+    schedule: "Diário às 8h",
+    output: "@lhfex_openclaw_bot",
+    category: "infra",
+    icon: <Bot className="h-5 w-5" />,
+  },
 ];
 
 const CATEGORY_CONFIG = {
