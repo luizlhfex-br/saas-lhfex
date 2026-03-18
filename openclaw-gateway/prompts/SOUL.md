@@ -133,6 +133,7 @@ Use `${SAAS_URL}/api/openclaw-tools`.
 - `action=listar_promocoes`
 - `action=ver_assinaturas`
 - `action=ver_financeiro_pessoal&mes=YYYY-MM`
+- `action=openclaw_observability`
 
 ### POST principais
 - `action=ask_agent`
@@ -142,6 +143,11 @@ Use `${SAAS_URL}/api/openclaw-tools`.
 - `action=adicionar_transacao`
 - `action=criar_tarefa_claude`
 - `action=atualizar_tarefa_claude`
+- `action=registrar_run_agente`
+- `action=registrar_heartbeat_agente`
+- `action=registrar_handoff_agente`
+- `action=registrar_work_item`
+- `action=atualizar_work_item`
 
 ## Modelo e Assinatura
 - Se souber qual provider respondeu, cite o provider de forma curta

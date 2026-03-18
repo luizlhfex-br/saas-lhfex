@@ -222,11 +222,12 @@ Evoluir `/agents` para virar um centro de comando com:
 - `openclaw-gateway/prompts/AGENTS.md` com pacote operacional por agente
 - `openclaw-gateway/entrypoint.sh` preservando estado e expondo o catalogo ao runtime
 - `app/routes/agents.tsx` e `app/lib/openclaw-overview.server.ts` lendo o catalogo para a camada visual do SaaS
+- `drizzle/schema/openclaw-observability.ts`, `app/lib/openclaw-observability.server.ts`, `app/routes/api.openclaw-tools.tsx` e `app/routes/agents.tsx` com a fundacao de runs, heartbeats, handoffs e work items do OpenClaw
 
 ## O que fica para os proximos ciclos
-- schema de observabilidade
-- UI mais profunda no SaaS
-- integracao do catalogo com permissions matrix em runtime
+- enriquecer a visao de observabilidade com historico, filtros e alertas
+- ampliar a UI operacional do SaaS com pagina dedicada por agente
+- integrar o catalogo com permissions matrix em runtime
 - automacoes por agente
 - embeddings e RAG por dominio
 

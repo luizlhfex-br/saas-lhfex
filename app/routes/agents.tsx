@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Route } from "./+types/agents";
 import { requireAuth } from "~/lib/auth.server";
+import { getPrimaryCompanyId } from "~/lib/company-context.server";
 import { db } from "~/lib/db.server";
 import { chatConversations } from "drizzle/schema";
 import { desc, eq } from "drizzle-orm";
 import { t, type Locale } from "~/i18n";
 import { getOpenClawOverview } from "~/lib/openclaw-overview.server";
+import { getOpenClawObservabilitySnapshot } from "~/lib/openclaw-observability.server";
 import {
   ArrowLeft,
   Bot,
@@ -143,6 +145,7 @@ function getSuggestionTexts(agentId: string) {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
+  const companyId = await getPrimaryCompanyId(user.id);
 
   const cookieHeader = request.headers.get("cookie") || "";
   const localeMatch = cookieHeader.match(/locale=([^;]+)/);
@@ -164,6 +167,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     locale,
     conversations,
     openClawOverview: await getOpenClawOverview(),
+    openClawObservability: await getOpenClawObservabilitySnapshot(companyId),
   };
 }
 
@@ -172,7 +176,7 @@ export async function action() {
 }
 
 export default function AgentsPage({ loaderData }: Route.ComponentProps) {
-  const { locale, conversations, openClawOverview } = loaderData;
+  const { locale, conversations, openClawOverview, openClawObservability } = loaderData;
   const i18n = t(locale);
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -570,6 +574,126 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
                   </div>
                 );
               })}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <div className="mb-3 flex items-center gap-2">
+              <Clock className="h-5 w-5 text-emerald-500" />
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100">Observabilidade OpenClaw</h3>
+            </div>
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/70">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Heartbeats</p>
+                <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-gray-100">{openClawObservability.heartbeatCounts.total}</p>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  {openClawObservability.heartbeatCounts.healthy} saudaveis, {openClawObservability.heartbeatCounts.degraded} degradados, {openClawObservability.heartbeatCounts.offline} offline
+                </p>
+              </div>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/70">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Runs</p>
+                <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-gray-100">{openClawObservability.runCounts.total}</p>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  {openClawObservability.runCounts.running} em execucao, {openClawObservability.runCounts.success} sucesso, {openClawObservability.runCounts.error} erro
+                </p>
+              </div>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/70">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Work items</p>
+                <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-gray-100">{openClawObservability.workItemCounts.total}</p>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  {openClawObservability.workItemCounts.inProgress} em progresso, {openClawObservability.workItemCounts.blocked} bloqueados, {openClawObservability.workItemCounts.done} prontos
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-4 xl:grid-cols-2">
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/70">
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Ultimos heartbeats</h4>
+                <div className="mt-3 space-y-2">
+                  {openClawObservability.latestHeartbeatsByAgent.slice(0, 6).map((heartbeat) => (
+                    <div key={heartbeat.id} className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs dark:border-gray-700 dark:bg-gray-900">
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-900 dark:text-gray-100">{heartbeat.agentName || heartbeat.agentId}</p>
+                        <p className="text-gray-500 dark:text-gray-400">{heartbeat.provider || "provider local"} • {heartbeat.model || "modelo nao informado"}</p>
+                      </div>
+                      <span
+                        className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                          heartbeat.status === "healthy"
+                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                            : heartbeat.status === "degraded"
+                              ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                              : "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300"
+                        }`}
+                      >
+                        {heartbeat.status}
+                      </span>
+                    </div>
+                  ))}
+                  {openClawObservability.latestHeartbeatsByAgent.length === 0 ? (
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Nenhum heartbeat registrado ainda.</p>
+                  ) : null}
+                </div>
+              </div>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/70">
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Runs recentes</h4>
+                <div className="mt-3 space-y-2">
+                  {openClawObservability.recentRuns.slice(0, 5).map((run) => (
+                    <div key={run.id} className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs dark:border-gray-700 dark:bg-gray-900">
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-900 dark:text-gray-100">{run.agentName || run.agentId}</p>
+                        <p className="text-gray-500 dark:text-gray-400">{run.provider || "provider"} • {run.model || "modelo"}</p>
+                      </div>
+                      <span
+                        className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                          run.status === "success"
+                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                            : run.status === "error"
+                              ? "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300"
+                              : run.status === "running"
+                                ? "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300"
+                                : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+                        }`}
+                      >
+                        {run.status}
+                      </span>
+                    </div>
+                  ))}
+                  {openClawObservability.recentRuns.length === 0 ? (
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Nenhuma run registrada ainda.</p>
+                  ) : null}
+                </div>
+              </div>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/70">
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Handoffs recentes</h4>
+                <div className="mt-3 space-y-2">
+                  {openClawObservability.recentHandoffs.slice(0, 5).map((handoff) => (
+                    <div key={handoff.id} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs dark:border-gray-700 dark:bg-gray-900">
+                      <p className="font-medium text-gray-900 dark:text-gray-100">{handoff.objective}</p>
+                      <p className="mt-1 text-gray-500 dark:text-gray-400">
+                        {handoff.fromAgentId || "OpenClaw"} → {handoff.toAgentId} • {handoff.status}
+                      </p>
+                    </div>
+                  ))}
+                  {openClawObservability.recentHandoffs.length === 0 ? (
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Nenhum handoff registrado ainda.</p>
+                  ) : null}
+                </div>
+              </div>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/70">
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Work items ativos</h4>
+                <div className="mt-3 space-y-2">
+                  {openClawObservability.recentWorkItems.slice(0, 5).map((item) => (
+                    <div key={item.id} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs dark:border-gray-700 dark:bg-gray-900">
+                      <p className="font-medium text-gray-900 dark:text-gray-100">{item.title}</p>
+                      <p className="mt-1 text-gray-500 dark:text-gray-400">
+                        {item.agentId} • {item.priority} • {item.status}
+                      </p>
+                    </div>
+                  ))}
+                  {openClawObservability.recentWorkItems.length === 0 ? (
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Nenhum work item registrado ainda.</p>
+                  ) : null}
+                </div>
+              </div>
             </div>
           </div>
 

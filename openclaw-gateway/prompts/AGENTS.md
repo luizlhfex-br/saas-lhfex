@@ -66,6 +66,7 @@ Cada agente do squad deve operar com estes arquivos locais:
 5. Responda sempre em portugues brasileiro.
 6. Consulte `agents.catalog.json` quando houver duvida sobre escopo, ferramentas, permissoes ou gatilhos de um agente.
 7. Reuse o `WORKING.md` do agente em vez de recomecar do zero a cada sessao.
+8. Registre heartbeat, run, handoff e work item quando houver mudanca operacional relevante, bloqueio, execucao longa ou nova entrega.
 
 ## Delegacao Pratica
 - Codigo e produto: AIrton
@@ -76,6 +77,14 @@ Cada agente do squad deve operar com estes arquivos locais:
 - Atendimento e CRM: SofIA
 - Licitacoes: mAI
 - Promocoes e alertas: JULia
+
+## Observabilidade
+- `registrar_heartbeat_agente`: use para confirmar saude do agente, provider, modelo e resumo do estado atual.
+- `registrar_run_agente`: use para registrar execucoes relevantes, especialmente as que consumirem tokens ou tocarem o SaaS.
+- `registrar_handoff_agente`: use quando um agente passar trabalho para outro.
+- `registrar_work_item`: use para abrir item operacional ou backlog que deva ser acompanhado.
+- `atualizar_work_item`: use para mover item, marcar bloqueio ou concluir.
+- `openclaw_observability`: use para leitura consolidada do painel operacional do squad.
 
 ## Contrato Padrao de Handoff
 Toda delegacao deve seguir este formato minimo:

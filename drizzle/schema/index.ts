@@ -28,3 +28,4 @@ export * from "./claude-tasks";
 export * from "./productivity";
 export * from "./description-ncm";
 export * from "./subscriptions";
+export * from "./openclaw-observability";

@@ -29,6 +29,19 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-17",
+    version: "2.9.25",
+    type: "release",
+    title: "OpenClaw com observabilidade operacional por agente",
+    items: [
+      "OpenClaw: o SaaS ganhou tabelas para agent_runs, agent_heartbeats, agent_handoffs e agent_work_items com companyId e indexes proprios",
+      "OpenClaw: /api/openclaw-tools passou a registrar heartbeat, run, handoff e work item do squad via actions dedicadas",
+      "/agents: a tela virou painel operacional com resumo de heartbeats, runs, handoffs e work items recentes do OpenClaw",
+      "OpenClaw: SOUL.md e AGENTS.md agora declaram as actions de observabilidade como parte oficial do fluxo do squad",
+      "Schema: a fundacao foi registrada em drizzle/migrations/0011_openclaw_observability.sql para manter a base versionada",
+    ],
+  },
+  {
+    date: "2026-03-17",
     version: "2.9.24",
     type: "release",
     title: "Calculadora integrada ao detalhe do processo",

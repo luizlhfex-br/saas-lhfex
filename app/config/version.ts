@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.24";
+export const APP_VERSION = "2.9.25";
 export const APP_RELEASE_DATE = "2026-03-17";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,18 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.25",
+    date: "2026-03-17",
+    title: "OpenClaw com observabilidade operacional por agente",
+    items: [
+      { type: "feature", text: "OpenClaw: o SaaS ganhou tabelas para agent_runs, agent_heartbeats, agent_handoffs e agent_work_items com companyId e indexes proprios" },
+      { type: "feature", text: "OpenClaw: /api/openclaw-tools passou a registrar heartbeat, run, handoff e work item do squad via actions dedicadas" },
+      { type: "improvement", text: "/agents: a tela virou painel operacional com resumo de heartbeats, runs, handoffs e work items recentes do OpenClaw" },
+      { type: "improvement", text: "OpenClaw: SOUL.md e AGENTS.md agora declaram as actions de observabilidade como parte oficial do fluxo do squad" },
+      { type: "improvement", text: "Schema: a fundacao foi registrada em drizzle/migrations/0011_openclaw_observability.sql para manter a base versionada" },
+    ],
+  },
   {
     version: "2.9.24",
     date: "2026-03-17",

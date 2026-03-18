@@ -1,17 +1,45 @@
 {
   "release": {
-    "version": "v2.9.24",
+    "version": "v2.9.25",
     "date": "2026-03-17T00:00:00Z",
     "type": "feature",
-    "title": "Calculadora integrada ao detalhe do processo"
+    "title": "OpenClaw com observabilidade operacional por agente"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 0,
-    "filesModified": 5,
+    "filesCreated": 3,
+    "filesModified": 8,
     "routesAdded": 0,
     "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_17_openclaw_observability_foundation": {
+    "date": "2026-03-17",
+    "release_version": "2.9.25",
+    "objective": "Criar a fundacao de observabilidade do OpenClaw com tabelas, endpoint de registro e painel operacional no SaaS",
+    "files_changed": [
+      "app/lib/openclaw-observability.server.ts",
+      "app/routes/api.openclaw-tools.tsx",
+      "app/routes/agents.tsx",
+      "drizzle/migrations/0011_openclaw_observability.sql",
+      "drizzle/schema/index.ts",
+      "drizzle/schema/openclaw-observability.ts",
+      "openclaw-gateway/prompts/AGENTS.md",
+      "openclaw-gateway/prompts/SOUL.md",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "Foram criadas tabelas dedicadas para agent_runs, agent_heartbeats, agent_handoffs e agent_work_items, todas com companyId e indexes proprios",
+      "O endpoint /api/openclaw-tools ganhou actions para registrar run, heartbeat, handoff, work item e atualizar work item, centralizando a telemetria do squad",
+      "A pagina /agents passou a exibir um painel operacional com contagens e ultimos eventos do OpenClaw, nao apenas o catalogo e as skills",
+      "SOUL.md e AGENTS.md foram atualizados para tratar observabilidade como parte oficial do fluxo do OpenClaw",
+      "A migration 0011_openclaw_observability.sql foi adicionada para manter a base versionada"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros"
+    ]
   },
   "session_2026_03_17_process_calculator_context": {
     "date": "2026-03-17",

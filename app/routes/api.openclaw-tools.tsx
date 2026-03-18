@@ -35,6 +35,14 @@ import {
   openProcessFromOpenClaw,
   updateProcessFromOpenClaw,
 } from "~/lib/openclaw-saas-actions.server";
+import {
+  getOpenClawObservabilitySnapshot,
+  recordOpenClawHandoff,
+  recordOpenClawHeartbeat,
+  recordOpenClawRun,
+  recordOpenClawWorkItem,
+  updateOpenClawWorkItem,
+} from "~/lib/openclaw-observability.server";
 import { getSubscriptionHealth, resolveSubscriptionNextDueDate, summarizeSubscriptionTotals } from "~/lib/subscriptions.server";
 
 function unauthorized() {
@@ -805,6 +813,11 @@ export async function loader({ request }: Route.LoaderArgs) {
     });
   }
 
+  if (action === "openclaw_observability") {
+    const snapshot = await getOpenClawObservabilitySnapshot(companyId);
+    return ok(snapshot);
+  }
+
   return badRequest(`Unknown action: ${action}`);
 }
 
@@ -877,6 +890,113 @@ export async function action({ request }: Route.ActionArgs) {
       }
       throw error;
     }
+  }
+
+  if (act === "registrar_run_agente") {
+    const { agentId, status, provider, model } = body as Record<string, string>;
+    if (!agentId) return badRequest("agentId e obrigatorio");
+
+    const result = await recordOpenClawRun({
+      companyId,
+      agentId,
+      agentName: (body.agentName as string) || undefined,
+      agentRole: (body.agentRole as string) || undefined,
+      provider,
+      model,
+      status: status || "running",
+      input: (body.input as Record<string, unknown>) || null,
+      output: (body.output as Record<string, unknown>) || null,
+      errorMessage: (body.errorMessage as string) || null,
+      promptTokens: typeof body.promptTokens === "number" ? body.promptTokens : null,
+      completionTokens: typeof body.completionTokens === "number" ? body.completionTokens : null,
+      totalTokens: typeof body.totalTokens === "number" ? body.totalTokens : null,
+      startedAt: body.startedAt ? new Date(String(body.startedAt)) : undefined,
+      finishedAt: body.finishedAt ? new Date(String(body.finishedAt)) : null,
+      createdBy: userId,
+    });
+    return ok({ success: true, runId: result.id });
+  }
+
+  if (act === "registrar_heartbeat_agente") {
+    const { agentId, status, provider, model, summary } = body as Record<string, string>;
+    if (!agentId) return badRequest("agentId e obrigatorio");
+
+    const result = await recordOpenClawHeartbeat({
+      companyId,
+      agentId,
+      agentName: (body.agentName as string) || undefined,
+      status: status || "healthy",
+      provider,
+      model,
+      summary: summary || null,
+      details: (body.details as Record<string, unknown>) || null,
+      checkedAt: body.checkedAt ? new Date(String(body.checkedAt)) : undefined,
+      createdBy: userId,
+    });
+    return ok({ success: true, heartbeatId: result.id });
+  }
+
+  if (act === "registrar_handoff_agente") {
+    const { toAgentId, objective } = body as Record<string, string>;
+    if (!toAgentId || !objective) return badRequest("toAgentId e objective sao obrigatorios");
+
+    const result = await recordOpenClawHandoff({
+      companyId,
+      fromAgentId: (body.fromAgentId as string) || null,
+      toAgentId,
+      status: (body.status as string) || "requested",
+      objective,
+      context: (body.context as Record<string, unknown>) || null,
+      dataConsulted: (body.dataConsulted as Record<string, unknown>) || null,
+      expectedDelivery: (body.expectedDelivery as string) || null,
+      criteria: (body.criteria as string) || null,
+      riskKnown: (body.riskKnown as string) || null,
+      result: (body.result as Record<string, unknown>) || null,
+      completedAt: body.completedAt ? new Date(String(body.completedAt)) : null,
+      createdBy: userId,
+    });
+    return ok({ success: true, handoffId: result.id });
+  }
+
+  if (act === "registrar_work_item") {
+    const { agentId, title } = body as Record<string, string>;
+    if (!agentId || !title) return badRequest("agentId e title sao obrigatorios");
+
+    const result = await recordOpenClawWorkItem({
+      companyId,
+      agentId,
+      processId: (body.processId as string) || null,
+      title,
+      description: (body.description as string) || null,
+      status: (body.status as string) || "backlog",
+      priority: (body.priority as string) || "medium",
+      source: (body.source as string) || null,
+      context: (body.context as Record<string, unknown>) || null,
+      dueAt: body.dueAt ? new Date(String(body.dueAt)) : null,
+      completedAt: body.completedAt ? new Date(String(body.completedAt)) : null,
+      createdBy: userId,
+    });
+    return ok({ success: true, workItemId: result.id });
+  }
+
+  if (act === "atualizar_work_item") {
+    const { workItemId } = body as Record<string, string>;
+    if (!workItemId) return badRequest("workItemId e obrigatorio");
+
+    await updateOpenClawWorkItem({
+      companyId,
+      workItemId,
+      status: (body.status as string) || undefined,
+      priority: (body.priority as string) || undefined,
+      title: body.title as string | undefined,
+      description: body.description === undefined ? undefined : (body.description as string | null),
+      source: body.source === undefined ? undefined : (body.source as string | null),
+      context: body.context === undefined ? undefined : (body.context as Record<string, unknown> | null),
+      dueAt: body.dueAt === undefined ? undefined : body.dueAt ? new Date(String(body.dueAt)) : null,
+      completedAt: body.completedAt === undefined ? undefined : body.completedAt ? new Date(String(body.completedAt)) : null,
+    });
+
+    return ok({ success: true });
   }
 
   if (act === "adicionar_transacao") {
