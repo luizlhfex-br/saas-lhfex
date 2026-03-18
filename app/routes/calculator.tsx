@@ -1,6 +1,10 @@
 import { useState, useCallback, useEffect } from "react";
 import type { Route } from "./+types/calculator";
 import { requireAuth } from "~/lib/auth.server";
+import { getPrimaryCompanyId } from "~/lib/company-context.server";
+import { db } from "~/lib/db.server";
+import { processes, clients } from "../../drizzle/schema";
+import { and, eq, isNull } from "drizzle-orm";
 import { t, type Locale } from "~/i18n";
 import {
   Calculator,
@@ -18,13 +22,111 @@ import {
   BadgeInfo,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
+import { Link } from "react-router";
 
-export async function loader({ request }: Route.LoaderArgs) {
+type ModalType = "air_formal" | "courier" | "sea_lcl" | "sea_fcl";
+
+type ProcessCalculatorContext = {
+  id: string;
+  reference: string;
+  clientName: string;
+  processType: "import" | "export" | "services";
+  hsCode: string | null;
+  incoterm: string | null;
+  totalValue: string | null;
+  currency: string | null;
+};
+
+type CalculatorLoaderData = {
+  locale: Locale;
+  processContext: ProcessCalculatorContext | null;
+  initialModal: ModalType;
+  initialValues: {
+    fob: number;
+    exchangeRate: number;
+    ncm: string;
+  };
+};
+
+const modalIds = ["air_formal", "courier", "sea_lcl", "sea_fcl"] as const;
+const DEFAULT_MODAL: ModalType = "sea_fcl";
+
+function isModalType(value: string | null): value is ModalType {
+  return Boolean(value && modalIds.includes(value as ModalType));
+}
+
+function toNumber(value: string | null | undefined): number {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function buildInitialValues(processContext: ProcessCalculatorContext | null) {
+  const currency = processContext?.currency?.toUpperCase() || "USD";
+  return {
+    fob: toNumber(processContext?.totalValue),
+    exchangeRate: currency === "BRL" ? 1 : 5.75,
+    ncm: processContext?.hsCode ? formatNcmCode(processContext.hsCode) : "",
+  };
+}
+
+export async function loader({ request }: Route.LoaderArgs): Promise<CalculatorLoaderData> {
   const { user } = await requireAuth(request);
+  const companyId = await getPrimaryCompanyId(user.id);
+  const url = new URL(request.url);
   const cookieHeader = request.headers.get("cookie") || "";
   const localeMatch = cookieHeader.match(/locale=([^;]+)/);
   const locale = (localeMatch ? localeMatch[1] : user.locale) as Locale;
-  return { locale };
+  const modalParam = url.searchParams.get("modal");
+  const processId = url.searchParams.get("processId");
+  const initialModal = isModalType(modalParam) ? modalParam : DEFAULT_MODAL;
+
+  let processContext: ProcessCalculatorContext | null = null;
+
+  if (processId) {
+    const [process] = await db
+      .select({
+        id: processes.id,
+        reference: processes.reference,
+        processType: processes.processType,
+        hsCode: processes.hsCode,
+        incoterm: processes.incoterm,
+        totalValue: processes.totalValue,
+        currency: processes.currency,
+        clientName: clients.nomeFantasia,
+        clientRazao: clients.razaoSocial,
+      })
+      .from(processes)
+      .innerJoin(clients, eq(processes.clientId, clients.id))
+      .where(
+        and(
+          eq(processes.id, processId),
+          eq(processes.companyId, companyId),
+          isNull(processes.deletedAt),
+          isNull(clients.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (process) {
+      processContext = {
+        id: process.id,
+        reference: process.reference,
+        clientName: process.clientName || process.clientRazao,
+        processType: process.processType,
+        hsCode: process.hsCode,
+        incoterm: process.incoterm,
+        totalValue: process.totalValue ? String(process.totalValue) : null,
+        currency: process.currency || null,
+      };
+    }
+  }
+
+  return {
+    locale,
+    processContext,
+    initialModal,
+    initialValues: buildInitialValues(processContext),
+  };
 }
 
 const fmt = (v: number) =>
@@ -87,8 +189,6 @@ function getNcmMatchLabel(matchType?: string | null): string {
 }
 
 // ─── Tipos de Modalidade ────────────────────────────────────────────────────
-type ModalType = "air_formal" | "courier" | "sea_lcl" | "sea_fcl";
-
 interface ModalConfig {
   id: ModalType;
   label: string;
@@ -222,11 +322,11 @@ function FreightToggle({
 }
 
 export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
-  const { locale } = loaderData;
+  const { locale, processContext, initialModal, initialValues } = loaderData;
   const i18n = t(locale);
 
   // NCM
-  const [ncm, setNcm] = useState("");
+  const [ncm, setNcm] = useState(initialValues.ncm);
   const [ncmDescription, setNcmDescription] = useState("");
   const [ncmLoading, setNcmLoading] = useState(false);
   const [ncmSource, setNcmSource] = useState("");
@@ -236,7 +336,7 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
   const [ncmCatalogAct, setNcmCatalogAct] = useState("");
 
   // Modal
-  const [modal, setModal] = useState<ModalType>("sea_fcl");
+  const [modal, setModal] = useState<ModalType>(initialModal);
   const currentModal = modals.find((m) => m.id === modal)!;
 
   // PTAX — dólar comercial BCB
@@ -267,9 +367,9 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
   }, []);
 
   // Common values
-  const [fob, setFob] = useState(0);
+  const [fob, setFob] = useState(initialValues.fob);
   const [insurance, setInsurance] = useState(0);
-  const [exchangeRate, setExchangeRate] = useState(5.75);
+  const [exchangeRate, setExchangeRate] = useState(initialValues.exchangeRate);
 
   // Tax rates
   const [iiRate, setIiRate] = useState(14);
@@ -488,9 +588,9 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
   })();
 
   const reset = () => {
-    setFob(0);
+    setFob(initialValues.fob);
     setInsurance(0);
-    setExchangeRate(5.75);
+    setExchangeRate(initialValues.exchangeRate);
     setPtaxRate(null);
     setPtaxSource("");
     setPtaxTimestamp(null);
@@ -533,6 +633,7 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
     setFreteRodoviario(0);
     setExtraCosts([]);
     setNextExtraId(1);
+    setNcm(initialValues.ncm);
   };
 
   const handleModalChange = (m: ModalType) => {
@@ -668,6 +769,7 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
 
   const simulationSummary = [
     "Simulacao Comex",
+    processContext ? `Processo: ${processContext.reference} | ${processContext.clientName}` : null,
     `Modalidade: ${currentModal.label}`,
     `NCM: ${ncm || "nao informado"}`,
     `Cambio (BRL/USD): ${exchangeRate.toFixed(4)}`,
@@ -681,7 +783,7 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
     `Impostos Totais: ${fmt(calcResult.totalTaxes)}`,
     `Custos Nacionais: ${fmt(calcResult.custosBrasileiros)}`,
     `Custo Total: ${fmt(calcResult.totalCost)}`,
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 
   const handleCopySummary = async () => {
     try {
@@ -703,6 +805,66 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
           {i18n.calculator.subtitle}
         </p>
       </div>
+
+      {processContext ? (
+        <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 shadow-sm dark:border-indigo-900/40 dark:bg-indigo-900/20">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
+                Contexto do processo
+              </p>
+              <h2 className="mt-1 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                {processContext.reference}
+              </h2>
+              <p className="text-sm text-gray-700 dark:text-gray-300">{processContext.clientName}</p>
+              <p className="mt-1 text-xs text-indigo-700 dark:text-indigo-300">
+                Use este contexto para simular o custo do embarque sem sair do processo.
+              </p>
+            </div>
+            <Link
+              to={`/processes/${processContext.id}`}
+              className="inline-flex items-center justify-center rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm font-medium text-indigo-700 transition-colors hover:bg-indigo-50 dark:border-indigo-900/60 dark:bg-gray-900 dark:text-indigo-300 dark:hover:bg-indigo-900/20"
+            >
+              Voltar ao processo
+            </Link>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-lg bg-white/80 px-3 py-2 dark:bg-gray-950/40">
+              <p className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">Tipo</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {processContext.processType === "import"
+                  ? "Importação"
+                  : processContext.processType === "export"
+                    ? "Exportação"
+                    : "Serviços"}
+              </p>
+            </div>
+            <div className="rounded-lg bg-white/80 px-3 py-2 dark:bg-gray-950/40">
+              <p className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">HS / NCM</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {processContext.hsCode || "Nao informado"}
+              </p>
+            </div>
+            <div className="rounded-lg bg-white/80 px-3 py-2 dark:bg-gray-950/40">
+              <p className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">Incoterm</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {processContext.incoterm || "Nao informado"}
+              </p>
+            </div>
+            <div className="rounded-lg bg-white/80 px-3 py-2 dark:bg-gray-950/40">
+              <p className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">Valor do processo</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {processContext.currency || "USD"} {processContext.totalValue ? Number(processContext.totalValue).toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : "0,00"}
+              </p>
+            </div>
+          </div>
+          {processContext.currency && processContext.currency !== "USD" ? (
+            <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
+              A calculadora trabalha em base USD. Como este processo está em {processContext.currency}, revise o câmbio antes de fechar a estimativa.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* ── Seletor de Modalidade ── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

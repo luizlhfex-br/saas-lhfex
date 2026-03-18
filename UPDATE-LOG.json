@@ -1,17 +1,39 @@
 {
   "release": {
-    "version": "v2.9.23",
+    "version": "v2.9.24",
     "date": "2026-03-17T00:00:00Z",
     "type": "feature",
-    "title": "Arquitetura operacional do OpenClaw estruturada por agente"
+    "title": "Calculadora integrada ao detalhe do processo"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 42,
-    "filesModified": 10,
+    "filesCreated": 0,
+    "filesModified": 5,
     "routesAdded": 0,
-    "openclaw_changes": 1,
+    "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_17_process_calculator_context": {
+    "date": "2026-03-17",
+    "release_version": "2.9.24",
+    "objective": "Permitir abrir a calculadora dentro de um processo, reaproveitando o contexto do embarque para estimativas de custo mais precisas",
+    "files_changed": [
+      "app/routes/calculator.tsx",
+      "app/routes/processes-detail.tsx",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "A tela de detalhe do processo ganhou a secao Calculadora do embarque com atalhos para abrir a calculadora ja no modal correto",
+      "A calculadora agora aceita processId e modal pela URL, preenche FOB, NCM/HS, moeda e referencia do embarque e mostra um card de contexto do processo",
+      "O reset da calculadora passou a voltar para os valores pre-carregados do processo, preservando o uso operacional dentro do fluxo do embarque",
+      "O detalhe do processo passou a oferecer saidas diretas para os modais aereo, courier, LCL e FCL sem obrigar o usuario a redigitar o contexto"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros"
+    ]
   },
   "session_2026_03_17_openclaw_architecture_absorption": {
     "date": "2026-03-17",

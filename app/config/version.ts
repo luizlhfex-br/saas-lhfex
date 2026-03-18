@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.23";
+export const APP_VERSION = "2.9.24";
 export const APP_RELEASE_DATE = "2026-03-17";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.24",
+    date: "2026-03-17",
+    title: "Calculadora integrada ao detalhe do processo",
+    items: [
+      { type: "feature", text: "Processos: a tela de detalhe ganhou atalhos diretos para abrir a calculadora ja com o contexto do embarque carregado" },
+      { type: "feature", text: "Calculadora: agora aceita processId e modal na URL para pre-preencher FOB, NCM/HS, moeda e referencia do processo" },
+      { type: "improvement", text: "Calculadora: o card de contexto mostra referencia, cliente, tipo, incoterm, valor e um atalho para voltar ao processo original" },
+      { type: "improvement", text: "Calculadora: o reset voltou a respeitar os valores pre-carregados do processo, evitando perder o contexto operacional" },
+    ],
+  },
   {
     version: "2.9.23",
     date: "2026-03-17",

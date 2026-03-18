@@ -7,7 +7,7 @@ import { processes, clients, processTimeline, processDocuments } from "../../dri
 import { t, type Locale } from "~/i18n";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { ArrowLeft, Edit, Clock, FileText, Ship, DollarSign, Upload, Download, Trash2, File, Image, FileSpreadsheet, Sparkles, CheckCircle, XCircle, ShieldAlert, LoaderCircle } from "lucide-react";
+import { ArrowLeft, Edit, Clock, FileText, Ship, DollarSign, Upload, Download, Trash2, File, Image, FileSpreadsheet, Sparkles, CheckCircle, XCircle, ShieldAlert, LoaderCircle, Calculator } from "lucide-react";
 import { eq, desc, and, isNull } from "drizzle-orm";
 import { uploadFile } from "~/lib/storage.server";
 import { logAudit } from "~/lib/audit.server";
@@ -420,6 +420,33 @@ export default function ProcessesDetailPage({ loaderData, actionData }: Route.Co
             }
           />
           <InfoRow label="Observacoes" value={proc.costNotes || "-"} />
+        </Card>
+
+        <Card title="Calculadora do embarque" icon={<Calculator className="h-5 w-5" />}>
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            Abra a calculadora já com o contexto deste processo. Você escolhe o modal de frete e segue com a estimativa sem sair daqui.
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {[
+              { id: "air_formal", label: "Aéreo Formal" },
+              { id: "courier", label: "Courier" },
+              { id: "sea_lcl", label: "Marítimo LCL" },
+              { id: "sea_fcl", label: "Marítimo FCL" },
+            ].map((item) => (
+              <Link
+                key={item.id}
+                to={`/calculator?processId=${proc.id}&modal=${item.id}`}
+                className="w-full"
+              >
+                <Button variant="outline" className="w-full justify-start">
+                  {item.label}
+                </Button>
+              </Link>
+            ))}
+          </div>
+          <p className="text-xs text-gray-400 dark:text-gray-500">
+            Pré-carrega NCM/HS, valor e moeda do processo. A modalidade de frete é escolhida no atalho.
+          </p>
         </Card>
 
         {/* Timeline */}

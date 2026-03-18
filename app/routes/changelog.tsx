@@ -29,6 +29,18 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-17",
+    version: "2.9.24",
+    type: "release",
+    title: "Calculadora integrada ao detalhe do processo",
+    items: [
+      "Processos: a tela de detalhe ganhou atalhos diretos para abrir a calculadora ja com o contexto do embarque carregado",
+      "Calculadora: agora aceita processId e modal na URL para pre-preencher FOB, NCM/HS, moeda e referencia do processo",
+      "Calculadora: o card de contexto mostra referencia, cliente, tipo, incoterm, valor e um atalho para voltar ao processo original",
+      "Calculadora: o reset voltou a respeitar os valores pre-carregados do processo, evitando perder o contexto operacional",
+    ],
+  },
+  {
+    date: "2026-03-17",
     version: "2.9.23",
     type: "release",
     title: "OpenClaw estruturado como squad operacional versionado",
