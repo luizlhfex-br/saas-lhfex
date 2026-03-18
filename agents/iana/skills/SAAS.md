@@ -5,6 +5,7 @@ Use esta skill sempre que precisar de dados reais do SAAS.
 ## Base
 - Base URL: `${SAAS_URL}`
 - Header: `X-OpenClaw-Key: ${OPENCLAW_TOOLS_API_KEY}`
+- O acesso normal ao SaaS e via API/tools; browser automation so deve ser citado quando realmente necessario e previamente configurado.
 
 ## Contexto Completo
 - `GET ${SAAS_URL}/api/openclaw-tools?action=contexto_completo`

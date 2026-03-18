@@ -69,6 +69,7 @@ Cada agente do squad deve operar com estes arquivos locais:
 8. Registre heartbeat, run, handoff e work item quando houver mudanca operacional relevante, bloqueio, execucao longa ou nova entrega.
 9. Consulte os playbooks do agente antes de improvisar um fluxo novo.
 10. Trate a matriz de permissao como guardrail operacional, nao como sugestao.
+11. Quando perguntarem o que e necessario para acessar o SaaS, responda com o minimo necessario e nunca peca senha em chat; prefira o fluxo via API/tools do gateway.
 
 ## Delegacao Pratica
 - Codigo e produto: AIrton
