@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.26";
+export const APP_VERSION = "2.9.27";
 export const APP_RELEASE_DATE = "2026-03-17";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,16 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.27",
+    date: "2026-03-17",
+    title: "OpenClaw com matriz de permissões e playbooks por agente",
+    items: [
+      { type: "feature", text: "OpenClaw: agents.catalog.json ganhou playbooks por agente, deixando claro como cada especialista deve agir em cenarios recorrentes" },
+      { type: "improvement", text: "/agents: a tela passou a exibir matriz de permissao, gatilhos, KPIs e playbooks principais de cada agente do squad" },
+      { type: "improvement", text: "SOUL.md e AGENTS.md agora tratam playbooks e matriz de permissao como parte do contrato operacional antes de delegar" },
+    ],
+  },
   {
     version: "2.9.26",
     date: "2026-03-17",

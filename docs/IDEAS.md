@@ -262,14 +262,31 @@
 
 ## SaaS / Infra
 
-### Referencias externas para revisitar
-- [Awesome OpenClaw Agents](https://github.com/mergisi/awesome-openclaw-agents)
-  - usar como biblioteca de padroes para novos agentes, skills, SOULs, playbooks e contratos de delegacao
-  - especialmente util quando formos expandir o OpenClaw alem dos 8 agentes atuais
-- [Google Cloud Asset Inventory - Asset Types](https://docs.cloud.google.com/asset-inventory/docs/asset-types?hl=pt_BR#analyzable_asset_types)
-  - util para um ciclo futuro de auditoria de GCP
-  - pode ajudar a listar e monitorar recursos como projetos, IAM, APIs, Cloud Run, quotas e outros ativos do Google Cloud
-  - nao entra como prioridade para embeddings, mas pode ser valioso depois para governanca de Vertex, OAuth, service accounts e seguranca da conta Google
+### Skills candidatas para o OpenClaw lider
+- [React Code Fix & Linter](https://mcpmarket.com/tools/skills/react-code-fix-linter)
+  - util para revisar e corrigir codigo com foco em qualidade e CI
+- [GitHub Integration](https://mcpmarket.com/tools/skills/github-integration)
+  - bom para PRs, issues, checks e rotina de engenharia
+- [Coding Agent Orchestrator](https://mcpmarket.com/tools/skills/coding-agent-orchestrator)
+  - forte candidato para o lider coordenar agentes e delegar tarefas complexas
+- [Multi-Reviewer Patterns](https://mcpmarket.com/tools/skills/multi-reviewer-patterns)
+  - bom para revisao multiangulo antes de fechar entregas sensiveis
+- [Parallel Debugging](https://mcpmarket.com/tools/skills/parallel-debugging)
+  - util quando o problema precisa de investigacao paralela e rapida
+- [Team Communication Protocols](https://mcpmarket.com/tools/skills/team-communication-protocols)
+  - interessante para padronizar handoff e delegacao entre agentes
+- [Agent Team Task Coordination](https://mcpmarket.com/tools/skills/agent-team-task-coordination)
+  - bom para dividir trabalho em partes paralelizaveis com menor conflito
+- [Prompt Finder & Enhancer](https://mcpmarket.com/tools/skills/prompt-finder-enhancer)
+  - util para melhorar prompts e padroes de instrucao do proprio OpenClaw
+- [Skill Writer](https://mcpmarket.com/tools/skills/skill-writer)
+  - candidato direto para criar e manter skills internas do projeto
+- [Web Automation & Browser Control](https://mcpmarket.com/tools/skills/web-automation-browser-control)
+  - bom para smoke, automacao de portais e coleta de dados em navegacao real
+- [Remote Browser Automation](https://mcpmarket.com/tools/skills/remote-browser-automation)
+  - alternativa forte para fluxos que precisam de browser acessivel ao agente
+- [Resource Curator](https://mcpmarket.com/tools/skills/resource-curator)
+  - interessante para manter listas, referencias e links do ecossistema organizados
 
 ### Bot unico
 - Avaliar no futuro se faz sentido apos maturar o OpenClaw como operador do SaaS
@@ -302,6 +319,20 @@
 
 ### Mobile
 - App leve para consulta e alerta
+
+### Monetizacao / App de concursos
+- Criar um app gamificado de questoes de concursos no estilo "Show do Milhao", com trilhas por edital ativo ou previsto
+- Usar questoes do edital anterior e questoes de treino para deixar o estudo mais interativo e divertido
+- Modelo gratuito com anuncios e uma versao paga barata, por exemplo US$ 1 por 3 meses, para remover ads e liberar recursos extras
+- Para cada concurso:
+  - abrir uma campanha propria
+  - puxar questoes relacionadas ao edital
+  - apresentar alternativas no formato de jogo
+  - acompanhar desempenho e progresso do usuario
+- Essa ideia pode virar um produto lateral com potencial de receita recorrente e baixo custo de entrada
+
+### Referencias externas
+- Ver [REFERENCIAS-EXTERNAS.md](./REFERENCIAS-EXTERNAS.md) para os links vivos de skills, OpenClaw e GCP.
 
 ---
 

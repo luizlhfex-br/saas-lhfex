@@ -34,6 +34,7 @@ type AgentCatalogEntry = {
   permissions?: Record<string, string>;
   triggers?: string[];
   kpis?: string[];
+  playbooks?: string[];
 };
 
 type AgentCatalog = {
@@ -64,6 +65,7 @@ export type OpenClawAgentOverview = {
   permissions: Record<string, string>;
   triggers: string[];
   kpis: string[];
+  playbooks: string[];
   primaryModel: string;
   fallbacks: string[];
   alignedSkills: string[];
@@ -257,6 +259,7 @@ export async function getOpenClawOverview(): Promise<OpenClawOverview> {
         permissions: catalogEntry?.permissions ?? {},
         triggers: catalogEntry?.triggers ?? [],
         kpis: catalogEntry?.kpis ?? [],
+        playbooks: catalogEntry?.playbooks ?? [],
         primaryModel: model.primary ?? defaultModel.primary ?? "vertex/gemini-2.0-flash",
         fallbacks: model.fallbacks ?? defaultModel.fallbacks ?? [],
         alignedSkills: skills

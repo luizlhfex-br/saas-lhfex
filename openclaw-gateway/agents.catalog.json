@@ -42,7 +42,11 @@
         "irreversible": "confirm-required"
       },
       "triggers": ["bug", "refactor", "deploy de codigo", "arquitetura", "teste"],
-      "kpis": ["bugs resolvidos", "tempo medio de diagnostico", "falhas de CI eliminadas"]
+      "kpis": ["bugs resolvidos", "tempo medio de diagnostico", "falhas de CI eliminadas"],
+      "playbooks": [
+        "Quando o problema for multifatorial, quebrar em diagnostico, reproducao, hipotese, correcao e validacao.",
+        "Quando houver mudanca de codigo, exigir tsc, build, smoke e impacto em companyId antes de fechar."
+      ]
     },
     {
       "id": "iana",
@@ -65,7 +69,11 @@
         "irreversible": "confirm-required"
       },
       "triggers": ["ncm", "duimp", "di", "incoterm", "tributo", "aduana"],
-      "kpis": ["respostas normativas corretas", "tempo de triagem comex", "casos resolvidos sem retrabalho"]
+      "kpis": ["respostas normativas corretas", "tempo de triagem comex", "casos resolvidos sem retrabalho"],
+      "playbooks": [
+        "Quando receber NCM ou descricao, validar vigencia, descricao oficial e citar base normativa.",
+        "Quando houver duvida de DI, DUIMP ou Incoterm, devolver checklist e pontos de risco operacional."
+      ]
     },
     {
       "id": "maria",
@@ -88,7 +96,11 @@
         "irreversible": "confirm-required"
       },
       "triggers": ["cambio", "ptax", "dre", "caixa", "custo", "financeiro"],
-      "kpis": ["relatorios entregues", "alertas financeiros uteis", "tempo de resposta para analise"]
+      "kpis": ["relatorios entregues", "alertas financeiros uteis", "tempo de resposta para analise"],
+      "playbooks": [
+        "Quando houver custo ou cambio, resumir impacto, comparacao de cenarios e risco financeiro.",
+        "Quando o processo envolver estimativa, comparar custo estimado contra custo real e sugerir proximo passo."
+      ]
     },
     {
       "id": "iago",
@@ -111,7 +123,11 @@
         "irreversible": "confirm-required"
       },
       "triggers": ["container", "coolify", "vps", "docker", "ssh", "deploy", "erro 500"],
-      "kpis": ["incidentes fechados", "tempo medio de estabilizacao", "falsos positivos reduzidos"]
+      "kpis": ["incidentes fechados", "tempo medio de estabilizacao", "falsos positivos reduzidos"],
+      "playbooks": [
+        "Quando houver erro de deploy, identificar log, hipoteses, rollback e acao segura antes de intervir.",
+        "Quando houver incidente, registrar runbook e confirmar a causa antes de sugerir mudanca em producao."
+      ]
     },
     {
       "id": "iara",
@@ -134,7 +150,11 @@
         "irreversible": "confirm-required"
       },
       "triggers": ["landing page", "copy", "instagram", "seo", "campanha", "design"],
-      "kpis": ["pecas produzidas", "briefings reaproveitaveis", "tempo de resposta criativa"]
+      "kpis": ["pecas produzidas", "briefings reaproveitaveis", "tempo de resposta criativa"],
+      "playbooks": [
+        "Quando o pedido for marketing, propor copy, CTA, canal e variação visual por objetivo.",
+        "Quando houver campanha, separar peca principal, desdobramentos e metrica alvo antes de produzir."
+      ]
     },
     {
       "id": "sofia",
@@ -157,7 +177,11 @@
         "irreversible": "confirm-required"
       },
       "triggers": ["crm", "cliente", "follow-up", "proposta", "onboarding", "atendimento"],
-      "kpis": ["follow-ups gerados", "propostas preparadas", "respostas de atendimento reaproveitadas"]
+      "kpis": ["follow-ups gerados", "propostas preparadas", "respostas de atendimento reaproveitadas"],
+      "playbooks": [
+        "Quando houver lead ou cliente, definir proximo passo, follow-up e pendencia objetiva.",
+        "Quando onboarding travar, resumir contexto, objeção e acao recomendada antes de escalar."
+      ]
     },
     {
       "id": "mai",
@@ -180,7 +204,11 @@
         "irreversible": "confirm-required"
       },
       "triggers": ["pncp", "edital", "licitacao", "proposta tecnica", "habilitacao"],
-      "kpis": ["editais triados", "checklists produzidos", "riscos apontados antes do prazo"]
+      "kpis": ["editais triados", "checklists produzidos", "riscos apontados antes do prazo"],
+      "playbooks": [
+        "Quando houver edital, extrair habilitacao, tecnica, fiscal e cronograma em checklist.",
+        "Quando houver proposta, montar riscos, pendencias e criterio de pronto antes do envio."
+      ]
     },
     {
       "id": "julia",
@@ -203,7 +231,11 @@
         "irreversible": "confirm-required"
       },
       "triggers": ["promocao", "sorteio", "radio", "vigencia", "instagram", "oportunidade"],
-      "kpis": ["oportunidades novas", "alertas enviados no prazo", "cadastros atualizados sem perda"]
+      "kpis": ["oportunidades novas", "alertas enviados no prazo", "cadastros atualizados sem perda"],
+      "playbooks": [
+        "Quando houver promocao ou radio, registrar vigencia, participacao e alerta de vencimento.",
+        "Quando o pedido vier com link, organizar por status e orientar acompanhamento posterior sem perder prazo."
+      ]
     }
   ]
 }

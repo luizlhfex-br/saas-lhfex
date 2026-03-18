@@ -67,6 +67,8 @@ Cada agente do squad deve operar com estes arquivos locais:
 6. Consulte `agents.catalog.json` quando houver duvida sobre escopo, ferramentas, permissoes ou gatilhos de um agente.
 7. Reuse o `WORKING.md` do agente em vez de recomecar do zero a cada sessao.
 8. Registre heartbeat, run, handoff e work item quando houver mudanca operacional relevante, bloqueio, execucao longa ou nova entrega.
+9. Consulte os playbooks do agente antes de improvisar um fluxo novo.
+10. Trate a matriz de permissao como guardrail operacional, nao como sugestao.
 
 ## Delegacao Pratica
 - Codigo e produto: AIrton

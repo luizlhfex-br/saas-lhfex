@@ -1,17 +1,41 @@
 {
   "release": {
-    "version": "v2.9.26",
+    "version": "v2.9.27",
     "date": "2026-03-17T00:00:00Z",
     "type": "feature",
-    "title": "CSRF dos processos ajustado para proxy reverso"
+    "title": "OpenClaw com matriz de permissões e playbooks por agente"
   },
   "summary": {
     "commits": 1,
     "filesCreated": 0,
-    "filesModified": 4,
+    "filesModified": 5,
     "routesAdded": 0,
     "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_17_openclaw_playbooks_permissions": {
+    "date": "2026-03-17",
+    "release_version": "2.9.27",
+    "objective": "Evoluir o OpenClaw para a camada de semantica operacional, adicionando playbooks e matriz de permissao visiveis no painel do SaaS",
+    "files_changed": [
+      "app/lib/openclaw-overview.server.ts",
+      "app/routes/agents.tsx",
+      "openclaw-gateway/agents.catalog.json",
+      "openclaw-gateway/prompts/AGENTS.md",
+      "openclaw-gateway/prompts/SOUL.md",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "O catalogo do squad ganhou playbooks prontos por agente, para documentar como cada especialista deve agir em cenarios recorrentes",
+      "A tela /agents passou a exibir matriz de permissao, gatilhos, KPIs e playbooks principais de cada agente do OpenClaw",
+      "SOUL.md e AGENTS.md agora tratam playbooks e matriz de permissao como parte do contrato operacional antes de delegar"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros"
+    ]
   },
   "session_2026_03_17_processes_csrf_proxy_fix": {
     "date": "2026-03-17",

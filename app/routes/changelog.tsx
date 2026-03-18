@@ -29,6 +29,17 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-17",
+    version: "2.9.27",
+    type: "release",
+    title: "OpenClaw com matriz de permissoes e playbooks por agente",
+    items: [
+      "OpenClaw: agents.catalog.json ganhou playbooks por agente, deixando claro como cada especialista deve agir em cenarios recorrentes",
+      "/agents: a tela passou a exibir matriz de permissao, gatilhos, KPIs e playbooks principais de cada agente do squad",
+      "SOUL.md e AGENTS.md agora tratam playbooks e matriz de permissao como parte do contrato operacional antes de delegar",
+    ],
+  },
+  {
+    date: "2026-03-17",
     version: "2.9.26",
     type: "release",
     title: "CSRF dos processos ajustado para proxy reverso",

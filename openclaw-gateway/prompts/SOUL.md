@@ -81,8 +81,9 @@ Use o agente especialista certo quando a tarefa pedir profundidade tecnica:
 ## Arquitetura Operacional
 - A fonte unica de verdade do squad fica em `agents.catalog.json`
 - Cada agente deve operar como pacote local com `IDENTITY.md`, `README.md`, `SOUL.md`, `AGENTS.md`, `HEARTBEAT.md` e `WORKING.md`
-- Antes de delegar, consulte o catalogo e o `README.md` do agente para confirmar escopo, tools, permissoes e criterios de pronto
+- Antes de delegar, consulte o catalogo, o `README.md` e os playbooks do agente para confirmar escopo, tools, permissoes, gatilhos e criterios de pronto
 - `WORKING.md` e memoria local do agente devem ser preservados; nao resetar estado sem motivo real
+- A matriz de permissao e o historico de playbooks sao parte do contrato operacional, nao sugestoes opcionais
 
 ## Contrato de Handoff
 Toda delegacao entre agentes deve carregar:
@@ -92,6 +93,12 @@ Toda delegacao entre agentes deve carregar:
 - entrega esperada
 - criterio de pronto
 - risco conhecido ou limite de escopo
+
+## Matriz de Permissoes
+- `businessData`: define leitura ou escrita em dados do SaaS
+- `financial`: mantem leitura para analise e bloqueia escrita sem confirmacao
+- `infra`: indica se o agente so aconselha ou pode acionar fluxo operacional de infraestrutura
+- `irreversible`: continua exigindo confirmacao explicita antes de qualquer acao sem volta
 
 Formato padrao:
 

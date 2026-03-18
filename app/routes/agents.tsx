@@ -128,6 +128,21 @@ const promptFiles = [
   { file: "WORKING.md", desc: "Estado vivo da sessao e memoria recente do gateway." },
 ];
 
+const permissionLabels: Record<string, string> = {
+  "read-write": "Leitura/Escrita",
+  "read-only": "Somente leitura",
+  advisory: "Aconselha",
+  none: "Sem acesso",
+  "confirm-required": "Confirmacao obrigatoria",
+};
+
+const permissionScopeLabels: Record<string, string> = {
+  businessData: "Dados de negocio",
+  financial: "Financeiro",
+  infra: "Infra",
+  irreversible: "Irreversivel",
+};
+
 function getSuggestionTexts(agentId: string) {
   switch (agentId) {
     case "airton":
@@ -739,7 +754,7 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
           <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
             <div className="mb-3 flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-violet-500" />
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100">Agentes x Skills</h3>
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100">Agentes x Skills, permissões e playbooks</h3>
             </div>
             <div className="grid gap-4 xl:grid-cols-2">
               {openClawOverview.agents.map((agentInfo) => (
@@ -766,6 +781,33 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
                   {agentInfo.purpose ? (
                     <p className="mt-3 text-xs leading-relaxed text-gray-500 dark:text-gray-400">{agentInfo.purpose}</p>
                   ) : null}
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {Object.entries(agentInfo.permissions).map(([scope, access]) => (
+                      <div
+                        key={`${agentInfo.id}-${scope}`}
+                        className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-[11px] text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                      >
+                        <p className="font-semibold text-gray-900 dark:text-gray-100">
+                          {permissionScopeLabels[scope] ?? scope}
+                        </p>
+                        <p className="mt-0.5 text-gray-500 dark:text-gray-400">
+                          {permissionLabels[access] ?? access}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  {agentInfo.playbooks.length > 0 ? (
+                    <div className="mt-3 rounded-lg border border-violet-200 bg-violet-50 p-3 text-xs text-violet-900 dark:border-violet-800 dark:bg-violet-900/20 dark:text-violet-100">
+                      <p className="mb-2 font-semibold">Playbooks principais</p>
+                      <ul className="space-y-1.5">
+                        {agentInfo.playbooks.slice(0, 2).map((playbook) => (
+                          <li key={`${agentInfo.id}-${playbook}`} className="leading-relaxed">
+                            - {playbook}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
                   {agentInfo.tools.length > 0 ? (
                     <div className="mt-3 flex flex-wrap gap-2">
                       {agentInfo.tools.slice(0, 4).map((toolId) => (
@@ -791,6 +833,16 @@ export default function AgentsPage({ loaderData }: Route.ComponentProps) {
                       );
                     })}
                   </div>
+                  {agentInfo.triggers.length > 0 ? (
+                    <p className="mt-3 text-[11px] text-gray-500 dark:text-gray-400">
+                      <span className="font-semibold text-gray-700 dark:text-gray-200">Gatilhos:</span> {agentInfo.triggers.slice(0, 4).join(", ")}
+                    </p>
+                  ) : null}
+                  {agentInfo.kpis.length > 0 ? (
+                    <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                      <span className="font-semibold text-gray-700 dark:text-gray-200">KPIs:</span> {agentInfo.kpis.slice(0, 3).join(", ")}
+                    </p>
+                  ) : null}
                 </div>
               ))}
             </div>
