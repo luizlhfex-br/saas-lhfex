@@ -3,8 +3,8 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.33";
-export const APP_RELEASE_DATE = "2026-03-18";
+export const APP_VERSION = "2.9.34";
+export const APP_RELEASE_DATE = "2026-03-19";
 export const APP_NAME = "LHFEX SaaS";
 
 export type ChangelogItemType = "feature" | "improvement" | "fix" | "infra";
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.34",
+    date: "2026-03-19",
+    title: "Calculadora COMEX com conversao de invoice e taxa Siscomex por adicao",
+    items: [
+      { type: "feature", text: "Calculadora: nova conversao de invoice por moeda para USD via endpoint proprio, com taxa e fonte exibidas na tela" },
+      { type: "feature", text: "Siscomex: taxa passou a ser calculada por quantidade de adicoes de NCM, carregando tabela versionada em data/siscomex" },
+      { type: "improvement", text: "NCM por distribuicao: linhas agora incluem ICMS por item, ampliacao visual do bloco e resumo FOB por somatorio real das adicoes" },
+      { type: "improvement", text: "COMEX: labels operacionais foram padronizadas para Honorario Despachante, Taxa Siscomex e Dias de Free Time" },
+    ],
+  },
   {
     version: "2.9.33",
     date: "2026-03-18",

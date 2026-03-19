@@ -140,6 +140,7 @@ type NcmAllocation = {
   ipiRate: number;
   pisRate: number;
   cofinsRate: number;
+  icmsRate: number;
   description?: string;
   source?: string;
   matchedCode?: string;
@@ -154,6 +155,7 @@ type NcmTaxLookupResponse = {
   ipi: number;
   pis: number;
   cofins: number;
+  icms?: number;
   ncmDescription?: string | null;
   description?: string | null;
   source?: string;
@@ -263,6 +265,21 @@ const modals: ModalConfig[] = [
   },
 ];
 
+const invoiceCurrencyOptions = [
+  "USD",
+  "BRL",
+  "EUR",
+  "CNY",
+  "GBP",
+  "JPY",
+  "CAD",
+  "AUD",
+  "CHF",
+  "MXN",
+  "SGD",
+  "HKD",
+] as const;
+
 const colorClasses = {
   orange: {
     active: "border-orange-500 bg-orange-50 text-orange-700 dark:border-orange-400 dark:bg-orange-900/20 dark:text-orange-400",
@@ -370,6 +387,27 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
   const [fob, setFob] = useState(initialValues.fob);
   const [insurance, setInsurance] = useState(0);
   const [exchangeRate, setExchangeRate] = useState(initialValues.exchangeRate);
+  const [invoiceCurrency, setInvoiceCurrency] = useState(processContext?.currency?.toUpperCase() || "USD");
+  const [invoiceAmount, setInvoiceAmount] = useState(toNumber(processContext?.totalValue));
+  const [invoiceConvertedUsd, setInvoiceConvertedUsd] = useState<number | null>(null);
+  const [invoiceRate, setInvoiceRate] = useState<number | null>(null);
+  const [invoiceSource, setInvoiceSource] = useState("");
+  const [invoiceLoading, setInvoiceLoading] = useState(false);
+  const [invoiceError, setInvoiceError] = useState("");
+  type SiscomexFeeResponse = {
+    additions: number;
+    rowLabel: string;
+    registrationFee: number;
+    additionalFee: number;
+    totalFee: number;
+    sourceFile: string;
+    updatedAt: string;
+    source: string;
+    capped: boolean;
+  };
+  const [siscomexFee, setSiscomexFee] = useState<SiscomexFeeResponse | null>(null);
+  const [siscomexLoading, setSiscomexLoading] = useState(false);
+  const [siscomexError, setSiscomexError] = useState("");
 
   // Tax rates
   const [iiRate, setIiRate] = useState(14);
@@ -434,16 +472,18 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
     setExtraCosts((prev) => prev.map((e) => (e.id === id ? { ...e, [field]: val } : e)));
 
   const addNcmAllocation = () => {
+    const seededValue = ncmAllocations.length === 0 ? (invoiceConvertedUsd ?? fob) : 0;
     setNcmAllocations((prev) => [
       ...prev,
       {
         id: nextNcmAllocationId,
         code: ncm || "",
-        merchandiseValueUsd: 0,
+        merchandiseValueUsd: seededValue,
         iiRate,
         ipiRate,
         pisRate,
         cofinsRate,
+        icmsRate,
       },
     ]);
     setNextNcmAllocationId((v) => v + 1);
@@ -462,6 +502,51 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
     setNcmAllocations((prev) => prev.map((row) => (row.id === id ? { ...row, ...patch } : row)));
   };
 
+  const convertInvoiceToUsd = useCallback(async () => {
+    const sourceCurrency = invoiceCurrency.trim().toUpperCase();
+    const amount = Number(invoiceAmount);
+
+    if (!sourceCurrency || sourceCurrency.length !== 3 || !Number.isFinite(amount) || amount <= 0) {
+      setInvoiceError("Informe uma moeda e um valor validos.");
+      return;
+    }
+
+    setInvoiceLoading(true);
+    setInvoiceError("");
+
+    try {
+      const res = await fetch(
+        `/api/currency-convert?from=${encodeURIComponent(sourceCurrency)}&to=USD&amount=${encodeURIComponent(String(amount))}`,
+      );
+
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null);
+        throw new Error((payload as { error?: string } | null)?.error || "Falha na conversao.");
+      }
+
+      const data = (await res.json()) as {
+        convertedAmount: number;
+        rate: number;
+        source?: string;
+      };
+
+      setInvoiceConvertedUsd(data.convertedAmount);
+      setInvoiceRate(data.rate);
+      setInvoiceSource(data.source ?? "");
+      setFob(data.convertedAmount);
+      if (sourceCurrency === "BRL") {
+        setExchangeRate(1 / data.rate);
+      }
+    } catch (error) {
+      setInvoiceConvertedUsd(null);
+      setInvoiceRate(null);
+      setInvoiceSource("");
+      setInvoiceError(error instanceof Error ? error.message : "Nao foi possivel converter a invoice.");
+    } finally {
+      setInvoiceLoading(false);
+    }
+  }, [invoiceAmount, invoiceCurrency]);
+
   const fetchNcmTaxes = useCallback(async (code: string): Promise<NcmTaxLookupResponse | null> => {
     const clean = normalizeNcmCode(code);
     if (clean.length < 4) return null;
@@ -472,18 +557,29 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
     return res.json() as Promise<NcmTaxLookupResponse>;
   }, []);
 
+  const validNcmAllocations = ncmAllocations.filter((row) => row.merchandiseValueUsd > 0);
+  const ncmAllocationTotalUsd = validNcmAllocations.reduce((sum, row) => sum + (Number(row.merchandiseValueUsd) || 0), 0);
+  const hasNcmAllocations = validNcmAllocations.length > 0;
+  const fobBase = hasNcmAllocations ? ncmAllocationTotalUsd : fob;
+  const ncmAllocationDeltaUsd = hasNcmAllocations ? ncmAllocationTotalUsd - fob : 0;
+  const siscomexAdditions = Math.max(1, hasNcmAllocations ? validNcmAllocations.length : normalizeNcmCode(ncm).length >= 4 ? 1 : 0);
+
   // ─── Cálculos por modalidade ─────────────────────────────────────────────
   const calcResult = (() => {
     let freight = 0;
     let custosBrasileiros = 0;
     let extraDetails: { label: string; value: number }[] = [];
+    const siscomexTotal = siscomexFee?.totalFee ?? 115.67;
+    const siscomexLabel = siscomexFee
+      ? siscomexFee.rowLabel + " (" + siscomexFee.additions + " adicoes)"
+      : "Taxa Siscomex";
 
     if (modal === "air_formal") {
       freight = freightAir;
-      custosBrasileiros = despachangeAir + siscomexAir;
+      custosBrasileiros = despachangeAir + siscomexTotal;
       extraDetails = [
-        { label: "Despachante Aduaneiro", value: despachangeAir },
-        { label: "SISCOMEX", value: siscomexAir },
+        { label: "Honorario Despachante", value: despachangeAir },
+        { label: siscomexLabel, value: siscomexTotal },
       ];
     } else if (modal === "courier") {
       freight = freightCourier;
@@ -494,26 +590,26 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
     } else if (modal === "sea_lcl") {
       freight = freightLCL;
       const portCosts = thcLCL + armazenagemLCL + taxaSantosLCL + remocaoLCL;
-      custosBrasileiros = portCosts + despachangeLCL + siscomexLCL;
+      custosBrasileiros = portCosts + despachangeLCL + siscomexTotal;
       extraDetails = [
         { label: "THC Santos", value: thcLCL },
         { label: "Armazenagem Santos", value: armazenagemLCL },
         { label: "Taxa Santos", value: taxaSantosLCL },
-        { label: "Remoção Santos → Destino", value: remocaoLCL },
-        { label: "Despachante Aduaneiro", value: despachangeLCL },
-        { label: "SISCOMEX", value: siscomexLCL },
+        { label: "Remocao Santos -> Destino", value: remocaoLCL },
+        { label: "Honorario Despachante", value: despachangeLCL },
+        { label: siscomexLabel, value: siscomexTotal },
       ];
     } else if (modal === "sea_fcl") {
       const freightFCL = freightFCLPerContainer * containerCount;
       freight = freightFCL;
       const demurrage = demurragePerDay * demurrageDays * containerCount;
       const thcTotal = thcFCL * containerCount;
-      custosBrasileiros = thcTotal + demurrage + despachangeFCL + siscomexFCL;
+      custosBrasileiros = thcTotal + demurrage + despachangeFCL + siscomexTotal;
       extraDetails = [
-        { label: `THC (${containerCount}x container)`, value: thcTotal },
-        { label: `Demurrage (${demurrageDays} dias × ${containerCount} ctns)`, value: demurrage },
-        { label: "Despachante Aduaneiro", value: despachangeFCL },
-        { label: "SISCOMEX", value: siscomexFCL },
+        { label: "THC (" + containerCount + "x container)", value: thcTotal },
+        { label: "Demurrage apos " + demurrageDays + " dias de free time (" + containerCount + " ctns)", value: demurrage },
+        { label: "Honorario Despachante", value: despachangeFCL },
+        { label: siscomexLabel, value: siscomexTotal },
       ];
     }
 
@@ -523,49 +619,59 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
     custosBrasileiros += commonNational + extraTotal;
 
     if (armazenagem > 0) extraDetails.push({ label: "Armazenagem", value: armazenagem });
-    if (honorarios > 0) extraDetails.push({ label: "Honorários", value: honorarios });
-    if (freteRodoviario > 0) extraDetails.push({ label: "Frete Rodoviário", value: freteRodoviario });
+    if (honorarios > 0) extraDetails.push({ label: "Honorarios", value: honorarios });
+    if (freteRodoviario > 0) extraDetails.push({ label: "Frete Rodoviario", value: freteRodoviario });
     for (const ec of extraCosts) {
       if (ec.value > 0) extraDetails.push({ label: ec.label || "Despesa extra", value: Number(ec.value) });
     }
 
-    const cif = fob + freight + insurance;
+    const cif = fobBase + freight + insurance;
     const cifBrl = cif * exchangeRate;
 
-    const validAllocations = ncmAllocations.filter((row) => row.merchandiseValueUsd > 0);
-    const totalAllocationUsd = validAllocations.reduce((sum, row) => sum + row.merchandiseValueUsd, 0);
+    const validAllocations = validNcmAllocations;
+    const totalAllocationUsd = ncmAllocationTotalUsd;
 
     let ii = cifBrl * (iiRate / 100);
     let ipi = (cifBrl + ii) * (ipiRate / 100);
     let pis = cifBrl * (pisRate / 100);
     let cofins = cifBrl * (cofinsRate / 100);
+    let icms = 0;
 
-    if (validAllocations.length > 0 && totalAllocationUsd > 0) {
+    if (hasNcmAllocations && totalAllocationUsd > 0) {
       let iiAcc = 0;
       let ipiAcc = 0;
       let pisAcc = 0;
       let cofinsAcc = 0;
+      let icmsAcc = 0;
 
       for (const row of validAllocations) {
         const share = row.merchandiseValueUsd / totalAllocationUsd;
         const baseShare = cifBrl * share;
         const iiShare = baseShare * (row.iiRate / 100);
+        const ipiShare = (baseShare + iiShare) * (row.ipiRate / 100);
+        const pisShare = baseShare * (row.pisRate / 100);
+        const cofinsShare = baseShare * (row.cofinsRate / 100);
+        const icmsBase = baseShare + iiShare + ipiShare + pisShare + cofinsShare;
+        const icmsShare = row.icmsRate < 100 ? icmsBase * (row.icmsRate / (1 - row.icmsRate / 100)) : 0;
+
         iiAcc += iiShare;
-        ipiAcc += (baseShare + iiShare) * (row.ipiRate / 100);
-        pisAcc += baseShare * (row.pisRate / 100);
-        cofinsAcc += baseShare * (row.cofinsRate / 100);
+        ipiAcc += ipiShare;
+        pisAcc += pisShare;
+        cofinsAcc += cofinsShare;
+        icmsAcc += icmsShare;
       }
 
       ii = iiAcc;
       ipi = ipiAcc;
       pis = pisAcc;
       cofins = cofinsAcc;
+      icms = icmsAcc;
+    } else {
+      // ICMS MG por dentro
+      const icmsSomaTributos = cifBrl + ii + ipi + pis + cofins;
+      const baseIcms = icmsRate < 100 ? icmsSomaTributos / (1 - icmsRate / 100) : 0;
+      icms = baseIcms * (icmsRate / 100);
     }
-
-    // ICMS MG por dentro
-    const icmsSomaTributos = cifBrl + ii + ipi + pis + cofins;
-    const baseIcms = icmsRate < 100 ? icmsSomaTributos / (1 - icmsRate / 100) : 0;
-    const icms = baseIcms * (icmsRate / 100);
 
     const totalTaxes = ii + ipi + pis + cofins + icms;
     const totalCost = cifBrl + totalTaxes + custosBrasileiros;
@@ -583,7 +689,14 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
       totalCost,
       freight,
       extraDetails,
-      hasNcmAllocation: validAllocations.length > 0,
+      hasNcmAllocation: hasNcmAllocations,
+      fobBase,
+      ncmAllocationTotalUsd,
+      ncmAllocationDeltaUsd,
+      ncmAllocationCount: validAllocations.length,
+      siscomex: siscomexTotal,
+      siscomexAdditions,
+      siscomexLabel,
     };
   })();
 
@@ -591,9 +704,17 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
     setFob(initialValues.fob);
     setInsurance(0);
     setExchangeRate(initialValues.exchangeRate);
+    setInvoiceCurrency(processContext?.currency?.toUpperCase() || "USD");
+    setInvoiceAmount(toNumber(processContext?.totalValue));
+    setInvoiceConvertedUsd(null);
+    setInvoiceRate(null);
+    setInvoiceSource("");
+    setInvoiceError("");
     setPtaxRate(null);
     setPtaxSource("");
     setPtaxTimestamp(null);
+    setSiscomexFee(null);
+    setSiscomexError("");
     setIiRate(14);
     setIpiRate(0);
     setPisRate(2.10);
@@ -762,8 +883,41 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
     };
   }, [ncmAllocations, lookupNcmAllocation, resolvedNcmAllocationCodes]);
 
-  const ncmAllocationTotalUsd = ncmAllocations.reduce((sum, row) => sum + (Number(row.merchandiseValueUsd) || 0), 0);
-  const ncmAllocationDeltaUsd = ncmAllocationTotalUsd - fob;
+  useEffect(() => {
+    let ignore = false;
+
+    const loadSiscomex = async () => {
+      setSiscomexLoading(true);
+      setSiscomexError("");
+      try {
+        const res = await fetch(`/api/siscomex?additions=${siscomexAdditions}`);
+        if (!res.ok) {
+          const payload = await res.json().catch(() => null);
+          throw new Error((payload as { error?: string } | null)?.error || "Falha ao carregar Siscomex.");
+        }
+
+        const data = (await res.json()) as SiscomexFeeResponse;
+        if (!ignore) {
+          setSiscomexFee(data);
+        }
+      } catch (error) {
+        if (!ignore) {
+          setSiscomexFee(null);
+          setSiscomexError(error instanceof Error ? error.message : "Nao foi possivel carregar a taxa Siscomex.");
+        }
+      } finally {
+        if (!ignore) {
+          setSiscomexLoading(false);
+        }
+      }
+    };
+
+    void loadSiscomex();
+
+    return () => {
+      ignore = true;
+    };
+  }, [siscomexAdditions]);
 
   const colors = colorClasses[currentModal.color as keyof typeof colorClasses];
 
@@ -895,7 +1049,7 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* ── Coluna Esquerda: Inputs ── */}
         <div className="space-y-6">
-          <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+          <div className="rounded-xl border border-gray-200 bg-white p-7 shadow-sm dark:border-gray-800 dark:bg-gray-900">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Distribuicao por NCM</h2>
               <Button type="button" variant="outline" size="sm" onClick={addNcmAllocation}>
@@ -904,18 +1058,18 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
               </Button>
             </div>
             <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
-              Use quando houver embarque com varios NCMs. Informe o valor de mercadoria por NCM e as aliquotas II/IPI/PIS/COFINS de cada item.
+              Use quando houver embarque com varios NCMs. Informe o valor de mercadoria por NCM e as taxas II/IPI/PIS/COFINS/ICMS de cada item.
             </p>
             {ncmAllocations.length === 0 ? (
-              <p className="text-xs text-gray-400 dark:text-gray-500">Sem distribuicao ativa. O calculo usa as aliquotas globais abaixo.</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">Sem distribuicao ativa. O calculo usa a taxa ativa do NCM principal.</p>
             ) : (
               <div className="space-y-2">
                 {ncmAllocations.map((row) => {
                   const isLoading = ncmAllocationLoadingIds.includes(row.id);
 
                   return (
-                    <div key={row.id} className="rounded-lg border border-gray-200 p-2 dark:border-gray-700">
-                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-7">
+                    <div key={row.id} className="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+                      <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
                         <input
                           type="text"
                           value={row.code}
@@ -932,7 +1086,7 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
                           }
                           onBlur={() => void lookupNcmAllocation(row.id, row.code)}
                           placeholder="NCM"
-                          className="rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                          className="rounded-lg border border-gray-300 px-2 py-2 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                         />
                         <input
                           type="number"
@@ -941,7 +1095,7 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
                           value={row.merchandiseValueUsd || ""}
                           onChange={(e) => updateNcmAllocation(row.id, { merchandiseValueUsd: parseFloat(e.target.value) || 0 })}
                           placeholder="Valor USD"
-                          className="rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                          className="rounded-lg border border-gray-300 px-2 py-2 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                         />
                         <input
                           type="number"
@@ -959,8 +1113,10 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
                           value={row.ipiRate || ""}
                           onChange={(e) => updateNcmAllocation(row.id, { ipiRate: parseFloat(e.target.value) || 0 })}
                           placeholder="IPI %"
-                          className="rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                          className="rounded-lg border border-gray-300 px-2 py-2 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                         />
+                      </div>
+                      <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
                         <input
                           type="number"
                           min="0"
@@ -968,7 +1124,7 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
                           value={row.pisRate || ""}
                           onChange={(e) => updateNcmAllocation(row.id, { pisRate: parseFloat(e.target.value) || 0 })}
                           placeholder="PIS %"
-                          className="rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                          className="rounded-lg border border-gray-300 px-2 py-2 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                         />
                         <input
                           type="number"
@@ -977,12 +1133,21 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
                           value={row.cofinsRate || ""}
                           onChange={(e) => updateNcmAllocation(row.id, { cofinsRate: parseFloat(e.target.value) || 0 })}
                           placeholder="COFINS %"
-                          className="rounded-lg border border-gray-300 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                          className="rounded-lg border border-gray-300 px-2 py-2 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={row.icmsRate || ""}
+                          onChange={(e) => updateNcmAllocation(row.id, { icmsRate: parseFloat(e.target.value) || 0 })}
+                          placeholder="ICMS %"
+                          className="rounded-lg border border-gray-300 px-2 py-2 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                         />
                         <button
                           type="button"
                           onClick={() => removeNcmAllocation(row.id)}
-                          className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                          className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
                           title="Remover NCM"
                         >
                           <X className="h-4 w-4" />
@@ -1014,11 +1179,11 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
                     <span className="font-mono">USD {fmt(ncmAllocationTotalUsd)}</span>
                   </div>
                   <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-[11px]">
-                    <span>FOB principal informado</span>
-                    <span className="font-mono">USD {fmt(fob)}</span>
+                    <span>FOB principal usado</span>
+                    <span className="font-mono">USD {fmt(fobBase)}</span>
                   </div>
                   <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-[11px]">
-                    <span>Diferenca</span>
+                    <span>Diferenca vs FOB original</span>
                     <span className={`font-mono ${Math.abs(ncmAllocationDeltaUsd) < 0.01 ? "text-green-700 dark:text-green-300" : "text-amber-700 dark:text-amber-300"}`}>
                       USD {fmt(ncmAllocationDeltaUsd)}
                     </span>
@@ -1088,7 +1253,69 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
               <Calculator className="h-5 w-5 text-blue-600" /> Valores Base (USD)
             </h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <NumInput label={i18n.calculator.productValue} value={fob} onChange={setFob} />
+              <div className="sm:col-span-2 rounded-xl border border-dashed border-blue-200 bg-blue-50/60 p-4 dark:border-blue-900/40 dark:bg-blue-900/10">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                      Conversao de invoice para USD
+                    </p>
+                    <p className="text-xs text-blue-700 dark:text-blue-300">
+                      Padronize valores em USD antes de seguir para o custo do embarque.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={convertInvoiceToUsd}
+                    disabled={invoiceLoading}
+                  >
+                    {invoiceLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                    {invoiceLoading ? "Convertendo..." : "Converter para USD"}
+                  </Button>
+                </div>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Moeda da invoice
+                    </label>
+                    <select
+                      value={invoiceCurrency}
+                      onChange={(e) => setInvoiceCurrency(e.target.value.toUpperCase())}
+                      className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                    >
+                      {invoiceCurrencyOptions.map((currency) => (
+                        <option key={currency} value={currency}>
+                          {currency}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <NumInput
+                    label="Valor da invoice"
+                    value={invoiceAmount}
+                    onChange={setInvoiceAmount}
+                    step="0.01"
+                  />
+                  <NumInput
+                    label="Invoice convertida (USD)"
+                    value={invoiceConvertedUsd ?? 0}
+                    onChange={setInvoiceConvertedUsd}
+                    step="0.01"
+                    readOnly
+                  />
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2 text-xs text-blue-700 dark:text-blue-300">
+                  {invoiceRate ? <span>Taxa aplicada: {invoiceRate.toFixed(4)}</span> : null}
+                  {invoiceSource ? <span>Fonte: {invoiceSource}</span> : null}
+                  {invoiceError ? <span className="text-red-600 dark:text-red-300">{invoiceError}</span> : null}
+                </div>
+              </div>
+              <NumInput label="Valores Base FOB (USD)" value={fobBase} onChange={setFob} readOnly={hasNcmAllocations} />
               <NumInput
                 label="Seguro Internacional (USD)"
                 value={insurance}
@@ -1158,15 +1385,16 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <NumInput label="Frete Aéreo (USD)" value={freightAir} onChange={setFreightAir} />
                 <NumInput
-                  label="Despachante Aduaneiro (BRL)"
+                  label="Honorario Despachante (BRL)"
                   value={despachangeAir}
                   onChange={setDespachangeAir}
                 />
                 <NumInput
-                  label="SISCOMEX (BRL)"
-                  value={siscomexAir}
+                  label="Taxa Siscomex (BRL)"
+                  value={siscomexFee?.totalFee ?? siscomexAir}
                   onChange={setSiscomexAir}
                   step="0.01"
+                  readOnly
                 />
               </div>
             </div>
@@ -1223,11 +1451,17 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
                   onChange={setRemocaoLCL}
                 />
                 <NumInput
-                  label="Despachante Aduaneiro (BRL)"
+                  label="Honorario Despachante (BRL)"
                   value={despachangeLCL}
                   onChange={setDespachangeLCL}
                 />
-                <NumInput label="SISCOMEX (BRL)" value={siscomexLCL} onChange={setSiscomexLCL} step="0.01" />
+                <NumInput
+                  label="Taxa Siscomex (BRL)"
+                  value={siscomexFee?.totalFee ?? siscomexLCL}
+                  onChange={setSiscomexLCL}
+                  step="0.01"
+                  readOnly
+                />
               </div>
             </div>
           )}
@@ -1279,17 +1513,23 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
                   onChange={setDemurragePerDay}
                 />
                 <NumInput
-                  label="Dias de Demurrage"
+                  label="Dias de Free Time"
                   value={demurrageDays}
                   onChange={setDemurrageDays}
                   step="1"
                 />
                 <NumInput
-                  label="Despachante Aduaneiro (BRL)"
+                  label="Honorario Despachante (BRL)"
                   value={despachangeFCL}
                   onChange={setDespachangeFCL}
                 />
-                <NumInput label="SISCOMEX (BRL)" value={siscomexFCL} onChange={setSiscomexFCL} step="0.01" />
+                <NumInput
+                  label="Taxa Siscomex (BRL)"
+                  value={siscomexFee?.totalFee ?? siscomexFCL}
+                  onChange={setSiscomexFCL}
+                  step="0.01"
+                  readOnly
+                />
               </div>
             </div>
           )}
@@ -1353,43 +1593,11 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
             </div>
           </div>
 
-          {/* Alíquotas */}
-          <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Alíquotas (%)
-            </h2>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-              <NumInput label={i18n.calculator.iiRate} value={iiRate} onChange={setIiRate} step="0.01" />
-              <NumInput label={i18n.calculator.ipiRate} value={ipiRate} onChange={setIpiRate} step="0.01" />
-              <NumInput label={i18n.calculator.pisRate} value={pisRate} onChange={setPisRate} step="0.01" />
-              <NumInput
-                label={i18n.calculator.cofinsRate}
-                value={cofinsRate}
-                onChange={setCofinsRate}
-                step="0.01"
-              />
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {i18n.calculator.icmsRate}
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={icmsRate || ""}
-                  onChange={(e) => setIcmsRate(parseFloat(e.target.value) || 0)}
-                  className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-mono text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                />
-                <p className="mt-1 text-xs text-gray-400">
-                  {modal === "courier" ? "20% desde abr/2025" : "18% ICMS MG por dentro"}
-                </p>
-              </div>
-            </div>
-          <div className="mt-4">
-              <Button variant="outline" onClick={reset}>
-                <RotateCcw className="h-4 w-4" />
-                {i18n.calculator.reset}
-              </Button>
-            </div>
+          <div className="flex justify-start">
+            <Button variant="outline" onClick={reset}>
+              <RotateCcw className="h-4 w-4" />
+              {i18n.calculator.reset}
+            </Button>
           </div>
         </div>
 
@@ -1545,11 +1753,13 @@ function NumInput({
   value,
   onChange,
   step = "any",
+  readOnly = false,
 }: {
   label: string;
   value: number;
   onChange: (v: number) => void;
   step?: string;
+  readOnly?: boolean;
 }) {
   return (
     <div>
@@ -1560,8 +1770,11 @@ function NumInput({
         type="number"
         step={step}
         value={value || ""}
+        readOnly={readOnly}
         onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-        className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-mono text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+        className={`block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-mono text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 ${
+          readOnly ? "cursor-not-allowed bg-gray-50 text-gray-500 dark:bg-gray-900/50 dark:text-gray-400" : ""
+        }`}
       />
     </div>
   );

@@ -28,6 +28,18 @@ type Entry = {
 
 const CHANGELOG: Entry[] = [
   {
+    date: "2026-03-19",
+    version: "2.9.34",
+    type: "release",
+    title: "Calculadora COMEX com conversao de invoice e taxa Siscomex por adicao",
+    items: [
+      "Calculadora: nova conversao de invoice por moeda para USD via endpoint proprio, com taxa e fonte exibidas na tela",
+      "Siscomex: taxa passou a ser calculada por quantidade de adicoes de NCM, carregando tabela versionada em data/siscomex",
+      "NCM por distribuicao: linhas agora incluem ICMS por item, ampliacao visual do bloco e resumo FOB por somatorio real das adicoes",
+      "COMEX: labels operacionais foram padronizadas para Honorario Despachante, Taxa Siscomex e Dias de Free Time",
+    ],
+  },
+  {
     date: "2026-03-18",
     version: "2.9.33",
     type: "release",

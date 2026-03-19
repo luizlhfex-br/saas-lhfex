@@ -1,17 +1,52 @@
 {
   "release": {
-    "version": "v2.9.33",
-    "date": "2026-03-18T00:00:00Z",
+    "version": "v2.9.34",
+    "date": "2026-03-19T00:00:00Z",
     "type": "feature",
-    "title": "Settings com cadastro enriquecido da empresa e contas extras"
+    "title": "Calculadora COMEX com conversao de invoice e taxa Siscomex por adicao"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 2,
+    "filesCreated": 7,
     "filesModified": 8,
-    "routesAdded": 0,
+    "routesAdded": 2,
     "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_19_comex_calculator_invoice_siscomex": {
+    "date": "2026-03-19",
+    "release_version": "2.9.34",
+    "objective": "Concluir o pacote da calculadora COMEX com conversao de invoice por moeda, taxa Siscomex por adicoes e melhorias de usabilidade no bloco de distribuicao por NCM",
+    "files_changed": [
+      "app/routes/calculator.tsx",
+      "app/lib/invoice-conversion.server.ts",
+      "app/lib/siscomex.server.ts",
+      "app/routes/api.currency-convert.tsx",
+      "app/routes/api.siscomex.tsx",
+      "app/routes/+types/api.currency-convert.ts",
+      "app/routes/+types/api.siscomex.ts",
+      "app/routes.ts",
+      "data/siscomex/taxa_siscomex_20260317.json",
+      "app/routes/personal-life.radio-monitor.tsx",
+      "docs/OPENCLAW-ARCHITECTURE-PLAN.md",
+      "docs/REFERENCIAS-EXTERNAS.md",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "Calculadora ganhou conversao de invoice para USD com endpoint interno e exibicao de taxa/fonte",
+      "FOB passou a usar automaticamente o somatorio da distribuicao por NCM quando houver linhas ativas",
+      "Distribuicao por NCM foi ampliada com ICMS por item e resumo visual de total FOB e diferenca",
+      "Taxa Siscomex agora e calculada por quantidade de adicoes com base em tabela versionada local",
+      "API interna recebeu duas novas rotas: /api/currency-convert e /api/siscomex",
+      "Radio Monitor recebeu ajuste visual dos links de site/instagram/telefone com icones lucide",
+      "Documentacao de referencias externas e plano OpenClaw foi atualizada com novas fontes de evolucao"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros"
+    ]
   },
   "session_2026_03_18_settings_company_profile_enriched": {
     "date": "2026-03-18",

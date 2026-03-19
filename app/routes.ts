@@ -81,6 +81,8 @@ export default [
   route("api/theme", "routes/api.theme.tsx"),
   route("api/locale", "routes/api.locale.tsx"),
   route("api/exchange-rate", "routes/api.exchange-rate.tsx"),
+  route("api/currency-convert", "routes/api.currency-convert.tsx"),
+  route("api/siscomex", "routes/api.siscomex.tsx"),
   route("api/document/:id/download", "routes/api.document-download.tsx"),
   route("api/chat", "routes/api.chat.tsx"),
   route("api/enrich-cnpj", "routes/api.enrich-cnpj.tsx"),

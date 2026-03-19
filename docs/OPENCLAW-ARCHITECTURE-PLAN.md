@@ -35,6 +35,16 @@ Cada agente deve deixar de ser apenas uma persona e passar a ser um pacote opera
 - Toda resposta deve diferenciar claramente dado consultado de inferencia
 - Acao irreversivel continua exigindo confirmacao
 
+## Referencia externa que vale absorver
+O guia de multi-agent setup do CrewClaw reforca alguns padroes que combinam com a LHFEX:
+- squad pequeno antes de escalar
+- workspace compartilhado para evitar contexto solto
+- handoff curto e verificavel entre agentes
+- heartbeats escalonados para nao gerar ruido
+- revisao em loop antes de consolidar resposta
+
+Esses pontos viram criterio de evolucao do OpenClaw, nao so inspiracao visual.
+
 ## Mapeamento para a LHFEX
 
 ### OpenClaw raiz

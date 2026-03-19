@@ -23,6 +23,8 @@ import {
   Globe,
   Music2,
   Pencil,
+  ExternalLink,
+  Phone,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 
@@ -350,22 +352,26 @@ function StationCard({ station, keywords }: { station: Station; keywords: Keywor
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
               {websiteHref ? (
-                <a href={websiteHref} target="_blank" rel="noreferrer" className="rounded-full bg-gray-100 px-2 py-0.5 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200">
-                  🔗 Site
+                <a href={websiteHref} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200">
+                  <ExternalLink className="h-3 w-3" />
+                  Site
                 </a>
               ) : null}
               {instagramHref ? (
-                <a href={instagramHref} target="_blank" rel="noreferrer" className="rounded-full bg-pink-100 px-2 py-0.5 text-pink-700 hover:bg-pink-200 dark:bg-pink-900/30 dark:text-pink-300">
+                <a href={instagramHref} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full bg-pink-100 px-2 py-0.5 text-pink-700 hover:bg-pink-200 dark:bg-pink-900/30 dark:text-pink-300">
+                  <ExternalLink className="h-3 w-3" />
                   Instagram
                 </a>
               ) : null}
               {whatsappHref ? (
-                <a href={whatsappHref} target="_blank" rel="noreferrer" className="rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300">
-                  📞 WhatsApp
+                <a href={whatsappHref} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300">
+                  <Phone className="h-3 w-3" />
+                  WhatsApp
                 </a>
               ) : phoneHref ? (
-                <a href={phoneHref} className="rounded-full bg-blue-100 px-2 py-0.5 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300">
-                  📞 Telefone
+                <a href={phoneHref} className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300">
+                  <Phone className="h-3 w-3" />
+                  Telefone
                 </a>
               ) : null}
             </div>
