@@ -222,7 +222,7 @@
         "organizar oportunidades recorrentes",
         "produzir alertas e resumos operacionais"
       ],
-      "skills": ["lhfex-promocoes", "SAAS"],
+      "skills": ["lhfex-promocoes", "musa-literaria", "SAAS"],
       "tools": ["api.openclaw-tools", "web-search", "file-ops"],
       "permissions": {
         "businessData": "read-write",

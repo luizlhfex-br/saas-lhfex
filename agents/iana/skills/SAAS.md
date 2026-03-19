@@ -10,11 +10,15 @@ Use esta skill sempre que precisar de dados reais do SAAS.
 ## Contexto Completo
 - `GET ${SAAS_URL}/api/openclaw-tools?action=contexto_completo`
 - Carregue no inicio da sessao quando o assunto for LHFEX
+- Para descobrir o catalogo completo em runtime, use `action=catalogo_acoes`
 
 ## Consultas de Negocio
+- `action=resumo_modulos_saas`
 - `action=resumo_processos`
 - `action=buscar_processos&q=TERMO&status=STATUS`
 - `action=buscar_clientes&q=NOME_OU_CNPJ`
+- `action=listar_faturas`
+- `action=listar_radios`
 - `action=cotacao_dolar`
 - `action=system_status`
 - `action=ver_tarefas_mc`
@@ -45,6 +49,9 @@ Use esta skill sempre que precisar de dados reais do SAAS.
 - Quando a API devolver ambiguidade de cliente, use os itens em `details.matches` para responder com uma pergunta curta e objetiva.
 
 ## Exemplos
+- `GET ${SAAS_URL}/api/openclaw-tools?action=catalogo_acoes`
+- `GET ${SAAS_URL}/api/openclaw-tools?action=resumo_modulos_saas`
+- `GET ${SAAS_URL}/api/openclaw-tools?action=listar_faturas`
 - `{ "action": "criar_cliente", "cnpj": "03.954.434/0001-19" }`
 - `{ "action": "abrir_processo", "clientSearch": "Empresa ABC", "modal": "maritimo" }`
 - `{ "action": "atualizar_processo", "reference": "M26-001", "status": "em andamento", "notes": "Booking confirmado" }`
