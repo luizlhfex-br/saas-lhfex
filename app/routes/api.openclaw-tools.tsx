@@ -25,6 +25,8 @@ import {
   pessoas,
   plannedTimeOff,
   subscriptions,
+  invoices,
+  radioStations,
 } from "../../drizzle/schema";
 import { eq, desc, ilike, or, and, isNull, sql, gte, lte } from "drizzle-orm";
 import { askAgent } from "~/lib/ai.server";
@@ -127,6 +129,124 @@ export async function loader({ request }: Route.LoaderArgs) {
   const userId = getUserId();
   if (!userId) return badRequest("OPENCLAW_USER_ID not configured");
   const companyId = await getPrimaryCompanyId(userId);
+
+  if (action === "catalogo_acoes") {
+    return ok({
+      get: [
+        { action: "catalogo_acoes", description: "Lista todas as actions GET/POST suportadas pelo endpoint" },
+        { action: "system_status", description: "Status do sistema + versoes + saude OpenRouter" },
+        { action: "contexto_completo", description: "Contexto agregado para briefing operacional" },
+        { action: "resumo_modulos_saas", description: "Resumo por modulo principal do SaaS" },
+        { action: "resumo_processos", description: "Resumo de processos e chegadas proximas" },
+        { action: "buscar_processos&q=TERMO", description: "Busca processos por referencia, descricao ou cliente" },
+        { action: "buscar_clientes&q=TERMO", description: "Busca clientes por razao social, fantasia ou CNPJ" },
+        { action: "listar_promocoes", description: "Lista promocoes/sorteios cadastrados" },
+        { action: "listar_radios", description: "Lista radios do modulo Radio Monitor" },
+        { action: "listar_faturas", description: "Lista faturas do financeiro empresarial" },
+        { action: "ver_financeiro_pessoal&mes=YYYY-MM", description: "Resumo financeiro pessoal por mes" },
+        { action: "ver_assinaturas", description: "Lista assinaturas da LHFEX e saude de vencimento" },
+        { action: "cotacao_dolar", description: "Cotacao USD/BRL" },
+        { action: "openclaw_observability", description: "Snapshot de runs, heartbeats, handoffs e work items" },
+      ],
+      post: [
+        { action: "criar_cliente", description: "Cria cliente (aceita CNPJ para enriquecimento)" },
+        { action: "abrir_processo", description: "Abre processo por cliente/modal/tipo" },
+        { action: "atualizar_processo", description: "Atualiza status/campos do processo por referencia/id" },
+        { action: "adicionar_transacao", description: "Adiciona transacao no financeiro pessoal" },
+        { action: "ask_agent", description: "Encaminha tarefa para agente especializado" },
+        { action: "criar_tarefa_mc", description: "Cria tarefa no Mission Control" },
+        { action: "atualizar_tarefa_mc", description: "Atualiza tarefa do Mission Control" },
+        { action: "criar_tarefa_claude", description: "Cria tarefa de acompanhamento no backlog Claude" },
+        { action: "atualizar_tarefa_claude", description: "Atualiza status/resultado da tarefa Claude" },
+        { action: "registrar_run_agente", description: "Registra execucao operacional de agente" },
+        { action: "registrar_heartbeat_agente", description: "Registra heartbeat operacional de agente" },
+        { action: "registrar_handoff_agente", description: "Registra handoff entre agentes" },
+        { action: "registrar_work_item", description: "Cria work item operacional de agente" },
+        { action: "atualizar_work_item", description: "Atualiza work item operacional" },
+      ],
+      examples: {
+        get: [
+          "/api/openclaw-tools?action=system_status",
+          "/api/openclaw-tools?action=buscar_clientes&q=lhfex",
+          "/api/openclaw-tools?action=buscar_processos&q=A26-001",
+          "/api/openclaw-tools?action=listar_faturas",
+        ],
+        post: [
+          { action: "criar_cliente", cnpj: "62180992000133" },
+          { action: "abrir_processo", client: "LHFEX", modal: "aereo", processType: "import" },
+          { action: "atualizar_processo", reference: "A26-001", status: "in_progress" },
+        ],
+      },
+    });
+  }
+
+  if (action === "resumo_modulos_saas") {
+    const [crmSummary, processSummary, financeSummary, promotionSummary, subscriptionSummary, radioSummary] =
+      await Promise.all([
+        db
+          .select({
+            total: sql<number>`count(*)::int`,
+            ativos: sql<number>`count(*) filter (where status = 'active')::int`,
+            prospects: sql<number>`count(*) filter (where status = 'prospect')::int`,
+          })
+          .from(clients)
+          .where(and(eq(clients.companyId, companyId), isNull(clients.deletedAt))),
+        db
+          .select({
+            total: sql<number>`count(*)::int`,
+            draft: sql<number>`count(*) filter (where status = 'draft')::int`,
+            inProgress: sql<number>`count(*) filter (where status = 'in_progress')::int`,
+            inTransit: sql<number>`count(*) filter (where status = 'in_transit')::int`,
+            completed: sql<number>`count(*) filter (where status = 'completed')::int`,
+          })
+          .from(processes)
+          .where(and(eq(processes.companyId, companyId), isNull(processes.deletedAt))),
+        db
+          .select({
+            total: sql<number>`count(*)::int`,
+            paid: sql<number>`count(*) filter (where status = 'paid')::int`,
+            overdue: sql<number>`count(*) filter (where status = 'overdue')::int`,
+            totalAmount: sql<string>`coalesce(sum(total), 0)::text`,
+          })
+          .from(invoices)
+          .where(and(eq(invoices.companyId, companyId), isNull(invoices.deletedAt))),
+        db
+          .select({
+            total: sql<number>`count(*)::int`,
+            active: sql<number>`count(*) filter (where end_date >= current_date)::int`,
+            participated: sql<number>`count(*) filter (where participation_status = 'participated')::int`,
+          })
+          .from(promotions)
+          .where(and(eq(promotions.userId, userId), isNull(promotions.deletedAt))),
+        db
+          .select({
+            total: sql<number>`count(*)::int`,
+            active: sql<number>`count(*) filter (where status = 'active')::int`,
+            cancelled: sql<number>`count(*) filter (where status = 'cancelled')::int`,
+          })
+          .from(subscriptions)
+          .where(and(eq(subscriptions.companyId, companyId), isNull(subscriptions.deletedAt))),
+        db
+          .select({
+            total: sql<number>`count(*)::int`,
+            active: sql<number>`count(*) filter (where is_active = true)::int`,
+            monitoringEnabled: sql<number>`count(*) filter (where monitoring_enabled = true)::int`,
+          })
+          .from(radioStations),
+      ]);
+
+    return ok({
+      timestamp: new Date().toISOString(),
+      modules: {
+        crm: crmSummary[0] ?? null,
+        processes: processSummary[0] ?? null,
+        financial: financeSummary[0] ?? null,
+        promotions: promotionSummary[0] ?? null,
+        subscriptions: subscriptionSummary[0] ?? null,
+        radioMonitor: radioSummary[0] ?? null,
+      },
+    });
+  }
 
   // ── resumo_processos ──────────────────────────────────────────────────────
   if (action === "resumo_processos") {
@@ -317,6 +437,57 @@ export async function loader({ request }: Route.LoaderArgs) {
       total: items.length,
       subscriptions: items,
     });
+  }
+
+  if (action === "listar_faturas") {
+    const status = url.searchParams.get("status") || "";
+    const rows = await db
+      .select({
+        id: invoices.id,
+        number: invoices.number,
+        type: invoices.type,
+        status: invoices.status,
+        currency: invoices.currency,
+        total: invoices.total,
+        dueDate: invoices.dueDate,
+        paidDate: invoices.paidDate,
+        clientName: clients.razaoSocial,
+      })
+      .from(invoices)
+      .leftJoin(clients, eq(invoices.clientId, clients.id))
+      .where(
+        and(
+          eq(invoices.companyId, companyId),
+          isNull(invoices.deletedAt),
+          status ? eq(invoices.status, status as "draft" | "sent" | "paid" | "overdue" | "cancelled") : undefined,
+        ),
+      )
+      .orderBy(desc(invoices.updatedAt))
+      .limit(50);
+
+    return ok({ total: rows.length, invoices: rows });
+  }
+
+  if (action === "listar_radios") {
+    const rows = await db
+      .select({
+        id: radioStations.id,
+        name: radioStations.name,
+        frequency: radioStations.frequency,
+        city: radioStations.city,
+        state: radioStations.state,
+        websiteUrl: radioStations.websiteUrl,
+        instagramUrl: radioStations.instagramUrl,
+        contactPhone: radioStations.contactPhone,
+        contactWhatsapp: radioStations.contactWhatsapp,
+        isActive: radioStations.isActive,
+        monitoringEnabled: radioStations.monitoringEnabled,
+      })
+      .from(radioStations)
+      .orderBy(radioStations.name)
+      .limit(100);
+
+    return ok({ total: rows.length, stations: rows });
   }
 
   // ── buscar_clientes ───────────────────────────────────────────────────────

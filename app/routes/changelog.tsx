@@ -29,6 +29,19 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-19",
+    version: "2.9.35",
+    type: "release",
+    title: "OpenClaw estabilizado no SaaS com catalogo de tools expandido",
+    items: [
+      "OpenClaw Gateway: provider principal corrigido para google-vertex/gemini-2.0-flash, removendo erro de modelo desconhecido no runtime",
+      "OpenClaw Gateway: heartbeat interno foi desligado no openclaw.json para parar tentativas de envio para @heartbeat",
+      "OpenClaw Tools: novo action catalogo_acoes com mapa completo de GET/POST e exemplos prontos para uso",
+      "OpenClaw Tools: novos actions resumo_modulos_saas, listar_faturas e listar_radios para ampliar consulta operacional via Telegram",
+      "JULia: skill musa-literaria registrada como exclusiva do modulo Literario e integrada ao fluxo de promocoes",
+    ],
+  },
+  {
+    date: "2026-03-19",
     version: "2.9.34",
     type: "release",
     title: "Calculadora COMEX com conversao de invoice e taxa Siscomex por adicao",

@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.34";
+export const APP_VERSION = "2.9.35";
 export const APP_RELEASE_DATE = "2026-03-19";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,18 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.35",
+    date: "2026-03-19",
+    title: "OpenClaw estabilizado no SaaS com catalogo de tools expandido",
+    items: [
+      { type: "fix", text: "OpenClaw Gateway: provider principal corrigido para google-vertex/gemini-2.0-flash, removendo erro de modelo desconhecido no runtime" },
+      { type: "fix", text: "OpenClaw Gateway: heartbeat interno foi desligado no openclaw.json para parar tentativas de envio para @heartbeat" },
+      { type: "feature", text: "OpenClaw Tools: novo action catalogo_acoes com mapa completo de GET/POST e exemplos prontos para uso" },
+      { type: "feature", text: "OpenClaw Tools: novos actions resumo_modulos_saas, listar_faturas e listar_radios para ampliar consulta operacional via Telegram" },
+      { type: "improvement", text: "JULia: skill musa-literaria registrada como exclusiva do modulo Literario e integrada ao fluxo de promocoes" },
+    ],
+  },
   {
     version: "2.9.34",
     date: "2026-03-19",

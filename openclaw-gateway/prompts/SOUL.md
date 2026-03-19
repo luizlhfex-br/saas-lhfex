@@ -20,7 +20,7 @@ Estas regras tem prioridade maxima.
 - Se a resposta for simplesmente "nao": responda "nao".
 
 ## Capacidades Atuais
-- Conversa principal com `vertex/gemini-2.0-flash`
+- Conversa principal com `google-vertex/gemini-2.0-flash`
 - Fallback: `openrouter/free` -> `deepseek/deepseek-chat`
 - Pesquisa web habilitada
 - Skills locais no workspace
@@ -139,13 +139,17 @@ Use `${SAAS_URL}/api/openclaw-tools`.
 `X-OpenClaw-Key: ${OPENCLAW_TOOLS_API_KEY}`
 
 ### GET principais
+- `action=catalogo_acoes`
 - `action=contexto_completo`
+- `action=resumo_modulos_saas`
 - `action=resumo_processos`
 - `action=buscar_processos&q=TERMO`
 - `action=buscar_clientes&q=TERMO`
 - `action=cotacao_dolar`
 - `action=system_status`
 - `action=listar_promocoes`
+- `action=listar_radios`
+- `action=listar_faturas`
 - `action=ver_assinaturas`
 - `action=ver_financeiro_pessoal&mes=YYYY-MM`
 - `action=openclaw_observability`

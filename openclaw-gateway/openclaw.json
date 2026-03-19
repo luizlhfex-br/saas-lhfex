@@ -3,18 +3,18 @@
     "defaults": {
       "workspace": "/root/.openclaw/workspace",
       "model": {
-        "primary": "vertex/gemini-2.0-flash",
+        "primary": "google-vertex/gemini-2.0-flash",
         "fallbacks": [
           "openrouter/free",
           "deepseek/deepseek-chat"
         ]
       },
       "thinkingDefault": "adaptive",
-      "pdfModel": "vertex/gemini-2.0-flash",
+      "pdfModel": "google-vertex/gemini-2.0-flash",
       "pdfMaxBytesMb": 10,
       "pdfMaxPages": 20,
       "models": {
-        "vertex/gemini-2.0-flash": {
+        "google-vertex/gemini-2.0-flash": {
           "alias": "default"
         },
         "openrouter/free": {
@@ -35,11 +35,6 @@
         "openrouter/perplexity/sonar": {
           "alias": "research"
         }
-      },
-      "heartbeat": {
-        "every": "30m",
-        "model": "vertex/gemini-2.0-flash",
-        "target": "telegram"
       },
       "memorySearch": {
         "sources": [
@@ -74,7 +69,7 @@
         "id": "airton",
         "workspace": "/root/.openclaw/workspace/agents/airton",
         "model": {
-          "primary": "vertex/gemini-2.0-flash",
+          "primary": "google-vertex/gemini-2.0-flash",
           "fallbacks": [
             "openrouter/free",
             "deepseek/deepseek-chat"
@@ -85,7 +80,7 @@
         "id": "iana",
         "workspace": "/root/.openclaw/workspace/agents/iana",
         "model": {
-          "primary": "vertex/gemini-2.0-flash",
+          "primary": "google-vertex/gemini-2.0-flash",
           "fallbacks": [
             "openrouter/free",
             "deepseek/deepseek-chat"
@@ -96,7 +91,7 @@
         "id": "maria",
         "workspace": "/root/.openclaw/workspace/agents/maria",
         "model": {
-          "primary": "vertex/gemini-2.0-flash",
+          "primary": "google-vertex/gemini-2.0-flash",
           "fallbacks": [
             "openrouter/free",
             "deepseek/deepseek-chat"
@@ -107,7 +102,7 @@
         "id": "iago",
         "workspace": "/root/.openclaw/workspace/agents/iago",
         "model": {
-          "primary": "vertex/gemini-2.0-flash",
+          "primary": "google-vertex/gemini-2.0-flash",
           "fallbacks": [
             "openrouter/free",
             "deepseek/deepseek-chat"
@@ -118,7 +113,7 @@
         "id": "iara",
         "workspace": "/root/.openclaw/workspace/agents/iara",
         "model": {
-          "primary": "vertex/gemini-2.0-flash",
+          "primary": "google-vertex/gemini-2.0-flash",
           "fallbacks": [
             "openrouter/free",
             "deepseek/deepseek-chat"
@@ -129,7 +124,7 @@
         "id": "sofia",
         "workspace": "/root/.openclaw/workspace/agents/sofia",
         "model": {
-          "primary": "vertex/gemini-2.0-flash",
+          "primary": "google-vertex/gemini-2.0-flash",
           "fallbacks": [
             "openrouter/free",
             "deepseek/deepseek-chat"
@@ -140,7 +135,7 @@
         "id": "mai",
         "workspace": "/root/.openclaw/workspace/agents/mai",
         "model": {
-          "primary": "vertex/gemini-2.0-flash",
+          "primary": "google-vertex/gemini-2.0-flash",
           "fallbacks": [
             "openrouter/free",
             "deepseek/deepseek-chat"
@@ -151,7 +146,7 @@
         "id": "julia",
         "workspace": "/root/.openclaw/workspace/agents/julia",
         "model": {
-          "primary": "vertex/gemini-2.0-flash",
+          "primary": "google-vertex/gemini-2.0-flash",
           "fallbacks": [
             "openrouter/free",
             "deepseek/deepseek-chat"

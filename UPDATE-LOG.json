@@ -1,17 +1,47 @@
 {
   "release": {
-    "version": "v2.9.34",
+    "version": "v2.9.35",
     "date": "2026-03-19T00:00:00Z",
     "type": "feature",
-    "title": "Calculadora COMEX com conversao de invoice e taxa Siscomex por adicao"
+    "title": "OpenClaw estabilizado no SaaS com catalogo de tools expandido"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 7,
-    "filesModified": 8,
-    "routesAdded": 2,
-    "openclaw_changes": 0,
+    "filesCreated": 1,
+    "filesModified": 10,
+    "routesAdded": 0,
+    "openclaw_changes": 7,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_19_openclaw_runtime_access_stabilization": {
+    "date": "2026-03-19",
+    "release_version": "2.9.35",
+    "objective": "Estabilizar o runtime do OpenClaw para executar acoes no SaaS via Telegram, corrigindo modelo principal invalido e ampliando o catalogo de tools do endpoint",
+    "files_changed": [
+      "openclaw-gateway/openclaw.json",
+      "openclaw-gateway/prompts/SOUL.md",
+      "openclaw-gateway/agents.catalog.json",
+      "openclaw-gateway/prompts/agents/julia/AGENTS.md",
+      "openclaw-gateway/prompts/agents/julia/SOUL.md",
+      "openclaw-gateway/prompts/skills/lhfex-promocoes.md",
+      "openclaw-gateway/prompts/skills/musa-literaria.md",
+      "app/routes/api.openclaw-tools.tsx",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "OpenClaw Gateway: provider principal migrou de vertex/gemini-2.0-flash para google-vertex/gemini-2.0-flash para remover erro de model_not_found",
+      "OpenClaw Gateway: heartbeat interno foi removido da configuracao para parar tentativas de envio para @heartbeat",
+      "JULia: skill musa-literaria passou a ser exclusiva do modulo Literario no catalogo e nos prompts operacionais",
+      "OpenClaw Tools: novo action catalogo_acoes com mapa completo de GET/POST e exemplos de payload",
+      "OpenClaw Tools: novos actions resumo_modulos_saas, listar_faturas e listar_radios para ampliar consulta de modulos via Telegram"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "Validacao de chave OpenClaw Tools: 401 com chave invalida e 200 com chave valida",
+      "Teste de POST ask_agent via /api/openclaw-tools respondeu success=true"
+    ]
   },
   "session_2026_03_19_comex_calculator_invoice_siscomex": {
     "date": "2026-03-19",
