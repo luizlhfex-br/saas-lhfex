@@ -68,6 +68,8 @@ export default [
     route("personal-life/radio-monitor", "routes/personal-life.radio-monitor.tsx"),
     route("personal-life/studies", "routes/personal-life.studies.tsx"),
     route("knowledge/prompting", "routes/knowledge.prompting.tsx"),
+    route("knowledge/embeddings", "routes/knowledge.embeddings.tsx"),
+    route("ai-updates", "routes/ai-updates.tsx"),
     route("changelog", "routes/changelog.tsx"),
     route("other-business", "routes/other-business.tsx"),
     route("other-business/internet", "routes/other-business.internet.tsx"),

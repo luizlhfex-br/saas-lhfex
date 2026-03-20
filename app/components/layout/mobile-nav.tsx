@@ -11,6 +11,7 @@ import {
   Zap,
   Sparkles,
   Brain,
+  Globe,
   Settings,
   LogOut,
   X,
@@ -65,7 +66,8 @@ const comexNavItems: NavItem[] = [
 const aiAutomationNavItems: NavItem[] = [
   { labelKey: "automations", icon: Zap, to: "/automations" },
   { labelKey: "agents", icon: Bot, to: "/agents" },
-  { label: "Memória Semântica", icon: Brain, to: "/knowledge/embeddings" },
+  { label: "Conhecimento IA", icon: Brain, to: "/agents?tab=knowledge" },
+  { label: "Fontes IA", icon: Globe, to: "/ai-updates" },
   { label: "Pixel Room", icon: Package, to: "/squad" },
   { labelKey: "aiUsage", icon: Sparkles, to: "/ai-usage" },
 ];
@@ -85,6 +87,7 @@ export function MobileNav({
       currentPath.startsWith("/automations") ||
       currentPath.startsWith("/agents") ||
       currentPath.startsWith("/knowledge") ||
+      currentPath.startsWith("/ai-updates") ||
       currentPath.startsWith("/squad") ||
       currentPath.startsWith("/ai-usage"),
   });
