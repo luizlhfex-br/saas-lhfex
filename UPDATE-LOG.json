@@ -1,17 +1,38 @@
 {
   "release": {
-    "version": "v2.9.38",
+    "version": "v2.9.39",
     "date": "2026-03-20T00:00:00Z",
-    "type": "infra",
-    "title": "Hermes em producao com diagnostico operacional confiavel"
+    "type": "fix",
+    "title": "Monitor de producao adaptado ao runtime Hermes"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 1,
-    "filesModified": 10,
+    "filesCreated": 0,
+    "filesModified": 4,
     "routesAdded": 0,
     "openclaw_changes": 1,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_20_hermes_monitor_fallback": {
+    "date": "2026-03-20",
+    "release_version": "2.9.39",
+    "objective": "Corrigir o monitor de producao para aceitar o runtime Hermes e parar o falso negativo no smoke apos o deploy",
+    "files_changed": [
+      "app/routes/api.monitor-openclaw.tsx",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "A rota /api/monitor-openclaw passou a usar o health HTTP legado apenas como primeira tentativa",
+      "Se o probe HTTP falhar, a rota agora faz fallback para a fundacao de observabilidade e aceita heartbeat recente como sinal de runtime online",
+      "A resposta do monitor passou a carregar source, gatewayProbe e heartbeat para facilitar o diagnostico de producao"
+    ],
+    "verification": [
+      "O deploy anterior concluiu no Coolify, e o unico job quebrado foi o smoke por causa do monitor legado",
+      "A falha do smoke foi confirmada como HTTP 404 no probe /health do gateway antigo, nao como queda do SaaS",
+      "A nova rota preserva status 503 somente quando gateway e observabilidade falham ao mesmo tempo"
+    ]
   },
   "session_2026_03_20_hermes_cutover_runtime_hardening": {
     "date": "2026-03-20",

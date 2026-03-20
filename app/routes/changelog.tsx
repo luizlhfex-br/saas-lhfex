@@ -29,6 +29,17 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-20",
+    version: "2.9.39",
+    type: "release",
+    title: "Monitor de producao adaptado ao runtime Hermes",
+    items: [
+      "Monitor do agente agora faz fallback para a observabilidade do SaaS quando o health HTTP legado do gateway nao representa o Hermes",
+      "Smoke production deixa de marcar o runtime como offline apenas porque o endpoint /health legado responde 404",
+      "A resposta do monitor passa a informar source, gatewayProbe e heartbeat recente para diagnostico mais util",
+    ],
+  },
+  {
+    date: "2026-03-20",
     version: "2.9.38",
     type: "release",
     title: "Hermes em producao com diagnostico operacional confiavel",

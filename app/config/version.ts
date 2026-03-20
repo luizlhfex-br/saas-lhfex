@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.38";
+export const APP_VERSION = "2.9.39";
 export const APP_RELEASE_DATE = "2026-03-20";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,16 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.39",
+    date: "2026-03-20",
+    title: "Monitor de producao adaptado ao runtime Hermes",
+    items: [
+      { type: "fix", text: "Monitor do agente agora faz fallback para a observabilidade do SaaS quando o health HTTP legado do gateway nao representa o Hermes" },
+      { type: "fix", text: "Smoke production deixa de marcar o runtime como offline apenas porque o endpoint /health legado responde 404" },
+      { type: "improvement", text: "A resposta do monitor passa a informar source, gatewayProbe e heartbeat recente para dar diagnostico mais util" },
+    ],
+  },
   {
     version: "2.9.38",
     date: "2026-03-20",
