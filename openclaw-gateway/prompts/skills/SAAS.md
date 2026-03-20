@@ -23,6 +23,8 @@ Use esta skill sempre que precisar de dados reais do SAAS.
 - `action=system_status`
 - `action=ver_tarefas_mc`
 - `action=ver_assinaturas`
+- `action=google_status`
+- `action=google_buscar_drive&q=TERMO`
 
 ## Vida Pessoal
 - `action=ver_financeiro_pessoal&mes=YYYY-MM`
@@ -37,6 +39,8 @@ Use esta skill sempre que precisar de dados reais do SAAS.
 - `{ "action": "criar_cliente", ... }`
 - `{ "action": "abrir_processo", ... }`
 - `{ "action": "atualizar_processo", ... }`
+- `{ "action": "google_criar_evento_calendario", ... }`
+- `{ "action": "google_criar_planilha", ... }`
 - `{ "action": "adicionar_transacao", ... }`
 - `{ "action": "ask_agent", "agentId": "airton|iana|maria", "message": "..." }`
 - `{ "action": "criar_tarefa_claude", "prompt": "..." }`
@@ -46,15 +50,20 @@ Use esta skill sempre que precisar de dados reais do SAAS.
 - `criar_cliente` aceita apenas `cnpj` e tenta enriquecer automaticamente razao social, nome fantasia, cidade, UF e contato basico.
 - `abrir_processo` aceita `clientSearch` + `modal` (`aereo`, `maritimo`, `outros`). Se `processType` nao vier, o padrao e `import`.
 - `atualizar_processo` aceita `reference` e campos como `status`, `notes`, `incoterm`, `totalValue`, `currency`, `hsCode`, `originCountry` e `destinationCountry`.
+- Validar `google_status` antes de prometer criacao de evento, planilha ou busca em Drive.
 - Quando a API devolver ambiguidade de cliente, use os itens em `details.matches` para responder com uma pergunta curta e objetiva.
 
 ## Exemplos
 - `GET ${SAAS_URL}/api/openclaw-tools?action=catalogo_acoes`
 - `GET ${SAAS_URL}/api/openclaw-tools?action=resumo_modulos_saas`
 - `GET ${SAAS_URL}/api/openclaw-tools?action=listar_faturas`
+- `GET ${SAAS_URL}/api/openclaw-tools?action=google_status`
+- `GET ${SAAS_URL}/api/openclaw-tools?action=google_buscar_drive&q=invoice`
 - `{ "action": "criar_cliente", "cnpj": "03.954.434/0001-19" }`
 - `{ "action": "abrir_processo", "clientSearch": "Empresa ABC", "modal": "maritimo" }`
 - `{ "action": "atualizar_processo", "reference": "M26-001", "status": "em andamento", "notes": "Booking confirmado" }`
+- `{ "action": "google_criar_evento_calendario", "title": "Reuniao com cliente", "startDateTime": "2026-03-20T14:00:00-03:00", "endDateTime": "2026-03-20T15:00:00-03:00" }`
+- `{ "action": "google_criar_planilha", "title": "Resumo LHFEX", "rows": [["Campo", "Valor"], ["Processos ativos", 5]] }`
 
 ## Regras
 1. Sempre priorize dados reais do SAAS antes de responder.

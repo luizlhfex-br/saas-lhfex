@@ -425,3 +425,110 @@ export async function createGoogleSheet(
   }
 }
 
+export type GoogleSheetCellValue = string | number | boolean | null;
+
+export async function getGoogleConnectionStatus(userId: string) {
+  const token = await getValidGoogleToken(userId);
+  if (!token) {
+    return {
+      connected: false,
+      expiresAt: null,
+      scopes: [] as string[],
+      services: {
+        drive: false,
+        sheets: false,
+        calendar: false,
+      },
+    };
+  }
+
+  const scopes = String(token.scope || "")
+    .split(/\s+/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  return {
+    connected: true,
+    expiresAt: token.expiresAt.toISOString(),
+    scopes,
+    services: {
+      drive: scopes.some((scope) => scope.includes("/auth/drive")),
+      sheets: scopes.some((scope) => scope.includes("/auth/spreadsheets")),
+      calendar: scopes.some((scope) => scope.includes("/auth/calendar")),
+    },
+  };
+}
+
+export async function createGoogleSheetWithRows(params: {
+  userId: string;
+  title: string;
+  rows: GoogleSheetCellValue[][];
+  sheetName?: string;
+  folderId?: string;
+}) {
+  const { userId, title, rows, sheetName = "Sheet1", folderId = process.env.GOOGLE_DRIVE_FOLDER_ID || "" } = params;
+  const normalizedRows = rows.map((row) =>
+    row.map((cell) => {
+      if (cell === null || cell === undefined) return "";
+      return typeof cell === "boolean" ? (cell ? "TRUE" : "FALSE") : cell;
+    }),
+  );
+
+  const sheet = await createGoogleSheet(userId, title, folderId);
+  if (!sheet) return null;
+
+  const sheetsClient = await getAuthenticatedSheetsClient(userId);
+  if (!sheetsClient) return null;
+
+  await sheetsClient.spreadsheets.values.update({
+    spreadsheetId: sheet.spreadsheetId,
+    range: `${sheetName}!A1`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: {
+      values: normalizedRows,
+    },
+  });
+
+  return {
+    ...sheet,
+    sheetName,
+    rowCount: normalizedRows.length,
+  };
+}
+
+export async function searchGoogleDriveFiles(params: {
+  userId: string;
+  query?: string;
+  pageSize?: number;
+}) {
+  const { userId, query = "", pageSize = 10 } = params;
+  const driveClient = await getAuthenticatedDriveClient(userId);
+  if (!driveClient) return null;
+
+  const filters = [
+    "trashed = false",
+  ];
+
+  const normalizedQuery = query.trim();
+  if (normalizedQuery) {
+    const escaped = normalizedQuery.replace(/'/g, "\\'");
+    filters.push(`(name contains '${escaped}' or fullText contains '${escaped}')`);
+  }
+
+  const response = await driveClient.files.list({
+    q: filters.join(" and "),
+    pageSize,
+    fields: "files(id,name,mimeType,webViewLink,webContentLink,modifiedTime,parents)",
+    orderBy: "modifiedTime desc",
+  });
+
+  return (response.data.files || []).map((file) => ({
+    id: file.id || "",
+    name: file.name || "",
+    mimeType: file.mimeType || "",
+    webViewLink: file.webViewLink || null,
+    webContentLink: file.webContentLink || null,
+    modifiedTime: file.modifiedTime || null,
+    parents: file.parents || [],
+  }));
+}

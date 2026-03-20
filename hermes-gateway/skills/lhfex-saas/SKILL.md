@@ -1,0 +1,86 @@
+---
+name: lhfex-saas
+description: Acesso operacional ao SaaS LHFEX via /api/openclaw-tools para consultas e acoes reais
+version: 1.0.0
+metadata:
+  hermes:
+    tags: [lhfex, saas, crm, processos, financeiro, google]
+    related_skills: [lhfex-squad-router]
+---
+
+# LHFEX SaaS
+
+## Objetivo
+
+Usar dados reais do SaaS LHFEX antes de responder ou agir.
+
+## Base
+
+- Base URL: `${SAAS_URL}`
+- Endpoint: `${SAAS_URL}/api/openclaw-tools`
+- Header: `X-OpenClaw-Key: ${OPENCLAW_TOOLS_API_KEY}`
+
+## Regras
+
+1. Sempre priorizar este endpoint antes de responder sobre clientes, processos, assinaturas, promocoes, financeiro ou observabilidade.
+2. Nunca inventar acesso ou retorno; se a API falhar, informar a falha real.
+3. Para ambiguidade de cliente ou processo, devolver pergunta curta com opcoes reais.
+4. Nunca deletar dados sem autorizacao explicita.
+5. Responder em PT-BR.
+
+## Consultas principais
+
+- `action=catalogo_acoes`
+- `action=contexto_completo`
+- `action=resumo_modulos_saas`
+- `action=resumo_processos`
+- `action=buscar_clientes&q=TERMO`
+- `action=buscar_processos&q=TERMO`
+- `action=listar_faturas`
+- `action=listar_promocoes`
+- `action=listar_radios`
+- `action=ver_assinaturas`
+- `action=ver_financeiro_pessoal&mes=YYYY-MM`
+- `action=google_status`
+- `action=google_buscar_drive&q=TERMO`
+- `action=openclaw_observability`
+- `action=system_status`
+- `action=cotacao_dolar`
+
+## Acoes principais
+
+- `{ "action": "criar_cliente", "cnpj": "62180992000133" }`
+- `{ "action": "abrir_processo", "clientSearch": "LHFEX", "modal": "aereo", "processType": "import" }`
+- `{ "action": "atualizar_processo", "reference": "A26-001", "status": "in_progress" }`
+- `{ "action": "google_criar_evento_calendario", "title": "...", "startDateTime": "...", "endDateTime": "..." }`
+- `{ "action": "google_criar_planilha", "title": "...", "rows": [["Campo", "Valor"]] }`
+
+## Atalhos operacionais
+
+- Se Luiz mandar apenas um CNPJ, tentar `criar_cliente`.
+- Se Luiz mandar cliente + modal, tentar `abrir_processo`.
+- Se Luiz mandar referencia + ajuste, tentar `atualizar_processo`.
+- Para perguntas amplas sobre o negocio, carregar `contexto_completo` no inicio da sessao.
+
+## Execucao via terminal
+
+Para GET:
+
+```bash
+curl -sS "${SAAS_URL}/api/openclaw-tools?action=catalogo_acoes" \
+  -H "X-OpenClaw-Key: ${OPENCLAW_TOOLS_API_KEY}"
+```
+
+Para POST:
+
+```bash
+curl -sS -X POST "${SAAS_URL}/api/openclaw-tools" \
+  -H "Content-Type: application/json" \
+  -H "X-OpenClaw-Key: ${OPENCLAW_TOOLS_API_KEY}" \
+  -d '{"action":"criar_cliente","cnpj":"62180992000133"}'
+```
+
+## Resultado esperado
+
+- consultas: resposta curta, estavel e pronta para Telegram
+- acoes: informar `success`, ID/referencia real e proximo passo

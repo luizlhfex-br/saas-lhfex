@@ -28,6 +28,18 @@ type Entry = {
 
 const CHANGELOG: Entry[] = [
   {
+    date: "2026-03-20",
+    version: "2.9.37",
+    type: "release",
+    title: "Hermes Agent preparado no VPS com bridge SaaS e Google",
+    items: [
+      "Hermes: novo pacote hermes-gateway com SOUL, runbook, cutover checklist, bootstrap idempotente e skills LHFEX no formato SKILL.md",
+      "OpenClaw Tools: actions google_status, google_buscar_drive, google_criar_evento_calendario e google_criar_planilha adicionadas para operar Google via SaaS",
+      "Hermes no VPS: release v2026.3.17 instalada, Telegram configurado, fallback DeepSeek validado e cron jobs registrados sem derrubar o OpenClaw atual",
+      "Skill SAAS do gateway atualizada para refletir o bridge Google e o contrato operacional comum entre OpenClaw e Hermes",
+    ],
+  },
+  {
     date: "2026-03-19",
     version: "2.9.36",
     type: "release",

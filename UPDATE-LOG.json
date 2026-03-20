@@ -1,17 +1,66 @@
 {
   "release": {
-    "version": "v2.9.36",
-    "date": "2026-03-19T00:00:00Z",
+    "version": "v2.9.37",
+    "date": "2026-03-20T00:00:00Z",
     "type": "feature",
-    "title": "OpenClaw com acesso SaaS mais confiavel no Telegram"
+    "title": "Hermes Agent preparado no VPS com bridge SaaS e Google"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 0,
-    "filesModified": 5,
+    "filesCreated": 20,
+    "filesModified": 6,
     "routesAdded": 0,
-    "openclaw_changes": 3,
+    "openclaw_changes": 1,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_20_hermes_gateway_and_google_bridge": {
+    "date": "2026-03-20",
+    "release_version": "2.9.37",
+    "objective": "Preparar a migracao OpenClaw -> Hermes Agent no VPS, expor a bridge Google no SaaS e versionar os artefatos operacionais do novo gateway",
+    "files_changed": [
+      "app/lib/google.server.ts",
+      "app/routes/api.openclaw-tools.tsx",
+      "openclaw-gateway/prompts/skills/SAAS.md",
+      "hermes-gateway/README.md",
+      "hermes-gateway/SOUL.md",
+      "hermes-gateway/RUNBOOK.md",
+      "hermes-gateway/CUTOVER-CHECKLIST.md",
+      "hermes-gateway/bootstrap-hermes.sh",
+      "hermes-gateway/sync-context.sh",
+      "hermes-gateway/skills/lhfex-saas/SKILL.md",
+      "hermes-gateway/skills/lhfex-squad-router/SKILL.md",
+      "hermes-gateway/skills/lhfex-squad-router/references/airton.md",
+      "hermes-gateway/skills/lhfex-squad-router/references/iana.md",
+      "hermes-gateway/skills/lhfex-squad-router/references/maria.md",
+      "hermes-gateway/skills/lhfex-squad-router/references/iago.md",
+      "hermes-gateway/skills/lhfex-squad-router/references/iara.md",
+      "hermes-gateway/skills/lhfex-squad-router/references/sofia.md",
+      "hermes-gateway/skills/lhfex-squad-router/references/mai.md",
+      "hermes-gateway/skills/lhfex-squad-router/references/julia.md",
+      "hermes-gateway/skills/lhfex-comex-expert/SKILL.md",
+      "hermes-gateway/skills/lhfex-licitacoes/SKILL.md",
+      "hermes-gateway/skills/lhfex-promocoes/SKILL.md",
+      "hermes-gateway/skills/musa-literaria/SKILL.md",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "Google no SaaS ganhou helpers de status, busca no Drive e criacao de eventos e planilhas para o agente operar Workspace sem browser-first",
+      "O endpoint /api/openclaw-tools passou a expor catalogo e handlers para google_status, google_buscar_drive, google_criar_evento_calendario e google_criar_planilha",
+      "Foi criado o diretorio hermes-gateway com SOUL, runbook, checklist de cutover, bootstrap idempotente e sync de contexto para ~/.hermes",
+      "As skills da LHFEX foram convertidas para o formato oficial do Hermes com SKILL.md e um router de squad baseado em delegate_task",
+      "O Hermes v2026.3.17 foi instalado no VPS, configurado com OpenRouter + fallback DeepSeek, Telegram allowlist e cron jobs prontos para o cutover",
+      "A skill SAAS do OpenClaw atual foi alinhada ao bridge Google para manter o contrato operacional consistente durante a transicao"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "Hermes v2026.3.17 instalado e respondendo a `hermes version` no VPS",
+      "Hermes status confirmou OpenRouter, Telegram e terminal local configurados",
+      "Hermes chat respondeu `OK` via fallback DeepSeek quando o modelo free principal sofreu rate limit",
+      "Hermes conseguiu consultar o catalogo do SaaS e retornou GET=14 POST=14 a partir da producao antes do deploy deste pacote",
+      "Gateway do Hermes foi instalado como systemd user service com linger habilitado e permaneceu parado para evitar conflito com o bot atual"
+    ]
   },
   "session_2026_03_19_openclaw_telegram_saas_routing": {
     "date": "2026-03-19",

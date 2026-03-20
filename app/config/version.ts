@@ -3,8 +3,8 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.36";
-export const APP_RELEASE_DATE = "2026-03-19";
+export const APP_VERSION = "2.9.37";
+export const APP_RELEASE_DATE = "2026-03-20";
 export const APP_NAME = "LHFEX SaaS";
 
 export type ChangelogItemType = "feature" | "improvement" | "fix" | "infra";
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.37",
+    date: "2026-03-20",
+    title: "Hermes Agent preparado no VPS com bridge SaaS e Google",
+    items: [
+      { type: "feature", text: "Hermes: novo pacote versionado hermes-gateway com SOUL, runbook, checklist de cutover, bootstrap idempotente e skills LHFEX no formato oficial SKILL.md" },
+      { type: "feature", text: "OpenClaw Tools: novas actions google_status, google_buscar_drive, google_criar_evento_calendario e google_criar_planilha para operar Google Workspace via SaaS" },
+      { type: "improvement", text: "Hermes no VPS: release v2026.3.17 instalada, Telegram configurado, fallback DeepSeek validado e cron jobs preparados sem derrubar o OpenClaw atual" },
+      { type: "improvement", text: "Skill SAAS do gateway foi ampliada para documentar o bridge Google e o contrato operacional usado por OpenClaw e Hermes" },
+    ],
+  },
   {
     version: "2.9.36",
     date: "2026-03-19",

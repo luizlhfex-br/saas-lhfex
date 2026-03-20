@@ -45,6 +45,12 @@ import {
   recordOpenClawWorkItem,
   updateOpenClawWorkItem,
 } from "~/lib/openclaw-observability.server";
+import {
+  createGoogleCalendarEvent,
+  createGoogleSheetWithRows,
+  getGoogleConnectionStatus,
+  searchGoogleDriveFiles,
+} from "~/lib/google.server";
 import { getSubscriptionHealth, resolveSubscriptionNextDueDate, summarizeSubscriptionTotals } from "~/lib/subscriptions.server";
 
 function unauthorized() {
@@ -145,6 +151,8 @@ export async function loader({ request }: Route.LoaderArgs) {
         { action: "listar_faturas", description: "Lista faturas do financeiro empresarial" },
         { action: "ver_financeiro_pessoal&mes=YYYY-MM", description: "Resumo financeiro pessoal por mes" },
         { action: "ver_assinaturas", description: "Lista assinaturas da LHFEX e saude de vencimento" },
+        { action: "google_status", description: "Status da conexao Google (Drive, Sheets, Calendar)" },
+        { action: "google_buscar_drive&q=TERMO", description: "Busca arquivos no Google Drive conectado" },
         { action: "cotacao_dolar", description: "Cotacao USD/BRL" },
         { action: "openclaw_observability", description: "Snapshot de runs, heartbeats, handoffs e work items" },
       ],
@@ -152,6 +160,8 @@ export async function loader({ request }: Route.LoaderArgs) {
         { action: "criar_cliente", description: "Cria cliente (aceita CNPJ para enriquecimento)" },
         { action: "abrir_processo", description: "Abre processo por cliente/modal/tipo" },
         { action: "atualizar_processo", description: "Atualiza status/campos do processo por referencia/id" },
+        { action: "google_criar_evento_calendario", description: "Cria evento no Google Calendar conectado" },
+        { action: "google_criar_planilha", description: "Cria planilha simples no Google Sheets com linhas livres" },
         { action: "adicionar_transacao", description: "Adiciona transacao no financeiro pessoal" },
         { action: "ask_agent", description: "Encaminha tarefa para agente especializado" },
         { action: "criar_tarefa_mc", description: "Cria tarefa no Mission Control" },
@@ -170,11 +180,27 @@ export async function loader({ request }: Route.LoaderArgs) {
           "/api/openclaw-tools?action=buscar_clientes&q=lhfex",
           "/api/openclaw-tools?action=buscar_processos&q=A26-001",
           "/api/openclaw-tools?action=listar_faturas",
+          "/api/openclaw-tools?action=google_status",
+          "/api/openclaw-tools?action=google_buscar_drive&q=invoice",
         ],
         post: [
           { action: "criar_cliente", cnpj: "62180992000133" },
           { action: "abrir_processo", client: "LHFEX", modal: "aereo", processType: "import" },
           { action: "atualizar_processo", reference: "A26-001", status: "in_progress" },
+          {
+            action: "google_criar_evento_calendario",
+            title: "Reuniao com cliente",
+            startDateTime: "2026-03-20T14:00:00-03:00",
+            endDateTime: "2026-03-20T15:00:00-03:00",
+          },
+          {
+            action: "google_criar_planilha",
+            title: "Resumo LHFEX",
+            rows: [
+              ["Campo", "Valor"],
+              ["Processos ativos", 5],
+            ],
+          },
         ],
       },
     });
@@ -436,6 +462,32 @@ export async function loader({ request }: Route.LoaderArgs) {
       totals,
       total: items.length,
       subscriptions: items,
+    });
+  }
+
+  if (action === "google_status") {
+    const status = await getGoogleConnectionStatus(userId);
+    return ok({
+      ...status,
+      summary: status.connected
+        ? `Google conectado. Drive=${status.services.drive ? "ok" : "nao"} | Sheets=${status.services.sheets ? "ok" : "nao"} | Calendar=${status.services.calendar ? "ok" : "nao"}`
+        : "Google nao conectado para este usuario.",
+    });
+  }
+
+  if (action === "google_buscar_drive") {
+    const q = url.searchParams.get("q") || "";
+    const pageSize = Math.min(Math.max(Number(url.searchParams.get("pageSize") || 10), 1), 25);
+    const files = await searchGoogleDriveFiles({ userId, query: q, pageSize });
+
+    if (files === null) {
+      return badRequest("Google Drive nao conectado ou indisponivel");
+    }
+
+    return ok({
+      total: files.length,
+      query: q,
+      files,
     });
   }
 
@@ -1061,6 +1113,90 @@ export async function action({ request }: Route.ActionArgs) {
       }
       throw error;
     }
+  }
+
+  if (act === "google_criar_evento_calendario") {
+    const title = String(body.title || "").trim();
+    const startDateTime = String(body.startDateTime || "").trim();
+    const endDateTime = String(body.endDateTime || "").trim();
+    const timeZone = String(body.timeZone || "America/Sao_Paulo").trim() || "America/Sao_Paulo";
+    const description = String(body.description || "").trim();
+    const location = String(body.location || "").trim();
+    const remindersMinutes = Array.isArray(body.remindersMinutes)
+      ? body.remindersMinutes.map((value) => Number(value)).filter((value) => Number.isFinite(value) && value >= 0)
+      : [];
+
+    if (!title || !startDateTime || !endDateTime) {
+      return badRequest("title, startDateTime e endDateTime sao obrigatorios");
+    }
+
+    const created = await createGoogleCalendarEvent(userId, {
+      title,
+      description: description || undefined,
+      location: location || undefined,
+      startDateTime,
+      endDateTime,
+      timeZone,
+      remindersMinutes,
+    });
+
+    if (!created) {
+      return badRequest("Falha ao criar evento no Google Calendar");
+    }
+
+    return ok({
+      success: true,
+      message: `Evento '${title}' criado no Google Calendar`,
+      event: {
+        ...created,
+        title,
+        startDateTime,
+        endDateTime,
+        timeZone,
+      },
+    });
+  }
+
+  if (act === "google_criar_planilha") {
+    const title = String(body.title || "").trim();
+    const sheetName = String(body.sheetName || "Sheet1").trim() || "Sheet1";
+    const rowsInput = Array.isArray(body.rows) ? body.rows : [];
+
+    if (!title) {
+      return badRequest("title e obrigatorio");
+    }
+
+    if (rowsInput.length === 0) {
+      return badRequest("rows e obrigatorio e deve conter ao menos uma linha");
+    }
+
+    const rows = rowsInput.map((row) =>
+      Array.isArray(row)
+        ? row.map((cell) =>
+            cell === null || cell === undefined || typeof cell === "string" || typeof cell === "number" || typeof cell === "boolean"
+              ? cell
+              : JSON.stringify(cell)
+          )
+        : [JSON.stringify(row)],
+    );
+
+    const created = await createGoogleSheetWithRows({
+      userId,
+      title,
+      sheetName,
+      rows,
+      folderId: typeof body.folderId === "string" ? body.folderId : undefined,
+    });
+
+    if (!created) {
+      return badRequest("Falha ao criar planilha no Google Sheets");
+    }
+
+    return ok({
+      success: true,
+      message: `Planilha '${title}' criada com ${created.rowCount} linha(s)`,
+      sheet: created,
+    });
   }
 
   if (act === "registrar_run_agente") {
