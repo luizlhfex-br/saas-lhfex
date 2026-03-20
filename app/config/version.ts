@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.37";
+export const APP_VERSION = "2.9.38";
 export const APP_RELEASE_DATE = "2026-03-20";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.38",
+    date: "2026-03-20",
+    title: "Hermes em producao com diagnostico operacional confiavel",
+    items: [
+      { type: "feature", text: "Hermes: nova skill lhfex-runtime para diagnosticar provider, modelo, acesso ao SaaS, Google, Telegram e host com evidencia real" },
+      { type: "improvement", text: "SOUL e skill SAAS do Hermes agora validam catalogo_acoes e hermes status antes de responder sobre acesso ou LLM em uso" },
+      { type: "improvement", text: "Bootstrap, runbook e checklist do Hermes foram alinhados ao runtime estavel com DeepSeek primario e MiniMax free como fallback" },
+      { type: "infra", text: "Gateway Hermes permaneceu ativo no VPS apos sincronizacao do contexto, mantendo o OpenClaw antigo preservado para rollback" },
+    ],
+  },
   {
     version: "2.9.37",
     date: "2026-03-20",

@@ -29,6 +29,18 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-20",
+    version: "2.9.38",
+    type: "release",
+    title: "Hermes em producao com diagnostico operacional confiavel",
+    items: [
+      "Hermes: nova skill lhfex-runtime para diagnosticar provider, modelo, acesso ao SaaS, Google, Telegram e host com evidencia real",
+      "SOUL e skill SAAS do Hermes agora validam catalogo_acoes e hermes status antes de responder sobre acesso ou LLM em uso",
+      "Bootstrap, runbook e checklist do Hermes foram alinhados ao runtime estavel com DeepSeek primario e MiniMax free como fallback",
+      "Gateway Hermes permaneceu ativo no VPS apos sincronizacao do contexto, mantendo o OpenClaw antigo preservado para rollback",
+    ],
+  },
+  {
+    date: "2026-03-20",
     version: "2.9.37",
     type: "release",
     title: "Hermes Agent preparado no VPS com bridge SaaS e Google",

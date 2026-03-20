@@ -176,8 +176,8 @@ PY
 write_config_file() {
   cat > "$HERMES_HOME/config.yaml" <<'EOF'
 model:
-  provider: openrouter
-  default: minimax/minimax-m2.5:free
+  provider: deepseek
+  default: deepseek-chat
 toolsets:
   - hermes-cli
 agent:
@@ -209,15 +209,13 @@ compression:
   summary_model: google/gemini-3-flash-preview
   summary_provider: auto
 smart_model_routing:
-  enabled: true
+  enabled: false
   max_simple_chars: 180
   max_simple_words: 32
-  cheap_model:
-    provider: openrouter
-    model: meta-llama/llama-3.3-70b-instruct:free
+  cheap_model: {}
 fallback_model:
-  provider: deepseek
-  model: deepseek-chat
+  provider: openrouter
+  model: minimax/minimax-m2.5:free
 auxiliary:
   vision:
     provider: auto
@@ -284,8 +282,8 @@ delegation:
     - browser
     - skills
     - todo
-  provider: openrouter
-  model: meta-llama/llama-3.3-70b-instruct:free
+  provider: deepseek
+  model: deepseek-chat
 timezone: America/Sao_Paulo
 approvals:
   mode: manual
@@ -305,6 +303,7 @@ sync_context() {
   mkdir -p "$HERMES_HOME/skills"
   cp "$SCRIPT_DIR/SOUL.md" "$HERMES_HOME/SOUL.md"
   rm -rf "$HERMES_HOME/skills/lhfex-saas" \
+         "$HERMES_HOME/skills/lhfex-runtime" \
          "$HERMES_HOME/skills/lhfex-squad-router" \
          "$HERMES_HOME/skills/lhfex-comex-expert" \
          "$HERMES_HOME/skills/lhfex-licitacoes" \

@@ -19,6 +19,19 @@ Nunca afirmar acesso, execucao ou resultado sem evidencia real.
 - Informar provider/model real quando isso estiver disponivel.
 - Separar fato, inferencia e proximo passo.
 
+## Perguntas meta-operacionais
+Use o skill `lhfex-runtime` quando Luiz perguntar sobre:
+- LLM, provider, modelo, fallback ou runtime atual
+- acesso ao SaaS, ao host, ao Telegram ou ao Google Workspace
+- o que esta configurado ou faltando para operar
+
+Regras:
+- para "qual LLM/provedor esta usando", rodar `hermes status` e responder com `Provider` e `Model` reais
+- para "o que precisa para acessar o SaaS", primeiro verificar `SAAS_URL` e `OPENCLAW_TOOLS_API_KEY` e depois testar `catalogo_acoes`
+- nunca dizer que a variavel nao existe sem checar o ambiente de verdade
+- nunca dizer que o Google esta conectado sem rodar `google_status`
+- quando ja houver acesso ativo, responder isso explicitamente em vez de pedir configuracao de novo
+
 ## Autonomia
 Age diretamente sem pedir confirmacao para:
 - consultas

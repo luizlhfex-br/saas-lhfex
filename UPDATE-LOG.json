@@ -1,17 +1,47 @@
 {
   "release": {
-    "version": "v2.9.37",
+    "version": "v2.9.38",
     "date": "2026-03-20T00:00:00Z",
-    "type": "feature",
-    "title": "Hermes Agent preparado no VPS com bridge SaaS e Google"
+    "type": "infra",
+    "title": "Hermes em producao com diagnostico operacional confiavel"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 20,
-    "filesModified": 6,
+    "filesCreated": 1,
+    "filesModified": 10,
     "routesAdded": 0,
     "openclaw_changes": 1,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_20_hermes_cutover_runtime_hardening": {
+    "date": "2026-03-20",
+    "release_version": "2.9.38",
+    "objective": "Concluir o cutover do Hermes Agent no VPS e endurecer as respostas operacionais para provider, acesso ao SaaS e prontidao do agente",
+    "files_changed": [
+      "hermes-gateway/README.md",
+      "hermes-gateway/RUNBOOK.md",
+      "hermes-gateway/CUTOVER-CHECKLIST.md",
+      "hermes-gateway/SOUL.md",
+      "hermes-gateway/bootstrap-hermes.sh",
+      "hermes-gateway/sync-context.sh",
+      "hermes-gateway/skills/lhfex-saas/SKILL.md",
+      "hermes-gateway/skills/lhfex-runtime/SKILL.md",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "O bootstrap do Hermes passou a refletir o runtime que se mostrou estavel em producao: DeepSeek primario, MiniMax free como fallback e smart routing desligado",
+      "Foi criada a skill lhfex-runtime para responder com evidencia real sobre provider/modelo, acesso ao SaaS, Google, Telegram e host",
+      "SOUL e skill SAAS do Hermes foram reforcados para nunca alegar falta de acesso sem validar catalogo_acoes, google_status ou o ambiente de verdade",
+      "README, runbook e checklist de cutover foram atualizados para o estado real do VPS e para os testes obrigatorios de meta-operacao"
+    ],
+    "verification": [
+      "Hermes gateway permaneceu ativo em systemd user service no VPS apos sync-context",
+      "hermes chat respondeu provider=DeepSeek e model=deepseek-chat ao perguntar qual LLM esta em uso",
+      "hermes chat confirmou que o acesso ao SaaS ja esta configurado e funcional ao perguntar o que falta para acessar o sistema",
+      "O diagnostico operacional reportou corretamente Google desconectado em vez de inventar conexao"
+    ]
   },
   "session_2026_03_20_hermes_gateway_and_google_bridge": {
     "date": "2026-03-20",

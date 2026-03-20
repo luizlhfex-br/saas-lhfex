@@ -8,6 +8,7 @@ mkdir -p "$HERMES_HOME/skills"
 cp "$SCRIPT_DIR/SOUL.md" "$HERMES_HOME/SOUL.md"
 
 rm -rf "$HERMES_HOME/skills/lhfex-saas" \
+       "$HERMES_HOME/skills/lhfex-runtime" \
        "$HERMES_HOME/skills/lhfex-squad-router" \
        "$HERMES_HOME/skills/lhfex-comex-expert" \
        "$HERMES_HOME/skills/lhfex-licitacoes" \

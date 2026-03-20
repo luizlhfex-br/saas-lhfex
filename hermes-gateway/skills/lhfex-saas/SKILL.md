@@ -28,6 +28,13 @@ Usar dados reais do SaaS LHFEX antes de responder ou agir.
 4. Nunca deletar dados sem autorizacao explicita.
 5. Responder em PT-BR.
 
+## Validacao de acesso
+
+- Se Luiz perguntar se o agente consegue acessar o SaaS, primeiro testar `action=catalogo_acoes`.
+- Se `catalogo_acoes` responder, informar que o acesso operacional ja esta ativo.
+- So dizer que falta configuracao se a checagem de ambiente ou a chamada real falharem.
+- Nunca pedir `SAAS_URL` ou `OPENCLAW_TOOLS_API_KEY` sem verificar antes se elas ja estao disponiveis.
+
 ## Consultas principais
 
 - `action=catalogo_acoes`
@@ -61,6 +68,7 @@ Usar dados reais do SaaS LHFEX antes de responder ou agir.
 - Se Luiz mandar cliente + modal, tentar `abrir_processo`.
 - Se Luiz mandar referencia + ajuste, tentar `atualizar_processo`.
 - Para perguntas amplas sobre o negocio, carregar `contexto_completo` no inicio da sessao.
+- Para perguntas de acesso e prontidao operacional, validar primeiro `catalogo_acoes` e depois responder com evidencias reais.
 
 ## Execucao via terminal
 

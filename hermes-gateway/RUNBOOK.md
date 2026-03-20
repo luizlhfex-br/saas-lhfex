@@ -26,9 +26,9 @@ Migrar o OpenClaw atual para Hermes Agent com:
 ## Modelo operacional adotado
 
 ### LLM
-- primario: OpenRouter `minimax/minimax-m2.5:free`
-- fallback: DeepSeek direto `deepseek-chat`
-- smart routing: Llama free para tarefas curtas
+- primario: DeepSeek direto `deepseek-chat`
+- fallback: OpenRouter `minimax/minimax-m2.5:free`
+- smart routing: desligado para evitar rate limit e respostas inconsistentes no free tier
 
 ### Host
 - Hermes roda no proprio VPS
@@ -40,14 +40,20 @@ Migrar o OpenClaw atual para Hermes Agent com:
 - comandos normais seguem direto
 - comandos destrutivos entram em aprovacao
 
-## Instalação
+### Diagnostico operacional
+- perguntas sobre provider/modelo devem consultar `hermes status`
+- perguntas sobre acesso ao SaaS devem validar `catalogo_acoes`
+- perguntas sobre Google devem validar `google_status`
+- perguntas sobre host/VPS devem ter evidencia via terminal
+
+## Instalacao
 
 1. Criar backup da pasta `.openclaw` do container atual
 2. Instalar Hermes em `/root/hermes-agent`
 3. Migrar `user-data` do backup OpenClaw
 4. Completar `.env` do Hermes com variaveis do container atual
 5. Sincronizar `SOUL.md` e skills da LHFEX
-6. Escrever `config.yaml` compatível com o runtime real
+6. Escrever `config.yaml` compativel com o runtime real
 7. Instalar o gateway do Hermes sem fazer cutover
 
 ## Comandos principais
@@ -96,3 +102,4 @@ hermes gateway status
 - fallback sem autenticar
 - cron sem destino de entrega
 - skill `lhfex-saas` nao sincronizada
+- skill `lhfex-runtime` nao sincronizada
