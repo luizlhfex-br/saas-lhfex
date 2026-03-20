@@ -29,6 +29,18 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-19",
+    version: "2.9.36",
+    type: "release",
+    title: "OpenClaw com acesso SaaS mais confiavel no Telegram",
+    items: [
+      "AIrton: SOUL e AGENTS reforcados para usar /api/openclaw-tools em consultas de negocio, evitando confusao com processos internos do runtime",
+      "OpenClaw Gateway: fallback free principal passou para openrouter/minimax/minimax-m2.5:free, mantendo openrouter/free como fallback adicional",
+      "AIrton: regra operacional para nao pedir URL/token ao Luiz quando a consulta for do SaaS LHFEX",
+      "AIrton: transparencia de provider/model reforcada para responder qual LLM esta em uso quando solicitado",
+    ],
+  },
+  {
+    date: "2026-03-19",
     version: "2.9.35",
     type: "release",
     title: "OpenClaw estabilizado no SaaS com catalogo de tools expandido",

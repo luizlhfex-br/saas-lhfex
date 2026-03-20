@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.35";
+export const APP_VERSION = "2.9.36";
 export const APP_RELEASE_DATE = "2026-03-19";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.36",
+    date: "2026-03-19",
+    title: "OpenClaw com acesso SaaS mais confiavel no Telegram",
+    items: [
+      { type: "fix", text: "AIrton: SOUL e AGENTS reforcados para usar /api/openclaw-tools em consultas de negocio, evitando confusao com processos internos do runtime" },
+      { type: "improvement", text: "OpenClaw Gateway: fallback free principal passou para openrouter/minimax/minimax-m2.5:free, mantendo openrouter/free como fallback adicional" },
+      { type: "improvement", text: "AIrton: regra operacional para nao pedir URL/token ao Luiz quando a consulta for do SaaS LHFEX" },
+      { type: "improvement", text: "AIrton: transparencia de provider/model reforcada para responder qual LLM esta em uso quando solicitado" },
+    ],
+  },
   {
     version: "2.9.35",
     date: "2026-03-19",
