@@ -51,7 +51,17 @@ export function AppShell({
   };
 
   return (
-    <div className="relative min-h-screen bg-[var(--app-bg)] text-[var(--app-text)]">
+    <div className="relative min-h-screen overflow-x-hidden bg-[var(--app-bg)] text-[var(--app-text)]">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(79,70,229,0.16),transparent_28%),radial-gradient(circle_at_top_right,rgba(245,158,11,0.13),transparent_26%),linear-gradient(180deg,rgba(15,23,42,0.03),transparent_30%)]" />
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.075]"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(15,23,42,0.18) 1px, transparent 1px), linear-gradient(90deg, rgba(15,23,42,0.18) 1px, transparent 1px)",
+          backgroundSize: "48px 48px",
+          maskImage: "linear-gradient(180deg, rgba(0,0,0,0.28), rgba(0,0,0,0))",
+        }}
+      />
       <div className="relative z-10">
         {/* Desktop sidebar */}
         <Sidebar
@@ -85,13 +95,16 @@ export function AppShell({
             user={user}
             locale={locale}
             theme={theme}
+            currentPath={location.pathname}
             onMobileMenuToggle={() => setMobileMenuOpen((prev) => !prev)}
             onThemeToggle={onThemeToggle}
             onLocaleToggle={onLocaleToggle}
           />
 
           {/* Page content */}
-          <main className="p-4 lg:p-8">{children}</main>
+          <main className="px-4 pb-8 pt-4 lg:px-8 lg:pb-10 lg:pt-6">
+            <div className="mx-auto max-w-[1600px]">{children}</div>
+          </main>
         </div>
 
         {/* Floating chat widget */}

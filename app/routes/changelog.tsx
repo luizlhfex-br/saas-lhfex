@@ -28,6 +28,18 @@ type Entry = {
 
 const CHANGELOG: Entry[] = [
   {
+    date: "2026-03-21",
+    version: "2.9.43",
+    type: "release",
+    title: "Redesign operacional do shell, dashboard e modulos core",
+    items: [
+      "Layout: app shell, topbar, sidebar e navegacao mobile ganharam linguagem visual de centro de comando, com hierarquia mais forte para o uso diario",
+      "Dashboard: home virou uma sala de controle com hero operacional, radar financeiro, infraestrutura e agentes em leitura mais objetiva",
+      "CRM, Processos e Financeiro foram redesenhados com hero por modulo, filtros mais claros e superficies alinhadas ao novo design system",
+      "Vite local passou a deduplicar React e o dashboard trocou os wrappers responsivos dos graficos por medicao direta, estabilizando a validacao visual no WSL",
+    ],
+  },
+  {
     date: "2026-03-20",
     version: "2.9.42",
     type: "release",

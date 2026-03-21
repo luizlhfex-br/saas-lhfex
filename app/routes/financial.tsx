@@ -3,22 +3,38 @@ import type { Route } from "./+types/financial";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
 import { invoices, clients } from "drizzle/schema";
-import { eq, isNull, sql, desc, and, like } from "drizzle-orm";
+import { and, desc, eq, isNull, like, sql } from "drizzle-orm";
 import { t, type Locale } from "~/i18n";
-import { Plus, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Search, X, ArrowDownCircle, ArrowUpCircle, LayoutDashboard } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Pagination } from "~/components/ui/pagination";
 import { getPrimaryCompanyId } from "~/lib/company-context.server";
+import {
+  AlertTriangle,
+  ArrowDownCircle,
+  ArrowRight,
+  ArrowUpCircle,
+  DollarSign,
+  LayoutDashboard,
+  Plus,
+  ReceiptText,
+  Search,
+  TrendingDown,
+  TrendingUp,
+  Wallet,
+  X,
+} from "lucide-react";
 
 const ITEMS_PER_PAGE = 20;
-
 const validStatuses = ["draft", "sent", "paid", "overdue", "cancelled"] as const;
 type InvoiceStatus = typeof validStatuses[number];
-const isValidStatus = (v: string): v is InvoiceStatus => (validStatuses as readonly string[]).includes(v);
+const isValidStatus = (value: string): value is InvoiceStatus => (validStatuses as readonly string[]).includes(value);
 
 const validTypes = ["receivable", "payable"] as const;
 type InvoiceType = typeof validTypes[number];
-const isValidType = (v: string): v is InvoiceType => (validTypes as readonly string[]).includes(v);
+const isValidType = (value: string): value is InvoiceType => (validTypes as readonly string[]).includes(value);
+
+const panelClass =
+  "rounded-[28px] border border-[var(--app-border)] bg-[linear-gradient(180deg,var(--app-surface),var(--app-surface-2))] shadow-[var(--app-card-shadow)]";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
@@ -31,8 +47,6 @@ export async function loader({ request }: Route.LoaderArgs) {
   const search = url.searchParams.get("search") || "";
   const statusFilter = url.searchParams.get("status") || "";
   const typeFilter = url.searchParams.get("type") || "";
-
-  // Summary via SQL aggregation (not loading all rows into memory)
   const companyId = await getPrimaryCompanyId(user.id);
 
   const [summary] = await db
@@ -44,11 +58,6 @@ export async function loader({ request }: Route.LoaderArgs) {
     .from(invoices)
     .where(and(isNull(invoices.deletedAt), eq(invoices.companyId, companyId)));
 
-  const totalReceivable = Number(summary.totalReceivable);
-  const totalPayable = Number(summary.totalPayable);
-  const overdueCount = Number(summary.overdueCount);
-
-  // Filtered list
   const conditions = [isNull(invoices.deletedAt), eq(invoices.companyId, companyId)];
   if (search) conditions.push(like(invoices.number, `%${search}%`));
   if (statusFilter && isValidStatus(statusFilter)) conditions.push(eq(invoices.status, statusFilter));
@@ -65,7 +74,6 @@ export async function loader({ request }: Route.LoaderArgs) {
     .select({
       id: invoices.id,
       number: invoices.number,
-      clientId: invoices.clientId,
       clientName: clients.razaoSocial,
       type: invoices.type,
       status: invoices.status,
@@ -81,18 +89,19 @@ export async function loader({ request }: Route.LoaderArgs) {
     .limit(ITEMS_PER_PAGE)
     .offset((page - 1) * ITEMS_PER_PAGE);
 
-  return { invoices: invoiceList, totalReceivable, totalPayable, overdueCount, totalCount, page, locale };
+  return {
+    invoices: invoiceList,
+    totalReceivable: Number(summary.totalReceivable),
+    totalPayable: Number(summary.totalPayable),
+    overdueCount: Number(summary.overdueCount),
+    totalCount,
+    page,
+    locale,
+  };
 }
 
-const fmt = (v: number) => v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-const statusColor: Record<string, string> = {
-  draft: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
-  sent: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  paid: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-  overdue: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-  cancelled: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500",
-};
+const fmt = (value: number) =>
+  value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export default function FinancialPage({ loaderData }: Route.ComponentProps) {
   const { invoices: invoiceList, totalReceivable, totalPayable, overdueCount, totalCount, page, locale } = loaderData;
@@ -105,18 +114,25 @@ export default function FinancialPage({ loaderData }: Route.ComponentProps) {
   const hasFilters = currentSearch || currentStatus || currentType;
 
   const statusLabel: Record<string, string> = {
-    draft: i18n.financial.draft, sent: i18n.financial.sent,
-    paid: i18n.financial.paid, overdue: i18n.financial.overdue,
+    draft: i18n.financial.draft,
+    sent: i18n.financial.sent,
+    paid: i18n.financial.paid,
+    overdue: i18n.financial.overdue,
     cancelled: i18n.financial.cancelled,
   };
 
   const typeLabel: Record<string, string> = {
-    receivable: i18n.financial.receivable, payable: i18n.financial.payable,
+    receivable: i18n.financial.receivable,
+    payable: i18n.financial.payable,
   };
 
   const updateFilter = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams);
-    if (value) { params.set(key, value); } else { params.delete(key); }
+    if (value) {
+      params.set(key, value);
+    } else {
+      params.delete(key);
+    }
     params.delete("page");
     setSearchParams(params);
   };
@@ -125,196 +141,263 @@ export default function FinancialPage({ loaderData }: Route.ComponentProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{i18n.financial.title}</h1>
-        <div className="flex items-center gap-2">
-          {/* Quick action buttons */}
-          <Link
-            to="/financial/cashflow/new?type=income"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm font-medium text-green-700 transition-colors hover:bg-green-100 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/40"
-          >
-            <ArrowDownCircle className="h-4 w-4" />
-            + Receita
-          </Link>
-          <Link
-            to="/financial/cashflow/new?type=expense"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-100 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40"
-          >
-            <ArrowUpCircle className="h-4 w-4" />
-            + Despesa
-          </Link>
-          <a
-            href="https://app.contabilizei.com.br"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-          >
-            📊 Contabilizei
-          </a>
-          <Link to="/financial/new">
-            <Button><Plus className="h-4 w-4" />{i18n.financial.newInvoice}</Button>
-          </Link>
-        </div>
-      </div>
-
-      {/* Navigation Tabs */}
-      <div className="flex items-center gap-1 border-b border-gray-200 pb-0 dark:border-gray-800">
-        <Link
-          to="/financial"
-          className="flex items-center gap-1.5 rounded-t-lg border-b-2 border-violet-600 px-4 py-2.5 text-sm font-medium text-violet-600 dark:border-violet-500 dark:text-violet-400"
-        >
-          <DollarSign className="h-4 w-4" />
-          {i18n.financial.invoices}
-        </Link>
-        <Link
-          to="/financial/cashflow"
-          className="flex items-center gap-1.5 rounded-t-lg border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
-        >
-          <LayoutDashboard className="h-4 w-4" />
-          Controle de Caixa
-        </Link>
-        <Link
-          to="/financial/report"
-          className="flex items-center gap-1.5 rounded-t-lg border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
-        >
-          <TrendingUp className="h-4 w-4" />
-          {i18n.nav.financialReport}
-        </Link>
-        <Link
-          to="/subscriptions"
-          className="flex items-center gap-1.5 rounded-t-lg border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
-        >
-          <DollarSign className="h-4 w-4" />
-          Assinaturas
-        </Link>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30">
-              <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
+      <section className="relative overflow-hidden rounded-[30px] border border-[var(--app-border-strong)] bg-[linear-gradient(135deg,#0c162a_0%,#16253c_50%,#2d1a37_100%)] px-6 py-6 text-slate-100 shadow-[0_28px_70px_rgba(15,23,42,0.16)] lg:px-8">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.16),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(245,158,11,0.12),transparent_28%)]" />
+        <div className="relative z-10 grid gap-6 lg:grid-cols-[1.55fr_0.95fr]">
+          <div>
+            <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.28em] text-emerald-100">
+              Fluxo financeiro
+            </span>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-white lg:text-4xl">
+              Faturas, caixa e sinais de risco em uma leitura de poucos segundos.
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
+              O modulo financeiro precisa destacar presao de caixa, vencimentos e proximas acoes sem virar tabela fria.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link to="/financial/new">
+                <Button className="rounded-full border border-white/12 bg-white/10 text-white hover:bg-white/15">
+                  <Plus className="h-4 w-4" />
+                  {i18n.financial.newInvoice}
+                </Button>
+              </Link>
+              <Link to="/financial/cashflow/new?type=income" className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/5 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/10">
+                <ArrowDownCircle className="h-4 w-4" />
+                + Receita
+              </Link>
+              <Link to="/financial/cashflow/new?type=expense" className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/5 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/10">
+                <ArrowUpCircle className="h-4 w-4" />
+                + Despesa
+              </Link>
             </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">{i18n.financial.totalReceivable}</p>
-              <p className="text-xl font-bold text-green-600 dark:text-green-400">R$ {fmt(totalReceivable)}</p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+            <div className="rounded-[24px] border border-white/10 bg-white/[0.06] p-4">
+              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">A receber</p>
+              <p className="mt-2 text-3xl font-semibold text-white">R$ {fmt(totalReceivable)}</p>
+              <p className="mt-1 text-sm text-slate-300">Titulos abertos de entrada.</p>
+            </div>
+            <div className="rounded-[24px] border border-white/10 bg-white/[0.06] p-4">
+              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">A pagar</p>
+              <p className="mt-2 text-3xl font-semibold text-white">R$ {fmt(totalPayable)}</p>
+              <p className="mt-1 text-sm text-slate-300">Saidas pendentes no radar.</p>
+            </div>
+            <div className="rounded-[24px] border border-white/10 bg-white/[0.06] p-4">
+              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Em atraso</p>
+              <p className="mt-2 text-3xl font-semibold text-white">{overdueCount}</p>
+              <p className="mt-1 text-sm text-slate-300">Itens que exigem resposta rapida.</p>
             </div>
           </div>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30">
-              <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">{i18n.financial.totalPayable}</p>
-              <p className="text-xl font-bold text-red-600 dark:text-red-400">R$ {fmt(totalPayable)}</p>
-            </div>
-          </div>
-        </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-100 dark:bg-orange-900/30">
-              <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">{i18n.financial.overdueCount}</p>
-              <p className="text-xl font-bold text-orange-600 dark:text-orange-400">{overdueCount}</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      </section>
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative min-w-[200px] max-w-sm flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Buscar número da fatura..."
-            defaultValue={currentSearch}
-            onChange={(e) => updateFilter("search", e.target.value)}
-            className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-          />
+      <section className={`${panelClass} p-3 lg:p-4`}>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link to="/financial" className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-400/12 px-4 py-2 text-sm font-semibold text-emerald-700 dark:text-emerald-200">
+            <Wallet className="h-4 w-4" />
+            {i18n.financial.invoices}
+          </Link>
+          <Link to="/financial/cashflow" className="inline-flex items-center gap-2 rounded-full border border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-2 text-sm font-medium text-[var(--app-text)] transition-colors hover:bg-[var(--app-surface-2)]">
+            <LayoutDashboard className="h-4 w-4" />
+            Controle de Caixa
+          </Link>
+          <Link to="/financial/report" className="inline-flex items-center gap-2 rounded-full border border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-2 text-sm font-medium text-[var(--app-text)] transition-colors hover:bg-[var(--app-surface-2)]">
+            <TrendingUp className="h-4 w-4" />
+            {i18n.nav.financialReport}
+          </Link>
+          <Link to="/subscriptions" className="inline-flex items-center gap-2 rounded-full border border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-2 text-sm font-medium text-[var(--app-text)] transition-colors hover:bg-[var(--app-surface-2)]">
+            <ReceiptText className="h-4 w-4" />
+            Assinaturas
+          </Link>
         </div>
-        <select
-          value={currentStatus}
-          onChange={(e) => updateFilter("status", e.target.value)}
-          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-400 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-        >
-          <option value="">Todos os status</option>
-          {Object.entries(statusLabel).map(([key, label]) => (
-            <option key={key} value={key}>{label}</option>
-          ))}
-        </select>
-        <select
-          value={currentType}
-          onChange={(e) => updateFilter("type", e.target.value)}
-          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-400 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-        >
-          <option value="">Todos os tipos</option>
-          <option value="receivable">{i18n.financial.receivable}</option>
-          <option value="payable">{i18n.financial.payable}</option>
-        </select>
-        {hasFilters && (
-          <button
-            onClick={clearFilters}
-            className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-3">
+        <div className={`${panelClass} p-5`}>
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-300/18 bg-emerald-400/10 text-emerald-700 dark:text-emerald-200">
+              <TrendingUp className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm text-[var(--app-muted)]">{i18n.financial.totalReceivable}</p>
+              <p className="text-2xl font-semibold text-[var(--app-text)]">R$ {fmt(totalReceivable)}</p>
+            </div>
+          </div>
+        </div>
+        <div className={`${panelClass} p-5`}>
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-rose-300/18 bg-rose-400/10 text-rose-700 dark:text-rose-200">
+              <TrendingDown className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm text-[var(--app-muted)]">{i18n.financial.totalPayable}</p>
+              <p className="text-2xl font-semibold text-[var(--app-text)]">R$ {fmt(totalPayable)}</p>
+            </div>
+          </div>
+        </div>
+        <div className={`${panelClass} p-5`}>
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-amber-300/18 bg-amber-400/10 text-amber-700 dark:text-amber-200">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm text-[var(--app-muted)]">{i18n.financial.overdueCount}</p>
+              <p className="text-2xl font-semibold text-[var(--app-text)]">{overdueCount}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className={`${panelClass} p-5 lg:p-6`}>
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-300/18 bg-emerald-400/10 text-emerald-700 dark:text-emerald-200">
+            <Search className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-[var(--app-text)]">Filtro financeiro</h2>
+            <p className="text-sm text-[var(--app-muted)]">Busque por numero da fatura e refine por status ou tipo.</p>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative min-w-[220px] flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--app-muted)]" />
+            <input
+              type="text"
+              placeholder="Buscar numero da fatura..."
+              defaultValue={currentSearch}
+              onChange={(event) => updateFilter("search", event.target.value)}
+              className="w-full rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] py-3 pl-10 pr-4 text-sm text-[var(--app-text)] placeholder:text-[var(--app-muted)]"
+            />
+          </div>
+          <select
+            value={currentStatus}
+            onChange={(event) => updateFilter("status", event.target.value)}
+            className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-3 text-sm text-[var(--app-text)]"
           >
-            <X className="h-3.5 w-3.5" />
-            Limpar
-          </button>
-        )}
-      </div>
+            <option value="">Todos os status</option>
+            {Object.entries(statusLabel).map(([key, label]) => (
+              <option key={key} value={key}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <select
+            value={currentType}
+            onChange={(event) => updateFilter("type", event.target.value)}
+            className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-3 text-sm text-[var(--app-text)]"
+          >
+            <option value="">Todos os tipos</option>
+            <option value="receivable">{i18n.financial.receivable}</option>
+            <option value="payable">{i18n.financial.payable}</option>
+          </select>
+          {hasFilters && (
+            <button
+              onClick={clearFilters}
+              className="inline-flex items-center gap-2 rounded-2xl border border-[var(--app-border)] px-4 py-3 text-sm font-medium text-[var(--app-muted)] transition-colors hover:bg-[var(--app-surface)]"
+            >
+              <X className="h-4 w-4" />
+              Limpar
+            </button>
+          )}
+        </div>
+      </section>
 
-      {/* Invoice Table */}
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+      <section className={panelClass}>
         {invoiceList.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-gray-500 dark:text-gray-400">
-            <DollarSign className="mb-4 h-12 w-12" />
-            <p>{hasFilters ? "Nenhuma fatura encontrada com esses filtros." : i18n.financial.noInvoices}</p>
-            {hasFilters && (
-              <button onClick={clearFilters} className="mt-2 text-sm text-blue-600 hover:underline dark:text-blue-400">
-                Limpar filtros
-              </button>
-            )}
+          <div className="flex min-h-[340px] flex-col items-center justify-center px-6 py-16 text-center">
+            <DollarSign className="mb-4 h-16 w-16 text-[var(--app-muted)]" />
+            <p className="text-lg font-semibold text-[var(--app-text)]">{i18n.financial.noInvoices}</p>
+            <p className="mt-2 max-w-md text-sm text-[var(--app-muted)]">
+              {hasFilters
+                ? "Nenhuma fatura encontrada com esse recorte."
+                : "Cadastre uma nova fatura para comecar a consolidar caixa e cobrancas."}
+            </p>
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
-                <thead className="bg-gray-50 dark:bg-gray-800/50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{i18n.financial.invoiceNumber}</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{i18n.processes.client}</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{i18n.processes.type}</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{i18n.common.status}</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{i18n.financial.total}</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{i18n.financial.dueDate}</th>
+            <div className="flex items-center justify-between gap-3 border-b border-[var(--app-border)] px-5 py-4 lg:px-6">
+              <div>
+                <h2 className="text-lg font-semibold text-[var(--app-text)]">Grade financeira</h2>
+                <p className="text-sm text-[var(--app-muted)]">
+                  {totalCount} {totalCount === 1 ? "fatura encontrada" : "faturas encontradas"}
+                </p>
+              </div>
+              <a
+                href="https://app.contabilizei.com.br"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden items-center gap-2 rounded-full border border-[var(--app-border)] px-4 py-2 text-sm font-medium text-[var(--app-text)] transition-colors hover:bg-[var(--app-surface)] sm:inline-flex"
+              >
+                Contabilizei
+                <ArrowRight className="h-4 w-4" />
+              </a>
+            </div>
+
+            <div className="space-y-3 p-4 lg:hidden">
+              {invoiceList.map((invoice) => (
+                <div key={invoice.id} className="rounded-[24px] border border-[var(--app-border)] bg-[var(--app-surface)] p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <Link to={`/financial/${invoice.id}`} className="text-base font-semibold text-[var(--app-text)]">
+                        {invoice.number}
+                      </Link>
+                      <p className="mt-1 text-sm text-[var(--app-muted)]">{invoice.clientName || "Sem cliente"}</p>
+                    </div>
+                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${invoice.type === "receivable" ? "border-emerald-300/20 bg-emerald-400/12 text-emerald-700 dark:text-emerald-200" : "border-rose-300/20 bg-rose-400/12 text-rose-700 dark:text-rose-200"}`}>
+                      {typeLabel[invoice.type] || invoice.type}
+                    </span>
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <span className="rounded-full border border-[var(--app-border)] bg-[var(--app-surface-2)] px-2.5 py-1 text-[11px] font-medium text-[var(--app-muted)]">
+                      {statusLabel[invoice.status] || invoice.status}
+                    </span>
+                    <span className="rounded-full border border-[var(--app-border)] bg-[var(--app-surface-2)] px-2.5 py-1 text-[11px] font-medium text-[var(--app-muted)]">
+                      {invoice.currency || "BRL"} {fmt(parseFloat(invoice.total))}
+                    </span>
+                    <span className="rounded-full border border-[var(--app-border)] bg-[var(--app-surface-2)] px-2.5 py-1 text-[11px] font-medium text-[var(--app-muted)]">
+                      Venc. {invoice.dueDate}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="hidden overflow-x-auto lg:block">
+              <table className="min-w-full">
+                <thead>
+                  <tr className="border-b border-[var(--app-border)] text-left">
+                    <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--app-muted)]">Fatura</th>
+                    <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--app-muted)]">Cliente</th>
+                    <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--app-muted)]">Tipo</th>
+                    <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--app-muted)]">Status</th>
+                    <th className="px-6 py-4 text-right text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--app-muted)]">Total</th>
+                    <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--app-muted)]">Vencimento</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                  {invoiceList.map((inv) => (
-                    <tr key={inv.id} className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                      <td className="whitespace-nowrap px-4 py-3">
-                        <Link to={`/financial/${inv.id}`} className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400">{inv.number}</Link>
+                <tbody>
+                  {invoiceList.map((invoice) => (
+                    <tr key={invoice.id} className="border-b border-[var(--app-border)]/80 transition-colors hover:bg-[var(--app-surface)]">
+                      <td className="px-6 py-4">
+                        <Link to={`/financial/${invoice.id}`} className="font-semibold text-[var(--app-text)] hover:text-emerald-700 dark:hover:text-emerald-300">
+                          {invoice.number}
+                        </Link>
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{inv.clientName || "—"}</td>
-                      <td className="whitespace-nowrap px-4 py-3">
-                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${inv.type === "receivable" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"}`}>
-                          {typeLabel[inv.type] || inv.type}
+                      <td className="px-6 py-4 text-sm text-[var(--app-muted)]">{invoice.clientName || "-"}</td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${invoice.type === "receivable" ? "border-emerald-300/20 bg-emerald-400/12 text-emerald-700 dark:text-emerald-200" : "border-rose-300/20 bg-rose-400/12 text-rose-700 dark:text-rose-200"}`}>
+                          {typeLabel[invoice.type] || invoice.type}
                         </span>
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3">
-                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${statusColor[inv.status] || ""}`}>
-                          {statusLabel[inv.status] || inv.status}
+                      <td className="px-6 py-4">
+                        <span className="inline-flex rounded-full border border-[var(--app-border)] bg-[var(--app-surface-2)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--app-muted)]">
+                          {statusLabel[invoice.status] || invoice.status}
                         </span>
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {inv.currency || "BRL"} {fmt(parseFloat(inv.total))}
+                      <td className="px-6 py-4 text-right text-sm font-semibold text-[var(--app-text)]">
+                        {invoice.currency || "BRL"} {fmt(parseFloat(invoice.total))}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{inv.dueDate}</td>
+                      <td className="px-6 py-4 text-sm text-[var(--app-muted)]">{invoice.dueDate}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -323,7 +406,7 @@ export default function FinancialPage({ loaderData }: Route.ComponentProps) {
             <Pagination totalItems={totalCount} itemsPerPage={ITEMS_PER_PAGE} currentPage={page} />
           </>
         )}
-      </div>
+      </section>
     </div>
   );
 }

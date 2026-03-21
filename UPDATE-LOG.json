@@ -1,17 +1,47 @@
 {
   "release": {
-    "version": "v2.9.42",
-    "date": "2026-03-20T00:00:00Z",
+    "version": "v2.9.43",
+    "date": "2026-03-21T00:00:00Z",
     "type": "feature",
-    "title": "Parte 20 aplicada com base visual e IAra turbinada"
+    "title": "Redesign operacional do shell, dashboard e modulos core"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 3,
-    "filesModified": 13,
+    "filesCreated": 0,
+    "filesModified": 12,
     "routesAdded": 0,
-    "openclaw_changes": 1,
+    "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_21_frontend_redesign_phase2": {
+    "date": "2026-03-21",
+    "release_version": "2.9.43",
+    "objective": "Concluir o pacote inicial de redesign do shell e dos modulos core, com validacao visual real no WSL antes do commit",
+    "files_changed": [
+      "app/components/layout/app-shell.tsx",
+      "app/components/layout/mobile-nav.tsx",
+      "app/components/layout/sidebar.tsx",
+      "app/components/layout/topbar.tsx",
+      "app/routes/dashboard.tsx",
+      "app/routes/crm.tsx",
+      "app/routes/processes.tsx",
+      "app/routes/financial.tsx",
+      "vite.config.ts",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "O shell do app foi redesenhado com linguagem de centro de comando, incluindo sidebar, topbar e navegacao mobile menos genericas",
+      "Dashboard passou a concentrar sinais operacionais, caixa, links de infraestrutura e radar de agentes em uma hierarquia mais forte",
+      "CRM, Processos e Financeiro receberam heros por modulo, paines de contexto e filtros reorganizados para leitura rapida",
+      "O ambiente local de validacao visual foi estabilizado com dedupe de React no Vite e o dashboard passou a medir os graficos diretamente para evitar ruido do Recharts em dev"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros",
+      "Playwright no WSL validou login, dashboard, CRM, Processos e Financeiro em navegador real"
+    ]
   },
   "session_2026_03_20_frontend_design_part20": {
     "date": "2026-03-20",

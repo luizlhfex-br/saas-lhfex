@@ -2,14 +2,23 @@ import { Link, useSearchParams } from "react-router";
 import type { Route } from "./+types/crm";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
-import { clients, contacts } from "../../drizzle/schema";
-import { eq, isNull, and, or, sql, desc } from "drizzle-orm";
+import { clients } from "../../drizzle/schema";
+import { and, eq, isNull, or, sql } from "drizzle-orm";
 import { t, type Locale } from "~/i18n";
 import { Button } from "~/components/ui/button";
-import { Plus, Search, Users, Eye, Edit, Building2, X } from "lucide-react";
-import { formatCNPJ } from "~/lib/utils";
 import { Pagination } from "~/components/ui/pagination";
 import { getPrimaryCompanyId } from "~/lib/company-context.server";
+import { formatCNPJ } from "~/lib/utils";
+import {
+  ArrowRight,
+  Building2,
+  Edit,
+  Eye,
+  Plus,
+  Search,
+  Users,
+  X,
+} from "lucide-react";
 
 const ITEMS_PER_PAGE = 20;
 
@@ -24,15 +33,14 @@ export async function loader({ request }: Route.LoaderArgs) {
   const cookieHeader = request.headers.get("cookie") || "";
   const localeMatch = cookieHeader.match(/locale=([^;]+)/);
   const locale = (localeMatch ? localeMatch[1] : user.locale) as Locale;
+  const companyId = await getPrimaryCompanyId(user.id);
 
-  // Build where conditions
-  const conditions = [isNull(clients.deletedAt), eq(clients.companyId, await getPrimaryCompanyId(user.id))];
+  const conditions = [isNull(clients.deletedAt), eq(clients.companyId, companyId)];
 
   if (statusFilter !== "all") {
     conditions.push(eq(clients.status, statusFilter as "active" | "inactive" | "prospect"));
   }
 
-  // Server-side search (moved from JS to SQL)
   if (search) {
     const searchPattern = `%${search}%`;
     const searchDigits = search.replace(/\D/g, "");
@@ -40,21 +48,21 @@ export async function loader({ request }: Route.LoaderArgs) {
       sql`LOWER(${clients.razaoSocial}) LIKE LOWER(${searchPattern})`,
       sql`LOWER(COALESCE(${clients.nomeFantasia}, '')) LIKE LOWER(${searchPattern})`,
     ];
+
     if (searchDigits) {
       searchConditions.push(sql`${clients.cnpj} LIKE ${`%${searchDigits}%`}`);
     }
+
     conditions.push(or(...searchConditions)!);
   }
 
   const whereClause = and(...conditions);
 
-  // Count query
   const [{ count: totalCount }] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(clients)
     .where(whereClause);
 
-  // Query clients with contact count
   const clientList = await db
     .select({
       id: clients.id,
@@ -66,11 +74,6 @@ export async function loader({ request }: Route.LoaderArgs) {
       city: clients.city,
       state: clients.state,
       createdAt: clients.createdAt,
-      contactCount: sql<number>`(
-        SELECT count(*)::int FROM contacts
-        WHERE contacts.client_id = clients.id
-        AND contacts.deleted_at IS NULL
-      )`,
     })
     .from(clients)
     .where(whereClause)
@@ -81,6 +84,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   return { clients: clientList, locale, search, statusFilter, totalCount, page };
 }
 
+const panelClass =
+  "rounded-[28px] border border-[var(--app-border)] bg-[linear-gradient(180deg,var(--app-surface),var(--app-surface-2))] shadow-[var(--app-card-shadow)]";
+
 export default function CrmPage({ loaderData }: Route.ComponentProps) {
   const { clients: clientList, locale, search, statusFilter, totalCount, page } = loaderData;
   const i18n = t(locale);
@@ -90,17 +96,18 @@ export default function CrmPage({ loaderData }: Route.ComponentProps) {
 
   const statusBadge = (status: string) => {
     const styles: Record<string, string> = {
-      active: "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400",
-      inactive: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
-      prospect: "bg-yellow-50 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400",
+      active: "border-emerald-300/20 bg-emerald-400/12 text-emerald-700 dark:text-emerald-200",
+      inactive: "border-slate-300/20 bg-slate-400/10 text-slate-600 dark:text-slate-200",
+      prospect: "border-amber-300/20 bg-amber-400/12 text-amber-700 dark:text-amber-200",
     };
     const labels: Record<string, string> = {
       active: i18n.common.active,
       inactive: i18n.common.inactive,
       prospect: i18n.crm.prospect,
     };
+
     return (
-      <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${styles[status] || styles.active}`}>
+      <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${styles[status] || styles.active}`}>
         {labels[status] || status}
       </span>
     );
@@ -112,8 +119,9 @@ export default function CrmPage({ loaderData }: Route.ComponentProps) {
       exporter: i18n.crm.exporter,
       both: i18n.crm.both,
     };
+
     return (
-      <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
+      <span className="inline-flex rounded-full border border-cyan-300/20 bg-cyan-400/12 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-700 dark:text-cyan-200">
         {labels[type] || type}
       </span>
     );
@@ -121,7 +129,11 @@ export default function CrmPage({ loaderData }: Route.ComponentProps) {
 
   const updateFilter = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams);
-    if (value && value !== "all") { params.set(key, value); } else { params.delete(key); }
+    if (value && value !== "all") {
+      params.set(key, value);
+    } else {
+      params.delete(key);
+    }
     params.delete("page");
     setSearchParams(params);
   };
@@ -130,168 +142,243 @@ export default function CrmPage({ loaderData }: Route.ComponentProps) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {i18n.crm.clients}
-          </h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {totalCount} {totalCount === 1 ? "cliente" : "clientes"}
-          </p>
-        </div>
-        <Link to="/crm/new">
-          <Button>
-            <Plus className="h-4 w-4" />
-            {i18n.crm.newClient}
-          </Button>
-        </Link>
-      </div>
+      <section className="relative overflow-hidden rounded-[30px] border border-[var(--app-border-strong)] bg-[linear-gradient(135deg,#071827_0%,#12253a_58%,#20324c_100%)] px-6 py-6 text-slate-100 shadow-[0_28px_70px_rgba(15,23,42,0.16)] lg:px-8">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.16),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(245,158,11,0.12),transparent_26%)]" />
+        <div className="relative z-10 grid gap-6 lg:grid-cols-[1.55fr_0.95fr]">
+          <div>
+            <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.28em] text-cyan-100">
+              Relacionamento
+            </span>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-white lg:text-4xl">
+              CRM com foco em contexto, prioridade comercial e carteira ativa.
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
+              Base central de clientes para prospeccao, operacao e relacionamento continuo.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link to="/crm/new">
+                <Button className="rounded-full border border-white/12 bg-white/10 text-white hover:bg-white/15">
+                  <Plus className="h-4 w-4" />
+                  {i18n.crm.newClient}
+                </Button>
+              </Link>
+              <Link
+                to="/crm/pipeline"
+                className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/5 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/10"
+              >
+                Ver pipeline
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
 
-      {/* Search and filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative min-w-[200px] max-w-sm flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder={i18n.common.search}
-            defaultValue={search}
-            onChange={(e) => updateFilter("q", e.target.value)}
-            className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
-          />
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+            <div className="rounded-[24px] border border-white/10 bg-white/[0.06] p-4">
+              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Clientes</p>
+              <p className="mt-2 text-3xl font-semibold text-white">{totalCount}</p>
+              <p className="mt-1 text-sm text-slate-300">Base retornada para a visao atual.</p>
+            </div>
+            <div className="rounded-[24px] border border-white/10 bg-white/[0.06] p-4">
+              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Filtro de status</p>
+              <p className="mt-2 text-xl font-semibold text-white">
+                {statusFilter === "all" ? "Todos" : statusFilter}
+              </p>
+              <p className="mt-1 text-sm text-slate-300">Carteira visivel no momento.</p>
+            </div>
+            <div className="rounded-[24px] border border-white/10 bg-white/[0.06] p-4">
+              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Busca</p>
+              <p className="mt-2 text-xl font-semibold text-white">
+                {search ? `"${search}"` : "Sem termo"}
+              </p>
+              <p className="mt-1 text-sm text-slate-300">Pesquisa por razao, fantasia ou CNPJ.</p>
+            </div>
+          </div>
         </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => updateFilter("status", e.target.value)}
-          className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-        >
-          <option value="all">{i18n.common.all}</option>
-          <option value="active">{i18n.common.active}</option>
-          <option value="inactive">{i18n.common.inactive}</option>
-          <option value="prospect">{i18n.crm.prospect}</option>
-        </select>
-        {hasFilters && (
-          <button
-            onClick={clearFilters}
-            className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+      </section>
+
+      <section className={`${panelClass} p-5 lg:p-6`}>
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-cyan-300/18 bg-cyan-400/10 text-cyan-700 dark:text-cyan-200">
+            <Search className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-[var(--app-text)]">Corte da carteira</h2>
+            <p className="text-sm text-[var(--app-muted)]">Refine por busca e status sem sair da tela.</p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative min-w-[220px] flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--app-muted)]" />
+            <input
+              type="text"
+              placeholder={i18n.common.search}
+              defaultValue={search}
+              onChange={(event) => updateFilter("q", event.target.value)}
+              className="w-full rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] py-3 pl-10 pr-4 text-sm text-[var(--app-text)] placeholder:text-[var(--app-muted)]"
+            />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(event) => updateFilter("status", event.target.value)}
+            className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-3 text-sm text-[var(--app-text)]"
           >
-            <X className="h-3.5 w-3.5" />
-            Limpar
-          </button>
-        )}
-      </div>
-
-      {/* Table */}
-      {clientList.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-gray-200 bg-white py-16 dark:border-gray-800 dark:bg-gray-900">
-          <Building2 className="mb-4 h-16 w-16 text-gray-300 dark:text-gray-700" />
-          <p className="mb-2 text-lg font-medium text-gray-900 dark:text-gray-100">
-            {i18n.common.noResults}
-          </p>
-          <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">
-            {hasFilters ? "Nenhum cliente encontrado com esses filtros." : "Cadastre seu primeiro cliente para comecar."}
-          </p>
-          {hasFilters ? (
-            <button onClick={clearFilters} className="text-sm text-blue-600 hover:underline dark:text-blue-400">
-              Limpar filtros
+            <option value="all">{i18n.common.all}</option>
+            <option value="active">{i18n.common.active}</option>
+            <option value="inactive">{i18n.common.inactive}</option>
+            <option value="prospect">{i18n.crm.prospect}</option>
+          </select>
+          {hasFilters && (
+            <button
+              onClick={clearFilters}
+              className="inline-flex items-center gap-2 rounded-2xl border border-[var(--app-border)] px-4 py-3 text-sm font-medium text-[var(--app-muted)] transition-colors hover:bg-[var(--app-surface)]"
+            >
+              <X className="h-4 w-4" />
+              Limpar
             </button>
-          ) : (
-            <Link to="/crm/new">
-              <Button>
-                <Plus className="h-4 w-4" />
-                {i18n.crm.newClient}
-              </Button>
-            </Link>
           )}
         </div>
-      ) : (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
-              <thead>
-                <tr className="bg-gray-50 dark:bg-gray-800/50">
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                    {i18n.crm.razaoSocial}
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                    {i18n.crm.cnpj}
-                  </th>
-                  <th className="hidden px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 md:table-cell">
-                    {i18n.crm.clientType}
-                  </th>
-                  <th className="hidden px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 sm:table-cell">
-                    {i18n.common.status}
-                  </th>
-                  <th className="hidden px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 lg:table-cell">
-                    {i18n.crm.contacts}
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                    {i18n.common.actions}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {clientList.map((client) => (
-                  <tr
-                    key={client.id}
-                    className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                  >
-                    <td className="px-4 py-3">
-                      <div>
-                        <Link
-                          to={`/crm/${client.id}`}
-                          className="font-medium text-gray-900 hover:text-blue-600 dark:text-gray-100 dark:hover:text-blue-400"
-                        >
+      </section>
+
+      <section className={panelClass}>
+        {clientList.length === 0 ? (
+          <div className="flex min-h-[340px] flex-col items-center justify-center px-6 py-16 text-center">
+            <Building2 className="mb-4 h-16 w-16 text-[var(--app-muted)]" />
+            <p className="text-lg font-semibold text-[var(--app-text)]">{i18n.common.noResults}</p>
+            <p className="mt-2 max-w-md text-sm text-[var(--app-muted)]">
+              {hasFilters
+                ? "Nenhum cliente encontrado com esse recorte."
+                : "Cadastre seu primeiro cliente para iniciar a operacao comercial."}
+            </p>
+            <div className="mt-6">
+              {hasFilters ? (
+                <button onClick={clearFilters} className="text-sm font-medium text-cyan-700 hover:underline dark:text-cyan-300">
+                  Limpar filtros
+                </button>
+              ) : (
+                <Link to="/crm/new">
+                  <Button>
+                    <Plus className="h-4 w-4" />
+                    {i18n.crm.newClient}
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between gap-3 border-b border-[var(--app-border)] px-5 py-4 lg:px-6">
+              <div>
+                <h2 className="text-lg font-semibold text-[var(--app-text)]">Carteira de clientes</h2>
+                <p className="text-sm text-[var(--app-muted)]">
+                  {totalCount} {totalCount === 1 ? "cliente encontrado" : "clientes encontrados"}
+                </p>
+              </div>
+              <div className="hidden items-center gap-2 text-sm text-[var(--app-muted)] sm:flex">
+                <Users className="h-4 w-4" />
+                Visao operacional
+              </div>
+            </div>
+
+            <div className="space-y-3 p-4 lg:hidden">
+              {clientList.map((client) => (
+                <div key={client.id} className="rounded-[24px] border border-[var(--app-border)] bg-[var(--app-surface)] p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <Link to={`/crm/${client.id}`} className="text-base font-semibold text-[var(--app-text)]">
+                        {client.razaoSocial}
+                      </Link>
+                      {client.nomeFantasia && (
+                        <p className="mt-1 text-sm text-[var(--app-muted)]">{client.nomeFantasia}</p>
+                      )}
+                    </div>
+                    {statusBadge(client.status)}
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {typeBadge(client.clientType)}
+                    <span className="rounded-full border border-[var(--app-border)] bg-[var(--app-surface-2)] px-2.5 py-1 text-[11px] font-medium text-[var(--app-muted)]">
+                      {formatCNPJ(client.cnpj)}
+                    </span>
+                    {(client.city || client.state) && (
+                      <span className="rounded-full border border-[var(--app-border)] bg-[var(--app-surface-2)] px-2.5 py-1 text-[11px] font-medium text-[var(--app-muted)]">
+                        {[client.city, client.state].filter(Boolean).join(" / ")}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-4 flex items-center gap-2">
+                    <Link to={`/crm/${client.id}`} className="inline-flex items-center gap-2 rounded-full border border-[var(--app-border)] px-3 py-2 text-sm font-medium text-[var(--app-text)]">
+                      <Eye className="h-4 w-4" />
+                      Ver
+                    </Link>
+                    <Link to={`/crm/${client.id}/edit`} className="inline-flex items-center gap-2 rounded-full border border-[var(--app-border)] px-3 py-2 text-sm font-medium text-[var(--app-text)]">
+                      <Edit className="h-4 w-4" />
+                      Editar
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="hidden overflow-x-auto lg:block">
+              <table className="min-w-full">
+                <thead>
+                  <tr className="border-b border-[var(--app-border)] text-left">
+                    <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--app-muted)]">
+                      Cliente
+                    </th>
+                    <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--app-muted)]">
+                      CNPJ
+                    </th>
+                    <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--app-muted)]">
+                      Tipo
+                    </th>
+                    <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--app-muted)]">
+                      Status
+                    </th>
+                    <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--app-muted)]">
+                      Local
+                    </th>
+                    <th className="px-6 py-4 text-right text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--app-muted)]">
+                      Acoes
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {clientList.map((client) => (
+                    <tr key={client.id} className="border-b border-[var(--app-border)]/80 transition-colors hover:bg-[var(--app-surface)]">
+                      <td className="px-6 py-4">
+                        <Link to={`/crm/${client.id}`} className="font-semibold text-[var(--app-text)] hover:text-cyan-700 dark:hover:text-cyan-300">
                           {client.razaoSocial}
                         </Link>
                         {client.nomeFantasia && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {client.nomeFantasia}
-                          </p>
+                          <p className="mt-1 text-sm text-[var(--app-muted)]">{client.nomeFantasia}</p>
                         )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                      {formatCNPJ(client.cnpj)}
-                    </td>
-                    <td className="hidden px-4 py-3 md:table-cell">
-                      {typeBadge(client.clientType)}
-                    </td>
-                    <td className="hidden px-4 py-3 sm:table-cell">
-                      {statusBadge(client.status)}
-                    </td>
-                    <td className="hidden px-4 py-3 lg:table-cell">
-                      <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
-                        <Users className="h-3.5 w-3.5" />
-                        {client.contactCount}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Link
-                          to={`/crm/${client.id}`}
-                          className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300"
-                          title="Ver"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Link>
-                        <Link
-                          to={`/crm/${client.id}/edit`}
-                          className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300"
-                          title="Editar"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <Pagination totalItems={totalCount} itemsPerPage={ITEMS_PER_PAGE} currentPage={page} />
-        </div>
-      )}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-[var(--app-muted)]">{formatCNPJ(client.cnpj)}</td>
+                      <td className="px-6 py-4">{typeBadge(client.clientType)}</td>
+                      <td className="px-6 py-4">{statusBadge(client.status)}</td>
+                      <td className="px-6 py-4 text-sm text-[var(--app-muted)]">
+                        {[client.city, client.state].filter(Boolean).join(" / ") || "-"}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-end gap-2">
+                          <Link to={`/crm/${client.id}`} className="rounded-full border border-[var(--app-border)] p-2 text-[var(--app-muted)] transition-colors hover:bg-[var(--app-surface)] hover:text-[var(--app-text)]">
+                            <Eye className="h-4 w-4" />
+                          </Link>
+                          <Link to={`/crm/${client.id}/edit`} className="rounded-full border border-[var(--app-border)] p-2 text-[var(--app-muted)] transition-colors hover:bg-[var(--app-surface)] hover:text-[var(--app-text)]">
+                            <Edit className="h-4 w-4" />
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <Pagination totalItems={totalCount} itemsPerPage={ITEMS_PER_PAGE} currentPage={page} />
+          </>
+        )}
+      </section>
     </div>
   );
 }

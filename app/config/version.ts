@@ -3,8 +3,8 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.42";
-export const APP_RELEASE_DATE = "2026-03-20";
+export const APP_VERSION = "2.9.43";
+export const APP_RELEASE_DATE = "2026-03-21";
 export const APP_NAME = "LHFEX SaaS";
 
 export type ChangelogItemType = "feature" | "improvement" | "fix" | "infra";
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.43",
+    date: "2026-03-21",
+    title: "Redesign operacional do shell, dashboard e modulos core",
+    items: [
+      { type: "feature", text: "Layout: app shell, topbar, sidebar e navegacao mobile ganharam linguagem visual de centro de comando, com hierarquia mais forte para o uso diario" },
+      { type: "feature", text: "Dashboard: home virou uma sala de controle com hero operacional, radar financeiro, infraestrutura e agentes em leitura mais objetiva" },
+      { type: "improvement", text: "CRM, Processos e Financeiro foram redesenhados com hero por modulo, filtros mais claros e superficies alinhadas ao novo design system" },
+      { type: "fix", text: "Vite local passou a deduplicar React e o dashboard trocou os wrappers responsivos dos graficos por medicao direta, estabilizando a validacao visual no WSL" },
+    ],
+  },
   {
     version: "2.9.42",
     date: "2026-03-20",
