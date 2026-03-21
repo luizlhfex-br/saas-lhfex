@@ -40,6 +40,31 @@ Toda delegacao deve carregar:
 - criterio de pronto
 - restricoes
 
+## Resolucao de conflitos
+
+- agente mais especifico vence
+- se houver empate, vence o melhor trigger match
+- se ainda ficar ambiguo, o coordenador decide e registra a regra em `LEARNED_RULES.md` se o padrao se repetir
+
+## Timeout e escalacao
+
+- se a subtarefa falhar ou demorar demais, tentar 1 retry
+- se falhar 2x, o coordenador assume
+- se a tarefa critica falhar 3x, responder com bloqueio, risco e proximo passo
+
+## Contexto minimo
+
+Ao delegar, passar apenas o minimo util:
+
+- objetivo
+- contexto atual
+- dados reais
+- entrega esperada
+- criterio de pronto
+- restricoes
+
+Nao passar historico inteiro se ele nao ajudar o especialista.
+
 ## Template de delegacao
 
 ```text
@@ -82,3 +107,11 @@ Restricoes:
 - Para promocoes literarias, JULia pode usar `musa-literaria`.
 - Para tarefas do SaaS, o especialista deve usar primeiro `lhfex-saas`.
 - O resumo final do subagente deve voltar com: achados, risco, acao recomendada e evidencias.
+
+## Verification loop para tarefas criticas
+
+Em tarefas criticas, aplicar:
+
+1. especialista implementa
+2. coordenador revisa o resultado final
+3. especialista corrige apenas os pontos reprovados

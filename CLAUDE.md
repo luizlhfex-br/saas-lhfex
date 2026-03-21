@@ -90,3 +90,13 @@ A entrada mais recente vai no topo do array `CHANGELOG`.
 - Se um prompt temporario ou chat antigo tiver exposto segredo, nao copiar para a base permanente
 - Documentar apenas processo, decisoes e alertas tecnicos reutilizaveis
 - Qualquer credencial exposta deve ser tratada como comprometida e rotacionada fora do repo
+
+## Regras de engenharia de agente v2.0
+
+1. Loop: observar -> pensar -> agir -> verificar -> repetir ate DoD
+2. Self-learning: atualizar `LEARNED_RULES.md` apos correcao explicita do usuario
+3. Contexto: usar estrategia iceberg; carregar so o necessario
+4. Hierarquia: delegar para especialista quando houver ganho real
+5. Verificacao: em tarefa critica, aplicar implementador -> revisor -> corretor
+6. Clareza: perguntar antes de agir quando o pedido for ambiguo ou incompleto
+7. Evolucao: learned rules sao patrimonio operacional e nao devem ser sobrescritas por sync comum

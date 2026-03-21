@@ -29,6 +29,18 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-20",
+    version: "2.9.40",
+    type: "release",
+    title: "Parte 19 aplicada ao Hermes com engenharia avancada de agentes",
+    items: [
+      "Hermes Gateway: novos artefatos AGENTS, TRAINING e LEARNED_RULES para orquestracao, contexto iceberg e aprendizado continuo",
+      "Hermes Skills: nova skill lhfex-agent-engineering para DoD, verification loop, reverse prompting e manutencao de learned rules",
+      "Hermes Runtime: sync e bootstrap preservam LEARNED_RULES vivo no VPS e garantem cron semanal de revisao das regras aprendidas",
+      "Skills do SaaS e runtime foram endurecidas para sessoes ad hoc com env e PATH inconsistentes no sandbox do Hermes",
+    ],
+  },
+  {
+    date: "2026-03-20",
     version: "2.9.39",
     type: "release",
     title: "Monitor de producao adaptado ao runtime Hermes",

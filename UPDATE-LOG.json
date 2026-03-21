@@ -1,17 +1,53 @@
 {
   "release": {
-    "version": "v2.9.39",
+    "version": "v2.9.40",
     "date": "2026-03-20T00:00:00Z",
-    "type": "fix",
-    "title": "Monitor de producao adaptado ao runtime Hermes"
+    "type": "feature",
+    "title": "Parte 19 aplicada ao Hermes com engenharia avancada de agentes"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 0,
-    "filesModified": 4,
+    "filesCreated": 5,
+    "filesModified": 10,
     "routesAdded": 0,
     "openclaw_changes": 1,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_20_hermes_agent_engineering_v2": {
+    "date": "2026-03-20",
+    "release_version": "2.9.40",
+    "objective": "Aplicar a Parte 19 ao Hermes com learned rules, verification loops, engenharia de contexto e cron de revisao viva",
+    "files_changed": [
+      "CLAUDE.md",
+      "hermes-gateway/README.md",
+      "hermes-gateway/RUNBOOK.md",
+      "hermes-gateway/SOUL.md",
+      "hermes-gateway/AGENTS.md",
+      "hermes-gateway/TRAINING.md",
+      "hermes-gateway/LEARNED_RULES.md",
+      "hermes-gateway/bootstrap-hermes.sh",
+      "hermes-gateway/sync-context.sh",
+      "hermes-gateway/ensure-crons.sh",
+      "hermes-gateway/skills/lhfex-agent-engineering/SKILL.md",
+      "hermes-gateway/skills/lhfex-saas/SKILL.md",
+      "hermes-gateway/skills/lhfex-runtime/SKILL.md",
+      "hermes-gateway/skills/lhfex-squad-router/SKILL.md",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "A Parte 19 foi adaptada do gateway antigo para a arquitetura real do Hermes no host, sem depender do OpenClaw legado",
+      "Foram adicionados arquivos vivos de engenharia de agentes para learned rules, roteamento do squad e contexto iceberg",
+      "O runtime Hermes ganhou a skill lhfex-agent-engineering e um cron semanal learned_rules_review versionado por script",
+      "As skills do SaaS e do runtime passaram a recuperar env e PATH do ~/.hermes/.env em sessoes ad hoc do sandbox"
+    ],
+    "verification": [
+      "Sync do contexto no VPS concluiu e o serviço hermes-gateway foi reiniciado sem erro",
+      "Cron learned_rules_review foi criado no runtime do Hermes e hermes_heartbeat foi alinhado por script idempotente",
+      "Teste via hermes chat com pedido ambiguo de criar processo resultou em pergunta pelos dados faltantes em vez de escrita cega",
+      "LEARNED_RULES.md foi preservado como arquivo vivo do runtime, sem sobrescrita no sync"
+    ]
   },
   "session_2026_03_20_hermes_monitor_fallback": {
     "date": "2026-03-20",

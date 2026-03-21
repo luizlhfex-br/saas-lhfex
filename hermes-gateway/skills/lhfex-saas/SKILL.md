@@ -34,6 +34,7 @@ Usar dados reais do SaaS LHFEX antes de responder ou agir.
 - Se `catalogo_acoes` responder, informar que o acesso operacional ja esta ativo.
 - So dizer que falta configuracao se a checagem de ambiente ou a chamada real falharem.
 - Nunca pedir `SAAS_URL` ou `OPENCLAW_TOOLS_API_KEY` sem verificar antes se elas ja estao disponiveis.
+- Em sessoes ad hoc ou sandboxes, se env parecer ausente, primeiro rodar `set -a; source /root/.hermes/.env`.
 
 ## Consultas principais
 
@@ -75,6 +76,8 @@ Usar dados reais do SaaS LHFEX antes de responder ou agir.
 Para GET:
 
 ```bash
+set -a
+source /root/.hermes/.env
 curl -sS "${SAAS_URL}/api/openclaw-tools?action=catalogo_acoes" \
   -H "X-OpenClaw-Key: ${OPENCLAW_TOOLS_API_KEY}"
 ```
@@ -82,6 +85,8 @@ curl -sS "${SAAS_URL}/api/openclaw-tools?action=catalogo_acoes" \
 Para POST:
 
 ```bash
+set -a
+source /root/.hermes/.env
 curl -sS -X POST "${SAAS_URL}/api/openclaw-tools" \
   -H "Content-Type: application/json" \
   -H "X-OpenClaw-Key: ${OPENCLAW_TOOLS_API_KEY}" \

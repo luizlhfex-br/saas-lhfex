@@ -11,9 +11,13 @@ Artefatos operacionais para migrar o OpenClaw atual para Hermes Agent sem perder
 ## O que este diretorio entrega
 
 - `SOUL.md`: prompt principal do Hermes para o contexto LHFEX
+- `AGENTS.md`: regras de orquestracao, timeout, conflito e verification loop
+- `TRAINING.md`: estrategia iceberg, pruning e template SOP
+- `LEARNED_RULES.md`: base viva de regras aprendidas
 - `skills/`: skills no formato oficial `SKILL.md`
 - `bootstrap-hermes.sh`: instala/configura Hermes no VPS de forma idempotente
 - `sync-context.sh`: sincroniza SOUL e skills do repositorio para `~/.hermes`
+- `ensure-crons.sh`: garante jobs versionados do Hermes
 - `RUNBOOK.md`: instalacao, cutover e rollback
 - `CUTOVER-CHECKLIST.md`: checklist objetivo para a virada
 
@@ -27,6 +31,7 @@ Artefatos operacionais para migrar o OpenClaw atual para Hermes Agent sem perder
 - endpoint do SaaS continua `/api/openclaw-tools` com header `X-OpenClaw-Key`
 - runtime estabilizado com `deepseek-chat` como primario e `openrouter/minimax/minimax-m2.5:free` como fallback
 - skill `lhfex-runtime` dedicada para diagnostico de provider, acesso ao SaaS, host, Telegram e Google
+- Parte 19 aplicada ao Hermes com learned rules, reverse prompting, verification loop e engenharia de contexto
 
 ## Ordem recomendada
 

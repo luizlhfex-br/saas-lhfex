@@ -45,6 +45,7 @@ Migrar o OpenClaw atual para Hermes Agent com:
 - perguntas sobre acesso ao SaaS devem validar `catalogo_acoes`
 - perguntas sobre Google devem validar `google_status`
 - perguntas sobre host/VPS devem ter evidencia via terminal
+- `LEARNED_RULES.md` do runtime e vivo e nao deve ser sobrescrito por sync comum
 
 ## Instalacao
 
@@ -52,9 +53,10 @@ Migrar o OpenClaw atual para Hermes Agent com:
 2. Instalar Hermes em `/root/hermes-agent`
 3. Migrar `user-data` do backup OpenClaw
 4. Completar `.env` do Hermes com variaveis do container atual
-5. Sincronizar `SOUL.md` e skills da LHFEX
-6. Escrever `config.yaml` compativel com o runtime real
-7. Instalar o gateway do Hermes sem fazer cutover
+5. Sincronizar `SOUL.md`, `AGENTS.md`, `TRAINING.md`, `LEARNED_RULES.md` e skills da LHFEX
+6. Garantir os crons versionados com `ensure-crons.sh`
+7. Escrever `config.yaml` compativel com o runtime real
+8. Instalar o gateway do Hermes sem fazer cutover
 
 ## Comandos principais
 
@@ -66,6 +68,11 @@ bash hermes-gateway/bootstrap-hermes.sh
 ### Sincronizar contexto
 ```bash
 bash hermes-gateway/sync-context.sh
+```
+
+### Garantir crons versionados
+```bash
+bash hermes-gateway/ensure-crons.sh
 ```
 
 ### Validar status
@@ -103,3 +110,5 @@ hermes gateway status
 - cron sem destino de entrega
 - skill `lhfex-saas` nao sincronizada
 - skill `lhfex-runtime` nao sincronizada
+- `LEARNED_RULES.md` ausente no runtime
+- cron `learned_rules_review` ausente

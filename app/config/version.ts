@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.39";
+export const APP_VERSION = "2.9.40";
 export const APP_RELEASE_DATE = "2026-03-20";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.40",
+    date: "2026-03-20",
+    title: "Parte 19 aplicada ao Hermes com engenharia avancada de agentes",
+    items: [
+      { type: "feature", text: "Hermes Gateway: novos artefatos AGENTS, TRAINING e LEARNED_RULES para orquestracao, contexto iceberg e aprendizado continuo" },
+      { type: "feature", text: "Hermes Skills: nova skill lhfex-agent-engineering para DoD, verification loop, reverse prompting e manutencao de learned rules" },
+      { type: "improvement", text: "Hermes Runtime: sync e bootstrap preservam LEARNED_RULES vivo no VPS e garantem cron semanal de revisao das regras aprendidas" },
+      { type: "improvement", text: "Skills do SaaS e runtime foram endurecidas para sessoes ad hoc com env e PATH inconsistentes no sandbox do Hermes" },
+    ],
+  },
   {
     version: "2.9.39",
     date: "2026-03-20",
