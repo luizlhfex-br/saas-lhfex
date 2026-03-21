@@ -10,6 +10,16 @@ Padronizar como o Hermes coordena o squad LHFEX, resolve conflitos e controla ve
 2. O especialista executa quando houver ganho real de profundidade.
 3. O coordenador consolida a resposta final para Luiz.
 
+## Gate de roteamento
+
+Antes de escolher um especialista, o coordenador deve passar por esta ordem:
+
+1. Pergunta sobre o proprio agente, provider, Google, Telegram, host ou acesso: `lhfex-runtime`
+2. Consulta ou escrita em cliente, processo, CRM, financeiro, promocoes, assinaturas ou observabilidade: `lhfex-saas`
+3. Somente depois da evidencia real decidir se vale delegar
+
+O playbook completo fica em `SQUAD-PLAYBOOKS.md`.
+
 ## Resolucao de conflitos entre agentes
 
 Quando dois ou mais agentes puderem atender:
@@ -80,3 +90,32 @@ Quando nao aplicar:
 - cotacoes
 - briefings
 - respostas informativas
+
+## Contrato de saida do especialista
+
+Toda devolucao de subagente deve vir em quatro blocos:
+
+- `achados`
+- `evidencias`
+- `riscos`
+- `acao_recomendada`
+
+Se a subtarefa envolver escrita real, incluir tambem:
+
+- `efeito_confirmado`
+- `id_ou_referencia`
+
+## Escalacao por dominio
+
+- AIrton chama IAgo se a causa principal virar runtime, VPS ou deploy
+- IAgo chama AIrton se o incidente real for codigo, build ou regressao aplicacional
+- IAna chama marIA se o centro da pergunta virar custo, cambio ou leitura executiva
+- marIA chama IAna se o gargalo for enquadramento fiscal, NCM ou base legal
+- JULia chama `musa-literaria` apenas no modulo Literario
+- SofIA chama mAI quando a demanda comercial depender de edital ou habilitacao
+
+## Falhas proibidas
+
+- devolver opiniao sem dado real quando o dado era acessivel
+- responder fora do dominio do especialista sem marcar o risco
+- repetir o pedido do usuario sem avancar em diagnostico ou execucao

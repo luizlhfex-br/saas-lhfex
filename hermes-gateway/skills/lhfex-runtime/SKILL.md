@@ -30,7 +30,9 @@ Responder perguntas sobre o proprio agente com evidencia real do ambiente.
 3. Para acesso ao SaaS, sempre validar `catalogo_acoes` antes de concluir.
 4. Para Google, sempre validar `google_status`.
 5. Para modelo/provider, sempre validar `hermes status`.
-6. Se o sandbox nao herdar PATH ou env do gateway, usar caminhos absolutos e `source /root/.hermes/.env` antes de concluir que algo esta ausente.
+6. Se o sandbox nao herdar PATH ou env do gateway, usar caminhos absolutos e `. /root/.hermes/.env` antes de concluir que algo esta ausente.
+7. Se a checagem real funcionar, dizer explicitamente que o acesso ja esta ativo.
+8. Nao mandar o usuario configurar URL, token ou login se o ambiente validado ja estiver pronto.
 
 ## Comandos base
 
@@ -44,7 +46,7 @@ Responder perguntas sobre o proprio agente com evidencia real do ambiente.
 
 ```bash
 set -a
-source /root/.hermes/.env
+. /root/.hermes/.env
 printf 'SAAS_URL=%s\nOPENCLAW_TOOLS_API_KEY=%s\n' "${SAAS_URL:-}" "${OPENCLAW_TOOLS_API_KEY:+set}"
 ```
 
@@ -52,7 +54,7 @@ printf 'SAAS_URL=%s\nOPENCLAW_TOOLS_API_KEY=%s\n' "${SAAS_URL:-}" "${OPENCLAW_TO
 
 ```bash
 set -a
-source /root/.hermes/.env
+. /root/.hermes/.env
 curl -sS "${SAAS_URL}/api/openclaw-tools?action=catalogo_acoes" \
   -H "X-OpenClaw-Key: ${OPENCLAW_TOOLS_API_KEY}"
 ```
@@ -61,7 +63,7 @@ curl -sS "${SAAS_URL}/api/openclaw-tools?action=catalogo_acoes" \
 
 ```bash
 set -a
-source /root/.hermes/.env
+. /root/.hermes/.env
 curl -sS "${SAAS_URL}/api/openclaw-tools?action=google_status" \
   -H "X-OpenClaw-Key: ${OPENCLAW_TOOLS_API_KEY}"
 ```
@@ -79,3 +81,4 @@ pwd
 - acesso ao SaaS: informar se o endpoint respondeu e citar a evidence curta
 - Google: informar `connected=true/false`
 - host/VPS: informar hostname/cwd ou outra evidence objetiva
+- sempre fechar com proximo passo quando faltar algo

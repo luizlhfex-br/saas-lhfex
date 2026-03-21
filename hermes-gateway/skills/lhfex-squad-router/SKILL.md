@@ -1,7 +1,7 @@
 ---
 name: lhfex-squad-router
-description: Orquestra o squad LHFEX no Hermes com delegate_task e handoff objetivo por especialista
-version: 1.0.0
+description: Orquestra o squad LHFEX no Hermes com delegate_task, gating de primeira acao e handoff objetivo por especialista
+version: 1.1.0
 metadata:
   hermes:
     tags: [lhfex, squad, delegation, multi-agent]
@@ -13,6 +13,14 @@ metadata:
 ## Objetivo
 
 Usar `delegate_task` de forma disciplinada para ganhar profundidade sem perder controle operacional.
+
+## Gate obrigatorio antes da delegacao
+
+1. Se a pergunta for sobre o proprio agente, usar `lhfex-runtime`.
+2. Se envolver negocio da LHFEX, consultar `lhfex-saas` antes.
+3. Delegar apenas quando a resposta ainda exigir dominio profundo, interpretacao tecnica ou paralelismo real.
+
+Se qualquer um desses passos resolver a demanda, nao delegar.
 
 ## Quando delegar
 
@@ -80,6 +88,19 @@ Restricoes:
 
 - `terminal,file,web,browser,skills,todo`
 
+## Matriz rapida de roteamento
+
+- Meta-operacional do agente: nao delegar; usar `lhfex-runtime`
+- Clientes, processos, CRM, financeiro, promocoes, observabilidade: `lhfex-saas` primeiro
+- Codigo, bug, testes, arquitetura: AIrton
+- Comex, NCM, DI, DUIMP, drawback, Incoterms: IAna
+- Custos, cambio, PTAX, leitura executiva: marIA
+- VPS, Docker, logs, deploy, runtime: IAgo
+- Marketing, copy, design, SEO: IAra
+- CRM, follow-up, onboarding, mensagem comercial: SofIA
+- PNCP, edital, habilitacao, proposta tecnica: mAI
+- Promocoes, radios, Instagram, literario: JULia
+
 ## Especialistas
 
 - `references/airton.md`
@@ -102,11 +123,20 @@ Restricoes:
 - PNCP, edital, habilitacao, proposta tecnica: mAI
 - Promocoes, radios, Instagram e modulo Literario: JULia
 
+## Playbooks diretos
+
+- So chegou um CNPJ: nao delegar; usar `lhfex-saas` e tentar `criar_cliente`
+- Chegou cliente + modal: nao delegar; usar `lhfex-saas` e tentar `abrir_processo`
+- Pergunta "quais processos/clientes/assinaturas eu tenho?": nao delegar; usar `lhfex-saas`
+- Pergunta sobre provider, Google, host ou acesso ao SaaS: nao delegar; usar `lhfex-runtime`
+- Promocao literaria: JULia lidera e pode usar `musa-literaria`
+
 ## Notas importantes
 
 - Para promocoes literarias, JULia pode usar `musa-literaria`.
 - Para tarefas do SaaS, o especialista deve usar primeiro `lhfex-saas`.
 - O resumo final do subagente deve voltar com: achados, risco, acao recomendada e evidencias.
+- O coordenador deve responder o consolidado final em `status`, `evidencias`, `risco` e `proxima_acao`.
 
 ## Verification loop para tarefas criticas
 

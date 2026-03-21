@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.40";
+export const APP_VERSION = "2.9.41";
 export const APP_RELEASE_DATE = "2026-03-20";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.41",
+    date: "2026-03-20",
+    title: "Hermes squad calibrado com playbooks e roteamento operacional",
+    items: [
+      { type: "feature", text: "Hermes Gateway: novo SQUAD-PLAYBOOKS versiona matriz de primeira acao, playbooks por intent e contrato minimo de saida do squad" },
+      { type: "improvement", text: "SOUL, AGENTS e a skill lhfex-squad-router passaram a impor gating entre runtime, SaaS e delegacao antes de chamar especialistas" },
+      { type: "improvement", text: "Os perfis dos 8 especialistas agora declaram primeira acao, saida esperada, anti-padroes e escalacoes comuns por dominio" },
+      { type: "fix", text: "Skills lhfex-saas e lhfex-runtime trocaram source por . /root/.hermes/.env para funcionar corretamente no shell real do Hermes" },
+    ],
+  },
   {
     version: "2.9.40",
     date: "2026-03-20",

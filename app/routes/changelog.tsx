@@ -29,6 +29,18 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-20",
+    version: "2.9.41",
+    type: "release",
+    title: "Hermes squad calibrado com playbooks e roteamento operacional",
+    items: [
+      "Hermes Gateway: novo SQUAD-PLAYBOOKS versiona matriz de primeira acao, playbooks por intent e contrato minimo de saida do squad",
+      "SOUL, AGENTS e a skill lhfex-squad-router passaram a impor gating entre runtime, SaaS e delegacao antes de chamar especialistas",
+      "Os perfis dos 8 especialistas agora declaram primeira acao, saida esperada, anti-padroes e escalacoes comuns por dominio",
+      "Skills lhfex-saas e lhfex-runtime trocaram source por . /root/.hermes/.env para funcionar corretamente no shell real do Hermes",
+    ],
+  },
+  {
+    date: "2026-03-20",
     version: "2.9.40",
     type: "release",
     title: "Parte 19 aplicada ao Hermes com engenharia avancada de agentes",

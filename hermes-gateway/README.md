@@ -12,6 +12,7 @@ Artefatos operacionais para migrar o OpenClaw atual para Hermes Agent sem perder
 
 - `SOUL.md`: prompt principal do Hermes para o contexto LHFEX
 - `AGENTS.md`: regras de orquestracao, timeout, conflito e verification loop
+- `SQUAD-PLAYBOOKS.md`: matriz de roteamento, playbooks de intents e contrato minimo de saida do squad
 - `TRAINING.md`: estrategia iceberg, pruning e template SOP
 - `LEARNED_RULES.md`: base viva de regras aprendidas
 - `skills/`: skills no formato oficial `SKILL.md`
@@ -32,6 +33,7 @@ Artefatos operacionais para migrar o OpenClaw atual para Hermes Agent sem perder
 - runtime estabilizado com `deepseek-chat` como primario e `openrouter/minimax/minimax-m2.5:free` como fallback
 - skill `lhfex-runtime` dedicada para diagnostico de provider, acesso ao SaaS, host, Telegram e Google
 - Parte 19 aplicada ao Hermes com learned rules, reverse prompting, verification loop e engenharia de contexto
+- squad calibrado com playbooks, matriz de primeira acao e perfis mais estritos dos especialistas
 
 ## Ordem recomendada
 

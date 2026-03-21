@@ -1,17 +1,56 @@
 {
   "release": {
-    "version": "v2.9.40",
+    "version": "v2.9.41",
     "date": "2026-03-20T00:00:00Z",
     "type": "feature",
-    "title": "Parte 19 aplicada ao Hermes com engenharia avancada de agentes"
+    "title": "Hermes squad calibrado com playbooks e roteamento operacional"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 5,
-    "filesModified": 10,
+    "filesCreated": 1,
+    "filesModified": 19,
     "routesAdded": 0,
     "openclaw_changes": 1,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_20_hermes_squad_calibration": {
+    "date": "2026-03-20",
+    "release_version": "2.9.41",
+    "objective": "Calibrar o squad do Hermes com playbooks operacionais, gating entre runtime/SaaS/delegacao e perfis mais estritos para os especialistas",
+    "files_changed": [
+      "hermes-gateway/SQUAD-PLAYBOOKS.md",
+      "hermes-gateway/README.md",
+      "hermes-gateway/SOUL.md",
+      "hermes-gateway/AGENTS.md",
+      "hermes-gateway/bootstrap-hermes.sh",
+      "hermes-gateway/sync-context.sh",
+      "hermes-gateway/skills/lhfex-runtime/SKILL.md",
+      "hermes-gateway/skills/lhfex-saas/SKILL.md",
+      "hermes-gateway/skills/lhfex-squad-router/SKILL.md",
+      "hermes-gateway/skills/lhfex-squad-router/references/airton.md",
+      "hermes-gateway/skills/lhfex-squad-router/references/iana.md",
+      "hermes-gateway/skills/lhfex-squad-router/references/maria.md",
+      "hermes-gateway/skills/lhfex-squad-router/references/iago.md",
+      "hermes-gateway/skills/lhfex-squad-router/references/iara.md",
+      "hermes-gateway/skills/lhfex-squad-router/references/sofia.md",
+      "hermes-gateway/skills/lhfex-squad-router/references/mai.md",
+      "hermes-gateway/skills/lhfex-squad-router/references/julia.md",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "O Hermes ganhou um arquivo SQUAD-PLAYBOOKS com matriz de primeira acao, gate de roteamento e playbooks objetivos para intents recorrentes da LHFEX",
+      "SOUL, AGENTS e a skill lhfex-squad-router passaram a exigir consulta ao runtime ou ao SaaS antes de delegar para especialistas",
+      "Os oito perfis de especialista passaram a declarar primeira acao, saida esperada, anti-padroes e escalacoes comuns por dominio",
+      "As skills lhfex-saas e lhfex-runtime foram ajustadas para usar . /root/.hermes/.env em vez de source, evitando falha no shell real do Hermes"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "O contexto atualizado foi sincronizado no VPS e o hermes-gateway.service reiniciou com sucesso",
+      "Teste via hermes chat confirmou acesso real ao SaaS, resposta objetiva sobre provider/modelo e consulta real de processos abertos",
+      "Pedido ambiguo de criar processo continuou pedindo cliente, modal e tipo antes de agir"
+    ]
   },
   "session_2026_03_20_hermes_agent_engineering_v2": {
     "date": "2026-03-20",

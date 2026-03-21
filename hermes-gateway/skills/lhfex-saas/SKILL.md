@@ -27,6 +27,8 @@ Usar dados reais do SaaS LHFEX antes de responder ou agir.
 3. Para ambiguidade de cliente ou processo, devolver pergunta curta com opcoes reais.
 4. Nunca deletar dados sem autorizacao explicita.
 5. Responder em PT-BR.
+6. Se a chamada resolver o pedido, nao delegar para especialista sem motivo claro.
+7. Em escrita real, sempre devolver `success`, `id` ou `reference` quando existirem.
 
 ## Validacao de acesso
 
@@ -34,7 +36,7 @@ Usar dados reais do SaaS LHFEX antes de responder ou agir.
 - Se `catalogo_acoes` responder, informar que o acesso operacional ja esta ativo.
 - So dizer que falta configuracao se a checagem de ambiente ou a chamada real falharem.
 - Nunca pedir `SAAS_URL` ou `OPENCLAW_TOOLS_API_KEY` sem verificar antes se elas ja estao disponiveis.
-- Em sessoes ad hoc ou sandboxes, se env parecer ausente, primeiro rodar `set -a; source /root/.hermes/.env`.
+- Em sessoes ad hoc ou sandboxes, se env parecer ausente, primeiro rodar `set -a; . /root/.hermes/.env`.
 
 ## Consultas principais
 
@@ -71,13 +73,19 @@ Usar dados reais do SaaS LHFEX antes de responder ou agir.
 - Para perguntas amplas sobre o negocio, carregar `contexto_completo` no inicio da sessao.
 - Para perguntas de acesso e prontidao operacional, validar primeiro `catalogo_acoes` e depois responder com evidencias reais.
 
+## Formato de resposta
+
+- consulta: resumo curto, numeros ou referencias principais e fonte da checagem
+- escrita: status, efeito confirmado, id ou referencia, proxima acao
+- falha: erro real, impacto e o dado minimo faltante
+
 ## Execucao via terminal
 
 Para GET:
 
 ```bash
 set -a
-source /root/.hermes/.env
+. /root/.hermes/.env
 curl -sS "${SAAS_URL}/api/openclaw-tools?action=catalogo_acoes" \
   -H "X-OpenClaw-Key: ${OPENCLAW_TOOLS_API_KEY}"
 ```
@@ -86,7 +94,7 @@ Para POST:
 
 ```bash
 set -a
-source /root/.hermes/.env
+. /root/.hermes/.env
 curl -sS -X POST "${SAAS_URL}/api/openclaw-tools" \
   -H "Content-Type: application/json" \
   -H "X-OpenClaw-Key: ${OPENCLAW_TOOLS_API_KEY}" \
