@@ -29,6 +29,16 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-21",
+    version: "2.9.44",
+    type: "release",
+    title: "Seletores E2E alinhados ao redesign do CRM",
+    items: [
+      "Playwright: o teste de navegacao do CRM passou a usar o heading principal exato da pagina, evitando ambiguidade com os novos blocos do redesign",
+      "Validacao local: a suite E2E foi reexecutada em modo equivalente ao CI com 20 testes passando em worker unico",
+    ],
+  },
+  {
+    date: "2026-03-21",
     version: "2.9.43",
     type: "release",
     title: "Redesign operacional do shell, dashboard e modulos core",

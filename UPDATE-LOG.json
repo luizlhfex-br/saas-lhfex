@@ -1,17 +1,37 @@
 {
   "release": {
-    "version": "v2.9.43",
+    "version": "v2.9.44",
     "date": "2026-03-21T00:00:00Z",
-    "type": "feature",
-    "title": "Redesign operacional do shell, dashboard e modulos core"
+    "type": "fix",
+    "title": "Seletores E2E alinhados ao redesign do CRM"
   },
   "summary": {
     "commits": 1,
     "filesCreated": 0,
-    "filesModified": 12,
+    "filesModified": 4,
     "routesAdded": 0,
     "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_21_ci_fix_crm_selectors": {
+    "date": "2026-03-21",
+    "release_version": "2.9.44",
+    "objective": "Corrigir a unica falha da pipeline apos o redesign, alinhando os seletores E2E do CRM ao novo layout",
+    "files_changed": [
+      "tests/e2e/crm.spec.ts",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "O teste should navigate to CRM page passou a validar o heading principal exato da tela, em vez de um regex amplo que agora bate em multiplos headings validos",
+      "A verificacao local passou a reproduzir o modo de execucao do GitHub Actions com Playwright em worker unico"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "npx playwright test tests/e2e/crm.spec.ts --project=chromium passou",
+      "npx playwright test --workers=1 --reporter=line passou com 20 testes"
+    ]
   },
   "session_2026_03_21_frontend_redesign_phase2": {
     "date": "2026-03-21",

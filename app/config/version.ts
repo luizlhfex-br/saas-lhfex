@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.43";
+export const APP_VERSION = "2.9.44";
 export const APP_RELEASE_DATE = "2026-03-21";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,15 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.44",
+    date: "2026-03-21",
+    title: "Seletores E2E alinhados ao redesign do CRM",
+    items: [
+      { type: "fix", text: "Playwright: o teste de navegacao do CRM passou a usar o heading principal exato da pagina, evitando ambiguidade com os novos blocos do redesign" },
+      { type: "improvement", text: "Validacao local: a suite E2E foi reexecutada em modo equivalente ao CI com 20 testes passando em worker unico" },
+    ],
+  },
   {
     version: "2.9.43",
     date: "2026-03-21",

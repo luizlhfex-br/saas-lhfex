@@ -17,7 +17,7 @@ test.describe("CRM Flow", () => {
     await page.getByRole("link", { name: /crm|clientes/i }).click();
     
     await expect(page).toHaveURL(/\/crm$/);
-    await expect(page.getByRole("heading", { name: /crm|clientes/i })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "CRM", exact: true })).toBeVisible();
   });
 
   test("should open new client form", async ({ page }) => {
