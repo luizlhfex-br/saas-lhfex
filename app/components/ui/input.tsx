@@ -40,7 +40,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               "text-gray-900 placeholder:text-gray-500",
               "dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-400",
               "transition-colors duration-150",
-              "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900",
+              "focus-brand-ring",
               "disabled:cursor-not-allowed disabled:opacity-50",
               error
                 ? "border-red-500 dark:border-red-500"
@@ -96,7 +96,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
             "text-gray-900 placeholder:text-gray-500",
             "dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-400",
             "transition-colors duration-150",
-            "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900",
+            "focus-brand-ring",
             "disabled:cursor-not-allowed disabled:opacity-50",
             error
               ? "border-red-500 dark:border-red-500"

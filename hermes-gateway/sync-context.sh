@@ -15,6 +15,7 @@ fi
 
 rm -rf "$HERMES_HOME/skills/lhfex-saas" \
        "$HERMES_HOME/skills/lhfex-agent-engineering" \
+       "$HERMES_HOME/skills/lhfex-frontend-design" \
        "$HERMES_HOME/skills/lhfex-runtime" \
        "$HERMES_HOME/skills/lhfex-squad-router" \
        "$HERMES_HOME/skills/lhfex-comex-expert" \

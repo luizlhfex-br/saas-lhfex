@@ -1,0 +1,78 @@
+@layer base {
+  :root {
+    --color-brand-primary: var(--app-accent);
+    --color-brand-secondary: #0f172a;
+    --color-brand-accent: #f59e0b;
+
+    --color-success: #10b981;
+    --color-warning: #f59e0b;
+    --color-danger: #ef4444;
+    --color-info: #0ea5e9;
+
+    --color-surface-primary: var(--app-surface);
+    --color-surface-secondary: var(--app-surface-2);
+    --color-surface-inverse: var(--app-sidebar-bg);
+
+    --color-text-primary: var(--app-text);
+    --color-text-secondary: var(--app-muted);
+    --color-text-inverse: var(--app-sidebar-text);
+
+    --color-border-default: var(--app-border);
+    --color-border-strong: var(--app-border-strong);
+    --color-focus-ring: #6366f1;
+
+    --shadow-card-soft: var(--app-card-shadow);
+    --shadow-glow-brand: var(--app-glow);
+
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+
+    --space-xs: 0.25rem;
+    --space-sm: 0.5rem;
+    --space-md: 1rem;
+    --space-lg: 1.5rem;
+    --space-xl: 2rem;
+    --space-2xl: 3rem;
+
+    --transition-fast: 150ms ease;
+    --transition-normal: 250ms ease;
+    --transition-slow: 350ms ease;
+  }
+
+  :is(.dark) {
+    --color-brand-secondary: #e2e8f0;
+    --color-focus-ring: #818cf8;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [role="button"]:focus-visible,
+  [role="menuitem"]:focus-visible,
+  [role="dialog"]:focus-visible,
+  [tabindex]:not([tabindex="-1"]):focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .focus-brand-ring {
+    transition: box-shadow var(--transition-fast), outline-color var(--transition-fast);
+  }
+
+  .card-surface {
+    background: var(--color-surface-primary);
+    border-color: var(--color-border-default);
+    box-shadow: var(--shadow-card-soft);
+  }
+
+  .panel-muted {
+    background: var(--color-surface-secondary);
+    border-color: var(--color-border-default);
+  }
+}

@@ -32,6 +32,7 @@ Artefatos operacionais para migrar o OpenClaw atual para Hermes Agent sem perder
 - endpoint do SaaS continua `/api/openclaw-tools` com header `X-OpenClaw-Key`
 - runtime estabilizado com `deepseek-chat` como primario e `openrouter/minimax/minimax-m2.5:free` como fallback
 - skill `lhfex-runtime` dedicada para diagnostico de provider, acesso ao SaaS, host, Telegram e Google
+- skill `lhfex-frontend-design` dedicada para redesign, UX, design system e frontend operacional liderado por IAra
 - Parte 19 aplicada ao Hermes com learned rules, reverse prompting, verification loop e engenharia de contexto
 - squad calibrado com playbooks, matriz de primeira acao e perfis mais estritos dos especialistas
 

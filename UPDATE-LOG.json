@@ -1,17 +1,51 @@
 {
   "release": {
-    "version": "v2.9.41",
+    "version": "v2.9.42",
     "date": "2026-03-20T00:00:00Z",
     "type": "feature",
-    "title": "Hermes squad calibrado com playbooks e roteamento operacional"
+    "title": "Parte 20 aplicada com base visual e IAra turbinada"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 1,
-    "filesModified": 19,
+    "filesCreated": 3,
+    "filesModified": 13,
     "routesAdded": 0,
     "openclaw_changes": 1,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_20_frontend_design_part20": {
+    "date": "2026-03-20",
+    "release_version": "2.9.42",
+    "objective": "Aplicar a Parte 20 de forma segura com fundacao visual no frontend, skill definitiva de design para IAra e plano completo de redesign do SaaS",
+    "files_changed": [
+      "app/styles/tokens.css",
+      "app/app.css",
+      "app/components/ui/button.tsx",
+      "app/components/ui/input.tsx",
+      "app/components/ui/modal.tsx",
+      "app/components/ui/dropdown.tsx",
+      "hermes-gateway/README.md",
+      "hermes-gateway/sync-context.sh",
+      "hermes-gateway/bootstrap-hermes.sh",
+      "hermes-gateway/skills/lhfex-frontend-design/SKILL.md",
+      "hermes-gateway/skills/lhfex-squad-router/SKILL.md",
+      "hermes-gateway/skills/lhfex-squad-router/references/iara.md",
+      "docs/FRONTEND-REDESIGN-PLAN.md",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "O frontend ganhou uma camada de tokens semanticos para cor, foco, radius, spacing e superficies sem reescrever a UI inteira",
+      "Button, input, modal e dropdown foram alinhados ao mesmo foco visual, e modal/dropdown ganharam suporte melhor de teclado",
+      "A IAra passou a ter uma skill local propria de frontend design para redesign do SaaS, dashboards, design system e UX operacional",
+      "Foi criado um plano robusto de redesign em docs para evoluir o SaaS por camadas e modulos sem big bang"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "Os componentes compartilhados preservaram a API publica",
+      "O plano de redesign foi ancorado no shell, dashboard e componentes reais do projeto"
+    ]
   },
   "session_2026_03_20_hermes_squad_calibration": {
     "date": "2026-03-20",

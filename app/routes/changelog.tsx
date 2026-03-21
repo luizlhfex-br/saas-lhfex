@@ -29,6 +29,18 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-20",
+    version: "2.9.42",
+    type: "release",
+    title: "Parte 20 aplicada com base visual e IAra turbinada",
+    items: [
+      "Frontend: nova base de design tokens em app/styles/tokens.css com foco unificado, tokens semanticos e componentes de superficie",
+      "UI compartilhada: button, input, modal e dropdown passaram a usar foco padronizado e melhor suporte de teclado",
+      "Hermes Gateway: IAra ganhou a skill local lhfex-frontend-design para redesign, UX, design system e frontend operacional",
+      "Docs: novo plano docs/FRONTEND-REDESIGN-PLAN.md organiza o redesign completo do SaaS por fases, camadas e modulos",
+    ],
+  },
+  {
+    date: "2026-03-20",
     version: "2.9.41",
     type: "release",
     title: "Hermes squad calibrado com playbooks e roteamento operacional",

@@ -1,10 +1,12 @@
 import {
   type HTMLAttributes,
+  type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
   type MouseEvent,
   useState,
   useEffect,
   useCallback,
+  useRef,
   createContext,
   useContext,
 } from "react";
@@ -59,8 +61,15 @@ export interface ModalTriggerProps {
 export function ModalTrigger({ children }: ModalTriggerProps) {
   const { setOpen } = useModal();
 
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      setOpen(true);
+    }
+  };
+
   return (
-    <div onClick={() => setOpen(true)} role="button" tabIndex={0}>
+    <div onClick={() => setOpen(true)} onKeyDown={handleKeyDown} role="button" tabIndex={0}>
       {children}
     </div>
   );
@@ -74,6 +83,7 @@ export function ModalContent({ className, children, ...props }: ModalContentProp
   const { open, setOpen } = useModal();
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
+  const panelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -86,6 +96,16 @@ export function ModalContent({ className, children, ...props }: ModalContentProp
     } else {
       setVisible(false);
     }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    requestAnimationFrame(() => {
+      const focusable = panelRef.current?.querySelector<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      focusable?.focus();
+    });
   }, [open]);
 
   useEffect(() => {
@@ -128,6 +148,7 @@ export function ModalContent({ className, children, ...props }: ModalContentProp
 
       {/* Content */}
       <div
+        ref={panelRef}
         className={cn(
           "relative z-10 w-full max-w-lg rounded-lg border border-gray-200 bg-white shadow-xl",
           "dark:border-gray-800 dark:bg-gray-900",
@@ -137,6 +158,7 @@ export function ModalContent({ className, children, ...props }: ModalContentProp
             : "translate-y-4 scale-95 opacity-0",
           className
         )}
+        tabIndex={-1}
         {...props}
       >
         <button
@@ -146,7 +168,7 @@ export function ModalContent({ className, children, ...props }: ModalContentProp
             "text-gray-500 hover:text-gray-900",
             "dark:text-gray-400 dark:hover:text-gray-100",
             "transition-colors duration-150",
-            "focus:outline-none focus:ring-2 focus:ring-blue-500"
+            "focus-brand-ring"
           )}
           aria-label="Close"
         >

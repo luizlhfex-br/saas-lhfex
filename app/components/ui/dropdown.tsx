@@ -48,14 +48,27 @@ export interface DropdownTriggerProps {
 export function DropdownTrigger({ children }: DropdownTriggerProps) {
   const { open, setOpen, triggerRef } = useDropdown();
 
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      setOpen(!open);
+    }
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setOpen(true);
+    }
+  };
+
   return (
     <div
       ref={triggerRef}
       onClick={() => setOpen(!open)}
+      onKeyDown={handleKeyDown}
       role="button"
       tabIndex={0}
       aria-expanded={open}
       aria-haspopup="menu"
+      className="focus-brand-ring"
     >
       {children}
     </div>
@@ -75,6 +88,15 @@ export function DropdownContent({
 }: DropdownContentProps) {
   const { open, setOpen } = useDropdown();
   const contentRef = useRef<HTMLDivElement>(null);
+
+  const getMenuItems = useCallback(() => {
+    if (!contentRef.current) return [] as HTMLElement[];
+    return Array.from(
+      contentRef.current.querySelectorAll<HTMLElement>(
+        '[role="menuitem"]:not([aria-disabled="true"])'
+      )
+    );
+  }, []);
 
   const handleClickOutside = useCallback(
     (e: globalThis.MouseEvent) => {
@@ -96,6 +118,13 @@ export function DropdownContent({
 
   useEffect(() => {
     if (!open) return;
+    requestAnimationFrame(() => {
+      getMenuItems()[0]?.focus();
+    });
+  }, [open, getMenuItems]);
+
+  useEffect(() => {
+    if (!open) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
@@ -105,10 +134,41 @@ export function DropdownContent({
 
   if (!open) return null;
 
+  const handleMenuKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const items = getMenuItems();
+    if (!items.length) return;
+
+    const currentIndex = items.findIndex((item) => item === document.activeElement);
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      const nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % items.length;
+      items[nextIndex]?.focus();
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      const nextIndex = currentIndex < 0 ? items.length - 1 : (currentIndex - 1 + items.length) % items.length;
+      items[nextIndex]?.focus();
+    }
+
+    if (event.key === "Home") {
+      event.preventDefault();
+      items[0]?.focus();
+    }
+
+    if (event.key === "End") {
+      event.preventDefault();
+      items[items.length - 1]?.focus();
+    }
+  };
+
   return (
     <div
       ref={contentRef}
       role="menu"
+      tabIndex={-1}
+      onKeyDown={handleMenuKeyDown}
       className={cn(
         "absolute z-50 mt-1 min-w-[8rem] overflow-hidden rounded-md border border-gray-200 bg-white p-1 shadow-lg",
         "dark:border-gray-800 dark:bg-gray-900",
@@ -143,20 +203,36 @@ export function DropdownItem({
     setOpen(false);
   };
 
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (disabled) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      const syntheticEvent = {
+        ...event,
+        currentTarget: event.currentTarget,
+        target: event.target,
+      } as unknown as MouseEvent<HTMLDivElement>;
+      onClick?.(syntheticEvent);
+      setOpen(false);
+    }
+  };
+
   return (
     <div
       role="menuitem"
       tabIndex={disabled ? -1 : 0}
+      aria-disabled={disabled || undefined}
       className={cn(
         "flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm",
         "text-gray-900 dark:text-gray-100",
         "transition-colors duration-150",
         disabled
           ? "pointer-events-none opacity-50"
-          : "hover:bg-gray-100 dark:hover:bg-gray-800",
+          : "focus-brand-ring hover:bg-gray-100 dark:hover:bg-gray-800",
         className
       )}
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
       {...props}
     >
       {children}

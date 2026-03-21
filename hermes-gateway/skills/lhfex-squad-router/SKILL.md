@@ -5,7 +5,7 @@ version: 1.1.0
 metadata:
   hermes:
     tags: [lhfex, squad, delegation, multi-agent]
-    related_skills: [lhfex-saas, lhfex-comex-expert, lhfex-licitacoes, lhfex-promocoes, musa-literaria]
+    related_skills: [lhfex-saas, lhfex-comex-expert, lhfex-licitacoes, lhfex-promocoes, lhfex-frontend-design, musa-literaria]
 ---
 
 # LHFEX Squad Router
@@ -96,7 +96,7 @@ Restricoes:
 - Comex, NCM, DI, DUIMP, drawback, Incoterms: IAna
 - Custos, cambio, PTAX, leitura executiva: marIA
 - VPS, Docker, logs, deploy, runtime: IAgo
-- Marketing, copy, design, SEO: IAra
+- Marketing, copy, design, redesign frontend, UX, SEO: IAra
 - CRM, follow-up, onboarding, mensagem comercial: SofIA
 - PNCP, edital, habilitacao, proposta tecnica: mAI
 - Promocoes, radios, Instagram, literario: JULia
@@ -118,7 +118,7 @@ Restricoes:
 - Comex, NCM, tributacao, DI, DUIMP: IAna
 - Custos, PTAX, caixa, DRE: marIA
 - VPS, Docker, deploy, Coolify, logs: IAgo
-- Marketing, copy, design, SEO, campanhas: IAra
+- Marketing, copy, design, redesign do SaaS, UX, SEO, campanhas: IAra
 - CRM, follow-up, onboarding, atendimento: SofIA
 - PNCP, edital, habilitacao, proposta tecnica: mAI
 - Promocoes, radios, Instagram e modulo Literario: JULia

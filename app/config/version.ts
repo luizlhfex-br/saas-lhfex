@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.41";
+export const APP_VERSION = "2.9.42";
 export const APP_RELEASE_DATE = "2026-03-20";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.42",
+    date: "2026-03-20",
+    title: "Parte 20 aplicada com base visual e IAra turbinada",
+    items: [
+      { type: "feature", text: "Frontend: nova base de design tokens em app/styles/tokens.css com foco unificado, tokens semanticos e componentes de superficie" },
+      { type: "fix", text: "UI compartilhada: button, input, modal e dropdown passaram a usar foco padronizado e melhor suporte de teclado" },
+      { type: "feature", text: "Hermes Gateway: IAra ganhou a skill local lhfex-frontend-design para redesign, UX, design system e frontend operacional" },
+      { type: "improvement", text: "Docs: novo plano docs/FRONTEND-REDESIGN-PLAN.md organiza o redesign completo do SaaS por fases, camadas e modulos" },
+    ],
+  },
   {
     version: "2.9.41",
     date: "2026-03-20",
