@@ -531,7 +531,7 @@ export default function ProcessesDetailPage({ loaderData, actionData }: Route.Co
         </Card>
 
         <Card title="Calculadora do embarque" icon={<Calculator className="h-5 w-5" />}>
-          <p className="text-sm text-gray-600 dark:text-gray-300">
+          <p className="text-sm text-[var(--app-muted)]">
             Abra a calculadora já com o contexto deste processo. Você escolhe o modal de frete e segue com a estimativa sem sair daqui.
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
@@ -552,7 +552,7 @@ export default function ProcessesDetailPage({ loaderData, actionData }: Route.Co
               </Link>
             ))}
           </div>
-          <p className="text-xs text-gray-400 dark:text-gray-500">
+          <p className="text-xs text-[var(--app-muted)]">
             Pré-carrega NCM/HS, valor e moeda do processo. A modalidade de frete é escolhida no atalho.
           </p>
         </Card>
@@ -560,19 +560,19 @@ export default function ProcessesDetailPage({ loaderData, actionData }: Route.Co
         {/* Timeline */}
         <Card title={i18n.processes.timeline} icon={<Clock className="h-5 w-5" />}>
           {timeline.length === 0 ? (
-            <p className="text-sm text-gray-500">Nenhum evento registrado</p>
+            <p className="text-sm text-[var(--app-muted)]">Nenhum evento registrado</p>
           ) : (
             <div className="space-y-4">
               {timeline.map((entry) => (
                 <div key={entry.id} className="flex gap-3">
                   <div className="flex flex-col items-center">
-                    <div className="h-3 w-3 rounded-full bg-blue-500" />
-                    <div className="w-px flex-1 bg-gray-200 dark:bg-gray-700" />
+                    <div className="h-3 w-3 rounded-full bg-cyan-500" />
+                    <div className="w-px flex-1 bg-[var(--app-border)]" />
                   </div>
                   <div className="pb-4">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{entry.title}</p>
-                    {entry.description && <p className="text-xs text-gray-500 dark:text-gray-400">{entry.description}</p>}
-                    <p className="text-xs text-gray-400 dark:text-gray-500">{new Date(entry.createdAt).toLocaleString("pt-BR")}</p>
+                    <p className="text-sm font-medium text-[var(--app-text)]">{entry.title}</p>
+                    {entry.description && <p className="text-xs text-[var(--app-muted)]">{entry.description}</p>}
+                    <p className="text-xs text-[var(--app-muted)]">{new Date(entry.createdAt).toLocaleString("pt-BR")}</p>
                   </div>
                 </div>
               ))}
@@ -582,21 +582,21 @@ export default function ProcessesDetailPage({ loaderData, actionData }: Route.Co
       </div>
 
       {/* Documents Section */}
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+      <div className="rounded-[28px] border border-[var(--app-border)] bg-[linear-gradient(180deg,var(--app-surface),var(--app-surface-2))] p-6 shadow-[var(--app-card-shadow)]">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Upload className="h-5 w-5 text-gray-500" />
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{i18n.processes.documents}</h3>
-            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400">{documents.length}</span>
+            <Upload className="h-5 w-5 text-cyan-700 dark:text-cyan-200" />
+            <h3 className="font-semibold text-[var(--app-text)]">{i18n.processes.documents}</h3>
+            <span className="rounded-full border border-[var(--app-border)] bg-[var(--app-surface)] px-2 py-0.5 text-xs font-medium text-[var(--app-muted)]">{documents.length}</span>
           </div>
         </div>
 
         {/* Upload Form */}
-        <Form method="post" encType="multipart/form-data" className="mb-4 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
+        <Form method="post" encType="multipart/form-data" className="mb-4 rounded-[24px] border border-dashed border-[var(--app-border)] bg-[var(--app-surface)] p-4">
           <input type="hidden" name="intent" value="upload" />
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="flex-1">
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{i18n.documents.upload}</label>
+              <label className="mb-1.5 block text-sm font-medium text-[var(--app-text)]">{i18n.documents.upload}</label>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -604,13 +604,13 @@ export default function ProcessesDetailPage({ loaderData, actionData }: Route.Co
                 required
                 accept=".pdf,.jpg,.jpeg,.png,.webp,.xlsx,.xls,.docx,.doc,.csv"
                 onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
-                className="block w-full text-sm text-gray-500 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-blue-700 hover:file:bg-blue-100 dark:text-gray-400 dark:file:bg-blue-900/30 dark:file:text-blue-400"
+                className="block w-full text-sm text-[var(--app-muted)] file:mr-4 file:rounded-[18px] file:border-0 file:bg-cyan-500/12 file:px-4 file:py-2 file:text-sm file:font-medium file:text-cyan-700 hover:file:bg-cyan-500/18 dark:file:text-cyan-200"
               />
-              <p className="mt-1 text-xs text-gray-400">{i18n.documents.maxSize} • {i18n.documents.allowedTypes}</p>
+              <p className="mt-1 text-xs text-[var(--app-muted)]">{i18n.documents.maxSize} • {i18n.documents.allowedTypes}</p>
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{i18n.documents.type}</label>
-              <select name="docType" className="block rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
+              <label className="mb-1.5 block text-sm font-medium text-[var(--app-text)]">{i18n.documents.type}</label>
+              <select name="docType" className="block h-11 rounded-[18px] border border-[var(--app-border)] bg-[var(--app-surface)] px-4 text-sm text-[var(--app-text)] outline-none transition focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/10">
                 <option value="invoice">{i18n.documents.invoice}</option>
                 <option value="packing_list">{i18n.documents.packingList}</option>
                 <option value="bl">{i18n.documents.bl}</option>
@@ -640,23 +640,23 @@ export default function ProcessesDetailPage({ loaderData, actionData }: Route.Co
 
         {/* Document List */}
         {documents.length === 0 ? (
-          <p className="text-center text-sm text-gray-500 py-4">{i18n.documents.noDocuments}</p>
+          <p className="py-4 text-center text-sm text-[var(--app-muted)]">{i18n.documents.noDocuments}</p>
         ) : (
-          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+          <div className="divide-y divide-[var(--app-border)]">
             {documents.map((doc) => (
               <div key={doc.id} className="flex items-center justify-between py-3">
                 <div className="flex items-center gap-3">
                   {getFileIcon(doc.name)}
                   <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{doc.name}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <p className="text-sm font-medium text-[var(--app-text)]">{doc.name}</p>
+                    <p className="text-xs text-[var(--app-muted)]">
                       {docTypeLabels[doc.type || "other"] || doc.type} • {formatFileSize(doc.fileSize || 0)} • {new Date(doc.createdAt).toLocaleDateString("pt-BR")}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <a href={`/api/document/${doc.id}/download`} target="_blank" rel="noopener noreferrer"
-                    className="rounded-lg p-2 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20">
+                    className="rounded-[16px] p-2 text-cyan-700 transition hover:bg-cyan-500/10 dark:text-cyan-200">
                     <Download className="h-4 w-4" />
                   </a>
                   <Form method="post" onSubmit={(e) => { if (!confirm(i18n.documents.deleteConfirm)) e.preventDefault(); }}>
@@ -674,9 +674,9 @@ export default function ProcessesDetailPage({ loaderData, actionData }: Route.Co
       </div>
 
       {proc.notes && (
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <h3 className="mb-2 font-semibold text-gray-900 dark:text-gray-100">Observações</h3>
-          <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{proc.notes}</p>
+        <div className="rounded-[28px] border border-[var(--app-border)] bg-[linear-gradient(180deg,var(--app-surface),var(--app-surface-2))] p-6 shadow-[var(--app-card-shadow)]">
+          <h3 className="mb-2 font-semibold text-[var(--app-text)]">Observações</h3>
+          <p className="whitespace-pre-wrap text-sm text-[var(--app-text)]">{proc.notes}</p>
         </div>
       )}
     </div>

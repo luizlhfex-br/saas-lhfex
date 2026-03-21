@@ -29,6 +29,17 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-21",
+    version: "2.9.46",
+    type: "release",
+    title: "Estabilizacao do redesign operacional e liberacao da pipeline",
+    items: [
+      "CRM: o E2E passou a submeter o formulario novo de forma escopada, removendo a ambiguidade do novo hero com acao de salvar",
+      "Processos e Financeiro: carregamento de clientes e sequencia da nova fatura voltaram a respeitar companyId",
+      "Detalhes e formularios operacionais receberam uma passada extra de consistencia visual nos blocos de custos, documentos e resumo financeiro",
+    ],
+  },
+  {
+    date: "2026-03-21",
     version: "2.9.45",
     type: "release",
     title: "Redesign operacional dos fluxos de detalhe e formularios",

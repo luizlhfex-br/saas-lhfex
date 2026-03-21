@@ -283,16 +283,16 @@ export default function FinancialDetailPage({ loaderData }: Route.ComponentProps
         >
           <div className="space-y-3">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600 dark:text-gray-400">{i18n.financial.subtotal}</span>
-              <span className="font-medium text-gray-900 dark:text-gray-100">R$ {fmt(parseFloat(invoice.subtotal))}</span>
+              <span className="text-[var(--app-muted)]">{i18n.financial.subtotal}</span>
+              <span className="font-medium text-[var(--app-text)]">R$ {fmt(parseFloat(invoice.subtotal))}</span>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600 dark:text-gray-400">{i18n.financial.taxes}</span>
-              <span className="font-medium text-gray-900 dark:text-gray-100">R$ {fmt(parseFloat(invoice.taxes || "0"))}</span>
+              <span className="text-[var(--app-muted)]">{i18n.financial.taxes}</span>
+              <span className="font-medium text-[var(--app-text)]">R$ {fmt(parseFloat(invoice.taxes || "0"))}</span>
             </div>
-            <div className="border-t border-gray-200 pt-3 dark:border-gray-700">
+            <div className="border-t border-[var(--app-border)] pt-3">
               <div className="flex items-center justify-between">
-                <span className="text-lg font-semibold text-gray-900 dark:text-gray-100">{i18n.financial.total}</span>
+                <span className="text-lg font-semibold text-[var(--app-text)]">{i18n.financial.total}</span>
                 <span className="text-2xl font-bold text-green-600 dark:text-green-400">R$ {fmt(parseFloat(invoice.total))}</span>
               </div>
             </div>
@@ -314,22 +314,22 @@ export default function FinancialDetailPage({ loaderData }: Route.ComponentProps
           description="Itens que compoem a fatura e o valor total."
         >
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
+            <table className="min-w-full divide-y divide-[var(--app-border)]">
               <thead>
                 <tr>
-                  <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">{i18n.financial.itemDescription}</th>
-                  <th className="px-4 py-2 text-center text-xs font-semibold uppercase text-gray-500">{i18n.financial.quantity}</th>
-                  <th className="px-4 py-2 text-right text-xs font-semibold uppercase text-gray-500">{i18n.financial.unitPrice}</th>
-                  <th className="px-4 py-2 text-right text-xs font-semibold uppercase text-gray-500">{i18n.financial.total}</th>
+                  <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-[0.16em] text-[var(--app-muted)]">{i18n.financial.itemDescription}</th>
+                  <th className="px-4 py-2 text-center text-xs font-semibold uppercase tracking-[0.16em] text-[var(--app-muted)]">{i18n.financial.quantity}</th>
+                  <th className="px-4 py-2 text-right text-xs font-semibold uppercase tracking-[0.16em] text-[var(--app-muted)]">{i18n.financial.unitPrice}</th>
+                  <th className="px-4 py-2 text-right text-xs font-semibold uppercase tracking-[0.16em] text-[var(--app-muted)]">{i18n.financial.total}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+              <tbody className="divide-y divide-[var(--app-border)]">
                 {items.map((item) => (
                   <tr key={item.id}>
-                    <td className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{item.description}</td>
-                    <td className="px-4 py-2 text-center text-sm text-gray-600 dark:text-gray-400">{item.quantity}</td>
-                    <td className="px-4 py-2 text-right text-sm text-gray-600 dark:text-gray-400">R$ {fmt(parseFloat(item.unitPrice))}</td>
-                    <td className="px-4 py-2 text-right text-sm font-medium text-gray-900 dark:text-gray-100">R$ {fmt(parseFloat(item.total))}</td>
+                    <td className="px-4 py-2 text-sm text-[var(--app-text)]">{item.description}</td>
+                    <td className="px-4 py-2 text-center text-sm text-[var(--app-muted)]">{item.quantity}</td>
+                    <td className="px-4 py-2 text-right text-sm text-[var(--app-muted)]">R$ {fmt(parseFloat(item.unitPrice))}</td>
+                    <td className="px-4 py-2 text-right text-sm font-medium text-[var(--app-text)]">R$ {fmt(parseFloat(item.total))}</td>
                   </tr>
                 ))}
               </tbody>

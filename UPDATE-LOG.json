@@ -1,14 +1,14 @@
 {
   "release": {
-    "version": "v2.9.45",
+    "version": "v2.9.46",
     "date": "2026-03-21T00:00:00Z",
-    "type": "feature",
-    "title": "Redesign operacional dos fluxos de detalhe e formularios"
+    "type": "fix",
+    "title": "Estabilizacao do redesign operacional e liberacao da pipeline"
   },
   "summary": {
     "commits": 1,
     "filesCreated": 1,
-    "filesModified": 8,
+    "filesModified": 9,
     "routesAdded": 0,
     "openclaw_changes": 0,
     "coolify_env_vars_added": 0
@@ -40,6 +40,32 @@
     "verification": [
       "npx tsc --noEmit passou sem erros",
       "npm run build passou sem erros"
+    ]
+  },
+  "session_2026_03_21_redesign_stabilization": {
+    "date": "2026-03-21",
+    "release_version": "2.9.46",
+    "objective": "Liberar a pipeline apos o redesign, corrigindo o E2E do CRM, reforcando companyId nos fluxos operacionais e alinhando trechos visuais restantes",
+    "files_changed": [
+      "app/routes/financial-detail.tsx",
+      "app/routes/financial-new.tsx",
+      "app/routes/processes-detail.tsx",
+      "app/routes/processes-edit.tsx",
+      "app/routes/processes-new.tsx",
+      "tests/e2e/crm.spec.ts",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "O teste E2E do CRM passou a clicar no botao Salvar dentro do formulario, eliminando a colisao com a acao secundaria do hero",
+      "Os fluxos de nova fatura e novo processo voltaram a filtrar clientes por companyId, e a sequencia da fatura passou a considerar apenas registros da empresa ativa",
+      "Telas operacionais de Processos e Financeiro receberam uma passada de consistencia visual nos campos, resumos e blocos documentais"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros",
+      "npx playwright test tests/e2e/crm.spec.ts --workers=1 reproduziu bloqueio de login local fora do setup seedado do workflow; validacao final fica com a GitHub Actions"
     ]
   },
   "session_2026_03_21_ci_fix_crm_selectors": {

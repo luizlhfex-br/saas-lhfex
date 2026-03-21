@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.45";
+export const APP_VERSION = "2.9.46";
 export const APP_RELEASE_DATE = "2026-03-21";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,16 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.46",
+    date: "2026-03-21",
+    title: "Estabilizacao do redesign operacional e liberacao da pipeline",
+    items: [
+      { type: "fix", text: "CRM: o E2E passou a submeter o formulario novo de forma escopada, removendo a ambiguidade criada pelo hero com botao de salvar" },
+      { type: "fix", text: "Processos e Financeiro: telas de criacao e edicao voltaram a respeitar companyId no carregamento de clientes e na numeracao operacional da nova fatura" },
+      { type: "improvement", text: "UI operacional: formularios e blocos documentais receberam mais consistencia com os tokens do novo design system" },
+    ],
+  },
   {
     version: "2.9.45",
     date: "2026-03-21",

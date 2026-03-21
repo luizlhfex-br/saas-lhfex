@@ -33,7 +33,7 @@ test.describe("CRM Flow", () => {
   test("should show validation errors on empty form", async ({ page }) => {
     await page.goto("/crm/new");
     
-    await page.getByRole("button", { name: /salvar|save/i }).click();
+    await page.locator("#crm-new-form").getByRole("button", { name: /salvar|save/i }).click();
     
     // Should stay on form and show errors
     await expect(page).toHaveURL(/\/crm\/new$/);

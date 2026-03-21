@@ -245,6 +245,9 @@ export default function ProcessesEditPage({ loaderData }: Route.ComponentProps) 
   const fields = actionData?.fields || {};
   const val = (name: string) => fields[name] ?? (proc as Record<string, unknown>)[name] ?? "";
   const fmtDate = (d: any) => d ? new Date(d).toISOString().split("T")[0] : "";
+  const labelClassName = "mb-1.5 block text-sm font-medium text-[var(--app-text)]";
+  const fieldClassName = "block h-12 w-full rounded-[18px] border border-[var(--app-border)] bg-[var(--app-surface)] px-4 text-sm text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-muted)] focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/10";
+  const textareaClassName = "block min-h-[112px] w-full rounded-[22px] border border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-3 text-sm text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-muted)] focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/10";
 
   return (
     <div className="space-y-6">
@@ -307,8 +310,8 @@ export default function ProcessesEditPage({ loaderData }: Route.ComponentProps) 
             <Inp label={i18n.processes.incoterm} name="incoterm" value={val("incoterm")} />
             <Inp label={i18n.processes.hsCode} name="hsCode" value={val("hsCode")} />
             <div className="sm:col-span-2">
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{i18n.processes.description}</label>
-              <textarea name="description" rows={2} defaultValue={val("description")} className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
+              <label className={labelClassName}>{i18n.processes.description}</label>
+              <textarea name="description" rows={2} defaultValue={val("description")} className={textareaClassName} />
             </div>
           </div>
         </Sec>
@@ -338,19 +341,19 @@ export default function ProcessesEditPage({ loaderData }: Route.ComponentProps) 
         <Sec title="Google Drive">
           <div className="flex items-end gap-2">
             <div className="flex-1">
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Link da Pasta no Google Drive</label>
-              <input type="url" name="googleDriveUrl" placeholder="https://drive.google.com/drive/folders/..." defaultValue={val("googleDriveUrl")} className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500" />
+              <label className={labelClassName}>Link da Pasta no Google Drive</label>
+              <input type="url" name="googleDriveUrl" placeholder="https://drive.google.com/drive/folders/..." defaultValue={val("googleDriveUrl")} className={fieldClassName} />
             </div>
             {val("googleDriveUrl") && (
-              <a href={String(val("googleDriveUrl"))} target="_blank" rel="noopener noreferrer" className="shrink-0 rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-blue-600 hover:bg-blue-50 dark:border-gray-700 dark:text-blue-400 dark:hover:bg-gray-800">
+              <a href={String(val("googleDriveUrl"))} target="_blank" rel="noopener noreferrer" className="shrink-0 rounded-[18px] border border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-3 text-sm text-cyan-700 transition hover:bg-cyan-500/10 dark:text-cyan-200">
                 Abrir ↗
               </a>
             )}
           </div>
-          <p className="mt-1 text-xs text-gray-400">Cole o link da pasta do Google Drive onde os documentos do processo estão salvos</p>
+          <p className="mt-2 text-xs text-[var(--app-muted)]">Cole o link da pasta do Google Drive onde os documentos do processo estão salvos</p>
         </Sec>
         <Sec title="Observações">
-          <textarea name="notes" rows={3} defaultValue={val("notes")} className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
+          <textarea name="notes" rows={3} defaultValue={val("notes")} className={textareaClassName} />
         </Sec>
         <Sec title="Custos por Processo">
           <label className="flex cursor-pointer items-start gap-3">
@@ -359,11 +362,11 @@ export default function ProcessesEditPage({ loaderData }: Route.ComponentProps) 
               name="costControlEnabled"
               value="true"
               defaultChecked={Boolean(proc.costControlEnabled)}
-              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="mt-0.5 h-4 w-4 rounded border-[var(--app-border)] bg-[var(--app-surface)] text-cyan-500 focus:ring-cyan-500/20"
             />
             <div>
-              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Controle de custos ativo</span>
-              <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Quando ativo, mantenha custo estimado, custo real e observações.</p>
+              <span className="text-sm font-medium text-[var(--app-text)]">Controle de custos ativo</span>
+              <p className="mt-0.5 text-xs text-[var(--app-muted)]">Quando ativo, mantenha custo estimado, custo real e observações.</p>
             </div>
           </label>
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -371,8 +374,8 @@ export default function ProcessesEditPage({ loaderData }: Route.ComponentProps) 
             <Inp label="Custo Real" name="actualCost" type="number" value={val("actualCost")} />
           </div>
           <div className="mt-4">
-            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Observações de custos</label>
-            <textarea name="costNotes" rows={3} defaultValue={val("costNotes")} className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
+            <label className={labelClassName}>Observações de custos</label>
+            <textarea name="costNotes" rows={3} defaultValue={val("costNotes")} className={textareaClassName} />
           </div>
         </Sec>
         <div className="flex items-center justify-end gap-3">

@@ -16,6 +16,7 @@ import { syncProcessEmbedding } from "~/lib/embedding-sync.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
+  const companyId = await getPrimaryCompanyId(user.id);
   const { csrfToken, csrfCookieHeader } = await getCSRFFormState(request);
   const cookieHeader = request.headers.get("cookie") || "";
   const localeMatch = cookieHeader.match(/locale=([^;]+)/);
@@ -24,7 +25,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const clientList = await db
     .select({ id: clients.id, razaoSocial: clients.razaoSocial, nomeFantasia: clients.nomeFantasia })
     .from(clients)
-    .where(isNull(clients.deletedAt))
+    .where(and(eq(clients.companyId, companyId), isNull(clients.deletedAt)))
     .orderBy(clients.razaoSocial);
 
   return data(
@@ -234,6 +235,9 @@ export default function ProcessesNewPage({ loaderData }: Route.ComponentProps) {
   const errors = actionData && "errors" in actionData ? actionData.errors : {};
   const fields = actionData && "fields" in actionData ? actionData.fields : {};
   const genericError = actionData && "error" in actionData ? actionData.error : null;
+  const labelClassName = "mb-1.5 block text-sm font-medium text-[var(--app-text)]";
+  const fieldClassName = "block h-12 w-full rounded-[18px] border border-[var(--app-border)] bg-[var(--app-surface)] px-4 text-sm text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-muted)] focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/10";
+  const textareaClassName = "block min-h-[112px] w-full rounded-[22px] border border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-3 text-sm text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-muted)] focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/10";
 
   return (
     <div className="space-y-6">
@@ -296,24 +300,24 @@ export default function ProcessesNewPage({ loaderData }: Route.ComponentProps) {
         <Section title="Dados Gerais">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{i18n.processes.type}</label>
-              <select name="processType" defaultValue={fields.processType || "import"} className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
+              <label className={labelClassName}>{i18n.processes.type}</label>
+              <select name="processType" defaultValue={fields.processType || "import"} className={fieldClassName}>
                 <option value="import">{i18n.processes.import}</option>
                 <option value="export">{i18n.processes.export}</option>
                 <option value="services">{i18n.processes.services}</option>
               </select>
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Referência</label>
-              <select name="referenceModal" defaultValue={fields.referenceModal || "sea"} className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
+              <label className={labelClassName}>Referência</label>
+              <select name="referenceModal" defaultValue={fields.referenceModal || "sea"} className={fieldClassName}>
                 <option value="air">Aéreo (A)</option>
                 <option value="sea">Marítimo (M)</option>
                 <option value="other">Outro (C)</option>
               </select>
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{i18n.processes.client} <span className="text-red-500">*</span></label>
-              <select name="clientId" defaultValue={fields.clientId} className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
+              <label className={labelClassName}>{i18n.processes.client} <span className="text-red-500">*</span></label>
+              <select name="clientId" defaultValue={fields.clientId} className={fieldClassName}>
                 <option value="">Selecione...</option>
                 {clientList.map((c) => <option key={c.id} value={c.id}>{c.nomeFantasia || c.razaoSocial}</option>)}
               </select>
@@ -322,8 +326,8 @@ export default function ProcessesNewPage({ loaderData }: Route.ComponentProps) {
             <InputField label={i18n.processes.incoterm} name="incoterm" placeholder="FOB, CIF, EXW" defaultValue={fields.incoterm} />
             <InputField label={i18n.processes.hsCode} name="hsCode" placeholder="8471.30.12" defaultValue={fields.hsCode} className="sm:col-span-2 lg:col-span-1" />
             <div className="sm:col-span-2 lg:col-span-2">
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{i18n.processes.description}</label>
-              <textarea name="description" rows={2} defaultValue={fields.description} className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
+              <label className={labelClassName}>{i18n.processes.description}</label>
+              <textarea name="description" rows={2} defaultValue={fields.description} className={textareaClassName} />
             </div>
           </div>
         </Section>
@@ -355,17 +359,17 @@ export default function ProcessesNewPage({ loaderData }: Route.ComponentProps) {
         <Section title="Google Drive">
           <div className="flex items-end gap-2">
             <div className="flex-1">
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Link da Pasta no Google Drive</label>
+              <label className={labelClassName}>Link da Pasta no Google Drive</label>
               <input
                 type="url"
                 name="googleDriveUrl"
                 placeholder="https://drive.google.com/drive/folders/..."
                 defaultValue={fields.googleDriveUrl}
-                className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
+                className={fieldClassName}
               />
             </div>
           </div>
-          <p className="mt-1 text-xs text-gray-400">Cole o link da pasta do Google Drive onde os documentos do processo estão salvos</p>
+          <p className="mt-2 text-xs text-[var(--app-muted)]">Cole o link da pasta do Google Drive onde os documentos do processo estão salvos</p>
         </Section>
 
         <Section title="Custos por Processo">
@@ -375,11 +379,11 @@ export default function ProcessesNewPage({ loaderData }: Route.ComponentProps) {
               name="costControlEnabled"
               value="true"
               defaultChecked={fields.costControlEnabled === "true"}
-              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="mt-0.5 h-4 w-4 rounded border-[var(--app-border)] bg-[var(--app-surface)] text-cyan-500 focus:ring-cyan-500/20"
             />
             <div>
-              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Habilitar controle de custos neste processo</span>
-              <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Permite registrar custo estimado, custo real e observações financeiras.</p>
+              <span className="text-sm font-medium text-[var(--app-text)]">Habilitar controle de custos neste processo</span>
+              <p className="mt-0.5 text-xs text-[var(--app-muted)]">Permite registrar custo estimado, custo real e observações financeiras.</p>
             </div>
           </label>
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -387,13 +391,13 @@ export default function ProcessesNewPage({ loaderData }: Route.ComponentProps) {
             <InputField label="Custo Real" name="actualCost" type="number" placeholder="0.00" defaultValue={fields.actualCost} />
           </div>
           <div className="mt-4">
-            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Observações de custos</label>
-            <textarea name="costNotes" rows={3} defaultValue={fields.costNotes} className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
+            <label className={labelClassName}>Observações de custos</label>
+            <textarea name="costNotes" rows={3} defaultValue={fields.costNotes} className={textareaClassName} />
           </div>
         </Section>
 
         <Section title="Observações">
-          <textarea name="notes" rows={3} defaultValue={fields.notes} className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
+          <textarea name="notes" rows={3} defaultValue={fields.notes} className={textareaClassName} />
         </Section>
 
         <div className="flex items-center justify-end gap-3">
