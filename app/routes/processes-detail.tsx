@@ -5,22 +5,16 @@ import { getPrimaryCompanyId } from "~/lib/company-context.server";
 import { db } from "~/lib/db.server";
 import { processes, clients, processTimeline, processDocuments } from "../../drizzle/schema";
 import { t, type Locale } from "~/i18n";
-import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
+import { OperationalHero, OperationalPanel, OperationalStat } from "~/components/ui/operational-page";
 import { ArrowLeft, Edit, Clock, FileText, Ship, DollarSign, Upload, Download, Trash2, File, Image, FileSpreadsheet, Sparkles, CheckCircle, XCircle, ShieldAlert, LoaderCircle, Calculator } from "lucide-react";
 import { eq, desc, and, isNull } from "drizzle-orm";
 import { uploadFile } from "~/lib/storage.server";
 import { logAudit } from "~/lib/audit.server";
 import { redirect, data } from "react-router";
 import { toast } from "sonner";
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { syncProcessEmbedding } from "~/lib/embedding-sync.server";
-
-const statusColors: Record<string, "default" | "info" | "warning" | "success" | "danger"> = {
-  draft: "default", in_progress: "info", awaiting_docs: "warning", customs_clearance: "warning",
-  in_transit: "info", delivered: "success", completed: "success", cancelled: "danger",
-  pending_approval: "warning",
-};
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
@@ -271,6 +265,7 @@ export default function ProcessesDetailPage({ loaderData, actionData }: Route.Co
   const approvalFetcher = useFetcher();
   const ocrFetcher = useFetcher<{ fields?: Record<string, string>; preview?: string; error?: string }>();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const lastOcrToastRef = useRef<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showCancelForm, setShowCancelForm] = useState(false);
 
@@ -278,15 +273,26 @@ export default function ProcessesDetailPage({ loaderData, actionData }: Route.Co
   const isCancelling = navigation.state === "submitting" && navigation.formData?.get("intent") === "cancel-process";
   const isExtracting = ocrFetcher.state === "submitting";
 
-  // Show OCR result as toast when done
   const ocrData = ocrFetcher.data;
-  if (ocrData?.fields && Object.keys(ocrData.fields).length > 0) {
-    const fieldNames = Object.keys(ocrData.fields).join(", ");
-    toast.success(`IA extraiu: ${fieldNames}`);
-  }
-  if (ocrData?.error) {
-    toast.error(`Erro OCR: ${ocrData.error}`);
-  }
+  useEffect(() => {
+    if (ocrData?.fields && Object.keys(ocrData.fields).length > 0) {
+      const fieldNames = Object.keys(ocrData.fields).join(", ");
+      const signature = `fields:${fieldNames}`;
+      if (lastOcrToastRef.current !== signature) {
+        lastOcrToastRef.current = signature;
+        toast.success(`IA extraiu: ${fieldNames}`);
+      }
+      return;
+    }
+
+    if (ocrData?.error) {
+      const signature = `error:${ocrData.error}`;
+      if (lastOcrToastRef.current !== signature) {
+        lastOcrToastRef.current = signature;
+        toast.error(`Erro OCR: ${ocrData.error}`);
+      }
+    }
+  }, [ocrData]);
 
   const handleOCR = () => {
     if (!selectedFile) return;
@@ -308,11 +314,6 @@ export default function ProcessesDetailPage({ loaderData, actionData }: Route.Co
     : proc.processType === "export" ? i18n.processes.export
     : i18n.processes.services;
 
-  const processTypeBadgeVariant =
-    proc.processType === "import" ? "info"
-    : proc.processType === "export" ? "success"
-    : ("default" as const);
-
   const docTypeLabels: Record<string, string> = {
     invoice: i18n.documents.invoice,
     packing_list: i18n.documents.packingList,
@@ -324,24 +325,64 @@ export default function ProcessesDetailPage({ loaderData, actionData }: Route.Co
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link to="/processes" className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{proc.reference}</h1>
-              <Badge variant={statusColors[proc.status]}>{statusLabels[proc.status]}</Badge>
-              <Badge variant={processTypeBadgeVariant}>{processTypeLabel}</Badge>
+      <OperationalHero
+        eyebrow="Processos"
+        title={proc.reference}
+        description={`${client?.razaoSocial || "Cliente nao vinculado"} · central operacional com status, logistica, custos e documentos do embarque.`}
+        actions={
+          <>
+            <Link
+              to="/processes"
+              className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/10"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Voltar para processos
+            </Link>
+            <div className="flex flex-wrap gap-2">
+              <span className="inline-flex items-center rounded-full border border-white/12 bg-white/8 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-white/90">
+                {statusLabels[proc.status]}
+              </span>
+              <span className="inline-flex items-center rounded-full border border-cyan-300/30 bg-cyan-400/12 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-cyan-100">
+                {processTypeLabel}
+              </span>
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{client?.razaoSocial}</p>
-          </div>
-        </div>
-        <Link to={`/processes/${proc.id}/edit`}>
-          <Button variant="outline"><Edit className="h-4 w-4" />{i18n.common.edit}</Button>
-        </Link>
-      </div>
+            <Link to={`/processes/${proc.id}/edit`}>
+              <Button variant="outline" className="border-white/12 bg-white/6 text-white hover:bg-white/10">
+                <Edit className="h-4 w-4" />
+                {i18n.common.edit}
+              </Button>
+            </Link>
+          </>
+        }
+        aside={
+          <>
+            <OperationalStat
+              label="Status"
+              value={statusLabels[proc.status]}
+              description="Etapa operacional atual."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+            <OperationalStat
+              label="Modal"
+              value={processTypeLabel}
+              description="Tipo de processo em andamento."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+            <OperationalStat
+              label="Valor"
+              value={proc.totalValue ? `${proc.currency || "USD"} ${Number(proc.totalValue).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "-"}
+              description="Valor base informado para o embarque."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+            <OperationalStat
+              label="Documentos"
+              value={String(documents.length)}
+              description="Arquivos vinculados ao processo."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+          </>
+        }
+      />
 
       {proc.status !== "cancelled" && proc.status !== "completed" && (
         <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-900/40 dark:bg-rose-900/20">
@@ -644,8 +685,13 @@ export default function ProcessesDetailPage({ loaderData, actionData }: Route.Co
 
 function Card({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-      <div className="mb-4 flex items-center gap-2 text-gray-500"><span>{icon}</span><h3 className="font-semibold text-gray-900 dark:text-gray-100">{title}</h3></div>
+    <div className="rounded-[28px] border border-[var(--app-border)] bg-[linear-gradient(180deg,var(--app-surface),var(--app-surface-2))] p-6 shadow-[var(--app-card-shadow)]">
+      <div className="mb-4 flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-cyan-400/16 bg-cyan-400/10 text-cyan-700 dark:text-cyan-200">
+          {icon}
+        </div>
+        <h3 className="font-semibold text-[var(--app-text)]">{title}</h3>
+      </div>
       <div className="space-y-2">{children}</div>
     </div>
   );
@@ -653,9 +699,9 @@ function Card({ title, icon, children }: { title: string; icon: React.ReactNode;
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-start justify-between text-sm">
-      <span className="text-gray-500 dark:text-gray-400">{label}</span>
-      <span className="text-right font-medium text-gray-900 dark:text-gray-100">{value}</span>
+    <div className="flex items-start justify-between gap-4 rounded-[18px] border border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-3 text-sm">
+      <span className="text-[var(--app-muted)]">{label}</span>
+      <span className="text-right font-medium text-[var(--app-text)]">{value}</span>
     </div>
   );
 }

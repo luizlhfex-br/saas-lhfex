@@ -7,6 +7,7 @@ import { eq, and, isNull } from "drizzle-orm";
 import { t, type Locale } from "~/i18n";
 import { ArrowLeft, FileText, DollarSign, Printer, Mail, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "~/components/ui/button";
+import { OperationalHero, OperationalPanel, OperationalStat } from "~/components/ui/operational-page";
 import { data } from "react-router";
 import { getPrimaryCompanyId } from "~/lib/company-context.server";
 
@@ -141,14 +142,6 @@ export async function action({ request, params }: Route.ActionArgs) {
 
 const fmt = (v: number) => v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const statusColor: Record<string, string> = {
-  draft: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
-  sent: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  paid: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-  overdue: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-  cancelled: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500",
-};
-
 export default function FinancialDetailPage({ loaderData }: Route.ComponentProps) {
   const { invoice, clientName, clientEmail, items, locale } = loaderData;
   const i18n = t(locale);
@@ -171,61 +164,82 @@ export default function FinancialDetailPage({ loaderData }: Route.ComponentProps
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-4">
-          <Link to="/financial" className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{invoice.number}</h1>
-              <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor[invoice.status] || ""}`}>
-                {statusLabel[invoice.status] || invoice.status}
-              </span>
-            </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{clientName}</p>
-          </div>
-        </div>
-
-        {/* Action buttons */}
-        <div className="flex flex-wrap items-center gap-2">
-          <Link
-            to={`/financial/fatura-print?invoiceId=${invoice.id}`}
-            target="_blank"
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
-          >
-            <Printer className="h-4 w-4" />
-            Visualizar Fatura
-          </Link>
-
-          {invoice.type === "receivable" && invoice.status !== "paid" && invoice.status !== "cancelled" && (
-            <fetcher.Form method="post">
-              <input type="hidden" name="intent" value="send_email" />
-              <Button
-                type="submit"
-                disabled={isSending || !clientEmail}
-                title={!clientEmail ? "Cliente sem e-mail cadastrado" : undefined}
-                className="flex items-center gap-2"
-              >
-                <Mail className="h-4 w-4" />
-                {isSending ? "Enviando..." : "Enviar por Email"}
-              </Button>
-            </fetcher.Form>
-          )}
-
-          {invoice.status === "paid" && (
+      <OperationalHero
+        eyebrow="Financeiro"
+        title={invoice.number}
+        description={`${clientName} · leitura consolidada de cobranca, status, valores e itens da fatura.`}
+        actions={
+          <>
             <Link
-              to={`/financial/receipt?invoiceId=${invoice.id}`}
-              target="_blank"
-              className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700"
+              to="/financial"
+              className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/10"
             >
-              <FileText className="h-4 w-4" />
-              Ver Recibo
+              <ArrowLeft className="h-4 w-4" />
+              Voltar ao financeiro
             </Link>
-          )}
-        </div>
-      </div>
+            <Link
+              to={`/financial/fatura-print?invoiceId=${invoice.id}`}
+              target="_blank"
+              className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/10"
+            >
+              <Printer className="h-4 w-4" />
+              Visualizar fatura
+            </Link>
+            {invoice.type === "receivable" && invoice.status !== "paid" && invoice.status !== "cancelled" && (
+              <fetcher.Form method="post">
+                <input type="hidden" name="intent" value="send_email" />
+                <Button
+                  type="submit"
+                  disabled={isSending || !clientEmail}
+                  title={!clientEmail ? "Cliente sem e-mail cadastrado" : undefined}
+                  className="flex items-center gap-2"
+                >
+                  <Mail className="h-4 w-4" />
+                  {isSending ? "Enviando..." : "Enviar por Email"}
+                </Button>
+              </fetcher.Form>
+            )}
+            {invoice.status === "paid" && (
+              <Link
+                to={`/financial/receipt?invoiceId=${invoice.id}`}
+                target="_blank"
+                className="inline-flex items-center gap-2 rounded-full border border-emerald-300/30 bg-emerald-500/12 px-4 py-2 text-sm font-medium text-emerald-100 transition-colors hover:bg-emerald-500/18"
+              >
+                <FileText className="h-4 w-4" />
+                Ver recibo
+              </Link>
+            )}
+          </>
+        }
+        aside={
+          <>
+            <OperationalStat
+              label="Status"
+              value={statusLabel[invoice.status] || invoice.status}
+              description="Estado atual da fatura."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+            <OperationalStat
+              label="Tipo"
+              value={typeLabel[invoice.type] || invoice.type}
+              description="Conta a receber ou a pagar."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+            <OperationalStat
+              label="Total"
+              value={`${invoice.currency || "BRL"} ${fmt(parseFloat(invoice.total))}`}
+              description="Valor consolidado da fatura."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+            <OperationalStat
+              label="Vencimento"
+              value={invoice.dueDate || "—"}
+              description="Data limite de pagamento."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+          </>
+        }
+      />
 
       {/* Email feedback */}
       {sendResult?.success && (
@@ -243,10 +257,11 @@ export default function FinancialDetailPage({ loaderData }: Route.ComponentProps
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Invoice Info */}
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
-            <FileText className="h-5 w-5 text-blue-600" /> {i18n.financial.invoices}
-          </h2>
+        <OperationalPanel
+          title={i18n.financial.invoices}
+          icon={<FileText className="h-5 w-5" />}
+          description="Metadados, cliente e contexto da cobranca."
+        >
           <div className="space-y-3">
             <InfoRow label={i18n.processes.type} value={typeLabel[invoice.type] || invoice.type} />
             <InfoRow label={i18n.processes.client} value={clientName} />
@@ -258,13 +273,14 @@ export default function FinancialDetailPage({ loaderData }: Route.ComponentProps
             {invoice.description && <InfoRow label={i18n.processes.description} value={invoice.description} />}
             {invoice.notes && <InfoRow label={i18n.crm.notes} value={invoice.notes} />}
           </div>
-        </div>
+        </OperationalPanel>
 
         {/* Financial Summary */}
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
-            <DollarSign className="h-5 w-5 text-green-600" /> {i18n.financial.total}
-          </h2>
+        <OperationalPanel
+          title={i18n.financial.total}
+          icon={<DollarSign className="h-5 w-5" />}
+          description="Resumo de subtotal, impostos e total consolidado."
+        >
           <div className="space-y-3">
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-600 dark:text-gray-400">{i18n.financial.subtotal}</span>
@@ -281,19 +297,22 @@ export default function FinancialDetailPage({ loaderData }: Route.ComponentProps
               </div>
             </div>
             {invoice.paidAmount && (
-              <div className="flex items-center justify-between rounded-lg bg-green-50 p-3 dark:bg-green-900/20">
+              <div className="flex items-center justify-between rounded-[18px] border border-emerald-300/30 bg-emerald-500/10 p-3">
                 <span className="font-medium text-green-700 dark:text-green-400">{i18n.financial.paidAmount}</span>
                 <span className="text-lg font-bold text-green-700 dark:text-green-400">R$ {fmt(parseFloat(invoice.paidAmount))}</span>
               </div>
             )}
           </div>
-        </div>
+        </OperationalPanel>
       </div>
 
       {/* Invoice Items */}
       {items.length > 0 && (
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">{i18n.financial.items}</h2>
+        <OperationalPanel
+          title={i18n.financial.items}
+          icon={<FileText className="h-5 w-5" />}
+          description="Itens que compoem a fatura e o valor total."
+        >
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
               <thead>
@@ -316,7 +335,7 @@ export default function FinancialDetailPage({ loaderData }: Route.ComponentProps
               </tbody>
             </table>
           </div>
-        </div>
+        </OperationalPanel>
       )}
     </div>
   );
@@ -324,9 +343,9 @@ export default function FinancialDetailPage({ loaderData }: Route.ComponentProps
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-start justify-between text-sm">
-      <span className="text-gray-500 dark:text-gray-400">{label}</span>
-      <span className="text-right font-medium text-gray-900 dark:text-gray-100">{value}</span>
+    <div className="flex items-start justify-between gap-4 rounded-[18px] border border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-3 text-sm">
+      <span className="text-[var(--app-muted)]">{label}</span>
+      <span className="text-right font-medium text-[var(--app-text)]">{value}</span>
     </div>
   );
 }

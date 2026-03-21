@@ -29,6 +29,18 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-21",
+    version: "2.9.45",
+    type: "release",
+    title: "Redesign operacional dos fluxos de detalhe e formularios",
+    items: [
+      "CRM: detalhe, novo cliente e edicao passaram a usar hero operacional, paineis de contexto e formularios alinhados ao novo design system",
+      "Processos e Financeiro: fluxos de detalhe e formularios ganharam a mesma linguagem visual da fase 2, aproximando os modulos core da base do futuro v3.0",
+      "UI compartilhada: novo operational-page centraliza hero, estatisticas e paineis reutilizados nas telas operacionais",
+      "Processos: o OCR deixou de disparar toast durante o render e agora notifica apenas quando o resultado muda de fato",
+    ],
+  },
+  {
+    date: "2026-03-21",
     version: "2.9.44",
     type: "release",
     title: "Seletores E2E alinhados ao redesign do CRM",

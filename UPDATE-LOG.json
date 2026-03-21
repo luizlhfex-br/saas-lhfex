@@ -1,17 +1,46 @@
 {
   "release": {
-    "version": "v2.9.44",
+    "version": "v2.9.45",
     "date": "2026-03-21T00:00:00Z",
-    "type": "fix",
-    "title": "Seletores E2E alinhados ao redesign do CRM"
+    "type": "feature",
+    "title": "Redesign operacional dos fluxos de detalhe e formularios"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 0,
-    "filesModified": 4,
+    "filesCreated": 1,
+    "filesModified": 8,
     "routesAdded": 0,
     "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_21_frontend_redesign_phase3": {
+    "date": "2026-03-21",
+    "release_version": "2.9.45",
+    "objective": "Levar o redesign operacional para as telas de detalhe e formularios de CRM, Processos e Financeiro, corrigindo tambem o fluxo de toast do OCR em Processos",
+    "files_changed": [
+      "app/components/ui/operational-page.tsx",
+      "app/routes/crm-detail.tsx",
+      "app/routes/crm-edit.tsx",
+      "app/routes/crm-new.tsx",
+      "app/routes/processes-detail.tsx",
+      "app/routes/processes-edit.tsx",
+      "app/routes/processes-new.tsx",
+      "app/routes/financial-detail.tsx",
+      "app/routes/financial-new.tsx",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "Foi criado um bloco compartilhado operational-page para heros, cards de estatistica e paineis operacionais reutilizaveis",
+      "CRM ganhou redesign real nas telas de detalhe, novo cliente e edicao, com leitura mais forte de empresa, contatos e contexto operacional",
+      "Processos e Financeiro receberam heros operacionais nas telas de detalhe e formularios, aproximando os fluxos principais do visual definido para o futuro v3.0",
+      "O resultado do OCR em processos-detail deixou de disparar toast dentro do render e passou a notificar via useEffect apenas quando a resposta muda"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros"
+    ]
   },
   "session_2026_03_21_ci_fix_crm_selectors": {
     "date": "2026-03-21",

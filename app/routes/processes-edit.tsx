@@ -8,6 +8,7 @@ import { sendProcessStatusUpdate } from "~/lib/email.server";
 import { processSchema } from "~/lib/validators";
 import { t, type Locale } from "~/i18n";
 import { Button } from "~/components/ui/button";
+import { OperationalHero, OperationalStat } from "~/components/ui/operational-page";
 import { ArrowLeft, Save } from "lucide-react";
 import { data } from "react-router";
 import { eq, isNull, and } from "drizzle-orm";
@@ -247,15 +248,56 @@ export default function ProcessesEditPage({ loaderData }: Route.ComponentProps) 
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link to={`/processes/${proc.id}`} className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"><ArrowLeft className="h-5 w-5" /></Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{i18n.processes.editProcess}</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{proc.reference}</p>
-        </div>
-      </div>
+      <OperationalHero
+        eyebrow="Processos"
+        title={i18n.processes.editProcess}
+        description={`${proc.reference} · ajuste dados gerais, logistica, datas, custos e pasta documental do processo.`}
+        actions={
+          <>
+            <Link
+              to={`/processes/${proc.id}`}
+              className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/10"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Voltar ao processo
+            </Link>
+            <Button type="submit" form="process-edit-form" loading={isSubmitting}>
+              <Save className="h-4 w-4" />
+              {i18n.common.save}
+            </Button>
+          </>
+        }
+        aside={
+          <>
+            <OperationalStat
+              label="Referencia"
+              value={proc.reference}
+              description="Identificador operacional."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+            <OperationalStat
+              label="Status"
+              value={String(val("status") || proc.status)}
+              description="Etapa atual do processo."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+            <OperationalStat
+              label="Cliente"
+              value={val("clientId") ? "Vinculado" : "Pendente"}
+              description="Vinculo com a empresa atendida."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+            <OperationalStat
+              label="Custos"
+              value={Boolean(proc.costControlEnabled) ? "Ativo" : "Opcional"}
+              description="Controle de custo do embarque."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+          </>
+        }
+      />
 
-      <Form method="post" className="space-y-8">
+      <Form id="process-edit-form" method="post" className="space-y-8">
         <input type="hidden" name="_oldStatus" value={proc.status} />
         <Sec title="Dados Gerais">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -343,11 +385,43 @@ export default function ProcessesEditPage({ loaderData }: Route.ComponentProps) 
 }
 
 function Sec({ title, children }: { title: string; children: React.ReactNode }) {
-  return (<div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"><h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h2>{children}</div>);
+  return (
+    <div className="rounded-[28px] border border-[var(--app-border)] bg-[linear-gradient(180deg,var(--app-surface),var(--app-surface-2))] p-6 shadow-[var(--app-card-shadow)]">
+      <h2 className="mb-4 text-lg font-semibold text-[var(--app-text)]">{title}</h2>
+      {children}
+    </div>
+  );
 }
 function Inp({ label, name, type = "text", value, placeholder }: { label: string; name: string; type?: string; value?: string; placeholder?: string }) {
-  return (<div><label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label><input type={type} name={name} defaultValue={value} placeholder={placeholder} step={type === "number" ? "any" : undefined} className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" /></div>);
+  return (
+    <div>
+      <label className="mb-1.5 block text-sm font-medium text-[var(--app-text)]">{label}</label>
+      <input
+        type={type}
+        name={name}
+        defaultValue={value}
+        placeholder={placeholder}
+        step={type === "number" ? "any" : undefined}
+        className="block h-12 w-full rounded-[18px] border border-[var(--app-border)] bg-[var(--app-surface)] px-4 text-sm text-[var(--app-text)] outline-none transition focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/10"
+      />
+    </div>
+  );
 }
 function Sel({ label, name, value, options, required }: { label: string; name: string; value?: string; options: [string, string][]; required?: boolean }) {
-  return (<div><label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{label}{required && <span className="text-red-500"> *</span>}</label><select name={name} defaultValue={value} className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">{!required && <option value="">Selecione...</option>}{options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>);
+  return (
+    <div>
+      <label className="mb-1.5 block text-sm font-medium text-[var(--app-text)]">
+        {label}
+        {required && <span className="text-red-500"> *</span>}
+      </label>
+      <select
+        name={name}
+        defaultValue={value}
+        className="block h-12 w-full rounded-[18px] border border-[var(--app-border)] bg-[var(--app-surface)] px-4 text-sm text-[var(--app-text)] outline-none transition focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/10"
+      >
+        {!required && <option value="">Selecione...</option>}
+        {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+      </select>
+    </div>
+  );
 }

@@ -8,7 +8,21 @@ import { clientSchema } from "~/lib/validators";
 import { t, type Locale } from "~/i18n";
 import { getPrimaryCompanyId } from "~/lib/company-context.server";
 import { Button } from "~/components/ui/button";
-import { ArrowLeft, Bot, Loader2, Plus, Save, Star, Trash2 } from "lucide-react";
+import { OperationalHero, OperationalPanel, OperationalStat } from "~/components/ui/operational-page";
+import {
+  ArrowLeft,
+  Bot,
+  Building2,
+  BriefcaseBusiness,
+  FileText,
+  Loader2,
+  MapPin,
+  Plus,
+  Save,
+  Star,
+  Trash2,
+  Users,
+} from "lucide-react";
 import { and, eq, isNull } from "drizzle-orm";
 import { data } from "react-router";
 import { fireTrigger } from "~/lib/automation-engine.server";
@@ -392,57 +406,103 @@ export default function CrmNewPage({ loaderData }: Route.ComponentProps) {
     });
   };
 
+  const primaryContact = contactsDraft.find((contact) => contact.isPrimary);
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link
-          to="/crm"
-          className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{i18n.crm.newClient}</h1>
-        </div>
-      </div>
+      <OperationalHero
+        eyebrow="CRM"
+        title={i18n.crm.newClient}
+        description="Cadastro guiado para abrir carteira com empresa, endereco, classificacao e contatos operacionais sem sair da tela."
+        actions={
+          <>
+            <Link
+              to="/crm"
+              className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/10"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Voltar para CRM
+            </Link>
+            <Button type="submit" form="crm-new-form" loading={isSubmitting}>
+              <Save className="h-4 w-4" />
+              {i18n.common.save}
+            </Button>
+          </>
+        }
+        aside={
+          <>
+            <OperationalStat
+              label={i18n.crm.cnpj}
+              value={fields.cnpj || "Pendente"}
+              description="Documento base para enriquecimento."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+            <OperationalStat
+              label={i18n.crm.contacts}
+              value={String(contactsDraft.length)}
+              description="Rede de contato ativa nesse cadastro."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+            <OperationalStat
+              label="Primario"
+              value={primaryContact?.name || "Definir"}
+              description="Contato que concentra a relacao."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+            <OperationalStat
+              label="Consulta"
+              value={enriched ? "Concluida" : "Manual"}
+              description="Status da consulta por CNPJ."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+          </>
+        }
+      />
 
-      <Form method="post" className="space-y-8">
+      <Form id="crm-new-form" method="post" className="space-y-8">
         <input type="hidden" name="csrf" value={csrfToken} />
         <input type="hidden" name="contactsPayload" value={JSON.stringify(contactsDraft)} />
 
         {errors._form ? (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">
+          <div className="rounded-[22px] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
             {errors._form}
           </div>
         ) : null}
 
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">Identificação da Empresa</h2>
+        <OperationalPanel
+          title="Identificacao da empresa"
+          icon={<Building2 className="h-5 w-5" />}
+          description="Base documental e comercial do cliente. O enriquecimento por CNPJ preenche esse bloco."
+        >
 
-          <div className="mb-4 flex items-end gap-2">
-            <div className="flex-1">
-              <InputField
-                label={i18n.crm.cnpj}
-                name="cnpj"
-                required
-                placeholder="00.000.000/0000-00"
-                error={errors.cnpj}
-                defaultValue={fields.cnpj}
-              />
-            </div>
-            <Button type="button" onClick={handleEnrichCNPJ} disabled={enriching} variant={enriched ? "outline" : "default"}>
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
+            <InputField
+              label={i18n.crm.cnpj}
+              name="cnpj"
+              required
+              placeholder="00.000.000/0000-00"
+              error={errors.cnpj}
+              defaultValue={fields.cnpj}
+            />
+            <Button
+              type="button"
+              onClick={handleEnrichCNPJ}
+              disabled={enriching}
+              variant={enriched ? "outline" : "default"}
+              className="h-12 self-end"
+            >
               {enriching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bot className="h-4 w-4" />}
               {enriched ? "Consultado" : "Consultar CNPJ"}
             </Button>
           </div>
 
           {enriched && (
-            <div className="mb-4 rounded-lg bg-green-50 px-3 py-2 text-xs text-green-700 dark:bg-green-900/20 dark:text-green-400">
+            <div className="rounded-[22px] border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-200">
               ✅ Dados preenchidos pela consulta de CNPJ. Você pode editar antes de salvar.
             </div>
           )}
           {enrichError && (
-            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-300">
+            <div className="rounded-[22px] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
               {enrichError}
             </div>
           )}
@@ -458,11 +518,11 @@ export default function CrmNewPage({ loaderData }: Route.ComponentProps) {
             <InputField label={i18n.crm.nomeFantasia} name="nomeFantasia" error={errors.nomeFantasia} defaultValue={fields.nomeFantasia} />
 
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{i18n.common.status}</label>
+              <label className="mb-1.5 block text-sm font-medium text-[var(--app-text)]">{i18n.common.status}</label>
               <select
                 name="status"
                 defaultValue={fields.status || "active"}
-                className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                className="block h-12 w-full rounded-[18px] border border-[var(--app-border)] bg-[var(--app-surface)] px-4 text-sm text-[var(--app-text)] outline-none transition focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/10"
               >
                 <option value="active">{i18n.common.active}</option>
                 <option value="inactive">{i18n.common.inactive}</option>
@@ -470,10 +530,13 @@ export default function CrmNewPage({ loaderData }: Route.ComponentProps) {
               </select>
             </div>
           </div>
-        </div>
+        </OperationalPanel>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">CNAE Principal</h2>
+        <OperationalPanel
+          title="CNAE principal"
+          icon={<BriefcaseBusiness className="h-5 w-5" />}
+          description="Classificacao economica principal para qualificar a carteira."
+        >
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <InputField
               label={i18n.crm.cnaeCode}
@@ -484,64 +547,72 @@ export default function CrmNewPage({ loaderData }: Route.ComponentProps) {
               defaultValue={fields.cnaeCode}
             />
             <div className="sm:col-span-2">
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{i18n.crm.cnaeDescription}</label>
+              <label className="mb-1.5 block text-sm font-medium text-[var(--app-text)]">{i18n.crm.cnaeDescription}</label>
               <textarea
                 name="cnaeDescription"
                 rows={2}
                 defaultValue={fields.cnaeDescription}
-                className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                className="block w-full rounded-[20px] border border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-3 text-sm text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-muted)] focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/10"
               />
             </div>
           </div>
-        </div>
+        </OperationalPanel>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">Endereço</h2>
+        <OperationalPanel
+          title="Endereco"
+          icon={<MapPin className="h-5 w-5" />}
+          description="Base geografica da empresa para contexto comercial e operacional."
+        >
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <InputField label={i18n.crm.address} name="address" error={errors.address} defaultValue={fields.address} className="lg:col-span-2" />
             <InputField label={i18n.crm.city} name="city" error={errors.city} defaultValue={fields.city} />
             <InputField label={i18n.crm.state} name="state" maxLength={2} placeholder="SP" error={errors.state} defaultValue={fields.state} />
             <InputField label={i18n.crm.zipCode} name="zipCode" placeholder="00000-000" error={errors.zipCode} defaultValue={fields.zipCode} />
           </div>
-        </div>
+        </OperationalPanel>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{i18n.crm.contacts}</h2>
+        <OperationalPanel
+          title={i18n.crm.contacts}
+          icon={<Users className="h-5 w-5" />}
+          description="Pessoas que concentram operacao, fiscal e relacionamento desse cliente."
+          actions={
             <Button type="button" variant="outline" onClick={addContact}>
               <Plus className="h-4 w-4" />
               {i18n.crm.addContact}
             </Button>
-          </div>
-
+          }
+        >
           {errors.contacts && (
-            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-300">
+            <div className="rounded-[22px] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
               {errors.contacts}
             </div>
           )}
 
           <div className="space-y-4">
             {contactsDraft.map((contact, index) => (
-              <div key={contact.id} className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+              <div
+                key={contact.id}
+                className="rounded-[24px] border border-[var(--app-border)] bg-[var(--app-surface)] p-4 shadow-[0_12px_32px_rgba(15,23,42,0.06)]"
+              >
                 <div className="mb-3 flex items-center justify-between">
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Contato {index + 1}</p>
+                  <p className="text-sm font-medium text-[var(--app-text)]">Contato {index + 1}</p>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => markPrimary(contact.id)}
-                      className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium ${
+                      className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold ${
                         contact.isPrimary
-                          ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
-                          : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"
+                          ? "border-amber-300/40 bg-amber-400/12 text-amber-700 dark:text-amber-200"
+                          : "border-[var(--app-border)] bg-[var(--app-surface-2)] text-[var(--app-muted)]"
                       }`}
                     >
-                      <Star className="h-3 w-3" />
+                      <Star className={`h-3 w-3 ${contact.isPrimary ? "fill-current" : ""}`} />
                       {i18n.crm.primaryContact}
                     </button>
                     <button
                       type="button"
                       onClick={() => removeContact(contact.id)}
-                      className="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600 dark:hover:bg-gray-800"
+                      className="rounded-full border border-[var(--app-border)] p-2 text-[var(--app-muted)] transition-colors hover:bg-red-500/10 hover:text-red-600"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -554,44 +625,47 @@ export default function CrmNewPage({ loaderData }: Route.ComponentProps) {
                     placeholder={i18n.crm.contactName}
                     value={contact.name}
                     onChange={(event) => updateContact(contact.id, "name", event.target.value)}
-                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                    className="h-12 rounded-[18px] border border-[var(--app-border)] bg-[var(--app-surface-2)] px-4 text-sm text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-muted)] focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/10"
                   />
                   <input
                     type="text"
                     placeholder={i18n.crm.role}
                     value={contact.role}
                     onChange={(event) => updateContact(contact.id, "role", event.target.value)}
-                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                    className="h-12 rounded-[18px] border border-[var(--app-border)] bg-[var(--app-surface-2)] px-4 text-sm text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-muted)] focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/10"
                   />
                   <input
                     type="email"
                     placeholder={i18n.crm.email}
                     value={contact.email}
                     onChange={(event) => updateContact(contact.id, "email", event.target.value)}
-                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                    className="h-12 rounded-[18px] border border-[var(--app-border)] bg-[var(--app-surface-2)] px-4 text-sm text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-muted)] focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/10"
                   />
                   <input
                     type="tel"
                     placeholder={i18n.crm.phone}
                     value={contact.phone}
                     onChange={(event) => updateContact(contact.id, "phone", event.target.value)}
-                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                    className="h-12 rounded-[18px] border border-[var(--app-border)] bg-[var(--app-surface-2)] px-4 text-sm text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-muted)] focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/10"
                   />
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </OperationalPanel>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">{i18n.crm.notes}</h2>
+        <OperationalPanel
+          title={i18n.crm.notes}
+          icon={<FileText className="h-5 w-5" />}
+          description="Espaco livre para contexto comercial, historico e observacoes."
+        >
           <textarea
             name="notes"
             rows={3}
             defaultValue={fields.notes}
-            className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+            className="block w-full rounded-[20px] border border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-3 text-sm text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-muted)] focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/10"
           />
-        </div>
+        </OperationalPanel>
 
         <div className="flex items-center justify-end gap-3">
           <Link to="/crm">
@@ -630,7 +704,7 @@ function InputField({
 }) {
   return (
     <div className={className}>
-      <label htmlFor={name} className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+      <label htmlFor={name} className="mb-1.5 block text-sm font-medium text-[var(--app-text)]">
         {label}
         {required && <span className="ml-0.5 text-red-500">*</span>}
       </label>
@@ -642,7 +716,7 @@ function InputField({
         placeholder={placeholder}
         maxLength={maxLength}
         defaultValue={defaultValue}
-        className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
+        className="block h-12 w-full rounded-[18px] border border-[var(--app-border)] bg-[var(--app-surface)] px-4 text-sm text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-muted)] focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/10"
       />
       {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
     </div>

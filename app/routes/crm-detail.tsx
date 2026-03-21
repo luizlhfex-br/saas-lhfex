@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, Form, redirect, useNavigation, useSubmit } from "react-router";
+import { useState, type ReactNode } from "react";
+import { Link, redirect, useSubmit } from "react-router";
 import type { Route } from "./+types/crm-detail";
 import { requireAuth } from "~/lib/auth.server";
 import { getPrimaryCompanyId } from "~/lib/company-context.server";
@@ -10,6 +10,7 @@ import { t, type Locale } from "~/i18n";
 import { Button } from "~/components/ui/button";
 import { Breadcrumb } from "~/components/ui/breadcrumb";
 import { ConfirmDialog } from "~/components/ui/confirm-dialog";
+import { OperationalHero, OperationalPanel, OperationalStat } from "~/components/ui/operational-page";
 import { formatCNPJ } from "~/lib/utils";
 import { data } from "react-router";
 import {
@@ -17,6 +18,7 @@ import {
   Edit,
   Trash2,
   Building2,
+  FileText,
   Mail,
   Phone,
   MapPin,
@@ -100,7 +102,6 @@ export async function action({ request, params }: Route.ActionArgs) {
 
 export default function CrmDetailPage({ loaderData }: Route.ComponentProps) {
   const { client, contacts: clientContacts, locale } = loaderData;
-  const navigation = useNavigation();
   const submit = useSubmit();
   const i18n = t(locale);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -132,42 +133,64 @@ export default function CrmDetailPage({ loaderData }: Route.ComponentProps) {
         ]}
       />
 
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-4">
-          <Link
-            to="/crm"
-            className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              {client.razaoSocial}
-            </h1>
-            {client.nomeFantasia && (
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {client.nomeFantasia}
-              </p>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link to={`/crm/${client.id}/edit`}>
-            <Button variant="outline">
-              <Edit className="h-4 w-4" />
-              {i18n.common.edit}
+      <OperationalHero
+        eyebrow="Relacionamento"
+        title={client.razaoSocial}
+        description={
+          client.nomeFantasia
+            ? `${client.nomeFantasia} · carteira ativa com leitura central de empresa, contato e contexto operacional.`
+            : "Carteira ativa com leitura central de empresa, contato e contexto operacional."
+        }
+        actions={
+          <>
+            <Link
+              to="/crm"
+              className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/10"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Voltar para CRM
+            </Link>
+            <Link to={`/crm/${client.id}/edit`}>
+              <Button variant="outline" className="border-white/12 bg-white/6 text-white hover:bg-white/10">
+                <Edit className="h-4 w-4" />
+                {i18n.common.edit}
+              </Button>
+            </Link>
+            <Button variant="danger" onClick={() => setShowDeleteDialog(true)}>
+              <Trash2 className="h-4 w-4" />
+              {i18n.common.delete}
             </Button>
-          </Link>
-          <Button
-            variant="danger"
-            onClick={() => setShowDeleteDialog(true)}
-          >
-            <Trash2 className="h-4 w-4" />
-            {i18n.common.delete}
-          </Button>
-        </div>
-      </div>
+          </>
+        }
+        aside={
+          <>
+            <OperationalStat
+              label={i18n.crm.cnpj}
+              value={formatCNPJ(client.cnpj)}
+              description="Documento principal da empresa."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+            <OperationalStat
+              label={i18n.crm.contacts}
+              value={String(clientContacts.length)}
+              description="Contatos operacionais registrados."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+            <OperationalStat
+              label={i18n.common.status}
+              value={statusBadge(client.status)}
+              description="Status comercial atual."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+            <OperationalStat
+              label="Base"
+              value={[client.city, client.state].filter(Boolean).join(" / ") || "Nao informado"}
+              description="Local usado como contexto rapido."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+          </>
+        }
+      />
 
       <ConfirmDialog
         open={showDeleteDialog}
@@ -183,138 +206,110 @@ export default function CrmDetailPage({ loaderData }: Route.ComponentProps) {
         }}
       />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Client info */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
-              <Building2 className="h-5 w-5 text-gray-400" />
-              Dados da Empresa
-            </h2>
-            <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <InfoItem label={i18n.crm.cnpj} value={formatCNPJ(client.cnpj)} />
-              <InfoItem label={i18n.common.status} value={statusBadge(client.status)} isNode />
-              {client.cnaeCode && (
-                <InfoItem label={i18n.crm.cnaeCode} value={client.cnaeCode} />
-              )}
-              {client.cnaeDescription && (
-                <InfoItem label={i18n.crm.cnaeDescription} value={client.cnaeDescription} />
-              )}
-            </dl>
-          </div>
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.45fr_0.95fr]">
+        <div className="space-y-6">
+          <OperationalPanel
+            title="Dados da empresa"
+            icon={<Building2 className="h-5 w-5" />}
+            description="Leitura central de documento, CNAE e status comercial."
+            bodyClassName="grid gap-4 sm:grid-cols-2"
+          >
+            <InfoItem label={i18n.crm.cnpj} value={formatCNPJ(client.cnpj)} />
+            <InfoItem label={i18n.common.status} value={statusBadge(client.status)} />
+            <InfoItem label={i18n.crm.cnaeCode} value={client.cnaeCode || "Nao informado"} />
+            <InfoItem label={i18n.crm.cnaeDescription} value={client.cnaeDescription || "Nao informado"} />
+          </OperationalPanel>
 
-          <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
-              <MapPin className="h-5 w-5 text-gray-400" />
-              Contato e Endereco
-            </h2>
-            <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {client.address && (
-                <InfoItem label={i18n.crm.address} value={client.address} />
-              )}
-              {(client.city || client.state) && (
-                <InfoItem
-                  label={i18n.crm.city}
-                  value={[client.city, client.state].filter(Boolean).join(" - ")}
-                />
-              )}
-              {client.zipCode && (
-                <InfoItem label={i18n.crm.zipCode} value={client.zipCode} />
-              )}
-            </dl>
-          </div>
+          <OperationalPanel
+            title="Endereco e base operacional"
+            icon={<MapPin className="h-5 w-5" />}
+            description="Localizacao de referencia para prospeccao, atendimento e operacao."
+            bodyClassName="grid gap-4 sm:grid-cols-2"
+          >
+            <InfoItem label={i18n.crm.address} value={client.address || "Nao informado"} />
+            <InfoItem label={i18n.crm.city} value={[client.city, client.state].filter(Boolean).join(" / ") || "Nao informado"} />
+            <InfoItem label={i18n.crm.zipCode} value={client.zipCode || "Nao informado"} />
+            <InfoItem label="Perfil" value={client.clientType || "importer"} />
+          </OperationalPanel>
 
-          {client.notes && (
-            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-              <h2 className="mb-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {i18n.crm.notes}
-              </h2>
-              <p className="whitespace-pre-wrap text-sm text-gray-600 dark:text-gray-400">
-                {client.notes}
-              </p>
+          <OperationalPanel
+            title="Anotacoes"
+            icon={<FileText className="h-5 w-5" />}
+            description="Contexto livre salvo junto ao cliente."
+          >
+            <p className="whitespace-pre-wrap text-sm leading-6 text-[var(--app-muted)]">
+              {client.notes || "Nenhuma observacao registrada para este cliente."}
+            </p>
+          </OperationalPanel>
+        </div>
+
+        <OperationalPanel
+          title={i18n.crm.contacts}
+          icon={<User className="h-5 w-5" />}
+          description="Quem aciona, responde e concentra a relacao com a empresa."
+          actions={
+            <Link to={`/crm/${client.id}/contacts/new`}>
+              <Button variant="outline">
+                <Plus className="h-4 w-4" />
+                {i18n.crm.newContact}
+              </Button>
+            </Link>
+          }
+        >
+          {clientContacts.length === 0 ? (
+            <div className="rounded-[22px] border border-dashed border-[var(--app-border-strong)] bg-[var(--app-surface-2)] px-5 py-10 text-center text-sm text-[var(--app-muted)]">
+              Nenhum contato cadastrado.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {clientContacts.map((contact) => (
+                <div
+                  key={contact.id}
+                  className="rounded-[22px] border border-[var(--app-border)] bg-[var(--app-surface)] p-4 shadow-[0_12px_32px_rgba(15,23,42,0.06)]"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-[var(--app-text)]">{contact.name}</p>
+                        {contact.isPrimary ? (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/40 bg-amber-400/12 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-700 dark:text-amber-200">
+                            <Star className="h-3 w-3 fill-current" />
+                            Principal
+                          </span>
+                        ) : null}
+                      </div>
+                      {contact.role ? (
+                        <p className="mt-1 text-xs uppercase tracking-[0.16em] text-[var(--app-muted)]">{contact.role}</p>
+                      ) : null}
+                    </div>
+                    <Link
+                      to={`/crm/${client.id}/contacts/${contact.id}/edit`}
+                      className="inline-flex items-center gap-1 rounded-full border border-[var(--app-border-strong)] px-3 py-1.5 text-xs font-medium text-[var(--app-text)] transition-colors hover:bg-[var(--app-surface-2)]"
+                    >
+                      <Edit className="h-3.5 w-3.5" />
+                      Editar
+                    </Link>
+                  </div>
+
+                  <div className="mt-4 space-y-2">
+                    {contact.email ? (
+                      <div className="flex items-center gap-2 text-sm text-[var(--app-muted)]">
+                        <Mail className="h-4 w-4" />
+                        {contact.email}
+                      </div>
+                    ) : null}
+                    {contact.phone ? (
+                      <div className="flex items-center gap-2 text-sm text-[var(--app-muted)]">
+                        <Phone className="h-4 w-4" />
+                        {contact.phone}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
-        </div>
-
-        {/* Contacts sidebar */}
-        <div>
-          <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
-                <User className="h-5 w-5 text-gray-400" />
-                {i18n.crm.contacts}
-              </h2>
-              <div className="flex items-center gap-2">
-                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-                  {clientContacts.length}
-                </span>
-                <Link
-                  to={`/crm/${client.id}/contacts/new`}
-                  className="flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  {i18n.crm.newContact}
-                </Link>
-              </div>
-            </div>
-
-            {clientContacts.length === 0 ? (
-              <p className="py-4 text-center text-sm text-gray-500 dark:text-gray-400">
-                Nenhum contato cadastrado.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {clientContacts.map((contact) => (
-                  <div
-                    key={contact.id}
-                    className="rounded-lg border border-gray-100 p-3 dark:border-gray-800"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                            {contact.name}
-                          </p>
-                          {contact.isPrimary && (
-                            <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-                          )}
-                        </div>
-                        {contact.role && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {contact.role}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="mt-2 flex justify-end">
-                      <Link
-                        to={`/crm/${client.id}/contacts/${contact.id}/edit`}
-                        className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-                      >
-                        <Edit className="h-3 w-3" />
-                        Editar
-                      </Link>
-                    </div>
-                    <div className="mt-2 space-y-1">
-                      {contact.email && (
-                        <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-                          <Mail className="h-3 w-3" />
-                          {contact.email}
-                        </div>
-                      )}
-                      {contact.phone && (
-                        <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-                          <Phone className="h-3 w-3" />
-                          {contact.phone}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        </OperationalPanel>
       </div>
     </div>
   );
@@ -323,18 +318,16 @@ export default function CrmDetailPage({ loaderData }: Route.ComponentProps) {
 function InfoItem({
   label,
   value,
-  isNode,
 }: {
   label: string;
-  value: React.ReactNode;
-  isNode?: boolean;
+  value: ReactNode;
 }) {
   return (
-    <div>
-      <dt className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+    <div className="rounded-[22px] border border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-3">
+      <dt className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--app-muted)]">
         {label}
       </dt>
-      <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100">
+      <dd className="mt-2 text-sm text-[var(--app-text)]">
         {value}
       </dd>
     </div>

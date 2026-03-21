@@ -6,6 +6,7 @@ import { processes, processTimeline, auditLogs, clients } from "../../drizzle/sc
 import { processSchema } from "~/lib/validators";
 import { t, type Locale } from "~/i18n";
 import { Button } from "~/components/ui/button";
+import { OperationalHero, OperationalStat } from "~/components/ui/operational-page";
 import { ArrowLeft, Save } from "lucide-react";
 import { data } from "react-router";
 import { and, isNull, eq, sql } from "drizzle-orm";
@@ -236,14 +237,56 @@ export default function ProcessesNewPage({ loaderData }: Route.ComponentProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link to="/processes" className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800">
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{i18n.processes.newProcess}</h1>
-      </div>
+      <OperationalHero
+        eyebrow="Processos"
+        title={i18n.processes.newProcess}
+        description="Abertura guiada de embarque com referencia por modal, cliente, logistica, datas, custos e pasta do Drive."
+        actions={
+          <>
+            <Link
+              to="/processes"
+              className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/10"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Voltar para processos
+            </Link>
+            <Button type="submit" form="process-new-form" loading={isSubmitting}>
+              <Save className="h-4 w-4" />
+              {i18n.common.save}
+            </Button>
+          </>
+        }
+        aside={
+          <>
+            <OperationalStat
+              label="Cliente"
+              value={fields.clientId ? "Selecionado" : "Pendente"}
+              description="Empresa vinculada ao processo."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+            <OperationalStat
+              label="Tipo"
+              value={String(fields.processType || "import")}
+              description="Modalidade de negocio inicial."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+            <OperationalStat
+              label="Referencia"
+              value={String(fields.referenceModal || "sea")}
+              description="Prefixo usado para gerar o numero."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+            <OperationalStat
+              label="Custos"
+              value={fields.costControlEnabled === "true" ? "Ativo" : "Opcional"}
+              description="Controle por processo."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+          </>
+        }
+      />
 
-      <Form method="post" className="space-y-8">
+      <Form id="process-new-form" method="post" className="space-y-8">
         <input type="hidden" name="csrf" value={csrfToken} />
         {genericError && (
           <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">
@@ -364,8 +407,8 @@ export default function ProcessesNewPage({ loaderData }: Route.ComponentProps) {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-      <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
+    <div className="rounded-[28px] border border-[var(--app-border)] bg-[linear-gradient(180deg,var(--app-surface),var(--app-surface-2))] p-6 shadow-[var(--app-card-shadow)]">
+      <h2 className="mb-4 text-lg font-semibold text-[var(--app-text)]">{title}</h2>
       {children}
     </div>
   );
@@ -376,9 +419,9 @@ function InputField({ label, name, type = "text", placeholder, maxLength, defaul
 }) {
   return (
     <div className={className}>
-      <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>
+      <label className="mb-1.5 block text-sm font-medium text-[var(--app-text)]">{label}</label>
       <input type={type} name={name} placeholder={placeholder} maxLength={maxLength} defaultValue={defaultValue} step={type === "number" ? "any" : undefined}
-        className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500" />
+        className="block h-12 w-full rounded-[18px] border border-[var(--app-border)] bg-[var(--app-surface)] px-4 text-sm text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-muted)] focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/10" />
       {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
     </div>
   );

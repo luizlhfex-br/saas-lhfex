@@ -8,6 +8,7 @@ import { t, type Locale } from "~/i18n";
 import { invoiceSchema } from "~/lib/validators";
 import { logAudit } from "~/lib/audit.server";
 import { Button } from "~/components/ui/button";
+import { OperationalHero, OperationalPanel, OperationalStat } from "~/components/ui/operational-page";
 import { Link } from "react-router";
 import { ArrowLeft } from "lucide-react";
 import { getPrimaryCompanyId } from "~/lib/company-context.server";
@@ -83,15 +84,59 @@ export default function FinancialNewPage({ loaderData, actionData }: Route.Compo
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link to="/financial" className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{i18n.financial.newInvoice}</h1>
-      </div>
+      <OperationalHero
+        eyebrow="Financeiro"
+        title={i18n.financial.newInvoice}
+        description="Emissao guiada de fatura com cliente, tipo, moeda, valores, vencimento e contexto da cobranca."
+        actions={
+          <>
+            <Link
+              to="/financial"
+              className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/10"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Voltar ao financeiro
+            </Link>
+            <Button type="submit" form="financial-new-form">
+              {i18n.common.save}
+            </Button>
+          </>
+        }
+        aside={
+          <>
+            <OperationalStat
+              label="Cliente"
+              value="Selecionar"
+              description="Empresa que recebe ou paga a fatura."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+            <OperationalStat
+              label="Tipo"
+              value="receivable"
+              description="Conta a receber por padrao."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+            <OperationalStat
+              label="Moeda"
+              value="BRL"
+              description="Padrao inicial de faturamento."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+            <OperationalStat
+              label="Status"
+              value="draft"
+              description="Estado inicial ao salvar."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+          </>
+        }
+      />
 
-      <form method="post" className="space-y-6">
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+      <form id="financial-new-form" method="post" className="space-y-6">
+        <OperationalPanel
+          title="Dados da fatura"
+          description="Configure cliente, valores, moeda, vencimento e contexto da cobranca."
+        >
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {/* Client */}
             <div>
@@ -193,7 +238,7 @@ export default function FinancialNewPage({ loaderData, actionData }: Route.Compo
             </Link>
             <Button type="submit">{i18n.common.save}</Button>
           </div>
-        </div>
+        </OperationalPanel>
       </form>
     </div>
   );

@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.44";
+export const APP_VERSION = "2.9.45";
 export const APP_RELEASE_DATE = "2026-03-21";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.45",
+    date: "2026-03-21",
+    title: "Redesign operacional dos fluxos de detalhe e formularios",
+    items: [
+      { type: "feature", text: "CRM: telas de detalhe, novo cliente e edicao passaram a usar hero operacional, paineis de contexto e formularios alinhados ao novo design system" },
+      { type: "feature", text: "Processos e Financeiro: fluxos de detalhe e formularios ganharam a mesma linguagem visual da fase 2, aproximando os modulos core da base do futuro v3.0" },
+      { type: "improvement", text: "UI compartilhada: novo arquivo operational-page centraliza hero, estatisticas e paineis usados nas telas operacionais" },
+      { type: "fix", text: "Processos: o OCR deixou de disparar toast durante o render e passou a notificar apenas quando o resultado realmente muda" },
+    ],
+  },
   {
     version: "2.9.44",
     date: "2026-03-21",

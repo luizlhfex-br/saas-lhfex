@@ -7,7 +7,8 @@ import { clients, contacts, auditLogs } from "../../drizzle/schema";
 import { clientSchema } from "~/lib/validators";
 import { t, type Locale } from "~/i18n";
 import { Button } from "~/components/ui/button";
-import { ArrowLeft, Save } from "lucide-react";
+import { OperationalHero, OperationalPanel, OperationalStat } from "~/components/ui/operational-page";
+import { ArrowLeft, Building2, FileText, MapPin, Save } from "lucide-react";
 import { data } from "react-router";
 import { eq, and, isNull } from "drizzle-orm";
 import { syncClientEmbedding } from "~/lib/embedding-sync.server";
@@ -144,38 +145,73 @@ export default function CrmEditPage({ loaderData }: Route.ComponentProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link
-          to={`/crm/${client.id}`}
-          className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {i18n.crm.editClient}
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{client.razaoSocial}</p>
-        </div>
-      </div>
+      <OperationalHero
+        eyebrow="CRM"
+        title={i18n.crm.editClient}
+        description="Ajuste a leitura comercial, classificacao e base operacional do cliente sem sair do fluxo principal."
+        actions={
+          <>
+            <Link
+              to={`/crm/${client.id}`}
+              className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/10"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Voltar ao cliente
+            </Link>
+            <Button type="submit" form="crm-edit-form" loading={isSubmitting}>
+              <Save className="h-4 w-4" />
+              {i18n.common.save}
+            </Button>
+          </>
+        }
+        aside={
+          <>
+            <OperationalStat
+              label={i18n.crm.cnpj}
+              value={String(val("cnpj") || "Pendente")}
+              description="Documento principal do cadastro."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+            <OperationalStat
+              label="Razao"
+              value={String(val("razaoSocial") || "Pendente")}
+              description="Nome juridico ativo na carteira."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+            <OperationalStat
+              label="Cidade / UF"
+              value={[val("city"), val("state")].filter(Boolean).join(" / ") || "Nao informado"}
+              description="Base geografica do cliente."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+            <OperationalStat
+              label={i18n.common.status}
+              value={String(val("status") || "active")}
+              description="Status comercial em uso."
+              className="bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))] text-white"
+            />
+          </>
+        }
+      />
 
-      <Form method="post" className="space-y-8">
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Dados da Empresa
-          </h2>
+      <Form id="crm-edit-form" method="post" className="space-y-8">
+        <OperationalPanel
+          title="Dados da empresa"
+          icon={<Building2 className="h-5 w-5" />}
+          description="Nome, documento, status e identificadores principais."
+        >
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <InputField label={i18n.crm.razaoSocial} name="razaoSocial" required error={errors.razaoSocial} defaultValue={val("razaoSocial") as string} />
             <InputField label={i18n.crm.nomeFantasia} name="nomeFantasia" error={errors.nomeFantasia} defaultValue={val("nomeFantasia") as string} />
             <InputField label={i18n.crm.cnpj} name="cnpj" required placeholder="00.000.000/0000-00" error={errors.cnpj} defaultValue={val("cnpj") as string} />
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+              <label className="mb-1.5 block text-sm font-medium text-[var(--app-text)]">
                 {i18n.common.status}
               </label>
               <select
                 name="status"
                 defaultValue={val("status") as string}
-                className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                className="block h-12 w-full rounded-[18px] border border-[var(--app-border)] bg-[var(--app-surface)] px-4 text-sm text-[var(--app-text)] outline-none transition focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/10"
               >
                 <option value="active">{i18n.common.active}</option>
                 <option value="inactive">{i18n.common.inactive}</option>
@@ -185,36 +221,38 @@ export default function CrmEditPage({ loaderData }: Route.ComponentProps) {
             <InputField label={i18n.crm.cnaeCode} name="cnaeCode" placeholder="Ex: 4713100" error={errors.cnaeCode} defaultValue={val("cnaeCode") as string} />
             <InputField label={i18n.crm.cnaeDescription} name="cnaeDescription" error={errors.cnaeDescription} defaultValue={val("cnaeDescription") as string} />
           </div>
-        </div>
+        </OperationalPanel>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Endereco
-          </h2>
+        <OperationalPanel
+          title="Endereco"
+          icon={<MapPin className="h-5 w-5" />}
+          description="Base geografica e dados de localizacao do cliente."
+        >
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <InputField label={i18n.crm.address} name="address" error={errors.address} defaultValue={val("address") as string} />
             <InputField label={i18n.crm.city} name="city" error={errors.city} defaultValue={val("city") as string} />
             <InputField label={i18n.crm.state} name="state" maxLength={2} placeholder="SP" error={errors.state} defaultValue={val("state") as string} />
             <InputField label={i18n.crm.zipCode} name="zipCode" placeholder="00000-000" error={errors.zipCode} defaultValue={val("zipCode") as string} />
           </div>
-        </div>
+        </OperationalPanel>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Observacoes
-          </h2>
+        <OperationalPanel
+          title="Contexto adicional"
+          icon={<FileText className="h-5 w-5" />}
+          description="Notas livres para operacao, fiscal e relacionamento."
+        >
           <div className="mt-4">
-            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="mb-1.5 block text-sm font-medium text-[var(--app-text)]">
               {i18n.crm.notes}
             </label>
             <textarea
               name="notes"
               rows={3}
               defaultValue={val("notes") as string}
-              className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+              className="block w-full rounded-[20px] border border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-3 text-sm text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-muted)] focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/10"
             />
           </div>
-        </div>
+        </OperationalPanel>
 
         <div className="flex items-center justify-end gap-3">
           <Link to={`/crm/${client.id}`}>
@@ -240,14 +278,14 @@ function InputField({
 }) {
   return (
     <div className={className}>
-      <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+      <label className="mb-1.5 block text-sm font-medium text-[var(--app-text)]">
         {label}
         {required && <span className="ml-0.5 text-red-500">*</span>}
       </label>
       <input
         type={type} name={name} required={required} placeholder={placeholder}
         maxLength={maxLength} defaultValue={defaultValue}
-        className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
+        className="block h-12 w-full rounded-[18px] border border-[var(--app-border)] bg-[var(--app-surface)] px-4 text-sm text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-muted)] focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/10"
       />
       {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
     </div>
