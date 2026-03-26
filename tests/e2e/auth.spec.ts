@@ -3,7 +3,6 @@ import { test, expect, type Page } from "@playwright/test";
 async function fillLoginForm(page: Page, email: string, password: string) {
   await page.locator('input[name="email"]').fill(email);
   await page.locator('input[name="password"]').fill(password);
-  await page.locator('button[type="submit"]').click();
 }
 
 test.describe("Authentication Flow", () => {
@@ -20,6 +19,7 @@ test.describe("Authentication Flow", () => {
     await page.goto("/login");
     
     await fillLoginForm(page, "invalid@example.com", "wrongpassword");
+    await page.locator('button[type="submit"]').click();
     
     await expect(page.getByText(/incorretos|incorrect/i)).toBeVisible();
   });
@@ -31,7 +31,11 @@ test.describe("Authentication Flow", () => {
     await fillLoginForm(page, "luiz@lhfex.com.br", "lhfex2025!");
     
     // Should redirect to dashboard
-    await expect(page).toHaveURL(/\/(dashboard)?$/);
+    await Promise.all([
+      page.waitForURL(/\/($|dashboard)/, { timeout: 15000 }),
+      page.locator('button[type="submit"]').click(),
+    ]);
+    await expect(page).toHaveURL(/\/($|dashboard)/);
     await expect(page).not.toHaveURL(/\/login$/);
   });
 });

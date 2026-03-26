@@ -18,7 +18,7 @@ const agents = [
   { id: "iana", name: "IAna", emoji: "📦", desc: "Comércio Exterior" },
   { id: "maria", name: "marIA", emoji: "💰", desc: "Finanças" },
   { id: "iago", name: "IAgo", emoji: "🔧", desc: "Infraestrutura" },
-  { id: "openclaw", name: "OpenClaw", emoji: "🦞", desc: "Vida Pessoal" },
+  { id: "openclaw", name: "Hermes Agent", emoji: "🤖", desc: "Orquestração e vida pessoal" },
 ];
 
 export function ChatWidget() {

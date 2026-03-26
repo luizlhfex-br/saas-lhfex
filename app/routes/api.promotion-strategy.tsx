@@ -1,6 +1,6 @@
 /**
  * POST /api/promotion-strategy
- * Envia regulamento de promoção para o OpenClaw analisar e inicia conversa no Telegram
+ * Envia regulamento de promoção para o Hermes Agent analisar e inicia conversa no Telegram.
  */
 
 import { data } from "react-router";
@@ -21,8 +21,8 @@ export async function action({ request }: Route.ActionArgs) {
 
   if (!botToken || !chatId) {
     return data(
-      { error: "OpenClaw Telegram não configurado no servidor." },
-      { status: 503 }
+      { error: "Telegram do Hermes Agent não configurado no servidor." },
+      { status: 503 },
     );
   }
 
@@ -39,20 +39,30 @@ export async function action({ request }: Route.ActionArgs) {
   };
 
   try {
-    body = await request.json() as typeof body;
+    body = (await request.json()) as typeof body;
   } catch {
-    return data({ error: "Corpo da requisição inválido" }, { status: 400 });
+    return data({ error: "Corpo da requisição inválido." }, { status: 400 });
   }
 
-  const { promotionName, company, prize, endDate, rules, extractedText, userLuckyNumbers, officialLuckyNumber, inferredLuckyNumber } = body;
+  const {
+    promotionName,
+    company,
+    prize,
+    endDate,
+    rules,
+    extractedText,
+    userLuckyNumbers,
+    officialLuckyNumber,
+    inferredLuckyNumber,
+  } = body;
 
   if (!promotionName && !extractedText) {
-    return data({ error: "Dados insuficientes para análise" }, { status: 400 });
+    return data({ error: "Dados insuficientes para análise." }, { status: 400 });
   }
 
-  const prompt = `Você é o OpenClaw, especialista em promoções e sorteios.
+  const prompt = `Você é o Hermes Agent, especialista em promoções e sorteios.
 
-O usuário acabou de fazer upload do regulamento de uma promoção e quer sua análise estratégica.
+O usuário acabou de enviar o regulamento de uma promoção e quer uma análise estratégica.
 
 DADOS DA PROMOÇÃO:
 - Nome: ${promotionName || "Não identificado"}
@@ -66,15 +76,15 @@ DADOS DA PROMOÇÃO:
 
 ${extractedText ? `TEXTO COMPLETO DO REGULAMENTO:\n${extractedText.slice(0, 3000)}` : ""}
 
-Por favor, faça uma análise completa:
-1. 📋 Resumo rápido da promoção (2-3 linhas)
-2. 🎯 Estratégia de participação recomendada
-3. ⏰ Datas importantes e frequência ideal de participação
-4. 🤔 Perguntas para alinhar a abordagem (ex: há indicação de amigos? Limite de participações?)
-5. ⚠️ Pontos de atenção ou restrições relevantes
-6. 🔢 Número da sorte: inferir pela regra (se possível) e comparar com meus números + número oficial (se informado), mostrando a menor distância numérica
+Faça uma análise objetiva:
+1. Resumo rápido da promoção
+2. Estratégia de participação recomendada
+3. Datas importantes e frequência ideal
+4. Perguntas para alinhar a abordagem
+5. Pontos de atenção ou restrições
+6. Comparação do número da sorte com meus números e o oficial, quando houver
 
-Seja objetivo e prático. Responda em português.`;
+Responda em português do Brasil.`;
 
   try {
     const aiResponse = await askAgent("iana", prompt, user.id, {
@@ -83,39 +93,34 @@ Seja objetivo e prático. Responda em português.`;
     });
 
     const telegramMsg =
-      `🦞 *ANÁLISE DE PROMOÇÃO — OpenClaw*\n` +
+      `🤖 *ANÁLISE DE PROMOÇÃO — Hermes Agent*\n` +
       `━━━━━━━━━━━━━━━━\n` +
       `*${promotionName || "Promoção sem nome"}*` +
-      (company ? ` — ${company}` : "") + "\n\n" +
+      (company ? ` — ${company}` : "") +
+      "\n\n" +
       aiResponse.content;
 
-    const tgRes = await fetch(
-      `https://api.telegram.org/bot${botToken}/sendMessage`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: Number(chatId),
-          text: telegramMsg.slice(0, 4096), // Telegram limit
-          parse_mode: "Markdown",
-        }),
-        signal: AbortSignal.timeout(15000),
-      }
-    );
+    const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: Number(chatId),
+        text: telegramMsg.slice(0, 4096),
+        parse_mode: "Markdown",
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
 
     if (!tgRes.ok) {
       const err = await tgRes.text();
       console.error("[Promotion Strategy] Telegram error:", err);
-      return data(
-        { error: "Erro ao enviar mensagem no Telegram" },
-        { status: 502 }
-      );
+      return data({ error: "Erro ao enviar mensagem no Telegram." }, { status: 502 });
     }
 
     return data({ success: true });
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     console.error("[Promotion Strategy] Error:", msg);
-    return data({ error: "Falha ao processar análise de estratégia" }, { status: 500 });
+    return data({ error: "Falha ao processar análise de estratégia." }, { status: 500 });
   }
 }

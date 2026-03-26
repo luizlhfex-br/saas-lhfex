@@ -5,17 +5,15 @@ import { askLifeAgentLite } from "~/lib/ai.server";
 import { jsonApiError } from "~/lib/api-error";
 import type { AIOperationResult, LifeAgentTaskData } from "~/lib/ai-types";
 import { buildAISuccess, buildAIFailure, buildAIError } from "~/lib/ai-types";
-
-const DEFAULT_ALLOWED_EMAIL = "luiz@lhfex.com.br";
+import { canAccessLuizModules } from "~/lib/access-control";
 
 export async function action({ request }: { request: Request }) {
   const startTime = Date.now();
-  
+
   try {
     const { user } = await requireAuth(request);
 
-    const allowedEmail = (process.env.LIFE_AGENT_ALLOWED_EMAIL || DEFAULT_ALLOWED_EMAIL).toLowerCase();
-    if (user.email.toLowerCase() !== allowedEmail) {
+    if (!canAccessLuizModules(user.email)) {
       return jsonApiError("FORBIDDEN_MODULE", "Acesso negado para este módulo.", { status: 403 });
     }
 
@@ -26,7 +24,9 @@ export async function action({ request }: { request: Request }) {
     );
 
     if (!rateCheck.allowed) {
-      return jsonApiError("RATE_LIMITED", "Limite de requisições excedido. Tente novamente em instantes.", { status: 429 });
+      return jsonApiError("RATE_LIMITED", "Limite de requisições excedido. Tente novamente em instantes.", {
+        status: 429,
+      });
     }
 
     const formData = await request.formData();
@@ -37,15 +37,14 @@ export async function action({ request }: { request: Request }) {
       const error = buildAIFailure(
         buildAIError("INVALID_INPUT", "Entrada inválida. Descreva a tarefa com mais detalhes.", true, parsed.error.flatten()),
         "fallback",
-        "none"
+        "none",
       );
       return Response.json(error, { status: 400 });
     }
 
     const response = await askLifeAgentLite(parsed.data.task, user.id);
     const latencyMs = Date.now() - startTime;
-    
-    // Estimate cost (for free providers it's $0)
+
     let costEstimate = "0.00";
     if (response.provider === "deepseek_direct") {
       const tokensUsed = response.tokensUsed || 0;
@@ -62,7 +61,7 @@ export async function action({ request }: { request: Request }) {
       response.model,
       response.tokensUsed,
       latencyMs,
-      costEstimate
+      costEstimate,
     );
 
     return Response.json(result);
@@ -72,18 +71,18 @@ export async function action({ request }: { request: Request }) {
     }
 
     console.error("[LIFE_AGENT] Error:", error);
-    
+
     const aiError = buildAIFailure(
       buildAIError(
         "INTERNAL_ERROR",
         "Não foi possível executar a automação pessoal agora. Tente novamente.",
         true,
-        error instanceof Error ? error.message : String(error)
+        error instanceof Error ? error.message : String(error),
       ),
       "fallback",
-      "none"
+      "none",
     );
-    
+
     return Response.json(aiError, { status: 500 });
   }
 }

@@ -28,6 +28,18 @@ type Entry = {
 
 const CHANGELOG: Entry[] = [
   {
+    date: "2026-03-26",
+    version: "2.9.47",
+    type: "release",
+    title: "Auditoria geral com hardening das automacoes e naming Hermes",
+    items: [
+      "Webhook de automacoes agora exige assinatura HMAC, payload validado com Zod, rate limit e trilha de auditoria para chamadas negadas ou aceitas",
+      "Rotas de cron e automacoes foram endurecidas com companyId, userId e allowlist de admins mais explicita, reduzindo risco de vazamento entre escopos",
+      "Os testes E2E de auth e chat foram estabilizados no fluxo atual, incluindo o caminho de classificacao controlado para evitar falha externa intermitente",
+      "Branding ativo do SaaS foi alinhado para Hermes Agent e o repositorio ganhou a base `.specify` para planejar epicos maiores com menos improviso",
+    ],
+  },
+  {
     date: "2026-03-21",
     version: "2.9.46",
     type: "release",

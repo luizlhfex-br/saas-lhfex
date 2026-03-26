@@ -4,12 +4,14 @@ import { requireAuth } from "~/lib/auth.server";
 import { runAutomationManually } from "~/lib/automation-engine.server";
 import { checkRateLimit } from "~/lib/rate-limit.server";
 import { db } from "~/lib/db.server";
-import { automationLogs } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { automationLogs, automations } from "../../drizzle/schema";
+import { and, eq } from "drizzle-orm";
 import { buildApiError } from "~/lib/api-error";
+import { getPrimaryCompanyId } from "~/lib/company-context.server";
 
 export async function action({ request }: Route.ActionArgs) {
   const { user } = await requireAuth(request);
+  const companyId = await getPrimaryCompanyId(user.id);
   const formData = await request.formData();
   let automationId = formData.get("automationId") as string;
   const logId = formData.get("logId") as string;
@@ -30,7 +32,8 @@ export async function action({ request }: Route.ActionArgs) {
         input: automationLogs.input,
       })
       .from(automationLogs)
-      .where(eq(automationLogs.id, logId))
+      .innerJoin(automations, eq(automationLogs.automationId, automations.id))
+      .where(and(eq(automationLogs.id, logId), eq(automations.companyId, companyId)))
       .limit(1);
 
     if (!sourceLog) {

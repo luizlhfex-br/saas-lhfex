@@ -4,10 +4,10 @@ import { requireAuth } from "~/lib/auth.server";
 const squadAgents = [
   {
     id: "openclaw",
-    name: "OpenClaw",
+    name: "Hermes Agent",
     emoji: "🤖",
     role: "Chief of Staff",
-    description: "Coordena a operacao, carrega contexto do SAAS e distribui a tarefa para o agente certo.",
+    description: "Coordena a operação, carrega contexto do SaaS e distribui a tarefa para o agente certo.",
     tone: "from-cyan-400/30 to-sky-500/10 border-cyan-400/40 shadow-cyan-500/20",
   },
   {
@@ -15,7 +15,7 @@ const squadAgents = [
     name: "AIrton",
     emoji: "💻",
     role: "Dev Lead",
-    description: "Codigo, arquitetura, testes, refactor, typecheck e qualidade tecnica do produto.",
+    description: "Código, arquitetura, testes, refactor, typecheck e qualidade técnica do produto.",
     tone: "from-blue-400/30 to-indigo-500/10 border-blue-400/40 shadow-blue-500/20",
   },
   {
@@ -23,15 +23,15 @@ const squadAgents = [
     name: "IAra",
     emoji: "🎨",
     role: "Marketing + Design",
-    description: "Copy, visual, landing pages, SEO, CRO e direcao criativa para a marca.",
+    description: "Copy, visual, landing pages, SEO, CRO e direção criativa para a marca.",
     tone: "from-fuchsia-400/30 to-pink-500/10 border-fuchsia-400/40 shadow-fuchsia-500/20",
   },
   {
     id: "maria",
     name: "marIA",
     emoji: "💰",
-    role: "Financeiro + Cambio",
-    description: "PTAX, DRE, fluxo de caixa, custos e impacto financeiro das operacoes.",
+    role: "Financeiro + Câmbio",
+    description: "PTAX, DRE, fluxo de caixa, custos e impacto financeiro das operações.",
     tone: "from-amber-300/30 to-orange-500/10 border-amber-300/40 shadow-amber-500/20",
   },
   {
@@ -46,8 +46,8 @@ const squadAgents = [
     id: "mai",
     name: "mAI",
     emoji: "🏛️",
-    role: "Licitacoes",
-    description: "PNCP, leitura de edital, checklist de habilitacao e proposta tecnica.",
+    role: "Licitações",
+    description: "PNCP, leitura de edital, checklist de habilitação e proposta técnica.",
     tone: "from-yellow-200/30 to-lime-500/10 border-yellow-200/40 shadow-yellow-500/20",
   },
   {
@@ -70,8 +70,8 @@ const squadAgents = [
     id: "julia",
     name: "JULia",
     emoji: "🎁",
-    role: "Promocoes + Monitor",
-    description: "Oportunidades, vigencia, alertas de encerramento e relatorios de promoções.",
+    role: "Promoções + Monitor",
+    description: "Oportunidades, vigência, alertas de encerramento e relatórios de promoções.",
     tone: "from-teal-300/30 to-cyan-500/10 border-teal-300/40 shadow-teal-500/20",
   },
 ];
@@ -98,16 +98,16 @@ export default function SquadPage() {
               /squad
             </h1>
             <p className="max-w-3xl text-sm leading-6 text-slate-300 md:text-base">
-              Sala de guerra da LHFEX. Cada card representa um agente fixo do ecossistema, com funcao clara e tom proprio.
+              Sala de guerra da LHFEX. Cada card representa um agente fixo do ecossistema, com função clara e especialidade definida.
             </p>
           </div>
           <pre className="overflow-x-auto rounded-2xl border border-slate-800 bg-black/30 p-4 font-mono text-[11px] leading-5 text-cyan-200 md:text-xs">
-{`[ OPENCLAW CORE ]
+{`[ HERMES CORE ]
   |-- AIrton  | codigo
   |-- IAna    | comex
   |-- marIA   | financeiro
   |-- IAgo    | infra
-  |-- IAra    | marketing
+  |-- IAra    | design
   |-- SofIA   | atendimento
   |-- mAI     | licitacoes
   '-- JULia   | promocoes`}
@@ -138,7 +138,7 @@ export default function SquadPage() {
 
                 <div className="rounded-2xl border border-white/10 bg-black/25 p-3">
                   <div className="font-mono text-[11px] uppercase tracking-[0.28em] text-slate-400">
-                    Funcao
+                    Função
                   </div>
                   <p className="mt-2 text-sm font-semibold text-white">{agent.role}</p>
                   <p className="mt-2 text-sm leading-6 text-slate-300">{agent.description}</p>

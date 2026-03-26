@@ -1,4 +1,4 @@
-import { createHash, timingSafeEqual } from "crypto";
+import { createHash, createHmac, timingSafeEqual } from "crypto";
 
 type TelegramWebhookKind = "saas" | "openclaw";
 
@@ -29,6 +29,25 @@ export function getWebhookSetupKey(): string | null {
 
 export function hasValidWebhookSetupRequest(request: Request): boolean {
   return safeCompare(getWebhookSetupKey(), request.headers.get("X-Webhook-Setup-Key"));
+}
+
+export function getAutomationsWebhookSecret(): string | null {
+  return process.env.AUTOMATIONS_WEBHOOK_SECRET || process.env.OPENCLAW_TOOLS_API_KEY || null;
+}
+
+export function getAutomationsWebhookSignature(payload: string, secret: string): string {
+  return createHmac("sha256", secret).update(payload).digest("hex");
+}
+
+export function hasValidAutomationsWebhookRequest(request: Request, payload: string): boolean {
+  const secret = getAutomationsWebhookSecret();
+  const signature = request.headers.get("X-Automation-Signature");
+
+  if (!secret || !signature) {
+    return false;
+  }
+
+  return safeCompare(getAutomationsWebhookSignature(payload, secret), signature);
 }
 
 export function getTelegramWebhookSecret(kind: TelegramWebhookKind): string | null {

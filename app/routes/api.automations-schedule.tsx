@@ -3,12 +3,14 @@ import type { Route } from "./+types/api.automations-schedule";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
 import { automations } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { logAudit } from "~/lib/audit.server";
 import { buildApiError } from "~/lib/api-error";
+import { getPrimaryCompanyId } from "~/lib/company-context.server";
 
 export async function action({ request }: Route.ActionArgs) {
   const { user } = await requireAuth(request);
+  const companyId = await getPrimaryCompanyId(user.id);
   const formData = await request.formData();
   const automationId = formData.get("automationId") as string;
   const cronExpression = formData.get("cronExpression") as string;
@@ -29,7 +31,7 @@ export async function action({ request }: Route.ActionArgs) {
   const [automation] = await db
     .select()
     .from(automations)
-    .where(eq(automations.id, automationId))
+    .where(and(eq(automations.id, automationId), eq(automations.companyId, companyId)))
     .limit(1);
 
   if (!automation) {
@@ -49,12 +51,12 @@ export async function action({ request }: Route.ActionArgs) {
       triggerConfig: newConfig,
       updatedAt: new Date(),
     })
-    .where(eq(automations.id, automationId));
+    .where(and(eq(automations.id, automationId), eq(automations.companyId, companyId)));
 
   await logAudit({
     userId: user.id,
     action: "update",
-    entity: "automation_log",
+    entity: "automation",
     entityId: automationId,
     changes: {
       scheduledCron: cronExpression,

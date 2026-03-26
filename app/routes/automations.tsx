@@ -7,6 +7,7 @@ import { automations, automationLogs, missionControlTasks, openclawCrons } from 
 import { eq, desc, sql, and, isNull } from "drizzle-orm";
 import { data, redirect } from "react-router";
 import { getPrimaryCompanyId } from "~/lib/company-context.server";
+import { canManageGlobalAutomations } from "~/lib/rbac.server";
 import { Zap, Plus, ToggleLeft, ToggleRight, Trash2, Clock, CheckCircle2, XCircle, SkipForward, Play, RotateCcw, Target, Timer, CircleDot, AlertCircle, RefreshCw, Inbox, ChevronRight } from "lucide-react";
 import { Button } from "~/components/ui/button";
 
@@ -106,6 +107,8 @@ function formatDateTime(value: unknown): string {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
+  const companyId = await getPrimaryCompanyId(user.id);
+  const canManageCrons = canManageGlobalAutomations(user.email);
 
   try {
     const loadWarnings: string[] = [];
@@ -113,6 +116,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     const allAutomations = await db
       .select()
       .from(automations)
+      .where(eq(automations.companyId, companyId))
       .orderBy(desc(automations.createdAt))
       .catch((error) => {
         console.error("[automations.loader] failed to load automations", error);
@@ -162,6 +166,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       })
       .from(automationLogs)
       .leftJoin(automations, eq(automationLogs.automationId, automations.id))
+      .where(eq(automations.companyId, companyId))
       .orderBy(desc(automationLogs.executedAt))
       .limit(20)
       .catch((error) => {
@@ -181,15 +186,17 @@ export async function loader({ request }: Route.LoaderArgs) {
         return [];
       });
 
-    const crons = await db
-      .select()
-      .from(openclawCrons)
-      .orderBy(openclawCrons.name)
-      .catch((error) => {
-        console.error("[automations.loader] failed to load crons", error);
-        loadWarnings.push("crons");
-        return [];
-      });
+    const crons = canManageCrons
+      ? await db
+          .select()
+          .from(openclawCrons)
+          .orderBy(openclawCrons.name)
+          .catch((error) => {
+            console.error("[automations.loader] failed to load crons", error);
+            loadWarnings.push("crons");
+            return [];
+          })
+      : [];
 
     const sanitizedRecentLogs = recentLogs.map((log) => ({
       ...log,
@@ -218,6 +225,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       recentLogs: sanitizedRecentLogs,
       tasks,
       crons: sanitizedCrons,
+      canManageCrons,
       loadError: loadWarnings.length ? `Algumas secoes nao carregaram (${loadWarnings.join(", ")}).` : undefined,
     };
   } catch (error) {
@@ -227,6 +235,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       recentLogs: [],
       tasks: [],
       crons: [],
+      canManageCrons,
       loadError: "Nao foi possivel carregar automacoes no momento.",
     };
   }
@@ -234,6 +243,8 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export async function action({ request }: Route.ActionArgs) {
   const { user } = await requireAuth(request);
+  const companyId = await getPrimaryCompanyId(user.id);
+  const canManageCrons = canManageGlobalAutomations(user.email);
 
   try {
     const formData = await request.formData();
@@ -266,7 +277,7 @@ export async function action({ request }: Route.ActionArgs) {
       await db
         .update(missionControlTasks)
         .set({ column, updatedAt: new Date(), ...(column === "done" ? { completedAt: new Date() } : {}) })
-        .where(eq(missionControlTasks.id, taskId));
+        .where(and(eq(missionControlTasks.id, taskId), eq(missionControlTasks.userId, user.id), isNull(missionControlTasks.deletedAt)));
       return data({ ok: true, movedTask: true });
     }
 
@@ -278,11 +289,14 @@ export async function action({ request }: Route.ActionArgs) {
       await db
         .update(missionControlTasks)
         .set({ deletedAt: new Date() })
-        .where(eq(missionControlTasks.id, taskId));
+        .where(and(eq(missionControlTasks.id, taskId), eq(missionControlTasks.userId, user.id), isNull(missionControlTasks.deletedAt)));
       return data({ ok: true, deletedTask: true });
     }
 
     if (intent === "create_cron") {
+      if (!canManageCrons) {
+        return data({ error: "Acesso negado para gerenciar crons" }, { status: 403 });
+      }
       const name = formData.get("name") as string;
       const schedule = formData.get("schedule") as string;
       const message = formData.get("message") as string;
@@ -294,6 +308,9 @@ export async function action({ request }: Route.ActionArgs) {
     }
 
     if (intent === "toggle_cron") {
+      if (!canManageCrons) {
+        return data({ error: "Acesso negado para gerenciar crons" }, { status: 403 });
+      }
       const cronId = formData.get("cronId") as string;
       if (!cronId) {
         return data({ error: "Cron inválido" }, { status: 400 });
@@ -304,6 +321,9 @@ export async function action({ request }: Route.ActionArgs) {
     }
 
     if (intent === "delete_cron") {
+      if (!canManageCrons) {
+        return data({ error: "Acesso negado para gerenciar crons" }, { status: 403 });
+      }
       const cronId = formData.get("cronId") as string;
       if (!cronId) {
         return data({ error: "Cron inválido" }, { status: 400 });
@@ -318,7 +338,7 @@ export async function action({ request }: Route.ActionArgs) {
         return data({ error: "Automação inválida" }, { status: 400 });
       }
       const currentlyEnabled = formData.get("enabled") === "true";
-      await db.update(automations).set({ enabled: !currentlyEnabled, updatedAt: new Date() }).where(and(eq(automations.id, id), eq(automations.companyId, await getPrimaryCompanyId(user.id))));
+      await db.update(automations).set({ enabled: !currentlyEnabled, updatedAt: new Date() }).where(and(eq(automations.id, id), eq(automations.companyId, companyId)));
       return data({ ok: true });
     }
 
@@ -327,7 +347,7 @@ export async function action({ request }: Route.ActionArgs) {
       if (!id) {
         return data({ error: "Automação inválida" }, { status: 400 });
       }
-      await db.delete(automations).where(and(eq(automations.id, id), eq(automations.companyId, await getPrimaryCompanyId(user.id))));
+      await db.delete(automations).where(and(eq(automations.id, id), eq(automations.companyId, companyId)));
       return data({ ok: true });
     }
 
@@ -371,7 +391,7 @@ export async function action({ request }: Route.ActionArgs) {
       }
 
       await db.insert(automations).values({
-        companyId: await getPrimaryCompanyId(user.id),
+        companyId,
         name,
         triggerType: triggerType as any,
         triggerConfig,
@@ -392,7 +412,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function AutomationsPage({ loaderData }: Route.ComponentProps) {
-  const { automations: autoList, recentLogs, tasks, crons, loadError } = loaderData;
+  const { automations: autoList, recentLogs, tasks, crons, canManageCrons, loadError } = loaderData;
   const actionData = useActionData<typeof action>();
   const actionError = actionData && "error" in actionData ? actionData.error : undefined;
   const createdOk = Boolean(actionData && "ok" in actionData && actionData.ok);
@@ -508,7 +528,7 @@ export default function AutomationsPage({ loaderData }: Route.ComponentProps) {
               <Plus className="h-4 w-4" /> Nova Tarefa
             </Button>
           )}
-          {activeTab === "crons" && (
+          {activeTab === "crons" && canManageCrons && (
             <Button onClick={() => setShowNewCron(!showNewCron)}>
               <Plus className="h-4 w-4" /> Novo Cron
             </Button>
@@ -520,7 +540,7 @@ export default function AutomationsPage({ loaderData }: Route.ComponentProps) {
         {[
           { id: "automations" as const, label: "Automações", icon: Zap },
           { id: "mission" as const, label: "Mission Control", icon: Target },
-          { id: "crons" as const, label: "Crons", icon: Timer },
+          ...(canManageCrons ? [{ id: "crons" as const, label: "Crons", icon: Timer }] : []),
         ].map(({ id, label, icon: Icon }) => (
           <button
             key={id}

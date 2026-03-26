@@ -300,7 +300,7 @@ const changelog: ChangelogEntry[] = VERSION_HISTORY;
 const typeConfig = {
   feature: { icon: Sparkles, label: "Novo", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
   improvement: { icon: Rocket, label: "Melhoria", color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
-  fix: { icon: Bug, label: "CorreÃ§Ã£o", color: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" },
+  fix: { icon: Bug, label: "Correcao", color: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" },
   infra: { icon: Wrench, label: "Infra", color: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400" },
 };
 
@@ -415,7 +415,7 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
           <div className="mb-4 flex items-center gap-2">
             <Zap className="h-5 w-5 text-gray-500" />
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              IntegraÃ§Ãµes com Google
+              Integracoes com Google
             </h2>
           </div>
           <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
@@ -428,10 +428,10 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
                 <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
                 <div>
                   <p className="text-sm font-medium text-green-900 dark:text-green-300">
-                    âœ“ Google Conectado
+                    Google conectado
                   </p>
                   <p className="text-xs text-green-700 dark:text-green-400">
-                    VocÃª pode gerar relatÃ³rios em Google Sheets
+                    Voce pode gerar relatorios em Google Sheets
                   </p>
                 </div>
               </div>
@@ -561,7 +561,7 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
             <div>
               <h2 className="text-base font-semibold text-gray-900 dark:text-white">Logs de Auditoria</h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Registro de todas as aÃ§Ãµes realizadas no sistema
+                Registro de todas as acoes realizadas no sistema
               </p>
             </div>
           </div>

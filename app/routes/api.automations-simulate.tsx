@@ -3,11 +3,13 @@ import type { Route } from "./+types/api.automations-simulate";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
 import { automations } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { buildApiError } from "~/lib/api-error";
+import { getPrimaryCompanyId } from "~/lib/company-context.server";
 
 export async function action({ request }: Route.ActionArgs) {
   const { user } = await requireAuth(request);
+  const companyId = await getPrimaryCompanyId(user.id);
   const formData = await request.formData();
   const automationId = formData.get("automationId") as string;
 
@@ -18,7 +20,7 @@ export async function action({ request }: Route.ActionArgs) {
   const [automation] = await db
     .select()
     .from(automations)
-    .where(eq(automations.id, automationId))
+    .where(and(eq(automations.id, automationId), eq(automations.companyId, companyId)))
     .limit(1);
 
   if (!automation) {

@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { t, type Locale } from "~/i18n";
+import { canAccessLuizModules } from "~/lib/access-control";
 
 interface User {
   id: string;
@@ -48,7 +49,7 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   to: string;
   disabled?: boolean;
-  requiredEmail?: string;
+  requiresLuizAccess?: boolean;
 }
 
 const mainNavItems: NavItem[] = [
@@ -57,7 +58,7 @@ const mainNavItems: NavItem[] = [
   { labelKey: "pipeline", icon: Kanban, to: "/crm/pipeline" },
   { labelKey: "processes", icon: FileText, to: "/processes" },
   { labelKey: "financial", icon: DollarSign, to: "/financial" },
-  { labelKey: "personalLife", icon: Heart, to: "/personal-life", requiredEmail: "luiz@lhfex.com.br" },
+  { labelKey: "personalLife", icon: Heart, to: "/personal-life", requiresLuizAccess: true },
 ];
 
 const comexNavItems: NavItem[] = [
@@ -77,9 +78,9 @@ const aiAutomationNavItems: NavItem[] = [
 ];
 
 const otherBusinessNavItems: NavItem[] = [
-  { labelKey: "publicProcurement", icon: Briefcase, to: "/public-procurement", requiredEmail: "luiz@lhfex.com.br" },
-  { labelKey: "internetBusiness", icon: Globe, to: "/other-business/internet", requiredEmail: "luiz@lhfex.com.br" },
-  { label: "Criar/Publicar Apps", icon: Package, to: "/other-business/apps", requiredEmail: "luiz@lhfex.com.br" },
+  { labelKey: "publicProcurement", icon: Briefcase, to: "/public-procurement", requiresLuizAccess: true },
+  { labelKey: "internetBusiness", icon: Globe, to: "/other-business/internet", requiresLuizAccess: true },
+  { label: "Criar/Publicar Apps", icon: Package, to: "/other-business/apps", requiresLuizAccess: true },
 ];
 
 export function Sidebar({
@@ -113,7 +114,7 @@ export function Sidebar({
   };
 
   const isItemVisible = (item: NavItem) =>
-    !item.requiredEmail || item.requiredEmail === user.email;
+    !item.requiresLuizAccess || canAccessLuizModules(user.email);
 
   const getLabel = (item: NavItem) =>
     item.label || (item.labelKey ? (i18n.nav[item.labelKey] as string) : "");
@@ -287,7 +288,7 @@ export function Sidebar({
           <div className="space-y-1">{mainNavItems.map(renderNavItem)}</div>
           {renderGroup("comex", "Comex", comexNavItems)}
           {renderGroup("aiAutomation", "IA & Auto", aiAutomationNavItems)}
-          {user.email === "luiz@lhfex.com.br" &&
+          {canAccessLuizModules(user.email) &&
             renderGroup("otherBusiness", "Outros", otherBusinessNavItems)}
         </nav>
       )}

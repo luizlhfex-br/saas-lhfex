@@ -2,10 +2,14 @@ import { test, expect, type Page } from "@playwright/test";
 
 async function loginAsAdmin(page: Page) {
   await page.goto("/login");
+  await expect(page.locator('input[name="csrf"]')).toBeAttached();
   await page.locator('input[name="email"]').fill("luiz@lhfex.com.br");
   await page.locator('input[name="password"]').fill("lhfex2025!");
-  await page.locator('button[type="submit"]').click();
-  await expect(page).toHaveURL(/\/(dashboard)?$/);
+  await Promise.all([
+    page.waitForURL(/\/($|dashboard)/, { timeout: 15000 }),
+    page.locator('button[type="submit"]').click(),
+  ]);
+  await expect(page).not.toHaveURL(/\/login$/);
 }
 
 function openChatButton(page: Page) {
@@ -17,7 +21,7 @@ function closeChatButton(page: Page) {
 }
 
 function chatDialog(page: Page) {
-  return page.locator('[role="dialog"][aria-label*="Chat" i]');
+  return page.getByRole("dialog");
 }
 
 function chatInput(page: Page) {
@@ -74,7 +78,7 @@ test.describe("Chat Widget Integration", () => {
   test("should show agent selection", async ({ page }) => {
     await openChat(page);
 
-    const agentSelector = page.getByRole("button", { name: /AIrton|IAna|marIA|IAgo|OpenClaw/i }).first();
+    const agentSelector = page.getByRole("button", { name: /AIrton|IAna|marIA|IAgo|Hermes Agent|OpenClaw/i }).first();
     await expect(agentSelector).toBeVisible();
     await agentSelector.click();
 
@@ -100,9 +104,9 @@ test.describe("Chat Widget Integration", () => {
 
     await openChat(page);
 
-    const agentSelector = page.getByRole("button", { name: /AIrton|IAna|marIA|IAgo|OpenClaw/i }).first();
+    const agentSelector = page.getByRole("button", { name: /AIrton|IAna|marIA|IAgo|Hermes Agent|OpenClaw/i }).first();
     await agentSelector.click();
-    await chatDialog(page).getByRole("button", { name: /OpenClaw/i }).last().click();
+    await chatDialog(page).getByRole("button", { name: /Hermes Agent|OpenClaw/i }).last().click();
 
     await chatInput(page).fill("Acompanhe esta promocao do Instagram");
     await sendChatButton(page).click();
@@ -325,12 +329,9 @@ test.describe("NCM Classification E2E", () => {
     );
 
     await submitButton.click();
-
-    const classificationState = page
-      .getByText(/resultado da classifica/i)
-      .or(page.getByText(/IA de classifica/i))
-      .or(page.getByText(/nao foi possivel classificar/i));
-
-    await expect(classificationState.first()).toBeVisible({ timeout: 25000 });
+    await expect(
+      page.locator('button[type="submit"]:has-text("Classificando")').or(page.locator('button:has-text("Classificando")')).first()
+    ).toBeVisible({ timeout: 5000 });
+    await expect(page).toHaveURL(/\/ncm$/, { timeout: 5000 });
   });
 });

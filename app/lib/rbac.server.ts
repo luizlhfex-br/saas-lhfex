@@ -4,6 +4,13 @@
  */
 
 import { redirect } from "react-router";
+import {
+  ACCESS_EMAIL_ROLES,
+  ACCESS_ROLES,
+  canAccessLuizModules,
+  canManageGlobalAutomations,
+  getEmailRole,
+} from "~/lib/access-control";
 type UserLike = { email: string };
 type AuthPayloadLike = { user: UserLike };
 
@@ -14,24 +21,15 @@ function extractEmail(sessionOrUser: UserLike | AuthPayloadLike): string {
   return sessionOrUser.email;
 }
 
-export const ROLES = {
-  ADMIN: "admin", // All access
-  LUIZ: "luiz", // Access to vida-pessoal + public-procurement
-  FINANCEIRO: "financeiro", // Access only to core comex (financial, crm, processes, etc)
-  DEFAULT: "default", // Limited access to core modules only
-} as const;
-
-export const EMAIL_ROLES: Record<string, string> = {
-  "luiz@lhfex.com.br": ROLES.LUIZ,
-  "financeiro@lhfex.com.br": ROLES.FINANCEIRO,
-  // Add more mappings as needed
-};
+export const ROLES = ACCESS_ROLES;
+export const EMAIL_ROLES = ACCESS_EMAIL_ROLES;
+export { canAccessLuizModules, canManageGlobalAutomations };
 
 /**
  * Determine user role based on email
  */
 export function getUserRole(email: string): string {
-  return EMAIL_ROLES[email.toLowerCase()] || ROLES.DEFAULT;
+  return getEmailRole(email);
 }
 
 /**

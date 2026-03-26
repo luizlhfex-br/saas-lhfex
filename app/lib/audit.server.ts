@@ -13,8 +13,21 @@ interface AuditParams {
     | "logout"
     | "cleanup"
     | "login_failed"
-    | "login_blocked";
-  entity: "client" | "contact" | "process" | "invoice" | "document" | "user" | "session" | "automation_log";
+    | "login_blocked"
+    | "access_denied"
+    | "trigger";
+  entity:
+    | "client"
+    | "contact"
+    | "process"
+    | "invoice"
+    | "document"
+    | "user"
+    | "session"
+    | "automation"
+    | "automation_log"
+    | "cron_job"
+    | "webhook_event";
   entityId?: string;
   changes?: Record<string, unknown>;
   details?: Record<string, unknown>;

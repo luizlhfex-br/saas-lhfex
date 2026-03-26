@@ -711,7 +711,7 @@ export async function action({ request }: { request: Request }) {
 
     if (intent === "edit_lottery") {
       if (!lotteryId) {
-        return data({ error: "Loteria invÃ¡lida" }, { status: 400 });
+        return data({ error: "Loteria inválida" }, { status: 400 });
       }
 
       await db
@@ -1497,7 +1497,7 @@ export default function PromotionsPage({
         setExtractError(j.error || "Erro ao enviar estratégia");
       }
     } catch {
-      setExtractError("Falha ao enviar estratégia para o OpenClaw");
+      setExtractError("Falha ao enviar estratégia para o Hermes Agent");
     } finally {
       setStrategyLoading(false);
     }
@@ -1936,7 +1936,7 @@ export default function PromotionsPage({
                             ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
                             : <MessageSquare className="mr-1 h-3.5 w-3.5 text-violet-500" />
                           }
-                          {strategyLoading ? "Analisando..." : "💬 Discutir estratégia com OpenClaw"}
+                          {strategyLoading ? "Analisando..." : "💬 Discutir estratégia com Hermes Agent"}
                         </Button>
                       )}
                     </div>
@@ -2166,7 +2166,7 @@ export default function PromotionsPage({
                           ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
                           : <MessageSquare className="mr-1 h-3.5 w-3.5 text-violet-500" />
                         }
-                        {strategyLoading ? "Analisando..." : "Discutir estrategia com OpenClaw"}
+                        {strategyLoading ? "Analisando..." : "Discutir estratégia com Hermes Agent"}
                       </Button>
                     )}
                   </div>

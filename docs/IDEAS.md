@@ -3,10 +3,10 @@
 
 ---
 
-## IA / OpenClaw
+## IA / Hermes Agent
 
-### Embeddings no SaaS e no OpenClaw
-- Objetivo: adicionar busca semantica e RAG interno no SaaS para clientes, processos, promocoes, radios, docs e memoria operacional do OpenClaw
+### Embeddings no SaaS e no Hermes Agent
+- Objetivo: adicionar busca semantica e RAG interno no SaaS para clientes, processos, promocoes, radios, docs e memoria operacional do Hermes Agent
 - Meta pratica: permitir que o sistema recupere contexto util por significado, nao so por palavra exata
 - Abordagem recomendada:
   - fase 1 com `gemini-embedding-001` para texto
@@ -16,7 +16,7 @@
 
 #### Principios do desenho
 - Nao usar embeddings para regra fiscal deterministica, aliquota exata, NCM oficial ou calculo tributario fechado
-- Usar embeddings para contexto, busca semantica, memoria, agrupamento e apoio ao OpenClaw
+- Usar embeddings para contexto, busca semantica, memoria, agrupamento e apoio ao Hermes Agent
 - Manter tudo no Postgres primeiro; nao abrir vetor DB externo sem necessidade real
 - Respeitar escopo:
   - negocio com `companyId`
@@ -27,7 +27,7 @@
 - Fase 1:
   - CRM: clientes, contatos, observacoes e historico relevante
   - Processos: descricao, observacoes, timeline, embarques e metadados
-  - Docs internos: changelog, docs operacionais, memoria e prompts que ajudem o OpenClaw
+  - Docs internos: changelog, docs operacionais, memoria e prompts que ajudem o Hermes Agent
 - Fase 2:
   - Promocoes, Literario, Insta e Radio Monitor
   - transcricoes, regras, posts e observacoes
@@ -348,6 +348,19 @@
 
 ### Referencias externas
 - Ver [REFERENCIAS-EXTERNAS.md](./REFERENCIAS-EXTERNAS.md) para os links vivos de skills, OpenClaw e GCP.
+
+### Curadoria externa - Hostinger
+- Guardar como referência de produto, sem aplicar agora.
+- Control Tower LHFEX:
+  - visão executiva de CRM, processos, financeiro, câmbio, alertas e saúde operacional em uma camada mais gerencial
+- Gestão de fornecedores, assinaturas e renovações:
+  - transformar o módulo atual em controle mais forte de custo recorrente, risco e renovação
+- Programa de indicações B2B:
+  - parcerias entre clientes, despachantes, agentes e contatos de comércio exterior
+- MicroSaaS paralelo de concursos:
+  - manter como produto separado do SaaS principal, validando primeiro por landing page e teste de interesse
+- Repositórios para consulta futura:
+  - Awesome, Public APIs, System Design Primer, Developer Roadmap e React oficial
 
 ---
 

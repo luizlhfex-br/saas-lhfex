@@ -4,6 +4,7 @@ import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
 import { automationLogs, automations } from "../../drizzle/schema";
 import { and, desc, eq, sql } from "drizzle-orm";
+import { getPrimaryCompanyId } from "~/lib/company-context.server";
 
 function escapeCsv(value: unknown): string {
   const raw = String(value ?? "");
@@ -12,7 +13,8 @@ function escapeCsv(value: unknown): string {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  await requireAuth(request);
+  const { user } = await requireAuth(request);
+  const companyId = await getPrimaryCompanyId(user.id);
 
   try {
   const url = new URL(request.url);
@@ -25,7 +27,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const pageSize = Math.min(Math.max(parseInt(url.searchParams.get("pageSize") || "10", 10), 5), 50);
   const offset = (page - 1) * pageSize;
 
-  const whereClauses = [] as any[];
+  const whereClauses = [eq(automations.companyId, companyId)] as any[];
 
   const now = new Date();
   let periodStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);

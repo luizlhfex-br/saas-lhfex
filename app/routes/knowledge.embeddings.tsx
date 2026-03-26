@@ -186,7 +186,7 @@ export default function KnowledgeEmbeddingsPage({ loaderData }: { loaderData: Kn
     () => [
       { value: "business" as const, label: "Business / SaaS" },
       { value: "personal" as const, label: "Pessoal" },
-      { value: "system" as const, label: "Sistema / OpenClaw" },
+      { value: "system" as const, label: "Sistema / Hermes Agent" },
     ],
     [],
   );
@@ -210,7 +210,7 @@ export default function KnowledgeEmbeddingsPage({ loaderData }: { loaderData: Kn
             Memória Semântica
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-[var(--app-muted)]">
-            Base para embeddings, busca semântica e RAG do SaaS e do OpenClaw.
+            Base para embeddings, busca semântica e RAG do SaaS e do Hermes Agent.
           </p>
         </div>
         <Link
@@ -312,7 +312,7 @@ export default function KnowledgeEmbeddingsPage({ loaderData }: { loaderData: Kn
           <ul className="mt-4 space-y-2 text-sm text-[var(--app-muted)]">
             <li>Backfill inicial de clientes e processos com hash incremental.</li>
             <li>Indexação incremental ao salvar cliente, processo ou observação.</li>
-            <li>Tool do OpenClaw para recuperar contexto semântico por domínio.</li>
+            <li>Tool do Hermes Agent para recuperar contexto semântico por domínio.</li>
             <li>RAG operacional para briefing e investigação de incidentes.</li>
           </ul>
         </section>
@@ -364,7 +364,7 @@ export default function KnowledgeEmbeddingsPage({ loaderData }: { loaderData: Kn
             ))
           ) : (
             <div className="rounded-xl border border-dashed border-[var(--app-border)] p-8 text-center text-sm text-[var(--app-muted)]">
-              Sem resultados ainda. Depois do backfill, esta tela vira a entrada do RAG do OpenClaw.
+              Sem resultados ainda. Depois do backfill, esta tela vira a entrada do RAG do Hermes Agent.
             </div>
           )}
         </div>

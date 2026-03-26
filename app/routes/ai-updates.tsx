@@ -9,9 +9,11 @@ import { promotionSites } from "../../drizzle/schema/personal-life";
 const SOURCE_MARKER = "[IA-UPDATES]";
 
 const DEFAULT_SOURCES = [
-  { name: "OpenClaw Releases", url: "https://github.com/openclaw/openclaw/releases", notes: "Releases oficiais do OpenClaw." },
+  { name: "Hermes Agent Releases", url: "https://github.com/NousResearch/hermes-agent/releases", notes: "Releases oficiais do Hermes Agent." },
+  { name: "OpenClaw Releases (legado)", url: "https://github.com/openclaw/openclaw/releases", notes: "Historico do gateway legado para compatibilidade e referencias antigas." },
   { name: "Awesome OpenClaw Agents", url: "https://github.com/mergisi/awesome-openclaw-agents", notes: "Repositorio com referencias e exemplos." },
   { name: "Coolify Releases", url: "https://github.com/coollabsio/coolify/releases", notes: "Novidades de deploy e plataforma." },
+  { name: "Spec Kit", url: "https://github.com/github/spec-kit", notes: "Workflow leve de constitution, spec, plan e tasks para epicos maiores." },
   { name: "skills.sh", url: "https://skills.sh/", notes: "Catalogo de skills." },
   { name: "MCP Market", url: "https://mcpmarket.com/", notes: "Ferramentas e skills MCP." },
   { name: "ClawHub Skills", url: "https://clawhub.ai/skills?sort=downloads", notes: "Skills populares no ecossistema OpenClaw." },
@@ -185,7 +187,7 @@ export default function AIUpdatesPage({ loaderData }: { loaderData: LoaderData }
         <p className="text-xs uppercase tracking-[0.3em] text-[var(--app-muted)]">IA & AUTO</p>
         <h1 className="mt-2 text-3xl font-semibold text-[var(--app-text)]">Fontes de atualizacao</h1>
         <p className="mt-2 max-w-3xl text-sm text-[var(--app-muted)]">
-          Cadastre links para acompanhar updates de OpenClaw, Coolify, skills e ecossistema IA.
+          Cadastre links para acompanhar updates do Hermes Agent, Coolify, skills e ecossistema IA.
         </p>
       </div>
 
@@ -221,7 +223,7 @@ export default function AIUpdatesPage({ loaderData }: { loaderData: LoaderData }
             <input type="hidden" name="intent" value="add_source" />
             <input
               name="name"
-              placeholder="Nome da fonte (ex.: OpenClaw Releases)"
+              placeholder="Nome da fonte (ex.: Hermes Agent Releases)"
               className="w-full rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-2)] px-4 py-3 text-sm text-[var(--app-text)] outline-none transition focus:border-[var(--app-accent)]"
             />
             <input

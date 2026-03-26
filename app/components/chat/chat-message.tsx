@@ -12,7 +12,7 @@ const agentEmojis: Record<string, string> = {
   iana: "📦",
   maria: "💰",
   iago: "🔧",
-  openclaw: "🦞",
+  openclaw: "🤖",
 };
 
 const agentNames: Record<string, string> = {
@@ -20,7 +20,7 @@ const agentNames: Record<string, string> = {
   iana: "IAna",
   maria: "marIA",
   iago: "IAgo",
-  openclaw: "OpenClaw",
+  openclaw: "Hermes Agent",
 };
 
 export function ChatMessage({ role, content, agentId, timestamp }: ChatMessageProps) {

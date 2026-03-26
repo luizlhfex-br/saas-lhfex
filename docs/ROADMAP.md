@@ -12,8 +12,8 @@
 | Financeiro corporativo | OK | Faturas, cashflow e relatorios em producao |
 | NCM / Classificacao | OK | Chain principal estabilizada |
 | IA / Providers | OK | Vertex -> OpenRouter Free -> DeepSeek Direct |
-| OpenClaw multiagente | OK | Deploy automatico e entrypoint endurecido |
-| OpenClaw Telegram | OK | Cliente por CNPJ e processo por cliente + modal ativos |
+| Hermes Agent squad | OK | Runtime oficial estabilizado no VPS com squad ativo |
+| Hermes Agent Telegram | OK | Cliente por CNPJ e processo por cliente + modal ativos |
 | Squad Room | OK | `/squad` publicado |
 | Assinaturas | OK | CRUD e totais BRL/USD publicados |
 | Radio Monitor | OK | Campos extras e links publicados |
@@ -42,13 +42,13 @@
   - `/cliente 03.954.434/0001-19`
   - `/processo cliente: Empresa ABC, modal: maritimo`
 - Testar Google OAuth completo em `/settings`
-- Confirmar no CRM e em Processos se os atalhos do OpenClaw gravam tudo como esperado
+- Confirmar no CRM e em Processos se os atalhos do Hermes Agent gravam tudo como esperado
 
 ### P1 - Observabilidade e seguranca
 - Configurar `SENTRY_DSN` no Coolify e validar captura real
 - Expandir CSRF para mais rotas de negocio alem de login, logout, settings, CRM novo, processos novos e subscriptions
 - Planejar expiracao deslizante de sessao sem espalhar regressao por loaders/actions
-- Revisar `gateway.bind` e privacy mode do Telegram no OpenClaw
+- Revisar `gateway.bind` e privacy mode do Telegram no Hermes Agent
 
 ### P2 - Produto e operacao
 - Expandir `/ai-usage` com volume, custo e provider
@@ -58,7 +58,7 @@
 
 ### P3 - Qualidade
 - Expandir testes unitarios de provider strategy, auth e validadores
-- Expandir E2E para fluxos completos de CRM, processo e OpenClaw tools
+- Expandir E2E para fluxos completos de CRM, processo e tools do Hermes Agent
 - Reduzir warnings de build por imports dinamicos misturados
 
 ---

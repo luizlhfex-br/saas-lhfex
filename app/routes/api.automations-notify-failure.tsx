@@ -3,10 +3,12 @@ import type { Route } from "./+types/api.automations-notify-failure";
 import { requireAuth } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
 import { automationLogs, automations } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import { getPrimaryCompanyId } from "~/lib/company-context.server";
 
 export async function action({ request }: Route.ActionArgs) {
   const { user } = await requireAuth(request);
+  const companyId = await getPrimaryCompanyId(user.id);
   const formData = await request.formData();
   const logId = formData.get("logId") as string;
   const notifyVia = (formData.get("notifyVia") || "notification").toString();
@@ -23,7 +25,8 @@ export async function action({ request }: Route.ActionArgs) {
       errorMessage: automationLogs.errorMessage,
     })
     .from(automationLogs)
-    .where(eq(automationLogs.id, logId))
+    .innerJoin(automations, eq(automationLogs.automationId, automations.id))
+    .where(and(eq(automationLogs.id, logId), eq(automations.companyId, companyId)))
     .limit(1);
 
   if (!log) {
@@ -33,7 +36,7 @@ export async function action({ request }: Route.ActionArgs) {
   const [automation] = await db
     .select()
     .from(automations)
-    .where(eq(automations.id, log.automationId))
+    .where(and(eq(automations.id, log.automationId), eq(automations.companyId, companyId)))
     .limit(1);
 
   if (!automation) {

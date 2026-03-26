@@ -3,8 +3,8 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.46";
-export const APP_RELEASE_DATE = "2026-03-21";
+export const APP_VERSION = "2.9.47";
+export const APP_RELEASE_DATE = "2026-03-26";
 export const APP_NAME = "LHFEX SaaS";
 
 export type ChangelogItemType = "feature" | "improvement" | "fix" | "infra";
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.47",
+    date: "2026-03-26",
+    title: "Auditoria geral com hardening das automacoes e naming Hermes",
+    items: [
+      { type: "fix", text: "Automacoes: o webhook listener passou a exigir assinatura HMAC, validar payload com Zod, aplicar rate limit e rejeitar chamadas fora do escopo esperado" },
+      { type: "fix", text: "Cron e automations: rotas administrativas e consultas sensiveis foram endurecidas com companyId, userId e allowlist de admins mais explicita" },
+      { type: "improvement", text: "E2E: os testes de auth e chat foram estabilizados para o fluxo atual de login e para o envio com fallback de classificacao controlado" },
+      { type: "improvement", text: "Branding e docs: superficies ativas passaram a exibir Hermes Agent de forma consistente e o repo ganhou uma camada leve de spec flow para epicos" },
+    ],
+  },
   {
     version: "2.9.46",
     date: "2026-03-21",

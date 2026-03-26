@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { t, type Locale } from "~/i18n";
+import { canAccessLuizModules } from "~/lib/access-control";
 
 interface User {
   id: string;
@@ -47,7 +48,7 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   to: string;
   disabled?: boolean;
-  requiredEmail?: string;
+  requiresLuizAccess?: boolean;
 }
 
 const mainNavItems: NavItem[] = [
@@ -56,8 +57,8 @@ const mainNavItems: NavItem[] = [
   { labelKey: "pipeline", icon: Kanban, to: "/crm/pipeline" },
   { labelKey: "processes", icon: FileText, to: "/processes" },
   { labelKey: "financial", icon: DollarSign, to: "/financial" },
-  { labelKey: "publicProcurement", icon: Briefcase, to: "/public-procurement", requiredEmail: "luiz@lhfex.com.br" },
-  { labelKey: "personalLife", icon: Heart, to: "/personal-life", requiredEmail: "luiz@lhfex.com.br" },
+  { labelKey: "publicProcurement", icon: Briefcase, to: "/public-procurement", requiresLuizAccess: true },
+  { labelKey: "personalLife", icon: Heart, to: "/personal-life", requiresLuizAccess: true },
 ];
 
 const comexNavItems: NavItem[] = [
@@ -104,7 +105,7 @@ export function MobileNav({
   };
 
   const renderNavItem = (item: NavItem) => {
-    if (item.requiredEmail && item.requiredEmail !== user.email) {
+    if (item.requiresLuizAccess && !canAccessLuizModules(user.email)) {
       return null;
     }
 
