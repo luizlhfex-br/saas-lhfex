@@ -1,17 +1,51 @@
 {
   "release": {
-    "version": "v2.9.48",
+    "version": "v2.9.49",
     "date": "2026-03-26T00:00:00Z",
     "type": "feature",
-    "title": "Saude corporal com fotos, metricas e historico por snapshot"
+    "title": "Financas pessoais com metas, contas a pagar e previsto x realizado"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 3,
-    "filesModified": 5,
+    "filesCreated": 2,
+    "filesModified": 10,
     "routesAdded": 0,
     "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_26_financas_pessoais_planejamento": {
+    "date": "2026-03-26",
+    "release_version": "2.9.49",
+    "objective": "Substituir o fluxo de planilha das financas pessoais por uma tela nativa no SaaS com previsao, quitacao, metas mensais e acompanhamento visual do mes",
+    "files_changed": [
+      "drizzle/schema/personal-life.ts",
+      "drizzle/migrations/0016_personal_finance_planning.sql",
+      "app/lib/personal-finance.ts",
+      "app/routes/api.personal-finance.tsx",
+      "app/routes/personal-life.finances.tsx",
+      "app/routes/personal-life.finances.accounts.tsx",
+      "app/routes/personal-life.finances.analytics.tsx",
+      "app/routes/personal-life.finances.budgets.tsx",
+      "app/routes/personal-life.finances.recurring.tsx",
+      "app/routes/personal-life.finances.transactions.tsx",
+      "app/routes/personal-life.tsx",
+      "docs/IDEAS.md",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "A tela principal de Financas Pessoais foi reestruturada para trabalhar com receitas, despesas previstas, pagamentos realizados, metas do mes, saldo projetado e contas a pagar em uma unica interface",
+      "O schema ganhou status, data de quitacao e indicador de conta fixa em personal_finance, alem da nova tabela personal_finance_goals para metas mensais de receita, despesa e poupanca",
+      "As subrotas antigas de contas, analytics, budgets, recurring e transactions passaram a redirecionar para a tela principal, consolidando o fluxo e evitando manutencao duplicada",
+      "A API pessoal passou a aceitar status, quitacao e notas, e o painel novo exibe graficos de receitas x despesas, distribuicao por categoria, lancamentos recentes e contas vencidas"
+    ],
+    "verification": [
+      "Migration 0016_personal_finance_planning.sql foi aplicada com sucesso via scripts/run-migration.ts",
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros",
+      "npm run test:unit passou sem erros"
+    ]
   },
   "session_2026_03_26_saude_corporal": {
     "date": "2026-03-26",

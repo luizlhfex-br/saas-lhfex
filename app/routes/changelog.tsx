@@ -29,6 +29,18 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-26",
+    version: "2.9.49",
+    type: "release",
+    title: "Financas pessoais com metas, contas a pagar e previsto x realizado",
+    items: [
+      "Financas Pessoais: a tela principal foi refeita para concentrar receitas, despesas previstas, pagamentos realizados, metas do mes e saldo projetado em um unico fluxo",
+      "Financas Pessoais: contas previstas agora podem ser marcadas como pagas, exibidas como vencidas quando atrasam e organizadas ao lado dos lancamentos recentes",
+      "O dashboard pessoal passou a mostrar resumo do mes, grafico de receitas x despesas e distribuicao de gastos por categoria sem depender das subrotas antigas",
+      "A migration 0016_personal_finance_planning.sql adicionou status, quitacao, recorrencia fixa e a tabela personal_finance_goals para planejamento mensal",
+    ],
+  },
+  {
+    date: "2026-03-26",
     version: "2.9.48",
     type: "release",
     title: "Saude corporal com fotos, metricas e historico por snapshot",

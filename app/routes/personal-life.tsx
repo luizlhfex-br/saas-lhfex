@@ -44,7 +44,7 @@ const modules: ModuleCard[] = [
     group: "finances",
     slug: "finances",
     title: "Financas Pessoais",
-    description: "Modulo completo de financas pessoais: contas, lancamentos, orcamentos e recorrencias",
+    description: "Receitas, despesas, metas do mes, contas a pagar e historico financeiro pessoal",
     icon: DollarSign,
     color: "bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400",
   },

@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.48";
+export const APP_VERSION = "2.9.49";
 export const APP_RELEASE_DATE = "2026-03-26";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.49",
+    date: "2026-03-26",
+    title: "Financas pessoais com metas, contas a pagar e previsto x realizado",
+    items: [
+      { type: "feature", text: "Financas Pessoais: a tela principal foi refeita para operar com receitas, despesas previstas, pagamentos realizados, metas do mes e saldo projetado em um unico fluxo" },
+      { type: "feature", text: "Financas Pessoais: agora e possivel cadastrar contas previstas, marcar pagamento, acompanhar contas em aberto e visualizar lancamentos recentes sem depender das subrotas antigas" },
+      { type: "improvement", text: "Analytics pessoal: o painel passou a mostrar resumo do mes, contas vencidas, grafico de receitas x despesas e distribuicao de gastos por categoria" },
+      { type: "infra", text: "Schema: a migration 0016_personal_finance_planning.sql adicionou status, quitacao, recorrencia fixa e a nova tabela personal_finance_goals para planejamento mensal" },
+    ],
+  },
   {
     version: "2.9.48",
     date: "2026-03-26",

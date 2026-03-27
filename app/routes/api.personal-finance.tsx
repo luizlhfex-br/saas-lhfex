@@ -17,43 +17,46 @@ export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const month = url.searchParams.get("month"); // "2026-02"
   const type = url.searchParams.get("type"); // "income" | "expense" | "all"
+  const status = url.searchParams.get("status"); // "planned" | "settled" | "cancelled" | "all"
 
-  let query = db
-    .select()
-    .from(personalFinance)
-    .where(and(eq(personalFinance.userId, user.id), isNull(personalFinance.deletedAt)))
-    .$dynamic();
+  const filters = [eq(personalFinance.userId, user.id), isNull(personalFinance.deletedAt)];
 
   if (month) {
     const [year, monthNum] = month.split("-");
     const startDate = `${year}-${monthNum}-01`;
     const endDate = `${year}-${monthNum}-31`;
-
-    query = query.where(
-      and(
-        gte(personalFinance.date, startDate),
-        lte(personalFinance.date, endDate)
-      )
-    );
+    filters.push(gte(personalFinance.date, startDate), lte(personalFinance.date, endDate));
   }
 
   if (type && type !== "all") {
-    query = query.where(eq(personalFinance.type, type));
+    filters.push(eq(personalFinance.type, type));
   }
 
-  const records = await query.orderBy(desc(personalFinance.date));
+  if (status && status !== "all") {
+    filters.push(eq(personalFinance.status, status));
+  }
 
-  // Calculate totals
-  const totalIncome = records
-    .filter((r) => r.type === "income")
+  const records = await db
+    .select()
+    .from(personalFinance)
+    .where(and(...filters))
+    .orderBy(desc(personalFinance.date));
+
+  const normalizedRecords = records.map((record) => ({
+    ...record,
+    amountNumber: Number.parseFloat(String(record.amount)),
+  }));
+
+  const totalIncome = normalizedRecords
+    .filter((r) => r.type === "income" && r.status === "settled")
     .reduce((sum, r) => sum + parseFloat(String(r.amount)), 0);
 
-  const totalExpense = records
-    .filter((r) => r.type === "expense")
+  const totalExpense = normalizedRecords
+    .filter((r) => r.type === "expense" && r.status === "settled")
     .reduce((sum, r) => sum + parseFloat(String(r.amount)), 0);
 
   return Response.json({
-    records,
+    records: normalizedRecords,
     summary: { totalIncome, totalExpense, balance: totalIncome - totalExpense },
   });
 }
@@ -73,6 +76,9 @@ export async function action({ request }: Route.ActionArgs) {
       const description = formData.get("description");
       const amount = formData.get("amount");
       const paymentMethod = formData.get("paymentMethod");
+      const status = String(formData.get("status") || "planned");
+      const notes = String(formData.get("notes") || "").trim();
+      const isFixed = String(formData.get("isFixed") || "false") === "true";
 
       const record = await db
         .insert(personalFinance)
@@ -84,6 +90,11 @@ export async function action({ request }: Route.ActionArgs) {
           description: String(description),
           amount: String(amount),
           paymentMethod: paymentMethod ? String(paymentMethod) : undefined,
+          status,
+          isFixed,
+          settledAt: status === "settled" ? String(date) : null,
+          notes: notes || null,
+          updatedAt: new Date(),
         })
         .returning();
 
@@ -94,12 +105,20 @@ export async function action({ request }: Route.ActionArgs) {
       const id = formData.get("id");
       const amount = formData.get("amount");
       const category = formData.get("category");
+      const description = formData.get("description");
+      const paymentMethod = formData.get("paymentMethod");
+      const status = formData.get("status");
+      const settledAt = formData.get("settledAt");
 
       const updated = await db
         .update(personalFinance)
         .set({
           ...(amount && { amount: String(amount) }),
           ...(category && { category: String(category) }),
+          ...(description && { description: String(description) }),
+          ...(paymentMethod && { paymentMethod: String(paymentMethod) }),
+          ...(status && { status: String(status) }),
+          ...(settledAt && { settledAt: String(settledAt) }),
           updatedAt: new Date(),
         })
         .where(and(eq(personalFinance.id, String(id)), eq(personalFinance.userId, user.id)))

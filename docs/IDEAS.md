@@ -332,6 +332,47 @@
 - Conciliacao mais automatica
 - Melhor ingestao de extratos
 
+### Financeiro PJ - camadas ERP futuras
+- Direcao atual aprovada:
+  - manter o modulo principal da LHFEX com cara de fluxo de caixa forte, simples e operacional
+- Expansoes futuras quando o volume crescer:
+  - centros de custo por area ou projeto
+  - contas a pagar e a receber com aprovacao por etapa
+  - plano de contas mais rigido
+  - conciliacao bancaria mais profunda
+  - competencia x caixa
+  - DRE gerencial
+  - fluxo por unidade de negocio
+  - regras de permissao por perfil
+- Gatilhos para considerar essa evolucao:
+  - mais pessoas usando o financeiro
+  - aumento relevante de lancamentos mensais
+  - necessidade de relatarios gerenciais mais formais
+  - fechamento mensal mais demorado ou manual demais
+
+### Promocoes Instagram - participacao assistida com amigos
+- Ideia para amadurecer depois:
+  - manter uma lista autorizada de amigos que aceitam ser marcados em sorteios
+  - permitir que a IA encontre oportunidades e participe marcando esses amigos de forma controlada
+- Desenho futuro:
+  - cadastro de amigos com @, nome, limite de uso e observacoes
+  - lista de hashtags, contas e palavras-chave monitoradas
+  - ranking de oportunidades por prazo, premio, confiabilidade e esforco
+  - fila de participacao sugerida antes da execucao
+  - historico de quem foi marcado e em qual campanha
+- Guardrails importantes:
+  - nunca marcar sem lista explicitamente autorizada
+  - respeitar rodizio para nao usar sempre as mesmas pessoas
+  - limitar volume por dia e por perfil
+  - evitar comentarios repetitivos ou com cara de spam
+  - registrar evidencia da participacao e do comentario publicado
+- Caminho tecnico futuro:
+  - browser logado
+  - leitura da pagina do post
+  - extracao das regras
+  - composicao do comentario
+  - aprovacao ou automacao parcial conforme confianca do fluxo
+
 ### Mobile
 - App leve para consulta e alerta
 

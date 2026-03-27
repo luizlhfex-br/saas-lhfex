@@ -25,6 +25,9 @@ export const personalFinance = pgTable(
     currency: varchar("currency", { length: 3 }).default("BRL"),
     paymentMethod: varchar("payment_method", { length: 50 }), // "cash", "debit_card", "credit_card", "transfer", "pix"
     recurringId: uuid("recurring_id"), // Para despesas recorrentes (aluguel, internet, etc)
+    status: varchar("status", { length: 20 }).default("settled").notNull(), // "planned" | "settled" | "cancelled"
+    settledAt: date("settled_at"),
+    isFixed: boolean("is_fixed").default(false).notNull(),
     notes: text("notes"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -35,10 +38,33 @@ export const personalFinance = pgTable(
     dateIdx: index("personal_finance_date_idx").on(table.date),
     categoryIdx: index("personal_finance_category_idx").on(table.category),
     recurringIdIdx: index("personal_finance_recurring_id_idx").on(table.recurringId),
+    statusIdx: index("personal_finance_status_idx").on(table.status),
   })
 );
 
 // ── Investimentos Pessoais ──
+export const personalFinanceGoals = pgTable(
+  "personal_finance_goals",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    month: varchar("month", { length: 7 }).notNull(), // YYYY-MM
+    incomeGoal: decimal("income_goal", { precision: 12, scale: 2 }),
+    expenseLimit: decimal("expense_limit", { precision: 12, scale: 2 }),
+    savingsGoal: decimal("savings_goal", { precision: 12, scale: 2 }),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at"),
+  },
+  (table) => ({
+    userIdIdx: index("personal_finance_goals_user_id_idx").on(table.userId),
+    monthIdx: index("personal_finance_goals_month_idx").on(table.month),
+    userMonthUniqueIdx: uniqueIndex("personal_finance_goals_user_month_uidx").on(table.userId, table.month),
+  })
+);
+
+// â”€â”€ Investimentos Pessoais â”€â”€
 export const personalInvestments = pgTable(
   "personal_investments",
   {
