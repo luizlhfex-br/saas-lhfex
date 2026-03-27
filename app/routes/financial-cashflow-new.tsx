@@ -1,4 +1,4 @@
-import { Form, Link, redirect, useActionData, useLoaderData, useNavigation, useSearchParams } from "react-router";
+import { Form, Link, redirect, useActionData, useLoaderData, useNavigation } from "react-router";
 import type { Route } from "./+types/financial-cashflow-new";
 import { requireAuth } from "~/lib/auth.server";
 import { cashMovementSchema } from "~/lib/validators";
@@ -10,7 +10,7 @@ import { parseBrazilianCurrency } from "~/lib/cashflow.server";
 import { data } from "react-router";
 import { ChevronLeft } from "lucide-react";
 import { Button } from "~/components/ui/button";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { getPrimaryCompanyId } from "~/lib/company-context.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -38,6 +38,7 @@ export async function action({ request }: Route.ActionArgs) {
   const raw = {
     date: String(formData.get("date") || ""),
     type: String(formData.get("type") || ""),
+    status: String(formData.get("status") || "settled"),
     category: String(formData.get("category") || ""),
     subcategory: String(formData.get("subcategory") || ""),
     description: String(formData.get("description") || ""),
@@ -71,6 +72,7 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   const { date, type, category, subcategory, description, amount, hasInvoice, settlementDate, paymentMethod, costCenter } = result.data;
+  const status = result.data.status || "settled";
 
   // Parse amount (Brazilian format: 1.234,56 → 1234.56)
   let parsedAmount: number;
@@ -94,12 +96,13 @@ export async function action({ request }: Route.ActionArgs) {
     companyId: await getPrimaryCompanyId(user.id),
     date,
     type,
+    status,
     category,
     subcategory: subcategory || null,
     description: description || null,
     amount: String(parsedAmount.toFixed(2)),
     hasInvoice: hasInvoice || "N",
-    settlementDate: settlementDate || null,
+    settlementDate: status === "settled" ? (settlementDate || date) : null,
     paymentMethod: paymentMethod || null,
     costCenter: costCenter || null,
     createdBy: user.id,
@@ -130,6 +133,7 @@ export default function FinancialCashflowNewPage({ loaderData }: Route.Component
 
   // Pre-select type from URL param or action errors
   const selectedType = fields.type || preType || "income";
+  const selectedStatus = fields.status || "settled";
   const categoryOptions = categories.filter((c) => c.type === selectedType && !c.parentId);
   const subcategoryOptions = categories.filter((c) => c.type === selectedType && !!c.parentId);
 
@@ -190,6 +194,23 @@ export default function FinancialCashflowNewPage({ loaderData }: Route.Component
                 <option value="expense">Despesa</option>
               </select>
               {errors.type && <p className="mt-1 text-sm text-red-600">{errors.type[0]}</p>}
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Status <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="status"
+                required
+                defaultValue={selectedStatus}
+                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+              >
+                <option value="settled">Liquidado</option>
+                <option value="planned">Previsto</option>
+                <option value="cancelled">Cancelado</option>
+              </select>
+              {errors.status && <p className="mt-1 text-sm text-red-600">{errors.status[0]}</p>}
             </div>
 
             {/* Category */}
@@ -270,10 +291,11 @@ export default function FinancialCashflowNewPage({ loaderData }: Route.Component
               <input
                 type="date"
                 name="settlementDate"
-                defaultValue={fields.settlementDate || fields.date || today}
+                defaultValue={fields.settlementDate || (selectedStatus === "settled" ? (fields.date || today) : "")}
                 min="2025-01-01"
                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
               />
+              <p className="mt-1 text-xs text-gray-500">Use a data real de baixa. Se o lancamento estiver apenas previsto, deixe em branco.</p>
             </div>
 
             <div>

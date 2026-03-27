@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.49";
+export const APP_VERSION = "2.9.50";
 export const APP_RELEASE_DATE = "2026-03-26";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.50",
+    date: "2026-03-26",
+    title: "Fluxo de caixa PJ com previsto, realizado e saldo projetado",
+    items: [
+      { type: "feature", text: "Financeiro PJ: o controle de caixa foi reconstruido para trabalhar com lancamentos previstos, baixas liquidadas, cancelamentos e leitura clara do saldo projetado do periodo" },
+      { type: "feature", text: "Fluxo de caixa: a tela principal agora segue a logica da planilha operacional, com saldo de abertura, entradas e saidas liquidadas, pendencias, atrasos e tabela de acumulado por movimento" },
+      { type: "improvement", text: "Importacao e cadastro: novos lancamentos e CSV passaram a aceitar status de previsto, liquidado ou cancelado, com baixa automatica quando houver quitacao real" },
+      { type: "infra", text: "Schema: a migration 0017_cashflow_status.sql adicionou o campo status em cash_movements para separar previsao, realizado e cancelamento no caixa da LHFEX" },
+    ],
+  },
   {
     version: "2.9.49",
     date: "2026-03-26",

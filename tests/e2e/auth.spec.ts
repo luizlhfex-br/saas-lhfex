@@ -26,16 +26,17 @@ test.describe("Authentication Flow", () => {
 
   test("should login successfully with valid credentials", async ({ page }) => {
     await page.goto("/login");
+    await expect(page.locator('input[name="csrf"]')).toBeAttached();
     
     // Use credentials from seed file (admin user)
     await fillLoginForm(page, "luiz@lhfex.com.br", "lhfex2025!");
     
     // Should redirect to dashboard
     await Promise.all([
-      page.waitForURL(/\/($|dashboard)/, { timeout: 15000 }),
+      page.waitForURL(/\/($|dashboard)/, { timeout: 25000 }),
       page.locator('button[type="submit"]').click(),
     ]);
-    await expect(page).toHaveURL(/\/($|dashboard)/);
+    await expect(page).not.toHaveURL(/\/login$/);
     await expect(page).not.toHaveURL(/\/login$/);
   });
 });

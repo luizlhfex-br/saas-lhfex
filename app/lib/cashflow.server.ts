@@ -1,30 +1,27 @@
-/**
- * Cashflow Service - Controle de Caixa
- * 
- * Fornece funções para análise de fluxo de caixa mensal:
- * - Lançamentos do mês (receitas e despesas)
- * - Totalizadores (receita total, despesa total, saldo)
- * - Agrupamento por categoria
- */
-
+import { and, eq } from "drizzle-orm";
 import { db } from "~/lib/db.server";
 import { cashMovements } from "../../drizzle/schema";
-import { and, eq, sql } from "drizzle-orm";
 
-// --- Types ---
+export type CashMovementType = "income" | "expense";
+export type CashMovementStatus = "planned" | "settled" | "cancelled";
 
 export interface CashMovementDTO {
   id: string;
-  date: string; // ISO date string
-  type: "income" | "expense";
+  date: string;
+  type: CashMovementType;
+  status: CashMovementStatus;
   category: string;
   subcategory: string | null;
   description: string | null;
-  amount: number; // Parsed as number
+  amount: number;
   hasInvoice: "S" | "N";
   settlementDate: string | null;
   paymentMethod: string | null;
   costCenter: string | null;
+  effectiveDate: string;
+  isPending: boolean;
+  isOverdue: boolean;
+  projectedBalance: number;
 }
 
 export interface CategorySummary {
@@ -34,12 +31,32 @@ export interface CategorySummary {
   net: number;
 }
 
+export interface CashflowMonthlyPoint {
+  month: string;
+  settledIncome: number;
+  settledExpense: number;
+  projectedNet: number;
+}
+
 export interface CashFlowSummary {
   movements: CashMovementDTO[];
+  pendingMovements: CashMovementDTO[];
+  byCategory: CategorySummary[];
+  monthlySeries: CashflowMonthlyPoint[];
   totalIncome: number;
   totalExpense: number;
   balance: number;
-  byCategory: CategorySummary[];
+  currentBalance: number;
+  openingBalance: number;
+  settledIncome: number;
+  settledExpense: number;
+  plannedIncome: number;
+  plannedExpense: number;
+  realizedClosingBalance: number;
+  projectedClosingBalance: number;
+  pendingAmount: number;
+  overdueCount: number;
+  overdueAmount: number;
   year: number;
   month: number;
 }
@@ -119,27 +136,51 @@ function getRangeForFilters(year: number, month: number, filters?: CashFlowFilte
   };
 }
 
-// --- Main Function: Get Cash Flow for Month ---
+function getTodayISO() {
+  return new Date().toISOString().split("T")[0];
+}
 
-/**
- * Retorna resumo financeiro do mês
- * @param year - Ano (ex: 2026)
- * @param month - Mês (1-12)
- * @returns Resumo com lançamentos, totais e agrupamento por categoria
- */
+function getMonthKey(dateISO: string) {
+  return dateISO.slice(0, 7);
+}
+
+function getShortMonthLabel(monthKey: string) {
+  const [year, month] = monthKey.split("-");
+  return new Intl.DateTimeFormat("pt-BR", { month: "short" }).format(
+    new Date(Number(year), Number(month) - 1, 1),
+  );
+}
+
+function signedAmount(type: CashMovementType, amount: number) {
+  return type === "income" ? amount : -amount;
+}
+
+function normalizeStatus(status: string | null | undefined): CashMovementStatus {
+  if (status === "planned" || status === "settled" || status === "cancelled") {
+    return status;
+  }
+  return "settled";
+}
+
+function compareMovements(a: { date: string; effectiveDate: string }, b: { date: string; effectiveDate: string }) {
+  if (a.date !== b.date) return a.date.localeCompare(b.date);
+  return a.effectiveDate.localeCompare(b.effectiveDate);
+}
+
 export async function getCashFlowForMonth(year: number, month: number, filters?: CashFlowFilters): Promise<CashFlowSummary> {
   if (!filters?.companyId) {
     throw new Error("companyId is required for cashflow queries");
   }
 
   const { startISO, endISO, year: resolvedYear, month: resolvedMonth } = getRangeForFilters(year, month, filters);
+  const todayISO = getTodayISO();
 
-  // Buscar todos os lançamentos do mês
-  const movements = await db
+  const records = await db
     .select({
       id: cashMovements.id,
       date: cashMovements.date,
       type: cashMovements.type,
+      status: cashMovements.status,
       category: cashMovements.category,
       subcategory: cashMovements.subcategory,
       description: cashMovements.description,
@@ -148,59 +189,125 @@ export async function getCashFlowForMonth(year: number, month: number, filters?:
       settlementDate: cashMovements.settlementDate,
       paymentMethod: cashMovements.paymentMethod,
       costCenter: cashMovements.costCenter,
+      createdAt: cashMovements.createdAt,
     })
     .from(cashMovements)
-    .where(and(
-      sql`${cashMovements.date} >= ${startISO} AND ${cashMovements.date} <= ${endISO}`,
-      eq(cashMovements.companyId, filters.companyId),
-      filters?.userId ? eq(cashMovements.createdBy, filters.userId) : undefined,
-    ))
+    .where(
+      and(
+        eq(cashMovements.companyId, filters.companyId),
+        filters.userId ? eq(cashMovements.createdBy, filters.userId) : undefined,
+      ),
+    )
     .orderBy(cashMovements.date, cashMovements.createdAt);
 
-  // Converter para DTO (amount como número)
-  const movementDTOs: CashMovementDTO[] = movements.map((m) => ({
-    id: m.id,
-    date: m.date,
-    type: m.type as "income" | "expense",
-    category: m.category,
-    subcategory: m.subcategory,
-    description: m.description,
-    amount: parseFloat(m.amount),
-    hasInvoice: (m.hasInvoice as "S" | "N") || "N",
-    settlementDate: m.settlementDate,
-    paymentMethod: m.paymentMethod,
-    costCenter: m.costCenter,
-  }));
+  const normalized = records.map((record) => {
+    const amount = Number(record.amount);
+    const status = normalizeStatus(record.status);
+    const effectiveDate = record.settlementDate || record.date;
+    const isPending = status === "planned";
+    return {
+      id: record.id,
+      date: record.date,
+      type: record.type as CashMovementType,
+      status,
+      category: record.category,
+      subcategory: record.subcategory,
+      description: record.description,
+      amount,
+      hasInvoice: (record.hasInvoice as "S" | "N") || "N",
+      settlementDate: record.settlementDate,
+      paymentMethod: record.paymentMethod,
+      costCenter: record.costCenter,
+      effectiveDate,
+      isPending,
+      isOverdue: isPending && record.date < todayISO,
+      createdAt: record.createdAt,
+    };
+  });
 
-  // Calcular totais
-  let totalIncome = 0;
-  let totalExpense = 0;
+  const periodRecords = normalized.filter((record) => record.date >= startISO && record.date <= endISO);
+  const activePeriodRecords = periodRecords.filter((record) => record.status !== "cancelled");
+  const settledBeforePeriod = normalized.filter(
+    (record) => record.status === "settled" && record.effectiveDate < startISO,
+  );
+  const settledUpToToday = normalized.filter(
+    (record) => record.status === "settled" && record.effectiveDate <= todayISO,
+  );
+  const settledInPeriod = periodRecords.filter((record) => record.status === "settled");
 
-  for (const movement of movementDTOs) {
-    if (movement.type === "income") {
-      totalIncome += movement.amount;
-    } else {
-      totalExpense += movement.amount;
-    }
+  const openingBalance = settledBeforePeriod.reduce(
+    (sum, record) => sum + signedAmount(record.type, record.amount),
+    0,
+  );
+  const currentBalance = settledUpToToday.reduce(
+    (sum, record) => sum + signedAmount(record.type, record.amount),
+    0,
+  );
+
+  const plannedIncome = activePeriodRecords
+    .filter((record) => record.type === "income")
+    .reduce((sum, record) => sum + record.amount, 0);
+  const plannedExpense = activePeriodRecords
+    .filter((record) => record.type === "expense")
+    .reduce((sum, record) => sum + record.amount, 0);
+  const settledIncome = settledInPeriod
+    .filter((record) => record.type === "income")
+    .reduce((sum, record) => sum + record.amount, 0);
+  const settledExpense = settledInPeriod
+    .filter((record) => record.type === "expense")
+    .reduce((sum, record) => sum + record.amount, 0);
+
+  const pendingMovementsBase = periodRecords
+    .filter((record) => record.status === "planned")
+    .sort(compareMovements);
+
+  const overdueMovements = pendingMovementsBase.filter((record) => record.isOverdue);
+  const overdueAmount = overdueMovements.reduce((sum, record) => sum + record.amount, 0);
+
+  const projectedRows = activePeriodRecords
+    .slice()
+    .sort(compareMovements);
+
+  let runningProjectedBalance = openingBalance;
+  const projectedBalanceMap = new Map<string, number>();
+  for (const record of projectedRows) {
+    runningProjectedBalance += signedAmount(record.type, record.amount);
+    projectedBalanceMap.set(record.id, runningProjectedBalance);
   }
 
-  const balance = totalIncome - totalExpense;
+  const movements: CashMovementDTO[] = periodRecords
+    .slice()
+    .sort(compareMovements)
+    .map((record) => ({
+      id: record.id,
+      date: record.date,
+      type: record.type,
+      status: record.status,
+      category: record.category,
+      subcategory: record.subcategory,
+      description: record.description,
+      amount: record.amount,
+      hasInvoice: record.hasInvoice,
+      settlementDate: record.settlementDate,
+      paymentMethod: record.paymentMethod,
+      costCenter: record.costCenter,
+      effectiveDate: record.effectiveDate,
+      isPending: record.isPending,
+      isOverdue: record.isOverdue,
+      projectedBalance: projectedBalanceMap.get(record.id) ?? openingBalance,
+    }));
 
-  // Agrupar por categoria
+  const pendingMovements = movements.filter((record) => record.status === "planned");
+
   const categoryMap = new Map<string, { income: number; expense: number }>();
-
-  for (const movement of movementDTOs) {
-    if (!categoryMap.has(movement.category)) {
-      categoryMap.set(movement.category, { income: 0, expense: 0 });
-    }
-
-    const entry = categoryMap.get(movement.category)!;
-
-    if (movement.type === "income") {
-      entry.income += movement.amount;
+  for (const record of activePeriodRecords) {
+    const entry = categoryMap.get(record.category) || { income: 0, expense: 0 };
+    if (record.type === "income") {
+      entry.income += record.amount;
     } else {
-      entry.expense += movement.amount;
+      entry.expense += record.amount;
     }
+    categoryMap.set(record.category, entry);
   }
 
   const byCategory: CategorySummary[] = Array.from(categoryMap.entries())
@@ -210,35 +317,62 @@ export async function getCashFlowForMonth(year: number, month: number, filters?:
       expense: totals.expense,
       net: totals.income - totals.expense,
     }))
-    .sort((a, b) => Math.abs(b.net) - Math.abs(a.net)); // Ordenar por impacto absoluto
+    .sort((a, b) => Math.abs(b.net) - Math.abs(a.net));
+
+  const monthKeys = Array.from({ length: 6 }).map((_, index) => {
+    const date = new Date();
+    date.setMonth(date.getMonth() - (5 - index));
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  });
+
+  const monthlySeries: CashflowMonthlyPoint[] = monthKeys.map((monthKey) => {
+    const bucket = normalized.filter((record) => getMonthKey(record.date) === monthKey);
+    const activeBucket = bucket.filter((record) => record.status !== "cancelled");
+    const settledBucket = bucket.filter((record) => record.status === "settled");
+    return {
+      month: getShortMonthLabel(monthKey),
+      settledIncome: settledBucket
+        .filter((record) => record.type === "income")
+        .reduce((sum, record) => sum + record.amount, 0),
+      settledExpense: settledBucket
+        .filter((record) => record.type === "expense")
+        .reduce((sum, record) => sum + record.amount, 0),
+      projectedNet: activeBucket.reduce((sum, record) => sum + signedAmount(record.type, record.amount), 0),
+    };
+  });
+
+  const realizedClosingBalance = openingBalance + settledIncome - settledExpense;
+  const projectedClosingBalance = openingBalance + plannedIncome - plannedExpense;
 
   return {
-    movements: movementDTOs,
-    totalIncome,
-    totalExpense,
-    balance,
+    movements,
+    pendingMovements,
     byCategory,
+    monthlySeries,
+    totalIncome: plannedIncome,
+    totalExpense: plannedExpense,
+    balance: projectedClosingBalance,
+    currentBalance,
+    openingBalance,
+    settledIncome,
+    settledExpense,
+    plannedIncome,
+    plannedExpense,
+    realizedClosingBalance,
+    projectedClosingBalance,
+    pendingAmount: pendingMovements.reduce((sum, record) => sum + record.amount, 0),
+    overdueCount: overdueMovements.length,
+    overdueAmount,
     year: resolvedYear,
     month: resolvedMonth,
   };
 }
 
-/**
- * Utilitário: Parse de valor monetário brasileiro (1.234,56 → 1234.56)
- * @param value - String no formato brasileiro
- * @returns Número parseado
- */
 export function parseBrazilianCurrency(value: string): number {
-  // Remove pontos de milhar, troca vírgula por ponto
   const cleaned = value.trim().replace(/\./g, "").replace(",", ".");
   return parseFloat(cleaned);
 }
 
-/**
- * Utilitário: Formata número para moeda brasileira (1234.56 → "1.234,56")
- * @param value - Número
- * @returns String formatada
- */
 export function formatBrazilianCurrency(value: number): string {
   return value.toLocaleString("pt-BR", {
     minimumFractionDigits: 2,

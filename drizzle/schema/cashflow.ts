@@ -13,6 +13,7 @@ export const cashMovements = pgTable("cash_movements", {
   companyId: uuid("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
   date: date("date").notNull(), // Data do lançamento
   type: varchar("type", { length: 10 }).notNull(), // "income" | "expense"
+  status: varchar("status", { length: 20 }).notNull().default("settled"), // planned | settled | cancelled
   category: varchar("category", { length: 100 }).notNull(), // Categoria (ex: "Vendas", "Salários", "Marketing")
   subcategory: varchar("subcategory", { length: 100 }),
   description: text("description"), // Descrição detalhada opcional
@@ -28,6 +29,7 @@ export const cashMovements = pgTable("cash_movements", {
   index("cash_movements_date_idx").on(table.date),
   index("cash_movements_company_id_idx").on(table.companyId),
   index("cash_movements_type_idx").on(table.type),
+  index("cash_movements_status_idx").on(table.status),
   index("cash_movements_category_idx").on(table.category),
   index("cash_movements_created_by_idx").on(table.createdBy),
 ]);

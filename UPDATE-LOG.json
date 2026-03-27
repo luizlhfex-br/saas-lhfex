@@ -1,17 +1,46 @@
 {
   "release": {
-    "version": "v2.9.49",
+    "version": "v2.9.50",
     "date": "2026-03-26T00:00:00Z",
     "type": "feature",
-    "title": "Financas pessoais com metas, contas a pagar e previsto x realizado"
+    "title": "Fluxo de caixa PJ com previsto, realizado e saldo projetado"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 2,
-    "filesModified": 10,
+    "filesCreated": 1,
+    "filesModified": 8,
     "routesAdded": 0,
     "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_26_financeiro_pj_fluxo_caixa": {
+    "date": "2026-03-26",
+    "release_version": "2.9.50",
+    "objective": "Adaptar o financeiro PJ da LHFEX para um fluxo de caixa forte, inspirado na logica operacional da planilha Contabilizei, com previsto, liquidado e saldo projetado",
+    "files_changed": [
+      "drizzle/schema/cashflow.ts",
+      "drizzle/migrations/0017_cashflow_status.sql",
+      "app/lib/cashflow.server.ts",
+      "app/lib/validators.ts",
+      "app/routes/financial-cashflow.tsx",
+      "app/routes/financial-cashflow-new.tsx",
+      "app/routes/financial-cashflow-import.tsx",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "O fluxo de caixa PJ foi refeito para separar saldo de abertura, entradas e saidas liquidadas, pendencias, atrasos e fechamento projetado do periodo",
+      "Cada lancamento de caixa agora pode ser previsto, liquidado ou cancelado, tanto no cadastro manual quanto na importacao CSV",
+      "A tela principal passou a trabalhar com acumulado por movimento e a destacar itens pendentes e vencidos sem transformar o modulo em um ERP pesado",
+      "O backend de cashflow foi reestruturado para devolver series mensais, categorias de impacto e leitura financeira pronta para o painel"
+    ],
+    "verification": [
+      "Migration 0017_cashflow_status.sql foi aplicada com sucesso via scripts/run-migration.ts",
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros",
+      "npm run test:unit passou sem erros"
+    ]
   },
   "session_2026_03_26_financas_pessoais_planejamento": {
     "date": "2026-03-26",

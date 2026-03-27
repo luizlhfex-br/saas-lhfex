@@ -29,6 +29,18 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-26",
+    version: "2.9.50",
+    type: "release",
+    title: "Fluxo de caixa PJ com previsto, realizado e saldo projetado",
+    items: [
+      "Financeiro PJ: o controle de caixa foi reconstruido para operar com lancamentos previstos, baixas liquidadas, cancelamentos e saldo projetado do periodo",
+      "A tela principal de fluxo de caixa agora mostra saldo de abertura, entradas e saidas liquidadas, pendencias, atrasos e tabela com acumulado por movimento",
+      "Cadastro manual e importacao CSV passaram a aceitar status de previsto, liquidado e cancelado, incluindo baixa automatica quando o lancamento entra como realizado",
+      "A migration 0017_cashflow_status.sql adicionou o campo status em cash_movements para separar previsao, realizado e cancelamento no caixa da LHFEX",
+    ],
+  },
+  {
+    date: "2026-03-26",
     version: "2.9.49",
     type: "release",
     title: "Financas pessoais com metas, contas a pagar e previsto x realizado",

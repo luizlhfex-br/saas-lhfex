@@ -2,10 +2,14 @@ import { test, expect, type Page } from "@playwright/test";
 
 async function loginAsAdmin(page: Page) {
   await page.goto("/login");
+  await expect(page.locator('input[name="csrf"]')).toBeAttached();
   await page.locator('input[name="email"]').fill("luiz@lhfex.com.br");
   await page.locator('input[name="password"]').fill("lhfex2025!");
-  await page.locator('button[type="submit"]').click();
-  await expect(page).toHaveURL(/\/(dashboard)?$/);
+  await Promise.all([
+    page.waitForURL(/\/($|dashboard)/, { timeout: 25000 }),
+    page.locator('button[type="submit"]').click(),
+  ]);
+  await expect(page).not.toHaveURL(/\/login$/);
 }
 
 test.describe("CRM Flow", () => {

@@ -115,6 +115,7 @@ export const invoiceSchema = z.object({
 export const cashMovementSchema = z.object({
   date: z.string().min(1, "Data é obrigatória"),
   type: z.enum(["income", "expense"], { message: "Tipo deve ser Receita ou Despesa" }),
+  status: z.enum(["planned", "settled", "cancelled"]).optional(),
   category: z.string().min(1, "Categoria é obrigatória").max(100, "Categoria deve ter no máximo 100 caracteres"),
   subcategory: z.string().max(100, "Subcategoria deve ter no máximo 100 caracteres").optional(),
   description: z.string().max(2000, "Descrição deve ter no máximo 2000 caracteres").optional(),

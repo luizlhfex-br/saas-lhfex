@@ -46,6 +46,7 @@ export async function action({ request }: Route.ActionArgs) {
   const colIndex = {
     date: headers.findIndex((h) => ["data", "date"].includes(h)),
     type: headers.findIndex((h) => ["tipo", "type"].includes(h)),
+    status: headers.findIndex((h) => ["status", "situacao", "situacao_lancamento"].includes(h)),
     category: headers.findIndex((h) => ["categoria", "category"].includes(h)),
     description: headers.findIndex((h) => ["descricao", "descrição", "description"].includes(h)),
     amount: headers.findIndex((h) => ["valor", "amount"].includes(h)),
@@ -71,9 +72,11 @@ export async function action({ request }: Route.ActionArgs) {
     companyId: string;
     date: string;
     type: string;
+    status: string;
     category: string;
     description: string | null;
     amount: string;
+    settlementDate: string | null;
     paymentMethod: string | null;
     costCenter: string | null;
     createdBy: string;
@@ -88,6 +91,7 @@ export async function action({ request }: Route.ActionArgs) {
 
     const date = cols[colIndex.date] || "";
     const typeRaw = cols[colIndex.type]?.toLowerCase() || "";
+    const statusRaw = colIndex.status !== -1 ? (cols[colIndex.status]?.toLowerCase() || "") : "";
     const category = cols[colIndex.category] || "";
     const description = colIndex.description !== -1 ? (cols[colIndex.description] || null) : null;
     const amountRaw = cols[colIndex.amount] || "";
@@ -111,6 +115,13 @@ export async function action({ request }: Route.ActionArgs) {
       errors.push(`Linha ${i + 1}: Tipo inválido "${typeRaw}". Use "Receita" ou "Despesa"`);
       if (errors.length >= 5) break;
       continue;
+    }
+
+    let status: "planned" | "settled" | "cancelled" = "settled";
+    if (statusRaw) {
+      if (["planned", "previsto", "pendente"].includes(statusRaw)) status = "planned";
+      else if (["settled", "liquidado", "pago", "recebido"].includes(statusRaw)) status = "settled";
+      else if (["cancelled", "cancelado"].includes(statusRaw)) status = "cancelled";
     }
 
     // Parse amount
@@ -142,9 +153,11 @@ export async function action({ request }: Route.ActionArgs) {
       companyId,
       date: normalizedDate,
       type,
+      status,
       category,
       description,
       amount: String(amount.toFixed(2)),
+      settlementDate: status === "settled" ? normalizedDate : null,
       paymentMethod,
       costCenter,
       createdBy: user.id,
@@ -231,18 +244,19 @@ export default function FinancialCashflowImportPage({ loaderData }: Route.Compon
             <div className="mt-2 space-y-2 text-xs text-blue-800 dark:text-blue-400">
               <p><strong>Cabeçalho:</strong></p>
               <pre className="rounded bg-blue-100 p-2 dark:bg-blue-900/40">
-data;tipo;categoria;descricao;valor;forma_pagamento;centro_custo
+data;tipo;status;categoria;descricao;valor;forma_pagamento;centro_custo
               </pre>
               <p><strong>Tipos aceitos:</strong></p>
               <ul className="ml-4 list-disc">
                 <li><code className="rounded bg-blue-100 px-1 dark:bg-blue-900/40">Receita</code>, <code className="rounded bg-blue-100 px-1 dark:bg-blue-900/40">income</code>, <code className="rounded bg-blue-100 px-1 dark:bg-blue-900/40">r</code></li>
                 <li><code className="rounded bg-blue-100 px-1 dark:bg-blue-900/40">Despesa</code>, <code className="rounded bg-blue-100 px-1 dark:bg-blue-900/40">expense</code>, <code className="rounded bg-blue-100 px-1 dark:bg-blue-900/40">d</code></li>
               </ul>
+              <p><strong>Status aceitos:</strong> <code className="rounded bg-blue-100 px-1 dark:bg-blue-900/40">Previsto</code>, <code className="rounded bg-blue-100 px-1 dark:bg-blue-900/40">Liquidado</code>, <code className="rounded bg-blue-100 px-1 dark:bg-blue-900/40">Cancelado</code></p>
               <p><strong>Data:</strong> <code className="rounded bg-blue-100 px-1 dark:bg-blue-900/40">2026-02-20</code> ou <code className="rounded bg-blue-100 px-1 dark:bg-blue-900/40">20/02/2026</code></p>
               <p><strong>Valor:</strong> <code className="rounded bg-blue-100 px-1 dark:bg-blue-900/40">1.234,56</code> ou <code className="rounded bg-blue-100 px-1 dark:bg-blue-900/40">1234.56</code></p>
               <p className="mt-2"><strong>Exemplo de linha:</strong></p>
               <pre className="rounded bg-blue-100 p-2 dark:bg-blue-900/40">
-2026-02-20;Receita;Vendas;Venda produto X;5.000,00;PIX;Comercial
+2026-02-20;Receita;Liquidado;Vendas;Venda produto X;5.000,00;PIX;Comercial
               </pre>
             </div>
           </div>
