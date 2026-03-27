@@ -13,6 +13,7 @@ import {
   GraduationCap,
   Heart,
   ListTodo,
+  Newspaper,
   Receipt,
   Target,
   Timer,
@@ -63,6 +64,14 @@ const modules: ModuleCard[] = [
     description: "Acompanhe peso, medidas corporais e evolucao fisica",
     icon: Heart,
     color: "bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400",
+  },
+  {
+    group: "planning",
+    slug: "news",
+    title: "Noticias",
+    description: "Radar diario de IA, BH, mundo e comercio exterior com digest no Telegram",
+    icon: Newspaper,
+    color: "bg-cyan-100 dark:bg-cyan-900/20 text-cyan-700 dark:text-cyan-400",
   },
   {
     group: "planning",

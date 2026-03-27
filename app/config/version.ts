@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.50";
+export const APP_VERSION = "2.9.51";
 export const APP_RELEASE_DATE = "2026-03-26";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.51",
+    date: "2026-03-26",
+    title: "Radar de noticias com digest no SaaS e Telegram",
+    items: [
+      { type: "feature", text: "Vida Pessoal: novo modulo Noticias organiza fontes por IA, BH, mundo e comercio exterior, com radar centralizado dentro do SaaS" },
+      { type: "feature", text: "Noticias: o digest diario agora pode ser gerado manualmente na tela e tambem enviado no Telegram pelo cron news_daily_digest" },
+      { type: "improvement", text: "Fontes padrao e headlines: o painel passou a cadastrar queries padrao, controlar leitura e destaque por item e manter historico dos ultimos digests" },
+      { type: "infra", text: "Schema: a migration 0018_personal_news_digest.sql criou as tabelas personal_news_sources, personal_news_items e personal_news_digests para sustentar o radar pessoal" },
+    ],
+  },
   {
     version: "2.9.50",
     date: "2026-03-26",

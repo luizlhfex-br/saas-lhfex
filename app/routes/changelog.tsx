@@ -29,6 +29,18 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-26",
+    version: "2.9.51",
+    type: "release",
+    title: "Radar de noticias com digest no SaaS e Telegram",
+    items: [
+      "Vida Pessoal ganhou o modulo Noticias para organizar o radar diario de IA, BH, mundo e comercio exterior em um unico painel",
+      "O digest diario pode ser gerado manualmente dentro do SaaS e tambem enviado pelo cron news_daily_digest diretamente no Telegram",
+      "Fontes padrao, leitura por item, favoritos e historico dos ultimos digests passaram a ficar persistidos no banco",
+      "A migration 0018_personal_news_digest.sql criou as tabelas personal_news_sources, personal_news_items e personal_news_digests para sustentar o modulo",
+    ],
+  },
+  {
+    date: "2026-03-26",
     version: "2.9.50",
     type: "release",
     title: "Fluxo de caixa PJ com previsto, realizado e saldo projetado",

@@ -8,7 +8,8 @@ import { invoices, processes, clients, automationLogs, automations, auditLogs, p
 import { bills } from "../../drizzle/schema/bills";
 import { eq, lt, isNull, and, sql, lte, gte, desc } from "drizzle-orm";
 import { fireTrigger } from "./automation-engine.server";
-import { enrichCNPJ, askAgent } from "./ai.server";
+import { enrichCNPJ } from "./ai.server";
+import { generatePersonalNewsDigest, getPersonalNewsOwnerUserId } from "./personal-news.server";
 import { runRadioMonitor } from "./radio-monitor.server";
 import { getPrimaryCompanyId } from "~/lib/company-context.server";
 import { getOpenClawObservabilitySnapshot, recordOpenClawHeartbeat, recordOpenClawRun, recordOpenClawWorkItem } from "~/lib/openclaw-observability.server";
@@ -402,89 +403,20 @@ async function cleanupOldAutomationLogs() {
  * Roda todo dia às 7h
  */
 async function sendDailyNewsDigest() {
-  const gnewsKey = process.env.GNEWS_API_KEY;
-  // Usa bot dedicado de notícias (@lhfex_noticias_bot) se configurado, senão fallback para OpenClaw
-  const botToken = process.env.NEWS_BOT_TOKEN || process.env.OPENCLAW_TELEGRAM_TOKEN;
-  const chatId = process.env.NEWS_BOT_CHAT_ID || process.env.OPENCLAW_CHAT_ID;
-
-  if (!gnewsKey || !botToken || !chatId) {
-    console.log("[CRON] news_daily_digest: GNEWS_API_KEY, NEWS_BOT_TOKEN ou chat ID não configurados — pulando");
-    return;
-  }
-
   try {
-    // Temas configurados via variável de ambiente (separados por vírgula)
-    // Formato: "tecnologia:technology,finanças:business,brasil:brazil"
-    const topicsEnv = process.env.NEWS_TOPICS || "tecnologia:technology,inteligência artificial:technology,mercado financeiro:business";
-    const topicPairs = topicsEnv.split(",").map(t => {
-      const [label, category] = t.split(":");
-      return { label: label.trim(), category: (category || "").trim() };
-    });
-
-    const allArticles: string[] = [];
-
-    for (const topic of topicPairs.slice(0, 4)) { // máximo 4 temas
-      try {
-        const url = new URL("https://gnews.io/api/v4/search");
-        url.searchParams.set("q", topic.label);
-        url.searchParams.set("lang", "pt");
-        url.searchParams.set("max", "3");
-        url.searchParams.set("sortby", "publishedAt");
-        url.searchParams.set("apikey", gnewsKey);
-
-        const res = await fetch(url.toString(), { signal: AbortSignal.timeout(10000) });
-        if (!res.ok) continue;
-
-        const data = await res.json() as { articles?: Array<{ title: string; description: string; url: string; source: { name: string } }> };
-        const articles = data.articles?.slice(0, 3) ?? [];
-
-        if (articles.length > 0) {
-          allArticles.push(`📌 *${topic.label.toUpperCase()}*`);
-          for (const a of articles) {
-            const desc = a.description ? ` — ${a.description.slice(0, 100)}` : "";
-            allArticles.push(`• ${a.title}${desc}\n  _${a.source.name}_ | [Ver mais](${a.url})`);
-          }
-          allArticles.push("");
-        }
-      } catch (topicErr) {
-        console.warn(`[CRON] news_daily_digest: falha ao buscar tema "${topic.label}":`, topicErr);
-      }
-    }
-
-    if (allArticles.length === 0) {
-      console.log("[CRON] news_daily_digest: nenhum artigo encontrado");
+    const userId = await getPersonalNewsOwnerUserId();
+    if (!userId) {
+      console.log("[CRON] news_daily_digest: usuario dono do modulo nao encontrado");
       return;
     }
 
-    // IA resume e comenta as notícias
-    const rawNews = allArticles.join("\n");
-    const aiPrompt = `Você recebeu as seguintes notícias do dia:\n\n${rawNews}\n\nFaça um briefing matinal conciso em português. Para cada tema, destaque o que é mais relevante e importante. Seja direto e use no máximo 3 linhas por tema. Termine com uma frase motivacional curta.`;
-
-    let summaryText: string;
-    try {
-      const aiResponse = await askAgent("openclaw", aiPrompt, "system", { feature: "openclaw" });
-      summaryText = aiResponse.content;
-    } catch {
-      // Fallback: envia notícias brutas sem resumo de IA
-      summaryText = rawNews;
+    const result = await generatePersonalNewsDigest(userId, { sendTelegram: true });
+    if (result.totalItems === 0) {
+      console.log("[CRON] news_daily_digest: nenhum item novo encontrado");
+      return;
     }
 
-    const today = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
-    const message = `📰 *NOTÍCIAS DO DIA — ${today.toUpperCase()}*\n\n${summaryText}`;
-
-    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: Number(chatId),
-        text: message.slice(0, 4000),
-        parse_mode: "Markdown",
-        disable_web_page_preview: false,
-      }),
-      signal: AbortSignal.timeout(15000),
-    });
-
-    console.log(`[CRON] news_daily_digest: enviado com ${topicPairs.length} temas`);
+    console.log(`[CRON] news_daily_digest: digest salvo para ${result.digestDate} com ${result.totalItems} itens`);
   } catch (error) {
     console.error("[CRON] news_daily_digest error:", error);
   }
@@ -1569,3 +1501,4 @@ export async function triggerCronJob(jobName: string): Promise<void> {
 export function listCronJobs() {
   return jobs.map((j) => ({ name: j.name, expression: j.cronExpression }));
 }
+

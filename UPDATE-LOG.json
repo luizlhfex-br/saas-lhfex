@@ -1,17 +1,45 @@
 {
   "release": {
-    "version": "v2.9.50",
+    "version": "v2.9.51",
     "date": "2026-03-26T00:00:00Z",
     "type": "feature",
-    "title": "Fluxo de caixa PJ com previsto, realizado e saldo projetado"
+    "title": "Radar de noticias com digest no SaaS e Telegram"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 1,
-    "filesModified": 8,
-    "routesAdded": 0,
+    "filesCreated": 4,
+    "filesModified": 7,
+    "routesAdded": 1,
     "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_26_noticias_radar_digest": {
+    "date": "2026-03-26",
+    "release_version": "2.9.51",
+    "objective": "Criar o modulo Noticias dentro de Vida Pessoal, com radar por tema, persistencia de headlines e digest diario no SaaS e no Telegram",
+    "files_changed": [
+      "drizzle/schema/personal-life.ts",
+      "drizzle/migrations/0018_personal_news_digest.sql",
+      "app/lib/personal-news.shared.ts",
+      "app/lib/personal-news.server.ts",
+      "app/lib/cron.server.ts",
+      "app/routes/personal-life.news.tsx",
+      "app/routes/personal-life.tsx",
+      "app/routes.ts",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "Foi criado o modulo Noticias em Vida Pessoal com painel para IA, BH, mundo e comercio exterior, incluindo controle de fontes, leitura, destaque e historico de digests",
+      "O backend passou a coletar headlines via Google News RSS, deduplicar por URL, salvar no banco e montar um digest diario reutilizavel no SaaS e no Telegram",
+      "O cron news_daily_digest deixou de depender da logica antiga e passou a usar o novo helper do radar pessoal"
+    ],
+    "verification": [
+      "Migration 0018_personal_news_digest.sql foi aplicada com sucesso via scripts/run-migration.ts",
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros"
+    ]
   },
   "session_2026_03_26_financeiro_pj_fluxo_caixa": {
     "date": "2026-03-26",

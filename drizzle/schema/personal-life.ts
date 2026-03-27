@@ -195,6 +195,89 @@ export const personalHealthPhotos = pgTable(
 );
 
 // ── Promoções e Sorteios (Hobby) ──
+export const personalNewsSources = pgTable(
+  "personal_news_sources",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    topic: varchar("topic", { length: 30 }).notNull(),
+    name: varchar("name", { length: 160 }).notNull(),
+    sourceType: varchar("source_type", { length: 30 }).notNull().default("google_news_rss"),
+    query: text("query").notNull(),
+    sourceUrl: text("source_url"),
+    maxItems: integer("max_items").notNull().default(4),
+    priority: smallint("priority").notNull().default(5),
+    isActive: boolean("is_active").notNull().default(true),
+    lastCheckedAt: timestamp("last_checked_at"),
+    lastStatus: varchar("last_status", { length: 20 }).notNull().default("idle"),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at"),
+  },
+  (table) => ({
+    userIdIdx: index("personal_news_sources_user_id_idx").on(table.userId),
+    topicIdx: index("personal_news_sources_topic_idx").on(table.topic),
+    activeIdx: index("personal_news_sources_active_idx").on(table.isActive),
+  })
+);
+
+export const personalNewsItems = pgTable(
+  "personal_news_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    sourceId: uuid("source_id"),
+    topic: varchar("topic", { length: 30 }).notNull(),
+    title: varchar("title", { length: 500 }).notNull(),
+    summary: text("summary"),
+    url: text("url").notNull(),
+    sourceName: varchar("source_name", { length: 255 }),
+    publishedAt: timestamp("published_at"),
+    digestDate: date("digest_date"),
+    relevanceScore: smallint("relevance_score").notNull().default(50),
+    isRead: boolean("is_read").notNull().default(false),
+    isStarred: boolean("is_starred").notNull().default(false),
+    telegramSentAt: timestamp("telegram_sent_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at"),
+  },
+  (table) => ({
+    userIdIdx: index("personal_news_items_user_id_idx").on(table.userId),
+    topicIdx: index("personal_news_items_topic_idx").on(table.topic),
+    digestDateIdx: index("personal_news_items_digest_date_idx").on(table.digestDate),
+    starredIdx: index("personal_news_items_starred_idx").on(table.isStarred),
+    userUrlUniqueIdx: uniqueIndex("personal_news_items_user_url_uidx").on(table.userId, table.url),
+    fkSource: foreignKey({ columns: [table.sourceId], foreignColumns: [personalNewsSources.id] }),
+  })
+);
+
+export const personalNewsDigests = pgTable(
+  "personal_news_digests",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    digestDate: date("digest_date").notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    topics: text("topics").notNull(),
+    digestMarkdown: text("digest_markdown").notNull(),
+    telegramMessage: text("telegram_message"),
+    telegramSentAt: timestamp("telegram_sent_at"),
+    itemCount: integer("item_count").notNull().default(0),
+    status: varchar("status", { length: 20 }).notNull().default("draft"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at"),
+  },
+  (table) => ({
+    userIdIdx: index("personal_news_digests_user_id_idx").on(table.userId),
+    digestDateIdx: index("personal_news_digests_digest_date_idx").on(table.digestDate),
+    statusIdx: index("personal_news_digests_status_idx").on(table.status),
+    userDateUniqueIdx: uniqueIndex("personal_news_digests_user_date_uidx").on(table.userId, table.digestDate),
+  })
+);
+
 export const promotions = pgTable(
   "promotions",
   {
