@@ -8,7 +8,7 @@
  * - Promoções e sorteios (hobby)
  */
 
-import { pgTable, uuid, text, varchar, timestamp, boolean, decimal, date, integer, index, foreignKey, smallint } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, varchar, timestamp, boolean, decimal, date, integer, index, foreignKey, smallint, uniqueIndex } from "drizzle-orm/pg-core";
 import { users } from "./auth";
 
 // ── Finanças Pessoais (Receitas/Despesas) ──
@@ -108,6 +108,63 @@ export const routineTracking = pgTable(
     userIdIdx: index("routine_tracking_user_id_idx").on(table.userId),
     dateIdx: index("routine_tracking_date_idx").on(table.date),
     fk_routine: foreignKey({ columns: [table.routineId], foreignColumns: [personalRoutines.id] }),
+  })
+);
+
+// —— Avaliacoes corporais e fotos de progresso —— 
+export const personalHealthAssessments = pgTable(
+  "personal_health_assessments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    entryDate: date("entry_date").notNull(),
+    calculationProfile: varchar("calculation_profile", { length: 20 }).notNull().default("male"),
+    activityLevel: varchar("activity_level", { length: 30 }).notNull().default("moderate"),
+    customActivityFactor: decimal("custom_activity_factor", { precision: 4, scale: 3 }),
+    heightCm: decimal("height_cm", { precision: 6, scale: 2 }),
+    weightKg: decimal("weight_kg", { precision: 6, scale: 2 }),
+    neckCm: decimal("neck_cm", { precision: 6, scale: 2 }),
+    chestCm: decimal("chest_cm", { precision: 6, scale: 2 }),
+    waistCm: decimal("waist_cm", { precision: 6, scale: 2 }),
+    hipCm: decimal("hip_cm", { precision: 6, scale: 2 }),
+    leftArmCm: decimal("left_arm_cm", { precision: 6, scale: 2 }),
+    rightArmCm: decimal("right_arm_cm", { precision: 6, scale: 2 }),
+    leftThighCm: decimal("left_thigh_cm", { precision: 6, scale: 2 }),
+    rightThighCm: decimal("right_thigh_cm", { precision: 6, scale: 2 }),
+    leftCalfCm: decimal("left_calf_cm", { precision: 6, scale: 2 }),
+    rightCalfCm: decimal("right_calf_cm", { precision: 6, scale: 2 }),
+    bodyFatPercent: decimal("body_fat_percent", { precision: 5, scale: 2 }),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at"),
+  },
+  (table) => ({
+    userIdIdx: index("personal_health_assessment_user_idx").on(table.userId),
+    entryDateIdx: index("personal_health_assessment_entry_date_idx").on(table.entryDate),
+    userDateUniqueIdx: uniqueIndex("personal_health_assessment_user_date_uidx").on(table.userId, table.entryDate),
+  })
+);
+
+export const personalHealthPhotos = pgTable(
+  "personal_health_photos",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    assessmentId: uuid("assessment_id").notNull(),
+    userId: uuid("user_id").notNull(),
+    pose: varchar("pose", { length: 20 }).notNull(),
+    fileUrl: text("file_url").notNull(),
+    fileSize: integer("file_size"),
+    takenAt: date("taken_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at"),
+  },
+  (table) => ({
+    assessmentIdIdx: index("personal_health_photo_assessment_idx").on(table.assessmentId),
+    userIdIdx: index("personal_health_photo_user_idx").on(table.userId),
+    assessmentPoseUniqueIdx: uniqueIndex("personal_health_photo_assessment_pose_uidx").on(table.assessmentId, table.pose),
+    fkAssessment: foreignKey({ columns: [table.assessmentId], foreignColumns: [personalHealthAssessments.id] }),
   })
 );
 

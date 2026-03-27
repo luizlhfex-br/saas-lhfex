@@ -29,6 +29,18 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-26",
+    version: "2.9.48",
+    type: "release",
+    title: "Saude corporal com fotos, metricas e historico por snapshot",
+    items: [
+      "Saude: o modulo virou uma avaliacao corporal completa com snapshots por data, peso, altura, medidas, observacoes e calculos de IMC, gordura corporal, massa magra, TMB e calorias diarias",
+      "Saude: cada medicao agora aceita fotos de frente, lado e costas, com galeria agrupada por pose e edicao rapida pelo historico",
+      "UI: a tela foi refeita como um painel visual de acompanhamento corporal com cards de resumo, guia ilustrado de medidas e historico grafico por indicador",
+      "Schema: a migration 0015_personal_health_assessments.sql foi aplicada para sustentar as novas tabelas personal_health_assessments e personal_health_photos",
+    ],
+  },
+  {
+    date: "2026-03-26",
     version: "2.9.47",
     type: "release",
     title: "Auditoria geral com hardening das automacoes e naming Hermes",

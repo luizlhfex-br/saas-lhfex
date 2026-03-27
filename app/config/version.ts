@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.47";
+export const APP_VERSION = "2.9.48";
 export const APP_RELEASE_DATE = "2026-03-26";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.48",
+    date: "2026-03-26",
+    title: "Saude corporal com fotos, metricas e historico por snapshot",
+    items: [
+      { type: "feature", text: "Saude: o modulo ganhou snapshots corporais por data com peso, altura, medidas, notas e calculo consolidado de IMC, gordura corporal, massa magra, TMB e calorias diarias" },
+      { type: "feature", text: "Saude: agora e possivel enviar fotos de frente, lado e costas por medicao, com galeria agrupada por pose e edicao por data diretamente na tela" },
+      { type: "improvement", text: "UI: a pagina de Saude foi refeita como painel visual de acompanhamento corporal, com cards de resumo, historico grafico e guia ilustrado de medicao" },
+      { type: "infra", text: "Schema: novas tabelas personal_health_assessments e personal_health_photos foram versionadas em 0015_personal_health_assessments.sql e aplicadas na base operacional" },
+    ],
+  },
   {
     version: "2.9.47",
     date: "2026-03-26",

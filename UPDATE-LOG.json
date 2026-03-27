@@ -1,17 +1,43 @@
 {
   "release": {
-    "version": "v2.9.47",
+    "version": "v2.9.48",
     "date": "2026-03-26T00:00:00Z",
-    "type": "improvement",
-    "title": "Auditoria geral com hardening das automacoes e naming Hermes"
+    "type": "feature",
+    "title": "Saude corporal com fotos, metricas e historico por snapshot"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 7,
-    "filesModified": 32,
+    "filesCreated": 3,
+    "filesModified": 5,
     "routesAdded": 0,
     "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_26_saude_corporal": {
+    "date": "2026-03-26",
+    "release_version": "2.9.48",
+    "objective": "Transformar o modulo de Saude em um painel completo de medicao corporal, fotos por pose e acompanhamento visual de metricas derivadas",
+    "files_changed": [
+      "drizzle/schema/personal-life.ts",
+      "drizzle/migrations/0015_personal_health_assessments.sql",
+      "app/lib/personal-health.ts",
+      "app/components/personal-life/health-visuals.tsx",
+      "app/routes/personal-life.health.tsx",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "Foram criadas as tabelas personal_health_assessments e personal_health_photos para armazenar snapshots corporais completos e fotos por pose",
+      "A tela /personal-life/health foi refeita para suportar registro por data, edicao por historico, upload de fotos de frente/lado/costas e painel de acompanhamento corporal",
+      "O modulo agora calcula IMC, gordura corporal estimada, massa magra, taxa metabolica basal e necessidade diaria de calorias a partir das medidas salvas",
+      "Graficos de tendencia por indicador e galeria agrupada por pose passaram a mostrar a evolucao do usuario ao longo das medicoes"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros",
+      "Migration 0015_personal_health_assessments.sql foi aplicada com sucesso via scripts/run-migration.ts"
+    ]
   },
   "session_2026_03_26_auditoria_geral": {
     "date": "2026-03-26",
