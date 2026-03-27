@@ -1,17 +1,46 @@
 {
   "release": {
-    "version": "v2.9.51",
+    "version": "v2.9.52",
     "date": "2026-03-26T00:00:00Z",
     "type": "feature",
-    "title": "Radar de noticias com digest no SaaS e Telegram"
+    "title": "Radar de promocoes com monitor Instagram e amigos autorizados"
   },
   "summary": {
     "commits": 1,
     "filesCreated": 4,
-    "filesModified": 7,
-    "routesAdded": 1,
+    "filesModified": 5,
+    "routesAdded": 0,
     "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_26_promocoes_instagram_monitor": {
+    "date": "2026-03-26",
+    "release_version": "2.9.52",
+    "objective": "Criar um radar operacional para a aba Insta de Promocoes, com fontes monitoradas, amigos autorizados, fila de descobertas e importacao para a lista principal",
+    "files_changed": [
+      "drizzle/schema/personal-life.ts",
+      "drizzle/migrations/0019_promotion_monitoring.sql",
+      "app/lib/promotion-monitor.shared.ts",
+      "app/lib/promotion-monitor.server.ts",
+      "app/components/personal-life/promotion-monitor-panel.tsx",
+      "app/routes/personal-life.promotions.tsx",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "A aba Insta ganhou um painel proprio para cadastro de fontes de descoberta, analise por URL, acompanhamento de descobertas e importacao direta para Promocoes",
+      "Foi criada a lista de amigos autorizados para marcacao, com prioridade, limites diarios e semanais e historico operacional de uso",
+      "O backend passou a gerar score da oportunidade, detectar quando a promocao exige amigos, sugerir handles em rodizio e registrar a marcacao sugerida",
+      "A migration 0019_promotion_monitoring.sql adicionou as tabelas promotion_watch_sources, promotion_tag_friends, promotion_discoveries e promotion_tag_friend_usage"
+    ],
+    "verification": [
+      "Migration 0019_promotion_monitoring.sql foi aplicada com sucesso via scripts/run-migration.ts",
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros",
+      "npm run test:unit passou sem erros",
+      "npx playwright test --reporter=line passou com a suite verde"
+    ]
   },
   "session_2026_03_26_noticias_radar_digest": {
     "date": "2026-03-26",

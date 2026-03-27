@@ -488,6 +488,65 @@ export const promotionSites = pgTable(
 );
 
 // ── Loterias (controle manual) ──
+export const promotionWatchSources = pgTable(
+  "promotion_watch_sources",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    channel: varchar("channel", { length: 30 }).notNull(),
+    label: varchar("label", { length: 160 }).notNull(),
+    query: text("query").notNull(),
+    sourceUrl: text("source_url"),
+    notes: text("notes"),
+    priority: smallint("priority").notNull().default(5),
+    isActive: boolean("is_active").notNull().default(true),
+    lastCheckedAt: timestamp("last_checked_at"),
+    lastStatus: varchar("last_status", { length: 20 }).notNull().default("idle"),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at"),
+  },
+  (table) => ({
+    userIdIdx: index("promotion_watch_sources_user_id_idx").on(table.userId),
+    channelIdx: index("promotion_watch_sources_channel_idx").on(table.channel),
+    activeIdx: index("promotion_watch_sources_active_idx").on(table.isActive),
+    userChannelQueryUniqueIdx: uniqueIndex("promotion_watch_sources_user_channel_query_uidx").on(
+      table.userId,
+      table.channel,
+      table.query
+    ),
+  })
+);
+
+export const promotionTagFriends = pgTable(
+  "promotion_tag_friends",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    name: varchar("name", { length: 160 }).notNull(),
+    instagramHandle: varchar("instagram_handle", { length: 120 }).notNull(),
+    dailyLimit: smallint("daily_limit").notNull().default(5),
+    weeklyLimit: smallint("weekly_limit").notNull().default(20),
+    priority: smallint("priority").notNull().default(5),
+    notes: text("notes"),
+    isActive: boolean("is_active").notNull().default(true),
+    lastTaggedAt: timestamp("last_tagged_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at"),
+  },
+  (table) => ({
+    userIdIdx: index("promotion_tag_friends_user_id_idx").on(table.userId),
+    activeIdx: index("promotion_tag_friends_active_idx").on(table.isActive),
+    priorityIdx: index("promotion_tag_friends_priority_idx").on(table.priority),
+    userHandleUniqueIdx: uniqueIndex("promotion_tag_friends_user_handle_uidx").on(
+      table.userId,
+      table.instagramHandle
+    ),
+  })
+);
+
 export const personalLotteries = pgTable(
   "personal_lotteries",
   {
@@ -512,5 +571,70 @@ export const personalLotteries = pgTable(
     gameTypeIdx: index("personal_lotteries_game_type_idx").on(table.gameType),
     drawDateIdx: index("personal_lotteries_draw_date_idx").on(table.drawDate),
     statusIdx: index("personal_lotteries_status_idx").on(table.status),
+  })
+);
+
+export const promotionDiscoveries = pgTable(
+  "promotion_discoveries",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    sourceId: uuid("source_id"),
+    channel: varchar("channel", { length: 30 }).notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    organizer: varchar("organizer", { length: 255 }),
+    externalUrl: text("external_url").notNull(),
+    externalId: varchar("external_id", { length: 160 }),
+    prize: varchar("prize", { length: 500 }),
+    endDate: date("end_date"),
+    rulesSummary: text("rules_summary"),
+    participationNotes: text("participation_notes"),
+    score: smallint("score").notNull().default(50),
+    needsFriends: boolean("needs_friends").notNull().default(false),
+    suggestedFriends: text("suggested_friends"),
+    rawPayload: text("raw_payload"),
+    status: varchar("status", { length: 20 }).notNull().default("new"),
+    importedPromotionId: uuid("imported_promotion_id"),
+    discoveredAt: timestamp("discovered_at").defaultNow().notNull(),
+    lastAnalyzedAt: timestamp("last_analyzed_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at"),
+  },
+  (table) => ({
+    userIdIdx: index("promotion_discoveries_user_id_idx").on(table.userId),
+    sourceIdIdx: index("promotion_discoveries_source_id_idx").on(table.sourceId),
+    statusIdx: index("promotion_discoveries_status_idx").on(table.status),
+    discoveredAtIdx: index("promotion_discoveries_discovered_at_idx").on(table.discoveredAt),
+    userUrlUniqueIdx: uniqueIndex("promotion_discoveries_user_url_uidx").on(table.userId, table.externalUrl),
+    fkSource: foreignKey({ columns: [table.sourceId], foreignColumns: [promotionWatchSources.id] }),
+    fkImportedPromotion: foreignKey({
+      columns: [table.importedPromotionId],
+      foreignColumns: [promotions.id],
+    }),
+  })
+);
+
+export const promotionTagFriendUsage = pgTable(
+  "promotion_tag_friend_usage",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    friendId: uuid("friend_id").notNull(),
+    discoveryId: uuid("discovery_id"),
+    promotionId: uuid("promotion_id"),
+    status: varchar("status", { length: 20 }).notNull().default("executed"),
+    notes: text("notes"),
+    usedAt: timestamp("used_at").defaultNow().notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index("promotion_tag_friend_usage_user_id_idx").on(table.userId),
+    friendIdIdx: index("promotion_tag_friend_usage_friend_id_idx").on(table.friendId),
+    discoveryIdIdx: index("promotion_tag_friend_usage_discovery_id_idx").on(table.discoveryId),
+    promotionIdIdx: index("promotion_tag_friend_usage_promotion_id_idx").on(table.promotionId),
+    fkFriend: foreignKey({ columns: [table.friendId], foreignColumns: [promotionTagFriends.id] }),
+    fkDiscovery: foreignKey({ columns: [table.discoveryId], foreignColumns: [promotionDiscoveries.id] }),
+    fkPromotion: foreignKey({ columns: [table.promotionId], foreignColumns: [promotions.id] }),
   })
 );

@@ -11,7 +11,16 @@ import { useEffect, useState, useRef } from "react";
 import { requireAuth } from "~/lib/auth.server";
 import { requireRole, ROLES } from "~/lib/rbac.server";
 import { db } from "~/lib/db.server";
-import { promotions, pessoas, promotionSites, literaryContests, personalLotteries } from "../../drizzle/schema/personal-life";
+import {
+  promotionDiscoveries,
+  promotionSites,
+  promotionTagFriends,
+  promotionWatchSources,
+  promotions,
+  pessoas,
+  literaryContests,
+  personalLotteries,
+} from "../../drizzle/schema/personal-life";
 import { and, asc, desc, eq, isNull, ilike, or } from "drizzle-orm";
 import { data } from "react-router";
 import {
@@ -50,6 +59,17 @@ import {
   Award,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
+import { PromotionMonitorPanel } from "~/components/personal-life/promotion-monitor-panel";
+import {
+  createDiscoveryFromUrl,
+  createOrUpdateMonitorSource,
+  createOrUpdateTagFriend,
+  getPromotionMonitorDashboard,
+  importDiscoveryToPromotion,
+  registerDiscoveryTagUsage,
+  type PromotionMonitorDashboard,
+} from "~/lib/promotion-monitor.server";
+import type { PromotionMonitorChannel } from "~/lib/promotion-monitor.shared";
 import type { ScpcPromoMapeada } from "./api.scpc-search";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -63,6 +83,22 @@ type SenhaEntry = { label: string; login: string; password: string };
 type PromotionKpis = { active: number; won: number; expiringSoon: number; total: number };
 const PROMOTION_TABS = ["promocoes", "loterias", "pessoas", "sites", "literario", "radio", "insta"] as const;
 type PromotionsTab = (typeof PROMOTION_TABS)[number];
+
+const EMPTY_MONITOR_DASHBOARD: PromotionMonitorDashboard = {
+  metrics: {
+    totalSources: 0,
+    activeSources: 0,
+    totalFriends: 0,
+    activeFriends: 0,
+    newDiscoveries: 0,
+    reviewingDiscoveries: 0,
+    importedDiscoveries: 0,
+    dismissedDiscoveries: 0,
+  },
+  sources: [],
+  tagFriends: [],
+  discoveries: [],
+};
 
 const TYPE_LABELS: Record<string, string> = {
   raffle: "Sorteio",
@@ -310,6 +346,14 @@ export async function loader({ request }: { request: Request }) {
     warnings.push("Falha ao carregar loterias.");
   }
 
+  let monitorDashboard: PromotionMonitorDashboard = EMPTY_MONITOR_DASHBOARD;
+  try {
+    monitorDashboard = await getPromotionMonitorDashboard(user.id);
+  } catch (error) {
+    console.error("[personal-life.promotions.loader] monitor failed", error);
+    warnings.push("Falha ao carregar o radar do Instagram.");
+  }
+
   return {
     promotions: filtered as Promotion[],
     kpis: {
@@ -323,6 +367,7 @@ export async function loader({ request }: { request: Request }) {
     sitesList,
     contestsList,
     lotteriesList,
+    monitorDashboard,
     loadError: warnings.length > 0 ? warnings.join(" ") : null,
   };
 }
@@ -575,6 +620,150 @@ export async function action({ request }: { request: Request }) {
   }
 
   // ── Concursos Literários ──
+  if (intent === "create_monitor_source") {
+    const channel = ((formData.get("channel") as string | null)?.trim() || "") as PromotionMonitorChannel;
+    const label = (formData.get("label") as string | null)?.trim() || "";
+    const query = (formData.get("query") as string | null)?.trim() || "";
+    const sourceUrl = (formData.get("sourceUrl") as string | null)?.trim() || null;
+    const notes = (formData.get("notes") as string | null)?.trim() || null;
+    const priority = Number(formData.get("priority") || 5);
+    const allowedChannels = new Set<PromotionMonitorChannel>([
+      "instagram_hashtag",
+      "instagram_account",
+      "instagram_keyword",
+      "promotion_site",
+      "literary_site",
+    ]);
+
+    if (!allowedChannels.has(channel) || !label || !query) {
+      return data({ error: "Canal, nome e consulta da fonte sao obrigatorios", intent }, { status: 400 });
+    }
+
+    await createOrUpdateMonitorSource({
+      userId: user.id,
+      channel,
+      label,
+      query,
+      sourceUrl,
+      notes,
+      priority: Number.isFinite(priority) ? priority : 5,
+    });
+
+    return data({ success: true, intent });
+  }
+
+  if (intent === "toggle_monitor_source") {
+    const id = (formData.get("id") as string | null)?.trim() || "";
+    const currentActive = formData.get("isActive") === "true";
+    if (!id) return data({ error: "Fonte invalida", intent }, { status: 400 });
+
+    await db
+      .update(promotionWatchSources)
+      .set({ isActive: !currentActive, updatedAt: new Date() })
+      .where(and(eq(promotionWatchSources.id, id), eq(promotionWatchSources.userId, user.id)));
+
+    return data({ success: true, intent });
+  }
+
+  if (intent === "delete_monitor_source") {
+    const id = (formData.get("id") as string | null)?.trim() || "";
+    if (!id) return data({ error: "Fonte invalida", intent }, { status: 400 });
+
+    await db
+      .update(promotionWatchSources)
+      .set({ isActive: false, deletedAt: new Date(), updatedAt: new Date() })
+      .where(and(eq(promotionWatchSources.id, id), eq(promotionWatchSources.userId, user.id)));
+
+    return data({ success: true, intent });
+  }
+
+  if (intent === "create_tag_friend") {
+    const name = (formData.get("name") as string | null)?.trim() || "";
+    const instagramHandle = (formData.get("instagramHandle") as string | null)?.trim() || "";
+    const dailyLimit = Number(formData.get("dailyLimit") || 5);
+    const weeklyLimit = Number(formData.get("weeklyLimit") || 20);
+    const priority = Number(formData.get("priority") || 5);
+    const notes = (formData.get("notes") as string | null)?.trim() || null;
+
+    if (!name || !instagramHandle) {
+      return data({ error: "Nome e handle do Instagram sao obrigatorios", intent }, { status: 400 });
+    }
+
+    await createOrUpdateTagFriend({
+      userId: user.id,
+      name,
+      instagramHandle,
+      dailyLimit: Number.isFinite(dailyLimit) ? dailyLimit : 5,
+      weeklyLimit: Number.isFinite(weeklyLimit) ? weeklyLimit : 20,
+      priority: Number.isFinite(priority) ? priority : 5,
+      notes,
+    });
+
+    return data({ success: true, intent });
+  }
+
+  if (intent === "toggle_tag_friend") {
+    const id = (formData.get("id") as string | null)?.trim() || "";
+    const currentActive = formData.get("isActive") === "true";
+    if (!id) return data({ error: "Amigo invalido", intent }, { status: 400 });
+
+    await db
+      .update(promotionTagFriends)
+      .set({ isActive: !currentActive, updatedAt: new Date() })
+      .where(and(eq(promotionTagFriends.id, id), eq(promotionTagFriends.userId, user.id)));
+
+    return data({ success: true, intent });
+  }
+
+  if (intent === "delete_tag_friend") {
+    const id = (formData.get("id") as string | null)?.trim() || "";
+    if (!id) return data({ error: "Amigo invalido", intent }, { status: 400 });
+
+    await db
+      .update(promotionTagFriends)
+      .set({ isActive: false, deletedAt: new Date(), updatedAt: new Date() })
+      .where(and(eq(promotionTagFriends.id, id), eq(promotionTagFriends.userId, user.id)));
+
+    return data({ success: true, intent });
+  }
+
+  if (intent === "discover_from_url") {
+    const url = (formData.get("url") as string | null)?.trim() || "";
+    const sourceId = (formData.get("sourceId") as string | null)?.trim() || null;
+    if (!url) return data({ error: "Informe a URL da promocao", intent }, { status: 400 });
+
+    const discoveryId = await createDiscoveryFromUrl(user.id, url, sourceId);
+    return data({ success: true, intent, discoveryId });
+  }
+
+  if (intent === "import_discovery") {
+    const id = (formData.get("id") as string | null)?.trim() || "";
+    if (!id) return data({ error: "Descoberta invalida", intent }, { status: 400 });
+
+    const promotionId = await importDiscoveryToPromotion(user.id, id);
+    return data({ success: true, intent, promotionId });
+  }
+
+  if (intent === "register_discovery_tags") {
+    const id = (formData.get("id") as string | null)?.trim() || "";
+    if (!id) return data({ error: "Descoberta invalida", intent }, { status: 400 });
+
+    const usedCount = await registerDiscoveryTagUsage(user.id, id);
+    return data({ success: true, intent, usedCount });
+  }
+
+  if (intent === "dismiss_discovery") {
+    const id = (formData.get("id") as string | null)?.trim() || "";
+    if (!id) return data({ error: "Descoberta invalida", intent }, { status: 400 });
+
+    await db
+      .update(promotionDiscoveries)
+      .set({ status: "dismissed", updatedAt: new Date() })
+      .where(and(eq(promotionDiscoveries.id, id), eq(promotionDiscoveries.userId, user.id)));
+
+    return data({ success: true, intent });
+  }
+
   if (intent === "create_contest") {
     const name = (formData.get("name") as string | null)?.trim();
     const organizer = (formData.get("organizer") as string | null)?.trim() || null;
@@ -1229,7 +1418,19 @@ export default function PromotionsPage({
 }) {
   const actionData = useActionData<typeof action>();
   const actionPayload = actionData as { success?: boolean; intent?: string; error?: string } | undefined;
-  const { promotions: promo, kpis, initialTab, statusFilter, pessoasList, pessoaSearch, sitesList, contestsList, lotteriesList, loadError } = loaderData;
+  const {
+    promotions: promo,
+    kpis,
+    initialTab,
+    statusFilter,
+    pessoasList,
+    pessoaSearch,
+    sitesList,
+    contestsList,
+    lotteriesList,
+    monitorDashboard,
+    loadError,
+  } = loaderData;
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
 
@@ -1868,6 +2069,10 @@ export default function PromotionsPage({
           </div>
 
           {/* Formulário inline */}
+          {isInstagramTab ? (
+            <PromotionMonitorPanel dashboard={monitorDashboard} actionPayload={actionPayload} />
+          ) : null}
+
           {showForm && (
             <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-6 dark:border-indigo-900 dark:bg-indigo-950/30">
               <h3 className="mb-4 font-semibold text-gray-900 dark:text-white">

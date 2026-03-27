@@ -29,6 +29,18 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-26",
+    version: "2.9.52",
+    type: "release",
+    title: "Radar de promocoes com monitor Instagram e amigos autorizados",
+    items: [
+      "A aba Insta de Promocoes ganhou um radar proprio com painel para fontes monitoradas, amigos autorizados, descoberta por URL e fila de importacao",
+      "Descobertas de links do Instagram ou campanhas agora geram score, resumo das regras, prazo, sugestao de amigos para marcar e acao direta para importar na lista principal",
+      "A nova lista de amigos autorizados passou a controlar handle, prioridade e limites diarios e semanais para rodizio de marcacoes",
+      "A migration 0019_promotion_monitoring.sql criou as tabelas promotion_watch_sources, promotion_tag_friends, promotion_discoveries e promotion_tag_friend_usage",
+    ],
+  },
+  {
+    date: "2026-03-26",
     version: "2.9.51",
     type: "release",
     title: "Radar de noticias com digest no SaaS e Telegram",

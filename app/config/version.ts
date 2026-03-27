@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.51";
+export const APP_VERSION = "2.9.52";
 export const APP_RELEASE_DATE = "2026-03-26";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.52",
+    date: "2026-03-26",
+    title: "Radar de promocoes com monitor Instagram e amigos autorizados",
+    items: [
+      { type: "feature", text: "Promocoes: a aba Insta ganhou um radar proprio com cadastro de fontes, descoberta por URL, fila de analise e importacao direta para a lista principal" },
+      { type: "feature", text: "Instagram: agora e possivel manter uma lista de amigos autorizados para marcacao, com rodizio por prioridade e limites diarios e semanais" },
+      { type: "improvement", text: "Descobertas: links analisados pela IA passam a gerar score, resumo das regras, prazo, necessidade de amigos e sugestoes de handles antes da importacao" },
+      { type: "infra", text: "Schema: a migration 0019_promotion_monitoring.sql criou as tabelas promotion_watch_sources, promotion_tag_friends, promotion_discoveries e promotion_tag_friend_usage" },
+    ],
+  },
   {
     version: "2.9.51",
     date: "2026-03-26",
