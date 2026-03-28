@@ -18,6 +18,7 @@ export default [
     route("processes/new", "routes/processes-new.tsx"),
     route("processes/cost-report", "routes/processes-cost-report.tsx"),
     route("processes/:id", "routes/processes-detail.tsx"),
+    route("processes/:id/tax-memory", "routes/processes-tax-memory.tsx"),
     route("processes/:id/edit", "routes/processes-edit.tsx"),
     route("calculator", "routes/calculator.tsx"),
     route("ncm", "routes/ncm.tsx"),

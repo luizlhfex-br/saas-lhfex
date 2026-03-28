@@ -1,17 +1,46 @@
 {
   "release": {
-    "version": "v2.9.58",
+    "version": "v2.9.59",
     "date": "2026-03-28T00:00:00Z",
-    "type": "fix",
-    "title": "Painel lateral do pipeline estabilizado"
+    "type": "feature",
+    "title": "Memoria de impostos por processo de importacao"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 0,
-    "filesModified": 5,
-    "routesAdded": 0,
+    "filesCreated": 4,
+    "filesModified": 7,
+    "routesAdded": 1,
     "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_28_process_tax_memory": {
+    "date": "2026-03-28",
+    "release_version": "2.9.59",
+    "objective": "Criar a Memoria de Impostos dentro do processo de importacao para preencher parametros, itens e despesas ao longo do embarque",
+    "files_changed": [
+      "drizzle/schema/process-tax-memory.ts",
+      "drizzle/schema/index.ts",
+      "drizzle/migrations/0021_process_tax_memory.sql",
+      "app/lib/process-tax-memory.server.ts",
+      "app/routes/processes-tax-memory.tsx",
+      "app/routes/processes-detail.tsx",
+      "app/routes.ts",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "Nova modelagem de workbook tributario por processo com itens e despesas separadas entre base do ICMS e custo final do embarque",
+      "Nova rota /processes/:id/tax-memory disponivel apenas para importacao, com parametros, itens, despesas e resumo executivo no proprio fluxo do processo",
+      "Calculo consolidado com rateio por peso liquido, fallback automatico quando nao houver peso informado e resumo por NCM para revisar o fechamento tributario",
+      "O detalhe do processo ganhou atalho dedicado para a Memoria de Impostos ao lado da calculadora do embarque"
+    ],
+    "verification": [
+      "npx react-router typegen executado para registrar a nova rota tipada",
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros",
+      "npm run test:unit passou sem erros"
+    ]
   },
   "session_2026_03_28_crm_pipeline_sidebar_fix": {
     "date": "2026-03-28",

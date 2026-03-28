@@ -557,6 +557,20 @@ export default function ProcessesDetailPage({ loaderData, actionData }: Route.Co
           </p>
         </Card>
 
+        {proc.processType === "import" ? (
+          <Card title="Memoria de impostos" icon={<FileSpreadsheet className="h-5 w-5" />}>
+            <p className="text-sm text-[var(--app-muted)]">
+              Preencha parametros, itens, despesas na base do ICMS e despesas finais do processo em uma memoria dedicada da importacao.
+            </p>
+            <Link to={`/processes/${proc.id}/tax-memory`} className="w-full">
+              <Button className="mt-3 w-full justify-start">Abrir Memoria de Impostos</Button>
+            </Link>
+            <p className="text-xs text-[var(--app-muted)]">
+              O fechamento usa rateio por peso liquido e prepara a base para a futura geracao da planilha final.
+            </p>
+          </Card>
+        ) : null}
+
         {/* Timeline */}
         <Card title={i18n.processes.timeline} icon={<Clock className="h-5 w-5" />}>
           {timeline.length === 0 ? (

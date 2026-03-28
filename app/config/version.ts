@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.58";
+export const APP_VERSION = "2.9.59";
 export const APP_RELEASE_DATE = "2026-03-28";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.59",
+    date: "2026-03-28",
+    title: "Memoria de impostos por processo de importacao",
+    items: [
+      { type: "feature", text: "Processos: o detalhe do embarque ganhou um atalho proprio para a Memoria de Impostos, visivel apenas em importacoes" },
+      { type: "feature", text: "Importacao: nova rota de fechamento tributario permite salvar parametros, itens, despesas na base do ICMS e despesas finais do processo dentro do proprio embarque" },
+      { type: "improvement", text: "Calculo: o resumo agora trabalha com rateio por peso liquido, consolidacao por NCM e separacao entre custo de importacao e custo final do processo" },
+      { type: "infra", text: "Schema: a migration 0021_process_tax_memory.sql criou as tabelas process_tax_workbooks, process_tax_items e process_tax_expenses para sustentar a memoria tributaria" },
+    ],
+  },
   {
     version: "2.9.58",
     date: "2026-03-28",

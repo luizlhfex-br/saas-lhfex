@@ -29,6 +29,18 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-28",
+    version: "2.9.59",
+    type: "release",
+    title: "Memoria de impostos por processo de importacao",
+    items: [
+      "Processos: o detalhe do embarque ganhou um atalho proprio para a Memoria de Impostos, visivel apenas quando o processo for de importacao",
+      "Importacao: nova rota de fechamento tributario permite salvar parametros, itens da invoice, despesas na base do ICMS e despesas finais do processo dentro do proprio embarque",
+      "Calculo: o resumo trabalha com rateio por peso liquido, consolidacao por NCM e separacao entre custo de importacao e custo final do processo",
+      "Schema: a migration 0021_process_tax_memory.sql adicionou process_tax_workbooks, process_tax_items e process_tax_expenses",
+    ],
+  },
+  {
+    date: "2026-03-28",
     version: "2.9.58",
     type: "release",
     title: "Painel lateral do pipeline estabilizado",
