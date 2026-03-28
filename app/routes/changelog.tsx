@@ -29,6 +29,16 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-28",
+    version: "2.9.54",
+    type: "release",
+    title: "Correcao do enriquecimento manual no CRM",
+    items: [
+      "A acao Enriquecer com IA nas telas de detalhe e edicao do CRM voltou a redirecionar corretamente depois do sucesso, em vez de cair no banner de erro falso",
+      "O banner de confirmacao por parametro enriched=1 volta a aparecer como previsto quando o cadastro e atualizado pelo enriquecimento do CNPJ",
+    ],
+  },
+  {
+    date: "2026-03-28",
     version: "2.9.53",
     type: "release",
     title: "Enriquecimento automatico de CNPJ no CRM e Hermes Agent",

@@ -89,8 +89,9 @@ export async function action({ request, params }: Route.ActionArgs) {
           userAgent: request.headers.get("user-agent") || "unknown",
         },
       });
-      throw redirect(`/crm/${params.id}?enriched=1`);
+      return redirect(`/crm/${params.id}?enriched=1`);
     } catch (error) {
+      if (error instanceof Response) throw error;
       return data(
         {
           enrichError: error instanceof Error ? error.message : "Nao foi possivel enriquecer este CNPJ agora.",

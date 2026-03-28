@@ -1,17 +1,38 @@
 {
   "release": {
-    "version": "v2.9.53",
+    "version": "v2.9.54",
     "date": "2026-03-28T00:00:00Z",
-    "type": "feature",
-    "title": "Enriquecimento automatico de CNPJ no CRM e Hermes Agent"
+    "type": "fix",
+    "title": "Correcao do enriquecimento manual no CRM"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 1,
-    "filesModified": 10,
+    "filesCreated": 0,
+    "filesModified": 5,
     "routesAdded": 0,
-    "openclaw_changes": 3,
+    "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_28_crm_enriquecimento_redirect_fix": {
+    "date": "2026-03-28",
+    "release_version": "2.9.54",
+    "objective": "Corrigir o fluxo de enriquecimento manual do CRM para nao capturar o redirect de sucesso como se fosse erro",
+    "files_changed": [
+      "app/routes/crm-edit.tsx",
+      "app/routes/crm-detail.tsx",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "As acoes enrich_cnpj nas telas de edicao e detalhe do CRM deixaram de usar throw redirect dentro do try e passaram a retornar o redirect de sucesso corretamente",
+      "O catch agora preserva Responses validas caso alguma navegacao controlada seja disparada no fluxo",
+      "O banner de erro falso foi eliminado e a tela volta a mostrar o feedback de sucesso esperado quando o enriquecimento conclui"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros"
+    ]
   },
   "session_2026_03_28_crm_enriquecimento_cnpj": {
     "date": "2026-03-28",

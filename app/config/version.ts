@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.53";
+export const APP_VERSION = "2.9.54";
 export const APP_RELEASE_DATE = "2026-03-28";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,15 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.54",
+    date: "2026-03-28",
+    title: "Correção do enriquecimento manual no CRM",
+    items: [
+      { type: "fix", text: "CRM: a acao Enriquecer com IA nas telas de detalhe e edicao voltou a redirecionar corretamente apos sucesso, sem exibir erro falso na interface" },
+      { type: "improvement", text: "CRM: o fluxo de enriquecimento manual agora mostra o banner de sucesso previsto quando os dados do CNPJ sao atualizados" },
+    ],
+  },
   {
     version: "2.9.53",
     date: "2026-03-28",
