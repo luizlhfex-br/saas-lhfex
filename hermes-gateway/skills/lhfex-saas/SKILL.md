@@ -4,7 +4,7 @@ description: Acesso operacional ao SaaS LHFEX via /api/openclaw-tools para consu
 version: 1.0.0
 metadata:
   hermes:
-    tags: [lhfex, saas, crm, processos, financeiro, google]
+    tags: [lhfex, saas, crm, pipeline, processos, financeiro, google]
     related_skills: [lhfex-squad-router]
 ---
 
@@ -50,6 +50,7 @@ Usar dados reais do SaaS LHFEX antes de responder ou agir.
 - `action=resumo_modulos_saas`
 - `action=resumo_processos`
 - `action=buscar_clientes&q=TERMO`
+- `action=listar_pipeline`
 - `action=buscar_processos&q=TERMO`
 - `action=listar_faturas`
 - `action=listar_promocoes`
@@ -65,6 +66,10 @@ Usar dados reais do SaaS LHFEX antes de responder ou agir.
 ## Acoes principais
 
 - `{ "action": "criar_cliente", "cnpj": "62180992000133" }`
+- `{ "action": "criar_deal", "title": "DHL - consultoria classificacao fiscal", "clientSearch": "DHL", "value": 3500, "currency": "BRL", "nextAction": "Enviar proposta", "nextFollowUpAt": "2026-03-29T14:00:00-03:00" }`
+- `{ "action": "mover_deal", "search": "DHL - consultoria classificacao fiscal", "stage": "proposal" }`
+- `{ "action": "registrar_followup_deal", "search": "DHL - consultoria classificacao fiscal", "nextAction": "Cobrar retorno da proposta", "nextFollowUpAt": "2026-03-31T10:00:00-03:00" }`
+- `{ "action": "perder_deal", "search": "DHL - consultoria classificacao fiscal", "lostReason": "Cliente congelou o projeto" }`
 - `{ "action": "abrir_processo", "clientSearch": "LHFEX", "modal": "aereo", "processType": "import" }`
 - `{ "action": "atualizar_processo", "reference": "A26-001", "status": "in_progress" }`
 - `{ "action": "google_criar_evento_calendario", "title": "...", "startDateTime": "...", "endDateTime": "..." }`
@@ -74,6 +79,9 @@ Usar dados reais do SaaS LHFEX antes de responder ou agir.
 
 - Se Luiz mandar apenas um CNPJ, tentar `criar_cliente`.
 - Se Luiz mandar cliente + modal, tentar `abrir_processo`.
+- Se Luiz mandar oportunidade + cliente + valor, tentar `criar_deal`.
+- Se Luiz mandar "mover X para proposta/negociacao/fechado/perdido", tentar `mover_deal`, `ganhar_deal` ou `perder_deal`.
+- Se Luiz pedir visao do funil, usar `listar_pipeline`.
 - Se Luiz mandar referencia + ajuste, tentar `atualizar_processo`.
 - Para perguntas amplas sobre o negocio, carregar `contexto_completo` no inicio da sessao.
 - Para perguntas de acesso e prontidao operacional, validar primeiro `catalogo_acoes` e depois responder com evidencias reais.

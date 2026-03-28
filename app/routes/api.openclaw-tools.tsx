@@ -13,6 +13,7 @@ import { db } from "~/lib/db.server";
 import { APP_VERSION } from "~/config/version";
 import {
   clients,
+  deals,
   processes,
   personalFinance,
   promotions,
@@ -34,7 +35,11 @@ import { getPrimaryCompanyId } from "~/lib/company-context.server";
 import {
   OpenClawActionError,
   createClientFromOpenClaw,
+  createDealFromOpenClaw,
+  getDealStageLabel,
+  normalizeDealStage,
   openProcessFromOpenClaw,
+  updateDealFromOpenClaw,
   updateProcessFromOpenClaw,
 } from "~/lib/openclaw-saas-actions.server";
 import {
@@ -125,6 +130,14 @@ function isProcessStatus(value: string): value is ProcessStatus {
   return processStatuses.includes(value as ProcessStatus);
 }
 
+function normalizePipelineStage(value: string): "prospect" | "proposal" | "negotiation" | "won" | "lost" {
+  const stage = normalizeDealStage(value) ?? "prospect";
+  if (stage === "proposal" || stage === "negotiation" || stage === "won" || stage === "lost") {
+    return stage;
+  }
+  return "prospect";
+}
+
 // ── GET ──────────────────────────────────────────────────────────────────────
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -146,6 +159,7 @@ export async function loader({ request }: Route.LoaderArgs) {
         { action: "resumo_processos", description: "Resumo de processos e chegadas proximas" },
         { action: "buscar_processos&q=TERMO", description: "Busca processos por referencia, descricao ou cliente" },
         { action: "buscar_clientes&q=TERMO", description: "Busca clientes por razao social, fantasia ou CNPJ" },
+        { action: "listar_pipeline", description: "Resumo do funil comercial com oportunidades por etapa e follow-ups" },
         { action: "listar_promocoes", description: "Lista promocoes/sorteios cadastrados" },
         { action: "listar_radios", description: "Lista radios do modulo Radio Monitor" },
         { action: "listar_faturas", description: "Lista faturas do financeiro empresarial" },
@@ -158,6 +172,12 @@ export async function loader({ request }: Route.LoaderArgs) {
       ],
       post: [
         { action: "criar_cliente", description: "Cria cliente (aceita CNPJ para enriquecimento)" },
+        { action: "criar_deal", description: "Cria oportunidade comercial no pipeline" },
+        { action: "atualizar_deal", description: "Atualiza titulo, valor, proximo passo, follow-up ou observacoes do deal" },
+        { action: "mover_deal", description: "Move deal para outra etapa do funil" },
+        { action: "registrar_followup_deal", description: "Atualiza proximo passo e data de follow-up do deal" },
+        { action: "ganhar_deal", description: "Marca oportunidade como fechada" },
+        { action: "perder_deal", description: "Marca oportunidade como perdida com motivo" },
         { action: "abrir_processo", description: "Abre processo por cliente/modal/tipo" },
         { action: "atualizar_processo", description: "Atualiza status/campos do processo por referencia/id" },
         { action: "google_criar_evento_calendario", description: "Cria evento no Google Calendar conectado" },
@@ -179,12 +199,27 @@ export async function loader({ request }: Route.LoaderArgs) {
           "/api/openclaw-tools?action=system_status",
           "/api/openclaw-tools?action=buscar_clientes&q=lhfex",
           "/api/openclaw-tools?action=buscar_processos&q=A26-001",
+          "/api/openclaw-tools?action=listar_pipeline",
           "/api/openclaw-tools?action=listar_faturas",
           "/api/openclaw-tools?action=google_status",
           "/api/openclaw-tools?action=google_buscar_drive&q=invoice",
         ],
         post: [
           { action: "criar_cliente", cnpj: "62180992000133" },
+          {
+            action: "criar_deal",
+            title: "DHL - consultoria classificacao fiscal",
+            clientSearch: "DHL",
+            value: 3500,
+            currency: "BRL",
+            nextAction: "Enviar proposta comercial",
+            nextFollowUpAt: "2026-03-29T14:00:00-03:00",
+          },
+          {
+            action: "mover_deal",
+            search: "DHL - consultoria classificacao fiscal",
+            stage: "proposal",
+          },
           { action: "abrir_processo", client: "LHFEX", modal: "aereo", processType: "import" },
           { action: "atualizar_processo", reference: "A26-001", status: "in_progress" },
           {
@@ -207,7 +242,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
 
   if (action === "resumo_modulos_saas") {
-    const [crmSummary, processSummary, financeSummary, promotionSummary, subscriptionSummary, radioSummary] =
+    const [crmSummary, pipelineSummary, processSummary, financeSummary, promotionSummary, subscriptionSummary, radioSummary] =
       await Promise.all([
         db
           .select({
@@ -217,6 +252,17 @@ export async function loader({ request }: Route.LoaderArgs) {
           })
           .from(clients)
           .where(and(eq(clients.companyId, companyId), isNull(clients.deletedAt))),
+        db
+          .select({
+            total: sql<number>`count(*)::int`,
+            leads: sql<number>`count(*) filter (where stage = 'prospect')::int`,
+            qualificacao: sql<number>`count(*) filter (where stage = 'qualification')::int`,
+            proposta: sql<number>`count(*) filter (where stage = 'proposal')::int`,
+            negociacao: sql<number>`count(*) filter (where stage = 'negotiation')::int`,
+            fechados: sql<number>`count(*) filter (where stage = 'won')::int`,
+          })
+          .from(deals)
+          .where(and(eq(deals.companyId, companyId), isNull(deals.deletedAt))),
         db
           .select({
             total: sql<number>`count(*)::int`,
@@ -265,6 +311,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       timestamp: new Date().toISOString(),
       modules: {
         crm: crmSummary[0] ?? null,
+        pipeline: pipelineSummary[0] ?? null,
         processes: processSummary[0] ?? null,
         financial: financeSummary[0] ?? null,
         promotions: promotionSummary[0] ?? null,
@@ -574,6 +621,99 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
 
   // ── system_status ─────────────────────────────────────────────────────────
+  if (action === "listar_pipeline") {
+    const rows = await db
+      .select({
+        id: deals.id,
+        title: deals.title,
+        stage: deals.stage,
+        value: deals.value,
+        currency: deals.currency,
+        nextAction: deals.nextAction,
+        nextFollowUpAt: deals.nextFollowUpAt,
+        lostReason: deals.lostReason,
+        notes: deals.notes,
+        clientName: clients.razaoSocial,
+        clientFantasia: clients.nomeFantasia,
+        updatedAt: deals.updatedAt,
+      })
+      .from(deals)
+      .leftJoin(clients, eq(deals.clientId, clients.id))
+      .where(and(eq(deals.companyId, companyId), isNull(deals.deletedAt)))
+      .orderBy(desc(deals.updatedAt))
+      .limit(60);
+
+    const stageMap = {
+      prospect: { label: "Lead", count: 0, total: 0 },
+      proposal: { label: "Proposta", count: 0, total: 0 },
+      negotiation: { label: "Negociacao", count: 0, total: 0 },
+      won: { label: "Fechado", count: 0, total: 0 },
+      lost: { label: "Perdido", count: 0, total: 0 },
+    };
+
+    const overdueFollowUps: Array<Record<string, unknown>> = [];
+    const upcomingFollowUps: Array<Record<string, unknown>> = [];
+
+    for (const row of rows) {
+      const stage = normalizePipelineStage(row.stage);
+      stageMap[stage].count += 1;
+      stageMap[stage].total += Number(row.value || 0);
+
+      if (row.nextFollowUpAt) {
+        const item = {
+          id: row.id,
+          title: row.title,
+          stage,
+          stageLabel: getDealStageLabel(stage),
+          clientName: row.clientFantasia || row.clientName,
+          nextAction: row.nextAction,
+          nextFollowUpAt: row.nextFollowUpAt,
+        };
+
+        if (row.nextFollowUpAt.getTime() < Date.now()) {
+          overdueFollowUps.push(item);
+        } else {
+          upcomingFollowUps.push(item);
+        }
+      }
+    }
+
+    const orderedStages = [
+      { id: "prospect", ...stageMap.prospect },
+      { id: "proposal", ...stageMap.proposal },
+      { id: "negotiation", ...stageMap.negotiation },
+      { id: "won", ...stageMap.won },
+      { id: "lost", ...stageMap.lost },
+    ];
+
+    return ok({
+      totalDeals: rows.length,
+      pipelineOpenValue: orderedStages
+        .filter((stage) => stage.id !== "won" && stage.id !== "lost")
+        .reduce((sum, stage) => sum + stage.total, 0),
+      stages: orderedStages,
+      overdueFollowUps: overdueFollowUps.slice(0, 10),
+      upcomingFollowUps: upcomingFollowUps.slice(0, 10),
+      deals: rows.slice(0, 20).map((row) => {
+        const stage = normalizePipelineStage(row.stage);
+        return {
+          id: row.id,
+          title: row.title,
+          stage,
+          stageLabel: getDealStageLabel(stage),
+          value: row.value,
+          currency: row.currency,
+          nextAction: row.nextAction,
+          nextFollowUpAt: row.nextFollowUpAt,
+          lostReason: row.lostReason,
+          notes: row.notes,
+          clientName: row.clientFantasia || row.clientName,
+        };
+      }),
+      summary: `Pipeline com ${stageMap.prospect.count} leads, ${stageMap.proposal.count} em proposta, ${stageMap.negotiation.count} em negociacao e ${overdueFollowUps.length} follow-ups atrasados.`,
+    });
+  }
+
   if (action === "system_status") {
     const legacyOpenClawVersion =
       process.env.OPENCLAW_VERSION ?? process.env.OPENCLAW_TARGET_VERSION ?? "2026.3.13";
@@ -1088,6 +1228,121 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   // ── abrir_processo ────────────────────────────────────────────────────────
+  if (act === "criar_deal") {
+    try {
+      const result = await createDealFromOpenClaw({
+        companyId,
+        userId,
+        input: body,
+      });
+      return ok(result);
+    } catch (error) {
+      if (error instanceof OpenClawActionError) {
+        return badRequestWithDetails(error.message, error.details);
+      }
+      throw error;
+    }
+
+  }
+
+  if (act === "atualizar_deal") {
+    try {
+      const result = await updateDealFromOpenClaw({
+        companyId,
+        userId,
+        input: body,
+      });
+      return ok(result);
+    } catch (error) {
+      if (error instanceof OpenClawActionError) {
+        return badRequestWithDetails(error.message, error.details);
+      }
+      throw error;
+    }
+
+  }
+
+  if (act === "mover_deal") {
+    try {
+      const result = await updateDealFromOpenClaw({
+        companyId,
+        userId,
+        input: {
+          ...body,
+          stage: String(body.stage || ""),
+        },
+      });
+      return ok(result);
+    } catch (error) {
+      if (error instanceof OpenClawActionError) {
+        return badRequestWithDetails(error.message, error.details);
+      }
+      throw error;
+    }
+
+  }
+
+  if (act === "registrar_followup_deal") {
+    try {
+      const result = await updateDealFromOpenClaw({
+        companyId,
+        userId,
+        input: {
+          ...body,
+          nextAction: body.nextAction,
+          nextFollowUpAt: body.nextFollowUpAt,
+        },
+      });
+      return ok(result);
+    } catch (error) {
+      if (error instanceof OpenClawActionError) {
+        return badRequestWithDetails(error.message, error.details);
+      }
+      throw error;
+    }
+
+  }
+
+  if (act === "ganhar_deal") {
+    try {
+      const result = await updateDealFromOpenClaw({
+        companyId,
+        userId,
+        input: {
+          ...body,
+          stage: "won",
+        },
+      });
+      return ok(result);
+    } catch (error) {
+      if (error instanceof OpenClawActionError) {
+        return badRequestWithDetails(error.message, error.details);
+      }
+      throw error;
+    }
+
+  }
+
+  if (act === "perder_deal") {
+    try {
+      const result = await updateDealFromOpenClaw({
+        companyId,
+        userId,
+        input: {
+          ...body,
+          stage: "lost",
+        },
+      });
+      return ok(result);
+    } catch (error) {
+      if (error instanceof OpenClawActionError) {
+        return badRequestWithDetails(error.message, error.details);
+      }
+      throw error;
+    }
+
+  }
+
   if (act === "abrir_processo") {
     try {
       const result = await openProcessFromOpenClaw({

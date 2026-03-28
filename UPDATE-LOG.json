@@ -1,17 +1,45 @@
 {
   "release": {
-    "version": "v2.9.56",
+    "version": "v2.9.57",
     "date": "2026-03-28T00:00:00Z",
-    "type": "improvement",
-    "title": "CRM sem tipagem rigida de importador e exportador"
+    "type": "feature",
+    "title": "Pipeline comercial simplificado e integrado ao Hermes"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 0,
-    "filesModified": 9,
+    "filesCreated": 1,
+    "filesModified": 8,
     "routesAdded": 0,
     "openclaw_changes": 1,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_28_crm_pipeline_hermes": {
+    "date": "2026-03-28",
+    "release_version": "2.9.57",
+    "objective": "Simplificar o funil comercial para 5 etapas uteis, isolar deals por companyId e expor o pipeline ao Hermes Agent",
+    "files_changed": [
+      "app/routes/crm-pipeline.tsx",
+      "app/routes/api.openclaw-tools.tsx",
+      "app/lib/openclaw-saas-actions.server.ts",
+      "drizzle/schema/pipeline.ts",
+      "drizzle/migrations/0020_pipeline_company_followup.sql",
+      "hermes-gateway/skills/lhfex-saas/SKILL.md",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "O CRM Pipeline foi refeito com 5 colunas visiveis - Lead, Proposta, Negociacao, Fechado e Perdido - tratando qualification como etapa legada agrupada em Lead para reduzir ruido comercial",
+      "Deals passaram a ter companyId obrigatorio, proxima acao, follow-up e motivo de perda, com queries filtradas pela empresa ativa e agenda de oportunidades atrasadas ou proximas",
+      "O catalogo de tools do SaaS ganhou actions para listar, criar, atualizar, mover, ganhar, perder e registrar follow-up de deals, permitindo que o Hermes passe a operar o pipeline pelo Telegram",
+      "A skill lhfex-saas do Hermes foi atualizada para orientar essas novas actions e os atalhos naturais de funil comercial"
+    ],
+    "verification": [
+      "Migration 0020 validada no banco com company_id NOT NULL e indices de pipeline presentes",
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros",
+      "npm run test:unit passou sem erros"
+    ]
   },
   "session_2026_03_28_crm_tipo_inativo": {
     "date": "2026-03-28",

@@ -2,7 +2,7 @@ import { and, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import { db } from "./db.server";
 import { enrichCNPJ } from "./ai.server";
 import { formatCNPJ } from "./utils";
-import { clients, contacts, processes, processTimeline } from "../../drizzle/schema";
+import { clients, contacts, deals, dealActivities, processes, processTimeline } from "../../drizzle/schema";
 import { syncClientEmbedding, syncProcessEmbedding } from "./embedding-sync.server";
 
 export type OpenClawProcessType = "import" | "export" | "services";
@@ -16,6 +16,13 @@ export type OpenClawProcessStatus =
   | "completed"
   | "cancelled"
   | "pending_approval";
+export type OpenClawDealStage =
+  | "prospect"
+  | "qualification"
+  | "proposal"
+  | "negotiation"
+  | "won"
+  | "lost";
 
 type OpenClawClientType = "importer" | "exporter" | "both";
 
@@ -24,6 +31,19 @@ type ClientMatch = {
   razaoSocial: string;
   nomeFantasia: string | null;
   cnpj: string;
+};
+
+type DealMatch = {
+  id: string;
+  title: string;
+  stage: OpenClawDealStage;
+  clientId: string | null;
+  clientRazao: string | null;
+  clientFantasia: string | null;
+  value: string | null;
+  currency: string | null;
+  nextAction: string | null;
+  nextFollowUpAt: Date | null;
 };
 
 export class OpenClawActionError extends Error {
@@ -94,6 +114,20 @@ function normalizeDecimal(value: unknown): string | null {
   return Number.isFinite(parsed) ? parsed.toFixed(2) : null;
 }
 
+function parseOptionalDateTime(value: unknown): Date | null {
+  if (value === null || value === undefined) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new OpenClawActionError(
+      "invalid_datetime",
+      `Data/hora invalida: ${raw}`,
+    );
+  }
+  return parsed;
+}
+
 function normalizeClientType(value: unknown): OpenClawClientType {
   const normalized = normalizeText(value);
   if (normalized.includes("both") || normalized.includes("ambos")) return "both";
@@ -139,6 +173,20 @@ export function normalizeProcessStatus(value: unknown): OpenClawProcessStatus | 
   return null;
 }
 
+export function normalizeDealStage(value: unknown): OpenClawDealStage | null {
+  const normalized = normalizeText(value);
+  if (!normalized) return null;
+  if (normalized === "prospect" || normalized.includes("lead")) return "prospect";
+  if (normalized.includes("qualific") || normalized.includes("contato inicial") || normalized.includes("diagnostic")) {
+    return "prospect";
+  }
+  if (normalized.includes("proposta") || normalized.includes("orcamento")) return "proposal";
+  if (normalized.includes("negoci")) return "negotiation";
+  if (normalized.includes("won") || normalized.includes("ganho") || normalized.includes("fechado")) return "won";
+  if (normalized.includes("lost") || normalized.includes("perd")) return "lost";
+  return null;
+}
+
 export function getProcessTypeLabel(value: OpenClawProcessType): string {
   if (value === "export") return "Exportacao";
   if (value === "services") return "Servicos";
@@ -168,6 +216,23 @@ export function getProcessStatusLabel(value: OpenClawProcessStatus): string {
   }
 }
 
+export function getDealStageLabel(value: OpenClawDealStage): string {
+  switch (value) {
+    case "prospect":
+      return "Lead";
+    case "qualification":
+      return "Lead";
+    case "proposal":
+      return "Proposta enviada";
+    case "negotiation":
+      return "Negociacao";
+    case "won":
+      return "Fechado";
+    case "lost":
+      return "Perdido";
+  }
+}
+
 async function findClientMatches(companyId: string, search: string, limit = 5): Promise<ClientMatch[]> {
   return db
     .select({
@@ -185,6 +250,36 @@ async function findClientMatches(companyId: string, search: string, limit = 5): 
           ilike(clients.razaoSocial, `%${search}%`),
           ilike(clients.nomeFantasia, `%${search}%`),
           ilike(clients.cnpj, `%${search}%`),
+        ),
+      ),
+    )
+    .limit(limit);
+}
+
+async function findDealMatches(companyId: string, search: string, limit = 5): Promise<DealMatch[]> {
+  return db
+    .select({
+      id: deals.id,
+      title: deals.title,
+      stage: deals.stage,
+      clientId: deals.clientId,
+      clientRazao: clients.razaoSocial,
+      clientFantasia: clients.nomeFantasia,
+      value: deals.value,
+      currency: deals.currency,
+      nextAction: deals.nextAction,
+      nextFollowUpAt: deals.nextFollowUpAt,
+    })
+    .from(deals)
+    .leftJoin(clients, eq(deals.clientId, clients.id))
+    .where(
+      and(
+        eq(deals.companyId, companyId),
+        isNull(deals.deletedAt),
+        or(
+          ilike(deals.title, `%${search}%`),
+          ilike(clients.razaoSocial, `%${search}%`),
+          ilike(clients.nomeFantasia, `%${search}%`),
         ),
       ),
     )
@@ -215,6 +310,12 @@ async function generateProcessReference(companyId: string, prefix: "A" | "M" | "
 }
 
 function buildProcessChangeSummary(changedFields: string[], note: string | null) {
+  const parts = [...changedFields];
+  if (note) parts.push(`obs: ${note}`);
+  return parts.join(" | ");
+}
+
+function buildDealChangeSummary(changedFields: string[], note: string | null) {
   const parts = [...changedFields];
   if (note) parts.push(`obs: ${note}`);
   return parts.join(" | ");
@@ -356,6 +457,293 @@ export async function createClientFromOpenClaw(params: {
     cnpj: cnpj || null,
     enrichedFromCnpj,
     createdPrimaryContact: shouldCreateContact,
+  };
+}
+
+export async function createDealFromOpenClaw(params: {
+  companyId: string;
+  userId: string;
+  input: Record<string, unknown>;
+}) {
+  const { companyId, userId, input } = params;
+  const title =
+    getOptionalString(input.title) ??
+    getOptionalString(input.nome) ??
+    getOptionalString(input.opportunity) ??
+    getOptionalString(input.dealTitle);
+
+  if (!title) {
+    throw new OpenClawActionError("missing_deal_title", "title e obrigatorio para criar oportunidade");
+  }
+
+  const clientSearch =
+    getOptionalString(input.clientSearch) ??
+    getOptionalString(input.client) ??
+    getOptionalString(input.clientName) ??
+    (normalizeCnpj(input.cnpj) || "");
+
+  let clientId: string | null = null;
+  let clientName: string | null = null;
+
+  if (clientSearch) {
+    const matches = await findClientMatches(companyId, clientSearch, 5);
+    if (matches.length === 0) {
+      throw new OpenClawActionError("client_not_found", `Nenhum cliente encontrado: ${clientSearch}`);
+    }
+    if (matches.length > 1) {
+      throw new OpenClawActionError(
+        "client_ambiguous",
+        `Multiplos clientes encontrados para: ${clientSearch}`,
+        { matches },
+      );
+    }
+
+    clientId = matches[0].id;
+    clientName = matches[0].nomeFantasia || matches[0].razaoSocial;
+  }
+
+  const stage = normalizeDealStage(input.stage ?? input.status ?? input.etapa) ?? "prospect";
+  const value = normalizeDecimal(input.value ?? input.amount ?? input.estimatedValue);
+  const currency = normalizeCurrency(input.currency, "BRL");
+  const nextAction = getOptionalString(input.nextAction ?? input.proximoPasso);
+  const nextFollowUpAt = parseOptionalDateTime(input.nextFollowUpAt ?? input.followUpAt ?? input.followUpDate);
+  const lostReason = getOptionalString(input.lostReason ?? input.motivoPerda);
+  const notes = getOptionalString(input.notes ?? input.note ?? input.observacao);
+
+  if (stage === "lost" && !lostReason) {
+    throw new OpenClawActionError(
+      "missing_lost_reason",
+      "Informe lostReason ao criar uma oportunidade ja perdida",
+    );
+  }
+
+  const [deal] = await db
+    .insert(deals)
+    .values({
+      companyId,
+      clientId,
+      title,
+      value,
+      currency,
+      stage,
+      nextAction,
+      nextFollowUpAt,
+      lostReason,
+      notes,
+      createdBy: userId,
+    })
+    .returning({ id: deals.id, title: deals.title, stage: deals.stage });
+
+  await db.insert(dealActivities).values({
+    dealId: deal.id,
+    content: `Oportunidade criada via Hermes Agent em ${getDealStageLabel(stage)}`,
+    type: "created",
+    createdBy: userId,
+  });
+
+  return {
+    success: true as const,
+    dealId: deal.id,
+    title: deal.title,
+    stage: deal.stage,
+    stageLabel: getDealStageLabel(deal.stage),
+    clientId,
+    clientName,
+    nextAction,
+    nextFollowUpAt: nextFollowUpAt?.toISOString() ?? null,
+  };
+}
+
+export async function updateDealFromOpenClaw(params: {
+  companyId: string;
+  userId: string;
+  input: Record<string, unknown>;
+}) {
+  const { companyId, userId, input } = params;
+  const dealId = getOptionalString(input.dealId);
+  const search =
+    getOptionalString(input.search) ??
+    getOptionalString(input.dealSearch) ??
+    getOptionalString(input.title) ??
+    getOptionalString(input.opportunity);
+
+  let currentDeal:
+    | (DealMatch & {
+        notes?: string | null;
+        lostReason?: string | null;
+      })
+    | null = null;
+
+  if (dealId) {
+    const [deal] = await db
+      .select({
+        id: deals.id,
+        title: deals.title,
+        stage: deals.stage,
+        clientId: deals.clientId,
+        clientRazao: clients.razaoSocial,
+        clientFantasia: clients.nomeFantasia,
+        value: deals.value,
+        currency: deals.currency,
+        nextAction: deals.nextAction,
+        nextFollowUpAt: deals.nextFollowUpAt,
+        notes: deals.notes,
+        lostReason: deals.lostReason,
+      })
+      .from(deals)
+      .leftJoin(clients, eq(deals.clientId, clients.id))
+      .where(and(eq(deals.companyId, companyId), eq(deals.id, dealId), isNull(deals.deletedAt)))
+      .limit(1);
+
+    currentDeal = deal ?? null;
+  } else {
+    const matches = await findDealMatches(companyId, search || "", 5);
+    if (matches.length === 0) {
+      throw new OpenClawActionError("deal_not_found", `Nenhuma oportunidade encontrada para: ${search || ""}`);
+    }
+    if (matches.length > 1) {
+      throw new OpenClawActionError(
+        "deal_ambiguous",
+        `Multiplas oportunidades encontradas para: ${search || ""}`,
+        {
+          matches: matches.map((match) => ({
+            id: match.id,
+            title: match.title,
+            stage: match.stage,
+            stageLabel: getDealStageLabel(match.stage),
+            clientName: match.clientFantasia || match.clientRazao,
+          })),
+        },
+      );
+    }
+
+    currentDeal = matches[0];
+  }
+
+  if (!currentDeal) {
+    throw new OpenClawActionError(
+      "deal_not_found",
+      dealId ? `Oportunidade ${dealId} nao encontrada` : `Nenhuma oportunidade encontrada para: ${search || ""}`,
+    );
+  }
+
+  const updateData: Record<string, unknown> = {
+    updatedAt: new Date(),
+  };
+  const changedFields: string[] = [];
+
+  const nextStage = normalizeDealStage(input.stage ?? input.status ?? input.etapa);
+  if (nextStage && nextStage !== currentDeal.stage) {
+    updateData.stage = nextStage;
+    changedFields.push(`etapa=${getDealStageLabel(nextStage)}`);
+  }
+
+  const nextTitle = getOptionalString(input.title);
+  if (nextTitle && nextTitle !== currentDeal.title) {
+    updateData.title = nextTitle;
+    changedFields.push("titulo");
+  }
+
+  if (Object.prototype.hasOwnProperty.call(input, "value") || Object.prototype.hasOwnProperty.call(input, "amount")) {
+    const nextValue = normalizeDecimal(input.value ?? input.amount);
+    if (nextValue !== currentDeal.value) {
+      updateData.value = nextValue;
+      changedFields.push("valor");
+    }
+  }
+
+  const nextCurrency = getOptionalString(input.currency);
+  if (nextCurrency) {
+    const normalizedCurrency = normalizeCurrency(nextCurrency, currentDeal.currency || "BRL");
+    if (normalizedCurrency !== currentDeal.currency) {
+      updateData.currency = normalizedCurrency;
+      changedFields.push("moeda");
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(input, "nextAction") || Object.prototype.hasOwnProperty.call(input, "proximoPasso")) {
+    const normalizedNextAction = getOptionalString(input.nextAction ?? input.proximoPasso);
+    if (normalizedNextAction !== currentDeal.nextAction) {
+      updateData.nextAction = normalizedNextAction;
+      changedFields.push("proximo passo");
+    }
+  }
+
+  if (
+    Object.prototype.hasOwnProperty.call(input, "nextFollowUpAt") ||
+    Object.prototype.hasOwnProperty.call(input, "followUpAt") ||
+    Object.prototype.hasOwnProperty.call(input, "followUpDate")
+  ) {
+    const nextFollowUpAt = parseOptionalDateTime(input.nextFollowUpAt ?? input.followUpAt ?? input.followUpDate);
+    const currentFollowUp = currentDeal.nextFollowUpAt?.toISOString() ?? null;
+    const nextFollowUp = nextFollowUpAt?.toISOString() ?? null;
+    if (nextFollowUp !== currentFollowUp) {
+      updateData.nextFollowUpAt = nextFollowUpAt;
+      changedFields.push("follow-up");
+    }
+  }
+
+  const currentLostReason = currentDeal.lostReason ?? null;
+  if (Object.prototype.hasOwnProperty.call(input, "lostReason") || Object.prototype.hasOwnProperty.call(input, "motivoPerda")) {
+    const nextLostReason = getOptionalString(input.lostReason ?? input.motivoPerda);
+    if (nextLostReason !== currentLostReason) {
+      updateData.lostReason = nextLostReason;
+      changedFields.push("motivo da perda");
+    }
+  }
+
+  const currentNotes = currentDeal.notes ?? null;
+  if (Object.prototype.hasOwnProperty.call(input, "notes") || Object.prototype.hasOwnProperty.call(input, "note") || Object.prototype.hasOwnProperty.call(input, "observacao")) {
+    const nextNotes = getOptionalString(input.notes ?? input.note ?? input.observacao);
+    if (nextNotes !== currentNotes) {
+      updateData.notes = nextNotes;
+      changedFields.push("notas");
+    }
+  }
+
+  const note = getOptionalString(input.activityNote ?? input.timelineNote ?? input.noteSummary);
+  const finalStage = (updateData.stage as OpenClawDealStage | undefined) ?? currentDeal.stage;
+  const finalLostReason = (updateData.lostReason as string | null | undefined) ?? currentLostReason;
+
+  if (finalStage === "lost" && !finalLostReason) {
+    throw new OpenClawActionError(
+      "missing_lost_reason",
+      "Informe lostReason para mover uma oportunidade para Perdido",
+    );
+  }
+
+  if (changedFields.length === 0 && !note) {
+    throw new OpenClawActionError(
+      "missing_deal_updates",
+      "Informe ao menos um campo para atualizar a oportunidade",
+    );
+  }
+
+  await db
+    .update(deals)
+    .set(updateData)
+    .where(and(eq(deals.companyId, companyId), eq(deals.id, currentDeal.id)));
+
+  await db.insert(dealActivities).values({
+    dealId: currentDeal.id,
+    content: buildDealChangeSummary(changedFields, note),
+    type: nextStage && nextStage !== currentDeal.stage ? "stage_change" : "update",
+    createdBy: userId,
+  });
+
+  return {
+    success: true as const,
+    dealId: currentDeal.id,
+    title: (updateData.title as string | undefined) ?? currentDeal.title,
+    stage: finalStage,
+    stageLabel: getDealStageLabel(finalStage),
+    updatedFields: changedFields,
+    nextAction: (updateData.nextAction as string | null | undefined) ?? currentDeal.nextAction ?? null,
+    nextFollowUpAt:
+      ((updateData.nextFollowUpAt as Date | null | undefined)?.toISOString() ??
+        currentDeal.nextFollowUpAt?.toISOString() ??
+        null),
+    clientName: currentDeal.clientFantasia || currentDeal.clientRazao,
   };
 }
 

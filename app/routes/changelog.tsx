@@ -29,6 +29,18 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-28",
+    version: "2.9.57",
+    type: "release",
+    title: "Pipeline comercial simplificado e integrado ao Hermes",
+    items: [
+      "O CRM Pipeline foi reconstruido com 5 colunas visiveis - Lead, Proposta, Negociacao, Fechado e Perdido - escondendo a etapa legacy de qualification dentro de Lead para reduzir complexidade operacional",
+      "Deals agora carregam companyId, proxima acao, data de follow-up e motivo de perda, com agenda comercial na tela e consultas filtradas corretamente por empresa",
+      "O endpoint do SaaS ganhou actions para listar, criar, atualizar, mover, ganhar, perder e registrar follow-up de deals, abrindo o caminho para operacao real pelo Hermes Agent no Telegram",
+      "A skill lhfex-saas do Hermes foi atualizada para tratar pipeline como modulo de negocio de primeira classe, incluindo atalhos de criacao, movimentacao e leitura do funil",
+    ],
+  },
+  {
+    date: "2026-03-28",
     version: "2.9.56",
     type: "release",
     title: "CRM sem tipagem rigida de importador e exportador",

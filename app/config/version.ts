@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.56";
+export const APP_VERSION = "2.9.57";
 export const APP_RELEASE_DATE = "2026-03-28";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.57",
+    date: "2026-03-28",
+    title: "Pipeline comercial simplificado e integrado ao Hermes",
+    items: [
+      { type: "feature", text: "CRM Pipeline: a tela foi reconstruida com 5 etapas visiveis mais diretas - Lead, Proposta, Negociacao, Fechado e Perdido - reduzindo friccao para uso comercial do dia a dia" },
+      { type: "feature", text: "Pipeline: deals passaram a usar companyId, nextAction, nextFollowUpAt e lostReason, permitindo agenda comercial, resumo por etapa e isolamento correto por empresa" },
+      { type: "feature", text: "Hermes Agent: o catalogo de tools agora inclui listar_pipeline, criar_deal, atualizar_deal, mover_deal, registrar_followup_deal, ganhar_deal e perder_deal" },
+      { type: "improvement", text: "CRM Pipeline: criacao, movimentacao e exclusao de oportunidades passaram a usar CSRF, fetchers sem reload bruto e registro de atividades operacionais" },
+    ],
+  },
   {
     version: "2.9.56",
     date: "2026-03-28",
