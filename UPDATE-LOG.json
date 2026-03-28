@@ -1,17 +1,38 @@
 {
   "release": {
-    "version": "v2.9.57",
+    "version": "v2.9.58",
     "date": "2026-03-28T00:00:00Z",
-    "type": "feature",
-    "title": "Pipeline comercial simplificado e integrado ao Hermes"
+    "type": "fix",
+    "title": "Painel lateral do pipeline estabilizado"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 1,
-    "filesModified": 8,
+    "filesCreated": 0,
+    "filesModified": 5,
     "routesAdded": 0,
-    "openclaw_changes": 1,
+    "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_28_crm_pipeline_sidebar_fix": {
+    "date": "2026-03-28",
+    "release_version": "2.9.58",
+    "objective": "Impedir que o painel lateral do CRM Pipeline seja comprimido pelo board principal quando houver overflow horizontal",
+    "files_changed": [
+      "app/components/ui/operational-page.tsx",
+      "app/routes/crm-pipeline.tsx",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "O grid do CRM Pipeline passou a usar colunas com minmax e largura lateral fixa para que Agenda comercial e Como usar nao sejam espremidos pelo quadro principal",
+      "Os paineis operacionais ganharam min-w-0 por padrao, melhorando o comportamento dentro de grids e containers com scroll horizontal",
+      "O board continua com overflow-x interno, mas a rolagem agora fica restrita a coluna do quadro sem destruir a leitura do painel direito"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros"
+    ]
   },
   "session_2026_03_28_crm_pipeline_hermes": {
     "date": "2026-03-28",

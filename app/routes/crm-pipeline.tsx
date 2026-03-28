@@ -668,13 +668,15 @@ export default function CRMPipelinePage({ loaderData }: Route.ComponentProps) {
         </OperationalPanel>
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px] 2xl:grid-cols-[minmax(0,1.15fr)_360px] xl:items-start">
         <OperationalPanel
           title="Quadro do pipeline"
           icon={<Columns3 className="h-5 w-5" />}
           description="Arraste ou use os atalhos rapidos. Etapas intermediarias de qualificacao ficam embutidas em Lead."
+          className="min-w-0"
+          bodyClassName="min-w-0"
         >
-          <div className="flex gap-4 overflow-x-auto pb-2">
+          <div className="flex w-full min-w-0 gap-4 overflow-x-auto pb-2">
             {PIPELINE_STAGES.map((stage) => {
               const cards = groupedDeals[stage.id];
               const stageTotal = stageTotals[stage.id];
@@ -787,11 +789,12 @@ export default function CRMPipelinePage({ loaderData }: Route.ComponentProps) {
           </div>
         </OperationalPanel>
 
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6 xl:min-w-[340px] 2xl:min-w-[360px]">
           <OperationalPanel
             title="Agenda comercial"
             icon={<BellRing className="h-5 w-5" />}
             description="Follow-ups atrasados primeiro. Se uma oportunidade nao tem proximo passo, ela tende a esfriar."
+            className="min-w-0"
           >
             <div className="space-y-4">
               <section className="space-y-3">
@@ -838,6 +841,7 @@ export default function CRMPipelinePage({ loaderData }: Route.ComponentProps) {
             title="Como usar"
             icon={<TrendingUp className="h-5 w-5" />}
             description="Fluxo recomendado para a LHFEX com poucas etapas e manutencao leve."
+            className="min-w-0"
           >
             <ol className="space-y-3 text-sm leading-6 text-[var(--app-muted)]">
               <li>1. Crie um lead apenas quando houver chance comercial real.</li>

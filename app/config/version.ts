@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.57";
+export const APP_VERSION = "2.9.58";
 export const APP_RELEASE_DATE = "2026-03-28";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,15 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.58",
+    date: "2026-03-28",
+    title: "Painel lateral do pipeline estabilizado",
+    items: [
+      { type: "fix", text: "CRM Pipeline: a coluna lateral de Agenda comercial e Como usar deixou de ser esmagada pelo board principal em telas estreitas, preservando leitura e espaco dos cards" },
+      { type: "improvement", text: "Layout operacional: paineis passaram a assumir min-w-0 por padrao para se comportarem melhor dentro de grids com conteudo rolavel horizontalmente" },
+    ],
+  },
   {
     version: "2.9.57",
     date: "2026-03-28",

@@ -94,7 +94,7 @@ export function OperationalPanel({
   return (
     <section
       className={cn(
-        "rounded-[28px] border border-[var(--app-border)] bg-[linear-gradient(180deg,var(--app-surface),var(--app-surface-2))] p-6 shadow-[var(--app-card-shadow)]",
+        "min-w-0 rounded-[28px] border border-[var(--app-border)] bg-[linear-gradient(180deg,var(--app-surface),var(--app-surface-2))] p-6 shadow-[var(--app-card-shadow)]",
         className,
       )}
     >

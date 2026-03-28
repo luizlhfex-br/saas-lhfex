@@ -29,6 +29,16 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-28",
+    version: "2.9.58",
+    type: "release",
+    title: "Painel lateral do pipeline estabilizado",
+    items: [
+      "A coluna lateral do CRM Pipeline passou a usar largura minima propria, impedindo que Agenda comercial e Como usar fiquem esmagados quando o quadro principal precisa rolar horizontalmente",
+      "Os paineis operacionais agora assumem min-w-0 por padrao, reduzindo outros riscos de texto comprimido em grids com conteudo largo",
+    ],
+  },
+  {
+    date: "2026-03-28",
     version: "2.9.57",
     type: "release",
     title: "Pipeline comercial simplificado e integrado ao Hermes",
