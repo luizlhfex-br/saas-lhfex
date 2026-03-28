@@ -28,6 +28,7 @@ import { data } from "react-router";
 import { fireTrigger } from "~/lib/automation-engine.server";
 import { getCSRFFormState, requireValidCSRF } from "~/lib/csrf.server";
 import { syncClientEmbedding } from "~/lib/embedding-sync.server";
+import { enrichCNPJ } from "~/lib/ai.server";
 
 type ContactDraft = {
   id: string;
@@ -97,6 +98,23 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   if (!raw.status) raw.status = "active";
+
+  const cleanCnpjForEnrichment = String(raw.cnpj || "").replace(/\D/g, "");
+  const enriched =
+    cleanCnpjForEnrichment.length === 14
+      ? await enrichCNPJ(cleanCnpjForEnrichment)
+      : null;
+
+  if (enriched) {
+    raw.razaoSocial = String(raw.razaoSocial || "").trim() || enriched.razaoSocial || undefined;
+    raw.nomeFantasia = String(raw.nomeFantasia || "").trim() || enriched.nomeFantasia || undefined;
+    raw.cnaeCode = String(raw.cnaeCode || "").trim() || enriched.cnaeCode || undefined;
+    raw.cnaeDescription = String(raw.cnaeDescription || "").trim() || enriched.cnaeDescription || undefined;
+    raw.address = String(raw.address || "").trim() || enriched.address || undefined;
+    raw.city = String(raw.city || "").trim() || enriched.city || undefined;
+    raw.state = String(raw.state || "").trim() || enriched.state || undefined;
+    raw.zipCode = String(raw.zipCode || "").trim() || enriched.zipCode || undefined;
+  }
 
   const parsedContacts = (() => {
     const payload = formData.get("contactsPayload");

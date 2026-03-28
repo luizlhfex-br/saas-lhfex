@@ -49,6 +49,8 @@ Regras:
 - para "qual LLM/provedor esta usando", rodar `hermes status` e responder com `Provider` e `Model` reais
 - para "o que precisa para acessar o SaaS", primeiro verificar `SAAS_URL` e `OPENCLAW_TOOLS_API_KEY` e depois testar `catalogo_acoes`
 - nunca dizer que a variavel nao existe sem checar o ambiente de verdade
+- nunca tratar preview mascarado de segredo como chave truncada; outputs como `75540f...862a` significam redacao de segredo, nao ausencia de valor
+- se `catalogo_acoes` responder `200`, considerar o acesso ao SaaS validado mesmo que a ferramenta esconda parte da chave no output
 - nunca dizer que o Google esta conectado sem rodar `google_status`
 - quando ja houver acesso ativo, responder isso explicitamente em vez de pedir configuracao de novo
 

@@ -8,10 +8,11 @@ import { clientSchema } from "~/lib/validators";
 import { t, type Locale } from "~/i18n";
 import { Button } from "~/components/ui/button";
 import { OperationalHero, OperationalPanel, OperationalStat } from "~/components/ui/operational-page";
-import { ArrowLeft, Building2, FileText, MapPin, Save } from "lucide-react";
+import { ArrowLeft, Bot, Building2, FileText, Loader2, MapPin, Save } from "lucide-react";
 import { data } from "react-router";
 import { eq, and, isNull } from "drizzle-orm";
 import { syncClientEmbedding } from "~/lib/embedding-sync.server";
+import { enrichClientById } from "~/lib/client-enrichment.server";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
@@ -31,13 +32,42 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     throw new Response("Not found", { status: 404 });
   }
 
-  return { locale, client };
+  const url = new URL(request.url);
+  return {
+    locale,
+    client,
+    enriched: url.searchParams.get("enriched") === "1",
+  };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
   const { user } = await requireAuth(request);
   const companyId = await getPrimaryCompanyId(user.id);
   const formData = await request.formData();
+  const intent = String(formData.get("intent") || "save");
+
+  if (intent === "enrich_cnpj") {
+    try {
+      await enrichClientById({
+        clientId: params.id,
+        companyId,
+        userId: user.id,
+        overwriteExisting: true,
+        requestMeta: {
+          ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+          userAgent: request.headers.get("user-agent") || "unknown",
+        },
+      });
+      throw redirect(`/crm/${params.id}/edit?enriched=1`);
+    } catch (error) {
+      return data(
+        {
+          enrichError: error instanceof Error ? error.message : "Nao foi possivel enriquecer este CNPJ agora.",
+        },
+        { status: 400 },
+      );
+    }
+  }
 
   const raw: Record<string, unknown> = {};
   for (const [key, value] of formData.entries()) {
@@ -132,14 +162,21 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function CrmEditPage({ loaderData }: Route.ComponentProps) {
-  const { locale, client } = loaderData;
-  const actionData = useActionData<typeof action>();
+  const { locale, client, enriched } = loaderData;
+  const actionData = (useActionData<typeof action>() ?? {}) as {
+    errors?: Record<string, string>;
+    fields?: Record<string, string>;
+    enrichError?: string;
+  };
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
+  const isEnriching = isSubmitting && navigation.formData?.get("intent") === "enrich_cnpj";
+  const isSaving = isSubmitting && navigation.formData?.get("intent") !== "enrich_cnpj";
   const i18n = t(locale);
 
-  const errors = actionData?.errors || {};
-  const fields = actionData?.fields || {};
+  const errors = actionData.errors || {};
+  const fields = actionData.fields || {};
+  const enrichError = actionData.enrichError;
 
   const val = (name: string) => fields[name] ?? (client as Record<string, unknown>)[name] ?? "";
 
@@ -158,7 +195,14 @@ export default function CrmEditPage({ loaderData }: Route.ComponentProps) {
               <ArrowLeft className="h-4 w-4" />
               Voltar ao cliente
             </Link>
-            <Button type="submit" form="crm-edit-form" loading={isSubmitting}>
+            <Form method="post">
+              <input type="hidden" name="intent" value="enrich_cnpj" />
+              <Button type="submit" variant="outline" className="border-white/12 bg-white/6 text-white hover:bg-white/10" loading={isEnriching}>
+                {isEnriching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bot className="h-4 w-4" />}
+                Enriquecer com IA
+              </Button>
+            </Form>
+            <Button type="submit" form="crm-edit-form" loading={isSaving}>
               <Save className="h-4 w-4" />
               {i18n.common.save}
             </Button>
@@ -194,7 +238,19 @@ export default function CrmEditPage({ loaderData }: Route.ComponentProps) {
         }
       />
 
+      {enriched ? (
+        <div className="rounded-[22px] border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-200">
+          Dados cadastrais atualizados pelo enriquecimento de CNPJ.
+        </div>
+      ) : null}
+      {enrichError ? (
+        <div className="rounded-[22px] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
+          {enrichError}
+        </div>
+      ) : null}
+
       <Form id="crm-edit-form" method="post" className="space-y-8">
+        <input type="hidden" name="intent" value="save" />
         <OperationalPanel
           title="Dados da empresa"
           icon={<Building2 className="h-5 w-5" />}
@@ -260,7 +316,7 @@ export default function CrmEditPage({ loaderData }: Route.ComponentProps) {
               {i18n.common.cancel}
             </Button>
           </Link>
-          <Button type="submit" loading={isSubmitting}>
+          <Button type="submit" loading={isSaving}>
             <Save className="h-4 w-4" />
             {i18n.common.save}
           </Button>

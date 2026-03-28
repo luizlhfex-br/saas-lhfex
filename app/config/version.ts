@@ -3,8 +3,8 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.52";
-export const APP_RELEASE_DATE = "2026-03-26";
+export const APP_VERSION = "2.9.53";
+export const APP_RELEASE_DATE = "2026-03-28";
 export const APP_NAME = "LHFEX SaaS";
 
 export type ChangelogItemType = "feature" | "improvement" | "fix" | "infra";
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.53",
+    date: "2026-03-28",
+    title: "Enriquecimento automatico de CNPJ no CRM e Hermes Agent",
+    items: [
+      { type: "feature", text: "CRM: o cadastro de cliente passou a tentar enriquecer automaticamente o CNPJ informado antes da validacao final, preenchendo razao social, nome fantasia, CNAE e endereco quando disponivel" },
+      { type: "feature", text: "CRM: as telas de detalhe e edicao agora mantem a acao Enriquecer com IA mesmo depois do cadastro, permitindo atualizar dados cadastrais a qualquer momento" },
+      { type: "improvement", text: "Hermes Agent: a acao criar_cliente passou a enriquecer CNPJ sempre que houver documento valido, sem depender de razao social manual para completar o cadastro" },
+      { type: "infra", text: "Runtime Hermes: as skills lhfex-runtime e lhfex-saas foram ajustadas para reconhecer a chave mascarada do SaaS como valida quando o catalogo de acoes responde 200" },
+    ],
+  },
   {
     version: "2.9.52",
     date: "2026-03-26",

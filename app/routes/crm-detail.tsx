@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Link, redirect, useSubmit } from "react-router";
+import { Form, Link, redirect, useActionData, useNavigation, useSubmit } from "react-router";
 import type { Route } from "./+types/crm-detail";
 import { requireAuth } from "~/lib/auth.server";
 import { getPrimaryCompanyId } from "~/lib/company-context.server";
@@ -13,12 +13,15 @@ import { ConfirmDialog } from "~/components/ui/confirm-dialog";
 import { OperationalHero, OperationalPanel, OperationalStat } from "~/components/ui/operational-page";
 import { formatCNPJ } from "~/lib/utils";
 import { data } from "react-router";
+import { enrichClientById } from "~/lib/client-enrichment.server";
 import {
   ArrowLeft,
+  Bot,
   Edit,
   Trash2,
   Building2,
   FileText,
+  Loader2,
   Mail,
   Phone,
   MapPin,
@@ -59,7 +62,13 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     )
     .orderBy(contacts.name);
 
-  return { client, contacts: clientContactsRows.map(({ contact }) => contact), locale };
+  const url = new URL(request.url);
+  return {
+    client,
+    contacts: clientContactsRows.map(({ contact }) => contact),
+    locale,
+    enriched: url.searchParams.get("enriched") === "1",
+  };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
@@ -67,6 +76,29 @@ export async function action({ request, params }: Route.ActionArgs) {
   const companyId = await getPrimaryCompanyId(user.id);
   const formData = await request.formData();
   const intent = formData.get("intent");
+
+  if (intent === "enrich_cnpj") {
+    try {
+      await enrichClientById({
+        clientId: params.id,
+        companyId,
+        userId: user.id,
+        overwriteExisting: true,
+        requestMeta: {
+          ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+          userAgent: request.headers.get("user-agent") || "unknown",
+        },
+      });
+      throw redirect(`/crm/${params.id}?enriched=1`);
+    } catch (error) {
+      return data(
+        {
+          enrichError: error instanceof Error ? error.message : "Nao foi possivel enriquecer este CNPJ agora.",
+        },
+        { status: 400 },
+      );
+    }
+  }
 
   if (intent === "delete") {
     const [client] = await db
@@ -101,10 +133,15 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function CrmDetailPage({ loaderData }: Route.ComponentProps) {
-  const { client, contacts: clientContacts, locale } = loaderData;
+  const { client, contacts: clientContacts, locale, enriched } = loaderData;
+  const actionData = (useActionData<typeof action>() ?? {}) as {
+    enrichError?: string;
+  };
+  const navigation = useNavigation();
   const submit = useSubmit();
   const i18n = t(locale);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const isEnriching = navigation.state === "submitting" && navigation.formData?.get("intent") === "enrich_cnpj";
 
   const statusBadge = (status: string) => {
     const styles: Record<string, string> = {
@@ -156,6 +193,13 @@ export default function CrmDetailPage({ loaderData }: Route.ComponentProps) {
                 {i18n.common.edit}
               </Button>
             </Link>
+            <Form method="post">
+              <input type="hidden" name="intent" value="enrich_cnpj" />
+              <Button type="submit" variant="outline" className="border-white/12 bg-white/6 text-white hover:bg-white/10" loading={isEnriching}>
+                {isEnriching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bot className="h-4 w-4" />}
+                Enriquecer com IA
+              </Button>
+            </Form>
             <Button variant="danger" onClick={() => setShowDeleteDialog(true)}>
               <Trash2 className="h-4 w-4" />
               {i18n.common.delete}
@@ -191,6 +235,17 @@ export default function CrmDetailPage({ loaderData }: Route.ComponentProps) {
           </>
         }
       />
+
+      {enriched ? (
+        <div className="rounded-[22px] border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-200">
+          Dados cadastrais atualizados pelo enriquecimento de CNPJ.
+        </div>
+      ) : null}
+      {actionData.enrichError ? (
+        <div className="rounded-[22px] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
+          {actionData.enrichError}
+        </div>
+      ) : null}
 
       <ConfirmDialog
         open={showDeleteDialog}

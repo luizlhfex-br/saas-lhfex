@@ -36,6 +36,8 @@ Usar dados reais do SaaS LHFEX antes de responder ou agir.
 - Se `catalogo_acoes` responder, informar que o acesso operacional ja esta ativo.
 - So dizer que falta configuracao se a checagem de ambiente ou a chamada real falharem.
 - Nunca pedir `SAAS_URL` ou `OPENCLAW_TOOLS_API_KEY` sem verificar antes se elas ja estao disponiveis.
+- Nunca interpretar segredo mascarado como chave truncada; previews como `75540f...862a` sao esperados quando a ferramenta protege o valor.
+- Se `catalogo_acoes` responder `200`, nunca pedir a chave ao Luiz.
 - Em sessoes ad hoc ou sandboxes, se env parecer ausente, primeiro rodar `set -a; . /root/.hermes/.env`.
 
 ## Consultas principais

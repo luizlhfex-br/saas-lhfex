@@ -245,7 +245,7 @@ export async function createClientFromOpenClaw(params: {
   const clientType = normalizeClientType(input.clientType);
   let enrichedFromCnpj = false;
 
-  if (!razaoSocial && cnpj) {
+  if (cnpj) {
     const enriched = await enrichCNPJ(cnpj);
     if (enriched) {
       enrichedFromCnpj = true;

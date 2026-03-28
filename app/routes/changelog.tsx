@@ -28,6 +28,18 @@ type Entry = {
 
 const CHANGELOG: Entry[] = [
   {
+    date: "2026-03-28",
+    version: "2.9.53",
+    type: "release",
+    title: "Enriquecimento automatico de CNPJ no CRM e Hermes Agent",
+    items: [
+      "Novo cliente: ao informar um CNPJ valido, o CRM agora tenta enriquecer o cadastro automaticamente antes de salvar, preenchendo razao social, nome fantasia, CNAE e endereco quando a consulta retorna dados",
+      "Cliente ja cadastrado: as telas de detalhe e edicao passaram a manter a acao Enriquecer com IA, permitindo atualizar os dados cadastrais depois do cadastro inicial sem perder o fluxo",
+      "Hermes Agent: a acao criar_cliente agora tenta enriquecer qualquer CNPJ valido enviado no Telegram, mesmo que o pedido venha so com o documento ou com dados parciais",
+      "As skills do runtime Hermes foram corrigidas para nao pedir OPENCLAW_TOOLS_API_KEY quando o acesso ao SaaS ja foi validado pelo catalogo de acoes",
+    ],
+  },
+  {
     date: "2026-03-26",
     version: "2.9.52",
     type: "release",

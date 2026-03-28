@@ -1,17 +1,46 @@
 {
   "release": {
-    "version": "v2.9.52",
-    "date": "2026-03-26T00:00:00Z",
+    "version": "v2.9.53",
+    "date": "2026-03-28T00:00:00Z",
     "type": "feature",
-    "title": "Radar de promocoes com monitor Instagram e amigos autorizados"
+    "title": "Enriquecimento automatico de CNPJ no CRM e Hermes Agent"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 4,
-    "filesModified": 5,
+    "filesCreated": 1,
+    "filesModified": 10,
     "routesAdded": 0,
-    "openclaw_changes": 0,
+    "openclaw_changes": 3,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_28_crm_enriquecimento_cnpj": {
+    "date": "2026-03-28",
+    "release_version": "2.9.53",
+    "objective": "Fazer o CRM e o Hermes Agent enriquecerem automaticamente todo CNPJ valido e manter a acao de enriquecimento disponivel mesmo apos o cliente ser cadastrado",
+    "files_changed": [
+      "app/lib/client-enrichment.server.ts",
+      "app/lib/openclaw-saas-actions.server.ts",
+      "app/routes/crm-new.tsx",
+      "app/routes/crm-edit.tsx",
+      "app/routes/crm-detail.tsx",
+      "hermes-gateway/SOUL.md",
+      "hermes-gateway/skills/lhfex-runtime/SKILL.md",
+      "hermes-gateway/skills/lhfex-saas/SKILL.md",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "Foi criado um helper server-side para enriquecer clientes ja cadastrados a partir do CNPJ, atualizar os campos principais, reindexar embeddings e registrar auditoria",
+      "O cadastro de novo cliente passou a tentar enriquecer automaticamente qualquer CNPJ valido antes de validar e persistir o formulario",
+      "As telas de detalhe e edicao do CRM ganharam a acao Enriquecer com IA para atualizar o cadastro a qualquer momento depois da criacao",
+      "A acao criar_cliente usada pelo Hermes Agent passou a enriquecer todo CNPJ valido, mesmo quando o pedido chega so com o documento ou com dados parciais",
+      "As skills do runtime Hermes foram corrigidas para nao interpretar o segredo mascarado do SaaS como chave truncada quando o endpoint catalogo_acoes responde com sucesso"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros"
+    ]
   },
   "session_2026_03_26_promocoes_instagram_monitor": {
     "date": "2026-03-26",

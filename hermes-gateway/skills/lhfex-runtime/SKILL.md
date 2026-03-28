@@ -33,6 +33,8 @@ Responder perguntas sobre o proprio agente com evidencia real do ambiente.
 6. Se o sandbox nao herdar PATH ou env do gateway, usar caminhos absolutos e `. /root/.hermes/.env` antes de concluir que algo esta ausente.
 7. Se a checagem real funcionar, dizer explicitamente que o acesso ja esta ativo.
 8. Nao mandar o usuario configurar URL, token ou login se o ambiente validado ja estiver pronto.
+9. Se a ferramenta mostrar segredo como `abc123...7890`, isso e mascaramento de segredo. Nao chamar isso de chave truncada sem falha real no endpoint.
+10. Se `catalogo_acoes` retornar `200`, nao pedir `OPENCLAW_TOOLS_API_KEY` ao Luiz.
 
 ## Comandos base
 
@@ -49,6 +51,8 @@ set -a
 . /root/.hermes/.env
 printf 'SAAS_URL=%s\nOPENCLAW_TOOLS_API_KEY=%s\n' "${SAAS_URL:-}" "${OPENCLAW_TOOLS_API_KEY:+set}"
 ```
+
+Se o runtime mascarar o valor como `prefixo...sufixo`, isso continua valendo como segredo presente.
 
 ### Verificar acesso ao SaaS
 
