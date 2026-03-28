@@ -1,17 +1,41 @@
 {
   "release": {
-    "version": "v2.9.55",
+    "version": "v2.9.56",
     "date": "2026-03-28T00:00:00Z",
     "type": "improvement",
-    "title": "Diagnostico de versao e heartbeat do Hermes Agent"
+    "title": "CRM sem tipagem rigida de importador e exportador"
   },
   "summary": {
     "commits": 1,
     "filesCreated": 0,
-    "filesModified": 6,
+    "filesModified": 9,
     "routesAdded": 0,
-    "openclaw_changes": 3,
+    "openclaw_changes": 1,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_28_crm_tipo_inativo": {
+    "date": "2026-03-28",
+    "release_version": "2.9.56",
+    "objective": "Tirar o campo legado de tipo da UI do CRM e parar de forcar classificacao importador/exportador nos fluxos atuais",
+    "files_changed": [
+      "app/routes/crm.tsx",
+      "app/routes/crm-detail.tsx",
+      "app/routes/crm-edit.tsx",
+      "app/routes/crm-new.tsx",
+      "app/lib/openclaw-saas-actions.server.ts",
+      "docs/IDEAS.md",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "A listagem e o detalhe do CRM deixaram de exibir o campo Tipo, que hoje nao sustenta regra forte de negocio e nao cobre parceiros, transportadoras e outros papeis do ecossistema",
+      "Os fluxos manuais de cadastro e edicao deixaram de gravar clientType='importer' a cada salvamento, preservando a compatibilidade do schema sem reforcar um rotulo incorreto",
+      "O backlog curado passou a registrar a migracao futura para um modelo melhor de papel relacional no CRM, separado de status comercial e de perfil operacional"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros"
+    ]
   },
   "session_2026_03_28_hermes_version_heartbeat": {
     "date": "2026-03-28",

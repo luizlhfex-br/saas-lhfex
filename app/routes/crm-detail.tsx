@@ -285,7 +285,7 @@ export default function CrmDetailPage({ loaderData }: Route.ComponentProps) {
             <InfoItem label={i18n.crm.address} value={client.address || "Nao informado"} />
             <InfoItem label={i18n.crm.city} value={[client.city, client.state].filter(Boolean).join(" / ") || "Nao informado"} />
             <InfoItem label={i18n.crm.zipCode} value={client.zipCode || "Nao informado"} />
-            <InfoItem label="Perfil" value={client.clientType || "importer"} />
+            <InfoItem label={i18n.crm.nomeFantasia} value={client.nomeFantasia || "Nao informado"} />
           </OperationalPanel>
 
           <OperationalPanel

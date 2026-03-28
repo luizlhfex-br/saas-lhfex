@@ -242,7 +242,8 @@ export async function createClientFromOpenClaw(params: {
   let contactRole = getOptionalString(contactInput.role ?? input.cargo);
   let contactPhone = getOptionalString(contactInput.phone ?? input.telefone);
   let contactEmail = getOptionalString(contactInput.email ?? input.email);
-  const clientType = normalizeClientType(input.clientType);
+  const clientTypeInput = getOptionalString(input.clientType);
+  const clientType = clientTypeInput ? normalizeClientType(clientTypeInput) : null;
   let enrichedFromCnpj = false;
 
   if (cnpj) {
@@ -299,7 +300,7 @@ export async function createClientFromOpenClaw(params: {
       city,
       state,
       zipCode,
-      clientType,
+      ...(clientType ? { clientType } : {}),
       status: "active",
       notes,
       createdBy: userId,

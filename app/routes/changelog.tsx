@@ -29,6 +29,17 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-28",
+    version: "2.9.56",
+    type: "release",
+    title: "CRM sem tipagem rigida de importador e exportador",
+    items: [
+      "O CRM deixou de exibir o campo legado de tipo na listagem e no detalhe, evitando rotulos que hoje nao representam bem clientes, parceiros, transportadoras e outros perfis da carteira",
+      "Os fluxos manuais de novo cliente e edicao deixaram de forcar clientType='importer' em todo salvamento, reduzindo classificacao incorreta sem criar migracao desnecessaria agora",
+      "A acao criar_cliente usada pelo Hermes Agent passou a enviar clientType apenas quando o dado for informado explicitamente, mantendo esse campo legado inativo por padrao",
+    ],
+  },
+  {
+    date: "2026-03-28",
     version: "2.9.55",
     type: "release",
     title: "Diagnostico de versao e heartbeat do Hermes Agent",

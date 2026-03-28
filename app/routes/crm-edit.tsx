@@ -110,7 +110,6 @@ export async function action({ request, params }: Route.ActionArgs) {
       city: values.city || null,
       state: values.state || null,
       zipCode: values.zipCode || null,
-      clientType: "importer",
       status: values.status,
       notes: values.notes || null,
       updatedAt: new Date(),
@@ -186,7 +185,7 @@ export default function CrmEditPage({ loaderData }: Route.ComponentProps) {
       <OperationalHero
         eyebrow="CRM"
         title={i18n.crm.editClient}
-        description="Ajuste a leitura comercial, classificacao e base operacional do cliente sem sair do fluxo principal."
+        description="Ajuste a leitura comercial e a base operacional do cliente sem sair do fluxo principal."
         actions={
           <>
             <Link

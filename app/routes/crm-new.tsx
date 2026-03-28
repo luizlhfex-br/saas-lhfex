@@ -215,7 +215,6 @@ export async function action({ request }: Route.ActionArgs) {
       city: values.city || null,
       state: values.state || null,
       zipCode: values.zipCode || null,
-      clientType: "importer",
       status: values.status,
       notes: values.notes || null,
       createdBy: user.id,
@@ -431,7 +430,7 @@ export default function CrmNewPage({ loaderData }: Route.ComponentProps) {
       <OperationalHero
         eyebrow="CRM"
         title={i18n.crm.newClient}
-        description="Cadastro guiado para abrir carteira com empresa, endereco, classificacao e contatos operacionais sem sair da tela."
+        description="Cadastro guiado para abrir carteira com empresa, endereco e contatos operacionais sem sair da tela."
         actions={
           <>
             <Link

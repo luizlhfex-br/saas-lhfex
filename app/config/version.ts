@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.55";
+export const APP_VERSION = "2.9.56";
 export const APP_RELEASE_DATE = "2026-03-28";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,16 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.56",
+    date: "2026-03-28",
+    title: "CRM sem tipagem rigida de importador e exportador",
+    items: [
+      { type: "fix", text: "CRM: a listagem, o detalhe e os textos principais deixaram de expor o campo legado de tipo, que hoje nao representa bem parceiros, transportadoras e outros perfis da carteira" },
+      { type: "improvement", text: "Cadastro e edicao: o CRM deixou de forcar clientType='importer' em salvamentos manuais, reduzindo classificacao incorreta de novos registros" },
+      { type: "improvement", text: "Hermes Agent: a acao criar_cliente so envia clientType quando esse dado for explicitamente informado, mantendo o campo legado inativo por padrao" },
+    ],
+  },
   {
     version: "2.9.55",
     date: "2026-03-28",

@@ -69,7 +69,6 @@ export async function loader({ request }: Route.LoaderArgs) {
       cnpj: clients.cnpj,
       razaoSocial: clients.razaoSocial,
       nomeFantasia: clients.nomeFantasia,
-      clientType: clients.clientType,
       status: clients.status,
       city: clients.city,
       state: clients.state,
@@ -109,20 +108,6 @@ export default function CrmPage({ loaderData }: Route.ComponentProps) {
     return (
       <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${styles[status] || styles.active}`}>
         {labels[status] || status}
-      </span>
-    );
-  };
-
-  const typeBadge = (type: string) => {
-    const labels: Record<string, string> = {
-      importer: i18n.crm.importer,
-      exporter: i18n.crm.exporter,
-      both: i18n.crm.both,
-    };
-
-    return (
-      <span className="inline-flex rounded-full border border-cyan-300/20 bg-cyan-400/12 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-700 dark:text-cyan-200">
-        {labels[type] || type}
       </span>
     );
   };
@@ -295,7 +280,6 @@ export default function CrmPage({ loaderData }: Route.ComponentProps) {
                     {statusBadge(client.status)}
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
-                    {typeBadge(client.clientType)}
                     <span className="rounded-full border border-[var(--app-border)] bg-[var(--app-surface-2)] px-2.5 py-1 text-[11px] font-medium text-[var(--app-muted)]">
                       {formatCNPJ(client.cnpj)}
                     </span>
@@ -330,9 +314,6 @@ export default function CrmPage({ loaderData }: Route.ComponentProps) {
                       CNPJ
                     </th>
                     <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--app-muted)]">
-                      Tipo
-                    </th>
-                    <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--app-muted)]">
                       Status
                     </th>
                     <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--app-muted)]">
@@ -355,7 +336,6 @@ export default function CrmPage({ loaderData }: Route.ComponentProps) {
                         )}
                       </td>
                       <td className="px-6 py-4 text-sm text-[var(--app-muted)]">{formatCNPJ(client.cnpj)}</td>
-                      <td className="px-6 py-4">{typeBadge(client.clientType)}</td>
                       <td className="px-6 py-4">{statusBadge(client.status)}</td>
                       <td className="px-6 py-4 text-sm text-[var(--app-muted)]">
                         {[client.city, client.state].filter(Boolean).join(" / ") || "-"}

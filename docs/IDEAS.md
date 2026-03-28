@@ -5,6 +5,34 @@
 
 ## IA / Hermes Agent
 
+### CRM - Papel relacional no lugar do tipo importador/exportador
+- Objetivo: substituir o campo legado `clientType` por uma modelagem mais util para o CRM real da LHFEX
+- Problema atual:
+  - `importador`, `exportador` e `ambos` nao cobrem transportadoras, parceiros, despachantes, agentes de carga, armadores e outros atores do ecossistema
+  - o campo hoje funciona mais como etiqueta do que como regra de negocio
+- Direcao futura recomendada:
+  - manter `status comercial` separado: `prospect`, `ativo`, `inativo`
+  - criar `papel_relacionamento` ou `relationship_role` com valores como:
+    - `cliente`
+    - `parceiro`
+    - `fornecedor`
+    - `transportadora`
+    - `agente_de_carga`
+    - `despachante`
+    - `armador`
+    - `terminal`
+    - `outro`
+  - opcionalmente criar uma segunda dimensao `perfil_operacional`:
+    - `importador`
+    - `exportador`
+    - `ambos`
+    - `nao_se_aplica`
+- Estrategia de migracao sugerida:
+  - fase 1: esconder `clientType` da UI e parar de depender dele
+  - fase 2: criar novo campo com migration e adaptar filtros do CRM
+  - fase 3: migrar dados antigos por heuristica ou revisao manual
+  - fase 4: remover o uso funcional de `clientType` e mantelo apenas como legado temporario, se ainda necessario
+
 ### Embeddings no SaaS e no Hermes Agent
 - Objetivo: adicionar busca semantica e RAG interno no SaaS para clientes, processos, promocoes, radios, docs e memoria operacional do Hermes Agent
 - Meta pratica: permitir que o sistema recupere contexto util por significado, nao so por palavra exata
