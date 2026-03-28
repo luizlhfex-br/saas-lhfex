@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.54";
+export const APP_VERSION = "2.9.55";
 export const APP_RELEASE_DATE = "2026-03-28";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,16 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.55",
+    date: "2026-03-28",
+    title: "Diagnostico de versao e heartbeat do Hermes Agent",
+    items: [
+      { type: "fix", text: "SaaS: system_status passou a expor agentRuntime, hermesVersion e legacyOpenclawVersion separadamente, reduzindo confusao entre o runtime Hermes e o nome tecnico legado do endpoint" },
+      { type: "improvement", text: "Hermes Agent: o cron hermes_heartbeat foi reorientado para ler a versao real com hermes version, registrar heartbeat com validacao de success e reportar falhas com status HTTP e corpo real" },
+      { type: "improvement", text: "Skills do runtime: lhfex-runtime e lhfex-saas passaram a exigir evidencia real para versao propria e para qualquer erro de POST no SaaS" },
+    ],
+  },
   {
     version: "2.9.54",
     date: "2026-03-28",

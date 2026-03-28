@@ -29,6 +29,8 @@ Usar dados reais do SaaS LHFEX antes de responder ou agir.
 5. Responder em PT-BR.
 6. Se a chamada resolver o pedido, nao delegar para especialista sem motivo claro.
 7. Em escrita real, sempre devolver `success`, `id` ou `reference` quando existirem.
+8. Nunca chamar uma escrita de `401` sem capturar o HTTP status e o corpo real da resposta.
+9. Para `registrar_heartbeat_agente`, considerar sucesso somente se a resposta trouxer `success=true` e `heartbeatId`.
 
 ## Validacao de acesso
 
@@ -39,6 +41,7 @@ Usar dados reais do SaaS LHFEX antes de responder ou agir.
 - Nunca interpretar segredo mascarado como chave truncada; previews como `75540f...862a` sao esperados quando a ferramenta protege o valor.
 - Se `catalogo_acoes` responder `200`, nunca pedir a chave ao Luiz.
 - Em sessoes ad hoc ou sandboxes, se env parecer ausente, primeiro rodar `set -a; . /root/.hermes/.env`.
+- `system_status` serve para a versao do SaaS e telemetria legado do gateway; nao usar esse retorno como versao do proprio Hermes.
 
 ## Consultas principais
 

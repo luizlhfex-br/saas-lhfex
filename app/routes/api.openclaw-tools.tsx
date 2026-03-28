@@ -575,6 +575,10 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   // ── system_status ─────────────────────────────────────────────────────────
   if (action === "system_status") {
+    const legacyOpenClawVersion =
+      process.env.OPENCLAW_VERSION ?? process.env.OPENCLAW_TARGET_VERSION ?? "2026.3.13";
+    const hermesVersion = process.env.HERMES_VERSION ?? null;
+
     let openrouter: Record<string, unknown> = {};
     try {
       const res = await fetch("https://openrouter.ai/api/v1/key", {
@@ -613,7 +617,10 @@ export async function loader({ request }: Route.LoaderArgs) {
     });
 
     return ok({
-      openclawVersion: process.env.OPENCLAW_VERSION ?? process.env.OPENCLAW_TARGET_VERSION ?? "2026.3.13",
+      agentRuntime: "Hermes Agent",
+      hermesVersion,
+      openclawVersion: legacyOpenClawVersion,
+      legacyOpenclawVersion: legacyOpenClawVersion,
       saasVersion: APP_VERSION,
       openrouter,
       timestamp: now.toISOString(),

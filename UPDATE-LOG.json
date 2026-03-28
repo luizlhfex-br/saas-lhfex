@@ -1,17 +1,41 @@
 {
   "release": {
-    "version": "v2.9.54",
+    "version": "v2.9.55",
     "date": "2026-03-28T00:00:00Z",
-    "type": "fix",
-    "title": "Correcao do enriquecimento manual no CRM"
+    "type": "improvement",
+    "title": "Diagnostico de versao e heartbeat do Hermes Agent"
   },
   "summary": {
     "commits": 1,
     "filesCreated": 0,
-    "filesModified": 5,
+    "filesModified": 6,
     "routesAdded": 0,
-    "openclaw_changes": 0,
+    "openclaw_changes": 3,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_28_hermes_version_heartbeat": {
+    "date": "2026-03-28",
+    "release_version": "2.9.55",
+    "objective": "Separar a versao real do Hermes da versao legada OpenClaw no SaaS e endurecer o cron de heartbeat para reportar falhas com evidencia real",
+    "files_changed": [
+      "app/routes/api.openclaw-tools.tsx",
+      "hermes-gateway/ensure-crons.sh",
+      "hermes-gateway/skills/lhfex-runtime/SKILL.md",
+      "hermes-gateway/skills/lhfex-saas/SKILL.md",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "system_status passou a expor agentRuntime, hermesVersion e legacyOpenclawVersion sem quebrar o campo openclawVersion legado",
+      "O cron hermes_heartbeat passou a ser instruido a ler a versao real do Hermes com hermes version e a validar sucesso do heartbeat pelo retorno success e heartbeatId",
+      "As skills do runtime agora exigem evidencia real para versao propria do Hermes e para qualquer diagnostico de erro 401 no POST do SaaS"
+    ],
+    "verification": [
+      "POST manual em registrar_heartbeat_agente retornou success true e heartbeatId",
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros"
+    ]
   },
   "session_2026_03_28_crm_enriquecimento_redirect_fix": {
     "date": "2026-03-28",

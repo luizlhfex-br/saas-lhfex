@@ -69,7 +69,7 @@ main() {
   local learned_rules_prompt
 
   heartbeat_prompt="$(cat <<'EOF'
-Use the lhfex-saas and lhfex-agent-engineering skills. First call the SaaS action registrar_heartbeat_agente with agentId hermes, agentName Hermes, status healthy, provider deepseek, model deepseek-chat, summary Hermes gateway online no VPS, and include runtime metadata. Then send exactly Hermes online - HH:MM BRT to Telegram and nothing else.
+Use the lhfex-runtime, lhfex-saas and lhfex-agent-engineering skills. First get the real Hermes version from the local runtime with `hermes version` and the current provider/model with `hermes status`. Then call the SaaS action registrar_heartbeat_agente with agentId hermes, agentName Hermes Agent, status healthy, provider and model from runtime, summary Hermes gateway online no VPS, and include runtime metadata plus the Hermes version. Treat the heartbeat as successful only if the SaaS returns success=true and a heartbeatId. After that, call SaaS system_status only to read the SaaS version. Never use system_status to infer the Hermes version. If any POST fails, report the exact HTTP status and response body instead of guessing 401. Finally, send a short Telegram summary with these lines and nothing else: `Hermes online - HH:MM BRT`, `Hermes: <real_version>`, `SaaS: <saas_version>`, `Heartbeat: ok` or `Heartbeat: falha HTTP <status>`.
 EOF
 )"
 

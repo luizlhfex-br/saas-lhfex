@@ -30,6 +30,7 @@ Responder perguntas sobre o proprio agente com evidencia real do ambiente.
 3. Para acesso ao SaaS, sempre validar `catalogo_acoes` antes de concluir.
 4. Para Google, sempre validar `google_status`.
 5. Para modelo/provider, sempre validar `hermes status`.
+5.1 Para a versao do proprio agente, sempre validar `hermes version`.
 6. Se o sandbox nao herdar PATH ou env do gateway, usar caminhos absolutos e `. /root/.hermes/.env` antes de concluir que algo esta ausente.
 7. Se a checagem real funcionar, dizer explicitamente que o acesso ja esta ativo.
 8. Nao mandar o usuario configurar URL, token ou login se o ambiente validado ja estiver pronto.
@@ -42,6 +43,12 @@ Responder perguntas sobre o proprio agente com evidencia real do ambiente.
 
 ```bash
 /root/.local/bin/hermes status
+```
+
+### Versao do Hermes
+
+```bash
+/root/.local/bin/hermes version
 ```
 
 ### Variaveis criticas
@@ -82,6 +89,7 @@ pwd
 ## Resposta esperada
 
 - provider/modelo: informar exatamente o que `hermes status` mostrar
+- versao do Hermes: informar exatamente o que `hermes version` mostrar
 - acesso ao SaaS: informar se o endpoint respondeu e citar a evidence curta
 - Google: informar `connected=true/false`
 - host/VPS: informar hostname/cwd ou outra evidence objetiva

@@ -29,6 +29,17 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-28",
+    version: "2.9.55",
+    type: "release",
+    title: "Diagnostico de versao e heartbeat do Hermes Agent",
+    items: [
+      "O endpoint system_status do SaaS passou a separar agentRuntime, hermesVersion e legacyOpenclawVersion para evitar que o runtime Hermes pareca ser a versao do OpenClaw legado",
+      "O cron hermes_heartbeat foi reorientado para buscar a versao real do Hermes no VPS, usar essa evidencia no resumo e tratar heartbeat como sucesso apenas quando o POST retorna success e heartbeatId",
+      "As skills lhfex-runtime e lhfex-saas agora proíbem relatar 401 ou chave truncada sem status e corpo reais do endpoint",
+    ],
+  },
+  {
+    date: "2026-03-28",
     version: "2.9.54",
     type: "release",
     title: "Correcao do enriquecimento manual no CRM",
