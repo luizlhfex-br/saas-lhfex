@@ -304,7 +304,7 @@ export default function ProcessesEditPage({ loaderData }: Route.ComponentProps) 
         <input type="hidden" name="_oldStatus" value={proc.status} />
         <Sec title="Dados Gerais">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <Sel label={i18n.processes.type} name="processType" value={val("processType")} options={[["import", i18n.processes.import], ["export", i18n.processes.export], ["services", "Outros Serviços"]]} />
+            <Sel label={i18n.processes.type} name="processType" value={val("processType")} options={[["import", i18n.processes.import], ["export", i18n.processes.export], ["services", "Outros"]]} />
             <Sel label={i18n.processes.client} name="clientId" value={val("clientId")} options={clientList.map(c => [c.id, c.nomeFantasia || c.razaoSocial])} required />
             <Sel label={i18n.common.status} name="status" value={val("status")} options={[["draft", i18n.processes.draft], ["in_progress", i18n.processes.inProgress], ["awaiting_docs", i18n.processes.awaitingDocs], ["customs_clearance", i18n.processes.customsClearance], ["in_transit", i18n.processes.inTransit], ["delivered", i18n.processes.delivered], ["completed", i18n.processes.completed], ["cancelled", i18n.processes.cancelled]]} />
             <Inp label={i18n.processes.incoterm} name="incoterm" value={val("incoterm")} />

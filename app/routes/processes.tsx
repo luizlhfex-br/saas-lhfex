@@ -28,7 +28,7 @@ const validStatuses = ["draft", "in_progress", "awaiting_docs", "customs_clearan
 type ProcessStatus = typeof validStatuses[number];
 const isValidStatus = (value: string): value is ProcessStatus => (validStatuses as readonly string[]).includes(value);
 
-const validTypes = ["import", "export"] as const;
+const validTypes = ["import", "export", "services"] as const;
 type ProcessType = typeof validTypes[number];
 const isValidType = (value: string): value is ProcessType => (validTypes as readonly string[]).includes(value);
 
@@ -45,6 +45,16 @@ const statusColors: Record<string, "default" | "info" | "warning" | "success" | 
 
 const panelClass =
   "rounded-[28px] border border-[var(--app-border)] bg-[linear-gradient(180deg,var(--app-surface),var(--app-surface-2))] shadow-[var(--app-card-shadow)]";
+
+function getProcessTypeMeta(processType: ProcessType | string) {
+  if (processType === "import") {
+    return { label: "Importação", icon: Ship };
+  }
+  if (processType === "export") {
+    return { label: "Exportação", icon: Plane };
+  }
+  return { label: "Outros", icon: FileText };
+}
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { user } = await requireAuth(request);
@@ -187,7 +197,7 @@ export default function ProcessesPage({ loaderData }: Route.ComponentProps) {
             <div className="rounded-[24px] border border-white/10 bg-white/[0.06] p-4">
               <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Tipo</p>
               <p className="mt-2 text-xl font-semibold text-white">
-                {currentType ? (currentType === "import" ? i18n.processes.import : i18n.processes.export) : "Todos"}
+                {currentType ? getProcessTypeMeta(currentType).label : "Todos"}
               </p>
               <p className="mt-1 text-sm text-slate-300">Filtro por natureza do processo.</p>
             </div>
@@ -236,6 +246,7 @@ export default function ProcessesPage({ loaderData }: Route.ComponentProps) {
             <option value="">Todos os tipos</option>
             <option value="import">{i18n.processes.import}</option>
             <option value="export">{i18n.processes.export}</option>
+            <option value="services">Outros</option>
           </select>
           {hasFilters && (
             <button
@@ -276,7 +287,10 @@ export default function ProcessesPage({ loaderData }: Route.ComponentProps) {
             </div>
 
             <div className="space-y-3 p-4 lg:hidden">
-              {processList.map((proc) => (
+              {processList.map((proc) => {
+                const typeMeta = getProcessTypeMeta(proc.processType);
+                const TypeIcon = typeMeta.icon;
+                return (
                 <div key={proc.id} className="rounded-[24px] border border-[var(--app-border)] bg-[var(--app-surface)] p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -291,8 +305,8 @@ export default function ProcessesPage({ loaderData }: Route.ComponentProps) {
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
                     <span className="inline-flex items-center gap-1 rounded-full border border-sky-300/20 bg-sky-400/12 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700 dark:text-sky-200">
-                      {proc.processType === "import" ? <Ship className="h-3.5 w-3.5" /> : <Plane className="h-3.5 w-3.5" />}
-                      {proc.processType === "import" ? i18n.processes.import : i18n.processes.export}
+                      <TypeIcon className="h-3.5 w-3.5" />
+                      {typeMeta.label}
                     </span>
                     <span className="rounded-full border border-[var(--app-border)] bg-[var(--app-surface-2)] px-2.5 py-1 text-[11px] font-medium text-[var(--app-muted)]">
                       {proc.totalValue ? `${proc.currency} ${Number(proc.totalValue).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "Sem valor"}
@@ -312,7 +326,7 @@ export default function ProcessesPage({ loaderData }: Route.ComponentProps) {
                     </Link>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
 
             <div className="hidden overflow-x-auto lg:block">
@@ -329,7 +343,10 @@ export default function ProcessesPage({ loaderData }: Route.ComponentProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {processList.map((proc) => (
+                  {processList.map((proc) => {
+                    const typeMeta = getProcessTypeMeta(proc.processType);
+                    const TypeIcon = typeMeta.icon;
+                    return (
                     <tr key={proc.id} className="border-b border-[var(--app-border)]/80 transition-colors hover:bg-[var(--app-surface)]">
                       <td className="px-6 py-4">
                         <Link to={`/processes/${proc.id}`} className="font-semibold text-[var(--app-text)] hover:text-sky-700 dark:hover:text-sky-300">
@@ -339,8 +356,8 @@ export default function ProcessesPage({ loaderData }: Route.ComponentProps) {
                       <td className="px-6 py-4 text-sm text-[var(--app-muted)]">{proc.clientName || "-"}</td>
                       <td className="px-6 py-4">
                         <span className="inline-flex items-center gap-1 rounded-full border border-sky-300/20 bg-sky-400/12 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700 dark:text-sky-200">
-                          {proc.processType === "import" ? <Ship className="h-3.5 w-3.5" /> : <Plane className="h-3.5 w-3.5" />}
-                          {proc.processType === "import" ? i18n.processes.import : i18n.processes.export}
+                          <TypeIcon className="h-3.5 w-3.5" />
+                          {typeMeta.label}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -367,7 +384,7 @@ export default function ProcessesPage({ loaderData }: Route.ComponentProps) {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
               </table>
             </div>

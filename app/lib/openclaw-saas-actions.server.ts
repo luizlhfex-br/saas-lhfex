@@ -189,7 +189,7 @@ export function normalizeDealStage(value: unknown): OpenClawDealStage | null {
 
 export function getProcessTypeLabel(value: OpenClawProcessType): string {
   if (value === "export") return "Exportacao";
-  if (value === "services") return "Servicos";
+  if (value === "services") return "Outros";
   return "Importacao";
 }
 
@@ -223,9 +223,9 @@ export function getDealStageLabel(value: OpenClawDealStage): string {
     case "qualification":
       return "Lead";
     case "proposal":
-      return "Proposta enviada";
+      return "Proposta / negociacao";
     case "negotiation":
-      return "Negociacao";
+      return "Proposta / negociacao";
     case "won":
       return "Fechado";
     case "lost":
@@ -288,12 +288,12 @@ async function findDealMatches(companyId: string, search: string, limit = 5): Pr
 
 async function generateProcessReference(companyId: string, prefix: "A" | "M" | "C") {
   const yearShort = String(new Date().getFullYear()).slice(-2);
-  const prefixPattern = `${prefix}${yearShort}%`;
+  const yearlyPattern = `__${yearShort}-%`;
   const sequenceResult = await db.execute(sql`
     SELECT COALESCE(
       MAX(
         CASE
-          WHEN reference ~ ${`^${prefix}${yearShort}-[0-9]+$`}
+          WHEN reference ~ ${`^[AMC]${yearShort}-[0-9]+$`}
             THEN substring(reference from '-([0-9]+)$')::int
           ELSE 0
         END
@@ -302,7 +302,7 @@ async function generateProcessReference(companyId: string, prefix: "A" | "M" | "
     ) AS last_seq
     FROM processes
     WHERE company_id = ${companyId}
-      AND reference LIKE ${prefixPattern}
+      AND reference LIKE ${yearlyPattern}
   `);
 
   const nextNum = String(Number(sequenceResult[0]?.last_seq || 0) + 1).padStart(3, "0");

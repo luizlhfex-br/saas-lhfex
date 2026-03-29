@@ -95,12 +95,12 @@ export async function action({ request }: Route.ActionArgs) {
 
     // Sequência independente por modal: A26-001, M26-001, C26-001
     // Filtra processos do mesmo prefixo (ex: 'A') e ano (ex: '26')
-    const prefixPattern = `${modalPrefix}${yearShort}%`;
+    const yearlyPattern = `__${yearShort}-%`;
     const sequenceResult = await db.execute(sql`
       SELECT COALESCE(
         MAX(
           CASE
-            WHEN reference ~ ${`^${modalPrefix}${yearShort}-[0-9]+$`}
+            WHEN reference ~ ${`^[AMC]${yearShort}-[0-9]+$`}
               THEN substring(reference from '-([0-9]+)$')::int
             ELSE 0
           END
@@ -108,7 +108,8 @@ export async function action({ request }: Route.ActionArgs) {
         0
       ) AS last_seq
       FROM processes
-      WHERE reference LIKE ${prefixPattern}
+      WHERE company_id = ${companyId}
+        AND reference LIKE ${yearlyPattern}
     `);
     const nextSequence = Number(sequenceResult[0]?.last_seq || 0) + 1;
     const reference = `${modalPrefix}${yearShort}-${String(nextSequence).padStart(3, "0")}`;
@@ -304,7 +305,7 @@ export default function ProcessesNewPage({ loaderData }: Route.ComponentProps) {
               <select name="processType" defaultValue={fields.processType || "import"} className={fieldClassName}>
                 <option value="import">{i18n.processes.import}</option>
                 <option value="export">{i18n.processes.export}</option>
-                <option value="services">{i18n.processes.services}</option>
+                <option value="services">Outros</option>
               </select>
             </div>
             <div>
@@ -312,7 +313,7 @@ export default function ProcessesNewPage({ loaderData }: Route.ComponentProps) {
               <select name="referenceModal" defaultValue={fields.referenceModal || "sea"} className={fieldClassName}>
                 <option value="air">Aéreo (A)</option>
                 <option value="sea">Marítimo (M)</option>
-                <option value="other">Outro (C)</option>
+                <option value="other">Outros (C)</option>
               </select>
             </div>
             <div>

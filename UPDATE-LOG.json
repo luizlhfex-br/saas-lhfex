@@ -1,17 +1,47 @@
 {
   "release": {
-    "version": "v2.9.59",
+    "version": "v2.9.60",
     "date": "2026-03-28T00:00:00Z",
-    "type": "feature",
-    "title": "Memoria de impostos por processo de importacao"
+    "type": "improvement",
+    "title": "Referencias anuais unificadas e pipeline comercial mais enxuto"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 4,
-    "filesModified": 7,
-    "routesAdded": 1,
+    "filesCreated": 0,
+    "filesModified": 12,
+    "routesAdded": 0,
     "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_28_processos_pipeline_followup": {
+    "date": "2026-03-28",
+    "release_version": "2.9.60",
+    "objective": "Unificar a sequencia anual de referencias dos processos, corrigir o rotulo Outros e simplificar a operacao entre pipeline, calculadora e memoria de impostos",
+    "files_changed": [
+      "app/routes/processes-new.tsx",
+      "app/routes/processes.tsx",
+      "app/routes/processes-detail.tsx",
+      "app/routes/processes-edit.tsx",
+      "app/routes/calculator.tsx",
+      "app/routes/processes-tax-memory.tsx",
+      "app/routes/crm-pipeline.tsx",
+      "app/routes/api.openclaw-tools.tsx",
+      "app/lib/openclaw-saas-actions.server.ts",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "A referencia de processos passou a usar uma numeracao anual unica por empresa para prefixos A, M e C, preservando o prefixo do modal mas sem abrir contadores paralelos",
+      "O tipo services passou a ser exibido como Outros nas telas de processo, evitando cards e listas com o rotulo errado de exportacao",
+      "A Calculadora Comex vinculada a um processo de importacao agora permite salvar a simulacao direto na Memoria de Impostos e exibe feedback visual de sincronizacao",
+      "O CRM Pipeline fundiu Proposta e Negociacao na mesma coluna e os resumos retornados ao Hermes passaram a seguir essa leitura simplificada"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "npm run test:unit passou sem erros",
+      "npm run build passou sem erros"
+    ]
   },
   "session_2026_03_28_process_tax_memory": {
     "date": "2026-03-28",

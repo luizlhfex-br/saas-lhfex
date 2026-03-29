@@ -3,8 +3,8 @@ import type { Route } from "./+types/calculator";
 import { requireAuth } from "~/lib/auth.server";
 import { getPrimaryCompanyId } from "~/lib/company-context.server";
 import { db } from "~/lib/db.server";
-import { processes, clients } from "../../drizzle/schema";
-import { and, eq, isNull } from "drizzle-orm";
+import { processes, clients, processTaxWorkbooks, processTaxItems, processTaxExpenses } from "../../drizzle/schema";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { t, type Locale } from "~/i18n";
 import {
   Calculator,
@@ -17,12 +17,13 @@ import {
   Package,
   Truck,
   Plus,
+  Save,
   X,
   RefreshCw,
   BadgeInfo,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
-import { Link } from "react-router";
+import { Link, data, useFetcher } from "react-router";
 
 type ModalType = "air_formal" | "courier" | "sea_lcl" | "sea_fcl";
 
@@ -48,6 +49,31 @@ type CalculatorLoaderData = {
   };
 };
 
+type TaxMemoryScenario = "air" | "sea" | "other";
+
+type CalculatorSavePayload = {
+  modal: ModalType;
+  exchangeRate: number;
+  freightUsd: number;
+  stateIcmsRate: number;
+  items: Array<{
+    code: string;
+    description: string;
+    merchandiseValueUsd: number;
+    iiRate: number;
+    ipiRate: number;
+    pisRate: number;
+    cofinsRate: number;
+    icmsRate: number;
+    quantity: number;
+    netWeightKg: number;
+  }>;
+  taxBaseExpenses: Array<{ label: string; amountBrl: number }>;
+  finalExpenses: Array<{ label: string; amountBrl: number }>;
+};
+
+const CALCULATOR_SYNC_NOTE_PREFIX = "[calculator-sync]";
+
 const modalIds = ["air_formal", "courier", "sea_lcl", "sea_fcl"] as const;
 const DEFAULT_MODAL: ModalType = "sea_fcl";
 
@@ -67,6 +93,29 @@ function buildInitialValues(processContext: ProcessCalculatorContext | null) {
     exchangeRate: currency === "BRL" ? 1 : 5.75,
     ncm: processContext?.hsCode ? formatNcmCode(processContext.hsCode) : "",
   };
+}
+
+function mapModalToScenario(modal: ModalType): TaxMemoryScenario {
+  if (modal === "air_formal" || modal === "courier") return "air";
+  if (modal === "sea_lcl" || modal === "sea_fcl") return "sea";
+  return "other";
+}
+
+async function ensureTaxWorkbook(processId: string, companyId: string) {
+  const [existing] = await db
+    .select()
+    .from(processTaxWorkbooks)
+    .where(and(eq(processTaxWorkbooks.processId, processId), eq(processTaxWorkbooks.companyId, companyId)))
+    .limit(1);
+
+  if (existing) return existing;
+
+  const [created] = await db
+    .insert(processTaxWorkbooks)
+    .values({ processId, companyId })
+    .returning();
+
+  return created;
 }
 
 export async function loader({ request }: Route.LoaderArgs): Promise<CalculatorLoaderData> {
@@ -127,6 +176,128 @@ export async function loader({ request }: Route.LoaderArgs): Promise<CalculatorL
     initialModal,
     initialValues: buildInitialValues(processContext),
   };
+}
+
+export async function action({ request }: Route.ActionArgs) {
+  const { user } = await requireAuth(request);
+  const companyId = await getPrimaryCompanyId(user.id);
+  const formData = await request.formData();
+  const intent = String(formData.get("intent") || "").trim();
+
+  if (intent !== "save-to-process") {
+    return data({ error: "Ação não suportada." }, { status: 400 });
+  }
+
+  const processId = String(formData.get("processId") || "").trim();
+  const rawPayload = String(formData.get("payload") || "").trim();
+
+  if (!processId || !rawPayload) {
+    return data({ error: "Processo e payload são obrigatórios." }, { status: 400 });
+  }
+
+  const [process] = await db
+    .select({
+      id: processes.id,
+      processType: processes.processType,
+    })
+    .from(processes)
+    .where(and(eq(processes.id, processId), eq(processes.companyId, companyId), isNull(processes.deletedAt)))
+    .limit(1);
+
+  if (!process) {
+    return data({ error: "Processo não encontrado na empresa ativa." }, { status: 404 });
+  }
+
+  if (process.processType !== "import") {
+    return data({ error: "A Memória de Impostos só existe para processos de importação." }, { status: 400 });
+  }
+
+  let payload: CalculatorSavePayload;
+  try {
+    payload = JSON.parse(rawPayload) as CalculatorSavePayload;
+  } catch {
+    return data({ error: "Payload da calculadora inválido." }, { status: 400 });
+  }
+
+  const workbook = await ensureTaxWorkbook(process.id, companyId);
+  const now = new Date();
+  const safeItems = (payload.items || []).filter((item) => item.code || item.merchandiseValueUsd > 0);
+  const syncedExpenses = [...(payload.taxBaseExpenses || []), ...(payload.finalExpenses || [])];
+
+  await db
+    .update(processTaxWorkbooks)
+    .set({
+      scenario: mapModalToScenario(payload.modal),
+      currency: "USD",
+      exchangeRate: String(payload.exchangeRate || 0),
+      freightTotalUsd: String(payload.freightUsd || 0),
+      stateIcmsRate: String(payload.stateIcmsRate || 0),
+      quoteDate: now,
+      updatedAt: now,
+    })
+    .where(and(eq(processTaxWorkbooks.id, workbook.id), eq(processTaxWorkbooks.companyId, companyId)));
+
+  await db
+    .delete(processTaxItems)
+    .where(and(eq(processTaxItems.workbookId, workbook.id), eq(processTaxItems.companyId, companyId)));
+
+  if (safeItems.length > 0) {
+    await db.insert(processTaxItems).values(
+      safeItems.map((item, index) => ({
+        workbookId: workbook.id,
+        companyId,
+        partNumber: null,
+        description: item.description || null,
+        ncm: item.code || null,
+        quantity: String(item.quantity || 1),
+        fobUsd: String(item.merchandiseValueUsd || 0),
+        netWeightKg: String(item.netWeightKg || 0),
+        iiRate: String(item.iiRate || 0),
+        ipiRate: String(item.ipiRate || 0),
+        pisRate: String(item.pisRate || 0),
+        cofinsRate: String(item.cofinsRate || 0),
+        icmsRate: String(item.icmsRate || payload.stateIcmsRate || 0),
+        sortOrder: index + 1,
+      })),
+    );
+  }
+
+  await db.execute(sql`
+    DELETE FROM process_tax_expenses
+    WHERE workbook_id = ${workbook.id}
+      AND company_id = ${companyId}
+      AND notes LIKE ${`${CALCULATOR_SYNC_NOTE_PREFIX}%`}
+  `);
+
+  if (syncedExpenses.length > 0) {
+    await db.insert(processTaxExpenses).values(
+      [
+        ...(payload.taxBaseExpenses || []).map((expense, index) => ({
+          workbookId: workbook.id,
+          companyId,
+          kind: "tax_base" as const,
+          label: expense.label,
+          amountBrl: String(expense.amountBrl || 0),
+          notes: `${CALCULATOR_SYNC_NOTE_PREFIX} base`,
+          sortOrder: index + 1,
+        })),
+        ...(payload.finalExpenses || []).map((expense, index) => ({
+          workbookId: workbook.id,
+          companyId,
+          kind: "final" as const,
+          label: expense.label,
+          amountBrl: String(expense.amountBrl || 0),
+          notes: `${CALCULATOR_SYNC_NOTE_PREFIX} final`,
+          sortOrder: index + 1,
+        })),
+      ],
+    );
+  }
+
+  return data({
+    success: true,
+    savedAt: now.toISOString(),
+  });
 }
 
 const fmt = (v: number) =>
@@ -341,6 +512,7 @@ function FreightToggle({
 export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
   const { locale, processContext, initialModal, initialValues } = loaderData;
   const i18n = t(locale);
+  const saveFetcher = useFetcher<{ success?: boolean; error?: string; savedAt?: string }>();
 
   // NCM
   const [ncm, setNcm] = useState(initialValues.ncm);
@@ -949,6 +1121,90 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
     }
   };
 
+  const isImportProcess = processContext?.processType === "import";
+  const isSavingToProcess = saveFetcher.state === "submitting";
+
+  const syncExpense = (target: Array<{ label: string; amountBrl: number }>, label: string, amount: number) => {
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    target.push({ label, amountBrl: Number(amount.toFixed(2)) });
+  };
+
+  const buildCalculatorSavePayload = (): CalculatorSavePayload => {
+    const items =
+      validNcmAllocations.length > 0
+        ? validNcmAllocations.map((row) => ({
+            code: normalizeNcmCode(row.code),
+            description: row.description || "",
+            merchandiseValueUsd: Number(row.merchandiseValueUsd || 0),
+            iiRate: Number(row.iiRate || 0),
+            ipiRate: Number(row.ipiRate || 0),
+            pisRate: Number(row.pisRate || 0),
+            cofinsRate: Number(row.cofinsRate || 0),
+            icmsRate: Number(row.icmsRate || icmsRate || 0),
+            quantity: 1,
+            netWeightKg: 0,
+          }))
+        : [
+            {
+              code: normalizeNcmCode(ncm),
+              description: ncmDescription || "",
+              merchandiseValueUsd: Number(fobBase || 0),
+              iiRate: Number(iiRate || 0),
+              ipiRate: Number(ipiRate || 0),
+              pisRate: Number(pisRate || 0),
+              cofinsRate: Number(cofinsRate || 0),
+              icmsRate: Number(icmsRate || 0),
+              quantity: 1,
+              netWeightKg: 0,
+            },
+          ];
+
+    const taxBaseExpenses: Array<{ label: string; amountBrl: number }> = [];
+    const finalExpenses: Array<{ label: string; amountBrl: number }> = [];
+
+    syncExpense(taxBaseExpenses, "Taxa Siscomex", calcResult.siscomex);
+    syncExpense(taxBaseExpenses, "Armazenagem", armazenagem);
+
+    if (modal === "sea_lcl") {
+      syncExpense(taxBaseExpenses, "Armazenagem Santos", armazenagemLCL);
+      syncExpense(finalExpenses, "THC Santos", thcLCL);
+      syncExpense(finalExpenses, "Taxa Santos", taxaSantosLCL);
+      syncExpense(finalExpenses, "Remocao Santos -> destino", remocaoLCL);
+      syncExpense(finalExpenses, "Honorario Despachante", despachangeLCL);
+    } else if (modal === "sea_fcl") {
+      syncExpense(finalExpenses, "THC container", thcFCL * containerCount);
+      syncExpense(finalExpenses, "Demurrage", demurragePerDay * demurrageDays * containerCount);
+      syncExpense(finalExpenses, "Honorario Despachante", despachangeFCL);
+    } else if (modal === "air_formal") {
+      syncExpense(finalExpenses, "Honorario Despachante", despachangeAir);
+    } else if (modal === "courier") {
+      syncExpense(finalExpenses, "Taxa Adm. Carrier", taxaAdmCourier);
+    }
+
+    syncExpense(finalExpenses, "Honorarios", honorarios);
+    syncExpense(finalExpenses, "Frete Rodoviario", freteRodoviario);
+    extraCosts.forEach((cost) => syncExpense(finalExpenses, cost.label || "Despesa extra", Number(cost.value || 0)));
+
+    return {
+      modal,
+      exchangeRate,
+      freightUsd: Number(calcResult.freight || 0),
+      stateIcmsRate: Number(icmsRate || 0),
+      items: items.filter((item) => item.code || item.merchandiseValueUsd > 0),
+      taxBaseExpenses,
+      finalExpenses,
+    };
+  };
+
+  const handleSaveToProcess = () => {
+    if (!processContext || !isImportProcess) return;
+    const form = new FormData();
+    form.set("intent", "save-to-process");
+    form.set("processId", processContext.id);
+    form.set("payload", JSON.stringify(buildCalculatorSavePayload()));
+    saveFetcher.submit(form, { method: "post" });
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -990,7 +1246,7 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
                   ? "Importação"
                   : processContext.processType === "export"
                     ? "Exportação"
-                    : "Serviços"}
+                    : "Outros"}
               </p>
             </div>
             <div className="rounded-lg bg-white/80 px-3 py-2 dark:bg-gray-950/40">
@@ -1017,6 +1273,28 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
               A calculadora trabalha em base USD. Como este processo está em {processContext.currency}, revise o câmbio antes de fechar a estimativa.
             </p>
           ) : null}
+          {isImportProcess ? (
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-indigo-700 dark:text-indigo-300">
+              <span>Processo de importação detectado. Esta simulação pode ser salva na Memória de Impostos.</span>
+              <Link
+                to={`/processes/${processContext.id}/tax-memory`}
+                className="inline-flex items-center rounded-full border border-indigo-300/40 px-3 py-1 font-medium transition-colors hover:bg-indigo-500/10"
+              >
+                Abrir memória
+              </Link>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {saveFetcher.data?.success ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-200">
+          Calculadora sincronizada com a Memória de Impostos do processo.
+        </div>
+      ) : null}
+      {saveFetcher.data?.error ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">
+          {saveFetcher.data.error}
         </div>
       ) : null}
 
@@ -1736,10 +2014,18 @@ export default function CalculatorPage({ loaderData }: Route.ComponentProps) {
           </p>
 
           <div className="mt-3">
-            <Button type="button" variant="outline" size="sm" onClick={handleCopySummary}>
-              <Copy className="h-4 w-4" />
-              {copyFeedback ? "Resumo copiado" : "Copiar resumo"}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={handleCopySummary}>
+                <Copy className="h-4 w-4" />
+                {copyFeedback ? "Resumo copiado" : "Copiar resumo"}
+              </Button>
+              {isImportProcess ? (
+                <Button type="button" size="sm" onClick={handleSaveToProcess} loading={isSavingToProcess}>
+                  <Save className="h-4 w-4" />
+                  Salvar no processo
+                </Button>
+              ) : null}
+            </div>
           </div>
         </div>
       </div>

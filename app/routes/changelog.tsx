@@ -29,6 +29,18 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-28",
+    version: "2.9.60",
+    type: "release",
+    title: "Referencias anuais unificadas e pipeline comercial mais enxuto",
+    items: [
+      "As referencias de processos agora seguem uma numeracao anual unica por empresa, compartilhada entre A, M e C e reiniciada apenas quando muda o ano",
+      "O tipo services passou a ser exibido como Outros na criacao, edicao, detalhe e listagem, evitando a leitura errada de exportacao quando o processo for de outra natureza",
+      "A Calculadora Comex vinculada ao processo ganhou botao de salvar no processo, feedback de sincronizacao e atalho direto para a Memoria de Impostos",
+      "O CRM Pipeline juntou Proposta e Negociacao na mesma coluna, e as tools do SaaS/Hermes passaram a refletir essa leitura simplificada do funil",
+    ],
+  },
+  {
+    date: "2026-03-28",
     version: "2.9.59",
     type: "release",
     title: "Memoria de impostos por processo de importacao",

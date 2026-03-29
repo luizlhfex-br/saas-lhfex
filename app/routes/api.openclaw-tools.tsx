@@ -130,9 +130,12 @@ function isProcessStatus(value: string): value is ProcessStatus {
   return processStatuses.includes(value as ProcessStatus);
 }
 
-function normalizePipelineStage(value: string): "prospect" | "proposal" | "negotiation" | "won" | "lost" {
+function normalizePipelineStage(value: string): "prospect" | "proposal" | "won" | "lost" {
   const stage = normalizeDealStage(value) ?? "prospect";
-  if (stage === "proposal" || stage === "negotiation" || stage === "won" || stage === "lost") {
+  if (stage === "proposal" || stage === "negotiation") {
+    return "proposal";
+  }
+  if (stage === "won" || stage === "lost") {
     return stage;
   }
   return "prospect";
@@ -645,8 +648,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
     const stageMap = {
       prospect: { label: "Lead", count: 0, total: 0 },
-      proposal: { label: "Proposta", count: 0, total: 0 },
-      negotiation: { label: "Negociacao", count: 0, total: 0 },
+      proposal: { label: "Proposta / negociacao", count: 0, total: 0 },
       won: { label: "Fechado", count: 0, total: 0 },
       lost: { label: "Perdido", count: 0, total: 0 },
     };
@@ -681,7 +683,6 @@ export async function loader({ request }: Route.LoaderArgs) {
     const orderedStages = [
       { id: "prospect", ...stageMap.prospect },
       { id: "proposal", ...stageMap.proposal },
-      { id: "negotiation", ...stageMap.negotiation },
       { id: "won", ...stageMap.won },
       { id: "lost", ...stageMap.lost },
     ];
@@ -710,7 +711,7 @@ export async function loader({ request }: Route.LoaderArgs) {
           clientName: row.clientFantasia || row.clientName,
         };
       }),
-      summary: `Pipeline com ${stageMap.prospect.count} leads, ${stageMap.proposal.count} em proposta, ${stageMap.negotiation.count} em negociacao e ${overdueFollowUps.length} follow-ups atrasados.`,
+      summary: `Pipeline com ${stageMap.prospect.count} leads, ${stageMap.proposal.count} oportunidades em proposta ou negociacao e ${overdueFollowUps.length} follow-ups atrasados.`,
     });
   }
 

@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.59";
+export const APP_VERSION = "2.9.60";
 export const APP_RELEASE_DATE = "2026-03-28";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,17 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.60",
+    date: "2026-03-28",
+    title: "Referencias anuais unificadas e pipeline comercial mais enxuto",
+    items: [
+      { type: "fix", text: "Processos: referencias A, M e C agora compartilham uma sequencia anual unica por empresa, reiniciando apenas quando muda o ano" },
+      { type: "fix", text: "Processos: o tipo services passou a aparecer como Outros na criacao, edicao, detalhe e listagem, evitando o rotulo incorreto de exportacao" },
+      { type: "improvement", text: "Calculadora Comex: quando vinculada a um processo de importacao, a tela agora mostra o atalho para Memoria de Impostos, botao para salvar no processo e feedback de sincronizacao" },
+      { type: "improvement", text: "CRM Pipeline: Proposta e Negociacao passaram a dividir a mesma coluna e os resumos do SaaS/Hermes foram alinhados para a leitura simplificada do funil" },
+    ],
+  },
   {
     version: "2.9.59",
     date: "2026-03-28",

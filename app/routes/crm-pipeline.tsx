@@ -21,7 +21,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 
-type VisibleStageId = "prospect" | "proposal" | "negotiation" | "won" | "lost";
+type VisibleStageId = "prospect" | "proposal" | "won" | "lost";
 
 const PIPELINE_STAGES: Array<{
   id: VisibleStageId;
@@ -39,17 +39,10 @@ const PIPELINE_STAGES: Array<{
   },
   {
     id: "proposal",
-    label: "Proposta",
+    label: "Proposta / negociacao",
     borderClass: "border-t-amber-400",
     surfaceClass: "bg-amber-500/6",
-    emptyLabel: "Nenhuma proposta aberta",
-  },
-  {
-    id: "negotiation",
-    label: "Negociacao",
-    borderClass: "border-t-fuchsia-400",
-    surfaceClass: "bg-fuchsia-500/6",
-    emptyLabel: "Nada em negociacao",
+    emptyLabel: "Nenhuma proposta ou negociacao aberta",
   },
   {
     id: "won",
@@ -86,14 +79,15 @@ type DealRow = {
 
 function getVisibleStage(stage: string): VisibleStageId {
   if (stage === "qualification") return "prospect";
-  if (stage === "proposal" || stage === "negotiation" || stage === "won" || stage === "lost") {
+  if (stage === "proposal" || stage === "negotiation") return "proposal";
+  if (stage === "won" || stage === "lost") {
     return stage;
   }
   return "prospect";
 }
 
 function normalizeStage(stage: string): VisibleStageId {
-  if (stage === "proposal" || stage === "negotiation" || stage === "won" || stage === "lost") {
+  if (stage === "proposal" || stage === "won" || stage === "lost") {
     return stage;
   }
   return "prospect";
@@ -192,8 +186,6 @@ function getQuickMoves(stage: VisibleStageId) {
     case "prospect":
       return [{ id: "proposal" as const, label: "Enviar proposta" }];
     case "proposal":
-      return [{ id: "negotiation" as const, label: "Entrar em negociacao" }];
-    case "negotiation":
       return [
         { id: "won" as const, label: "Fechar" },
         { id: "lost" as const, label: "Perder" },
@@ -275,7 +267,6 @@ export async function loader({ request }: Route.LoaderArgs) {
     {
       prospect: { count: 0, total: 0 },
       proposal: { count: 0, total: 0 },
-      negotiation: { count: 0, total: 0 },
       won: { count: 0, total: 0 },
       lost: { count: 0, total: 0 },
     },
@@ -448,7 +439,6 @@ export default function CRMPipelinePage({ loaderData }: Route.ComponentProps) {
       {
         prospect: [],
         proposal: [],
-        negotiation: [],
         won: [],
         lost: [],
       },
@@ -533,12 +523,12 @@ export default function CRMPipelinePage({ loaderData }: Route.ComponentProps) {
             <OperationalStat
               label="Pipeline aberto"
               value={formatMoney(String(totalPipelineValue.toFixed(2)), "BRL") || "R$ 0"}
-              description="Valor estimado entre leads, propostas e negociacoes."
+              description="Valor estimado entre leads e oportunidades comerciais abertas."
             />
             <OperationalStat
               label="Follow-ups atrasados"
               value={followUps.overdue.length}
-              description="Negociacoes que ja deveriam ter sido tocadas novamente."
+              description="Oportunidades abertas que ja deveriam ter recebido retorno."
             />
           </>
         }
@@ -551,14 +541,9 @@ export default function CRMPipelinePage({ loaderData }: Route.ComponentProps) {
           description="Entradas novas ou ainda sem proposta enviada."
         />
         <OperationalStat
-          label="Propostas"
+          label="Propostas / negociacao"
           value={stageTotals.proposal.count}
-          description="Itens em proposta formal, aguardando avancar."
-        />
-        <OperationalStat
-          label="Negociacao"
-          value={stageTotals.negotiation.count}
-          description="Deals com conversa ativa de preco, escopo ou prazo."
+          description="Propostas enviadas e conversas comerciais ativas na mesma coluna."
         />
         <OperationalStat
           label="Fechados no quadro"
@@ -672,7 +657,7 @@ export default function CRMPipelinePage({ loaderData }: Route.ComponentProps) {
         <OperationalPanel
           title="Quadro do pipeline"
           icon={<Columns3 className="h-5 w-5" />}
-          description="Arraste ou use os atalhos rapidos. Etapas intermediarias de qualificacao ficam embutidas em Lead."
+          description="Arraste ou use os atalhos rapidos. Qualificacao fica em Lead e negociacao segue na mesma coluna de proposta."
           className="min-w-0"
           bodyClassName="min-w-0"
         >
@@ -846,8 +831,8 @@ export default function CRMPipelinePage({ loaderData }: Route.ComponentProps) {
             <ol className="space-y-3 text-sm leading-6 text-[var(--app-muted)]">
               <li>1. Crie um lead apenas quando houver chance comercial real.</li>
               <li>2. Sempre preencha proximo passo e, se possivel, um follow-up.</li>
-              <li>3. Mova para Proposta somente quando a oferta tiver sido enviada.</li>
-              <li>4. Use Negociacao quando houver ajuste de preco, prazo ou escopo.</li>
+              <li>3. Mova para Proposta / negociacao quando a oferta tiver sido enviada ou a conversa comercial estiver ativa.</li>
+              <li>4. Atualize o proximo passo dentro da mesma coluna ate fechar ou perder.</li>
               <li>5. Feche ou perca rapido. Funil parado perde valor.</li>
             </ol>
           </OperationalPanel>

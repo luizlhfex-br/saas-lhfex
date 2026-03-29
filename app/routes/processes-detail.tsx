@@ -312,7 +312,7 @@ export default function ProcessesDetailPage({ loaderData, actionData }: Route.Co
   const processTypeLabel =
     proc.processType === "import" ? i18n.processes.import
     : proc.processType === "export" ? i18n.processes.export
-    : i18n.processes.services;
+    : "Outros";
 
   const docTypeLabels: Record<string, string> = {
     invoice: i18n.documents.invoice,

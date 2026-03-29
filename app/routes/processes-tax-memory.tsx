@@ -90,6 +90,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     workbook: workbook ?? null,
     items,
     expenses,
+    saved: new URL(request.url).searchParams.get("saved") || "",
     calculation: calculateProcessTaxMemory({ workbook: workbook ?? null, items, expenses }),
     suggestedBaseExpenses: getSuggestedBaseExpenses(workbook?.scenario),
   };
@@ -107,6 +108,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (!intent) return data({ error: "Acao nao informada." }, { status: 400 });
   const workbook = await ensureWorkbook(process.id, companyId);
   const currentPath = new URL(request.url).pathname;
+  const redirectWithFlag = (flag: string) => redirect(`${currentPath}?saved=${flag}`);
 
   if (intent === "save-workbook") {
     await db.update(processTaxWorkbooks).set({
@@ -119,7 +121,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       notes: toText(formData.get("notes")) || null,
       updatedAt: new Date(),
     }).where(and(eq(processTaxWorkbooks.id, workbook.id), eq(processTaxWorkbooks.companyId, companyId)));
-    return redirect(currentPath);
+    return redirectWithFlag("workbook");
   }
 
   if (intent === "add-item") {
@@ -140,7 +142,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       icmsRate: toText(formData.get("icmsRate")) ? String(toNumber(formData.get("icmsRate"))) : null,
       sortOrder: count.length + 1,
     });
-    return redirect(currentPath);
+    return redirectWithFlag("item-added");
   }
 
   if (intent === "save-item" || intent === "delete-item") {
@@ -164,7 +166,7 @@ export async function action({ request, params }: Route.ActionArgs) {
         updatedAt: new Date(),
       }).where(and(eq(processTaxItems.id, itemId), eq(processTaxItems.companyId, companyId), eq(processTaxItems.workbookId, workbook.id)));
     }
-    return redirect(currentPath);
+    return redirectWithFlag(intent === "delete-item" ? "item-deleted" : "item-saved");
   }
 
   if (intent === "add-expense") {
@@ -178,7 +180,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       notes: toText(formData.get("notes")) || null,
       sortOrder: count.length + 1,
     });
-    return redirect(currentPath);
+    return redirectWithFlag("expense-added");
   }
 
   if (intent === "save-expense" || intent === "delete-expense") {
@@ -195,14 +197,14 @@ export async function action({ request, params }: Route.ActionArgs) {
         updatedAt: new Date(),
       }).where(and(eq(processTaxExpenses.id, expenseId), eq(processTaxExpenses.companyId, companyId), eq(processTaxExpenses.workbookId, workbook.id)));
     }
-    return redirect(currentPath);
+    return redirectWithFlag(intent === "delete-expense" ? "expense-deleted" : "expense-saved");
   }
 
   return data({ error: "Acao nao suportada." }, { status: 400 });
 }
 
 export default function ProcessTaxMemoryPage({ loaderData, actionData }: Route.ComponentProps) {
-  const { process, workbook, items, expenses, calculation, suggestedBaseExpenses } = loaderData;
+  const { process, workbook, items, expenses, saved, calculation, suggestedBaseExpenses } = loaderData;
   const error = (actionData as { error?: string } | undefined)?.error;
   const baseExpenses = expenses.filter((expense) => expense.kind === "tax_base");
   const finalExpenses = expenses.filter((expense) => expense.kind === "final");
@@ -210,6 +212,7 @@ export default function ProcessTaxMemoryPage({ loaderData, actionData }: Route.C
   return (
     <div className="space-y-6">
       <OperationalHero eyebrow="Memória de Impostos" title={`Fechamento tributário da importação ${process.reference}`} description="Rateio por peso líquido, despesas na base do ICMS e despesas finais do processo." actions={<><Link to={`/processes/${process.id}`}><Button variant="outline" className="gap-2"><ArrowLeft className="h-4 w-4" />Voltar ao processo</Button></Link><Link to={`/calculator?processId=${process.id}`}><Button className="gap-2"><Calculator className="h-4 w-4" />Abrir calculadora</Button></Link></>} aside={<><OperationalStat label="Cliente" value={process.clientName || process.clientRazao || "-"} /><OperationalStat label="Peso do processo" value={process.totalWeight ? `${formatMoney(Number(process.totalWeight))} kg` : "Nao informado"} /><OperationalStat label="Itens" value={items.length} /><OperationalStat label="Custo final estimado" value={`R$ ${formatMoney(calculation.totals.totalLandedCostBrl)}`} /></>} />
+      {saved ? <div className="rounded-[22px] border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">Alteracoes salvas na Memoria de Impostos do processo.</div> : null}
       {error ? <div className="rounded-[22px] border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</div> : null}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.65fr)_360px]">
@@ -224,7 +227,7 @@ export default function ProcessTaxMemoryPage({ loaderData, actionData }: Route.C
               <L label="ICMS (%)"><input name="stateIcmsRate" defaultValue={workbook?.stateIcmsRate ?? "18"} className={fieldClassName} /></L>
               <L label="Data da cotação"><input name="quoteDate" type="date" defaultValue={formatDateInput(workbook?.quoteDate)} className={fieldClassName} /></L>
               <L label="Observações" className="md:col-span-2"><textarea name="notes" defaultValue={workbook?.notes ?? ""} rows={3} className={`${fieldClassName} min-h-[120px]`} /></L>
-              <div className="md:col-span-2"><Button type="submit" className="gap-2"><Save className="h-4 w-4" />Salvar parâmetros</Button></div>
+              <div className="md:col-span-2"><Button type="submit" className="gap-2"><Save className="h-4 w-4" />Salvar parâmetros do processo</Button></div>
             </Form>
           </OperationalPanel>
 
