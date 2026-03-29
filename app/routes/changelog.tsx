@@ -29,6 +29,17 @@ type Entry = {
 const CHANGELOG: Entry[] = [
   {
     date: "2026-03-28",
+    version: "2.9.61",
+    type: "release",
+    title: "Memoria de impostos com exportacao XLSX",
+    items: [
+      "A Memoria de Impostos do processo agora exporta um arquivo XLSX com as abas Parametros, Detalhamento por Item e Resumo por NCM",
+      "A tela passou a usar mensagens de salvamento mais especificas para parametros, itens e despesas, reduzindo duvida sobre o que foi persistido em cada acao",
+      "O projeto adicionou a dependencia xlsx para gerar planilhas operacionais compativeis com o formato de trabalho da LHFEX",
+    ],
+  },
+  {
+    date: "2026-03-28",
     version: "2.9.60",
     type: "release",
     title: "Referencias anuais unificadas e pipeline comercial mais enxuto",

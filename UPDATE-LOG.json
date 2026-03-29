@@ -1,17 +1,42 @@
 {
   "release": {
-    "version": "v2.9.60",
+    "version": "v2.9.61",
     "date": "2026-03-28T00:00:00Z",
-    "type": "improvement",
-    "title": "Referencias anuais unificadas e pipeline comercial mais enxuto"
+    "type": "feature",
+    "title": "Memoria de impostos com exportacao XLSX"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 0,
-    "filesModified": 12,
+    "filesCreated": 1,
+    "filesModified": 5,
     "routesAdded": 0,
     "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_03_28_process_tax_memory_export": {
+    "date": "2026-03-28",
+    "release_version": "2.9.61",
+    "objective": "Gerar um workbook XLSX da Memoria de Impostos do processo de importacao no mesmo formato operacional do fechamento tributario da LHFEX",
+    "files_changed": [
+      "app/lib/process-tax-memory-export.server.ts",
+      "app/routes/processes-tax-memory.tsx",
+      "package.json",
+      "package-lock.json",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "Foi criada uma camada server-side para montar um workbook XLSX com as abas Parametros, Detalhamento por Item e Resumo por NCM a partir dos dados persistidos na Memoria de Impostos",
+      "A rota da Memoria de Impostos ganhou a action export-xlsx, com download direto do arquivo e nome baseado na referencia do processo",
+      "As mensagens de retorno da tela passaram a distinguir melhor salvamento de parametros, itens e despesas, melhorando o uso operacional da aba",
+      "O projeto adicionou a dependencia xlsx para gerar planilhas compativeis com o formato esperado no fechamento tributario"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "npm run test:unit passou sem erros",
+      "npm run build passou sem erros"
+    ]
   },
   "session_2026_03_28_processos_pipeline_followup": {
     "date": "2026-03-28",

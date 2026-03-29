@@ -3,7 +3,7 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.60";
+export const APP_VERSION = "2.9.61";
 export const APP_RELEASE_DATE = "2026-03-28";
 export const APP_NAME = "LHFEX SaaS";
 
@@ -20,6 +20,16 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.61",
+    date: "2026-03-28",
+    title: "Memoria de impostos com exportacao XLSX",
+    items: [
+      { type: "feature", text: "Memoria de Impostos: a aba do processo ganhou exportacao direta em XLSX com tres abas - Parametros, Detalhamento por Item e Resumo por NCM" },
+      { type: "improvement", text: "Processos: a tela passou a mostrar mensagens de salvamento mais especificas na memoria tributaria, reduzindo ambiguidade entre parametros, itens e despesas" },
+      { type: "infra", text: "Planilhas: o projeto passou a incluir a dependencia xlsx para gerar workbooks compativeis com o formato operacional usado pela LHFEX" },
+    ],
+  },
   {
     version: "2.9.60",
     date: "2026-03-28",

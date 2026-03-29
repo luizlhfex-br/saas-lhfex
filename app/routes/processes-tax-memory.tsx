@@ -6,10 +6,11 @@ import { clients, processTaxExpenses, processTaxItems, processTaxWorkbooks, proc
 import { requireAuth } from "~/lib/auth.server";
 import { getPrimaryCompanyId } from "~/lib/company-context.server";
 import { db } from "~/lib/db.server";
+import { buildProcessTaxMemoryWorkbook } from "~/lib/process-tax-memory-export.server";
 import { calculateProcessTaxMemory, getSuggestedBaseExpenses } from "~/lib/process-tax-memory.server";
 import { OperationalHero, OperationalPanel, OperationalStat } from "~/components/ui/operational-page";
 import { Button } from "~/components/ui/button";
-import { ArrowLeft, Calculator, FileSpreadsheet, Package, Plus, Receipt, Save, Scale, Trash2 } from "lucide-react";
+import { ArrowLeft, Calculator, Download, FileSpreadsheet, Package, Plus, Receipt, Save, Scale, Trash2 } from "lucide-react";
 
 type Scenario = "air" | "sea" | "other";
 type ExpenseKind = "tax_base" | "final";
@@ -34,6 +35,22 @@ function formatDateInput(value: Date | string | null | undefined): string {
   if (!value) return "";
   const date = value instanceof Date ? value : new Date(value);
   return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
+}
+
+function getSavedMessage(saved: string): string | null {
+  if (saved === "workbook") return "Parâmetros da memória de impostos salvos.";
+  if (saved === "item-added") return "Item tributário adicionado ao processo.";
+  if (saved === "item-saved") return "Item tributário atualizado.";
+  if (saved === "item-deleted") return "Item tributário removido.";
+  if (saved === "expense-added") return "Despesa adicionada ao fechamento.";
+  if (saved === "expense-saved") return "Despesa atualizada.";
+  if (saved === "expense-deleted") return "Despesa removida.";
+  return saved ? "Alterações salvas na Memória de Impostos do processo." : null;
+}
+
+function sanitizeWorkbookFilename(reference: string): string {
+  const cleaned = reference.replace(/[^a-zA-Z0-9-_]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+  return `${cleaned || "memoria-impostos"}-memoria-impostos.xlsx`;
 }
 
 async function getProcessContext(processId: string, companyId: string) {
@@ -109,6 +126,46 @@ export async function action({ request, params }: Route.ActionArgs) {
   const workbook = await ensureWorkbook(process.id, companyId);
   const currentPath = new URL(request.url).pathname;
   const redirectWithFlag = (flag: string) => redirect(`${currentPath}?saved=${flag}`);
+
+  if (intent === "export-xlsx") {
+    const [currentWorkbook] = await db
+      .select()
+      .from(processTaxWorkbooks)
+      .where(and(eq(processTaxWorkbooks.id, workbook.id), eq(processTaxWorkbooks.companyId, companyId)))
+      .limit(1);
+    const items = await db
+      .select()
+      .from(processTaxItems)
+      .where(and(eq(processTaxItems.workbookId, workbook.id), eq(processTaxItems.companyId, companyId)))
+      .orderBy(asc(processTaxItems.sortOrder), asc(processTaxItems.createdAt));
+    const expenses = await db
+      .select()
+      .from(processTaxExpenses)
+      .where(and(eq(processTaxExpenses.workbookId, workbook.id), eq(processTaxExpenses.companyId, companyId)))
+      .orderBy(asc(processTaxExpenses.kind), asc(processTaxExpenses.sortOrder), asc(processTaxExpenses.createdAt));
+
+    const calculation = calculateProcessTaxMemory({
+      workbook: currentWorkbook ?? workbook,
+      items,
+      expenses,
+    });
+
+    const workbookBuffer = buildProcessTaxMemoryWorkbook({
+      process,
+      workbook: currentWorkbook ?? workbook,
+      items,
+      expenses,
+      calculation,
+    });
+
+    return new Response(new Uint8Array(workbookBuffer), {
+      headers: {
+        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition": `attachment; filename="${sanitizeWorkbookFilename(process.reference)}"`,
+        "Cache-Control": "no-store",
+      },
+    });
+  }
 
   if (intent === "save-workbook") {
     await db.update(processTaxWorkbooks).set({
@@ -206,13 +263,14 @@ export async function action({ request, params }: Route.ActionArgs) {
 export default function ProcessTaxMemoryPage({ loaderData, actionData }: Route.ComponentProps) {
   const { process, workbook, items, expenses, saved, calculation, suggestedBaseExpenses } = loaderData;
   const error = (actionData as { error?: string } | undefined)?.error;
+  const savedMessage = getSavedMessage(saved);
   const baseExpenses = expenses.filter((expense) => expense.kind === "tax_base");
   const finalExpenses = expenses.filter((expense) => expense.kind === "final");
 
   return (
     <div className="space-y-6">
-      <OperationalHero eyebrow="Memória de Impostos" title={`Fechamento tributário da importação ${process.reference}`} description="Rateio por peso líquido, despesas na base do ICMS e despesas finais do processo." actions={<><Link to={`/processes/${process.id}`}><Button variant="outline" className="gap-2"><ArrowLeft className="h-4 w-4" />Voltar ao processo</Button></Link><Link to={`/calculator?processId=${process.id}`}><Button className="gap-2"><Calculator className="h-4 w-4" />Abrir calculadora</Button></Link></>} aside={<><OperationalStat label="Cliente" value={process.clientName || process.clientRazao || "-"} /><OperationalStat label="Peso do processo" value={process.totalWeight ? `${formatMoney(Number(process.totalWeight))} kg` : "Nao informado"} /><OperationalStat label="Itens" value={items.length} /><OperationalStat label="Custo final estimado" value={`R$ ${formatMoney(calculation.totals.totalLandedCostBrl)}`} /></>} />
-      {saved ? <div className="rounded-[22px] border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">Alteracoes salvas na Memoria de Impostos do processo.</div> : null}
+      <OperationalHero eyebrow="Memória de Impostos" title={`Fechamento tributário da importação ${process.reference}`} description="Rateio por peso líquido, despesas na base do ICMS e despesas finais do processo." actions={<><Link to={`/processes/${process.id}`}><Button variant="outline" className="gap-2"><ArrowLeft className="h-4 w-4" />Voltar ao processo</Button></Link><Link to={`/calculator?processId=${process.id}`}><Button className="gap-2"><Calculator className="h-4 w-4" />Abrir calculadora</Button></Link><Form method="post"><input type="hidden" name="intent" value="export-xlsx" /><Button type="submit" variant="outline" className="gap-2"><Download className="h-4 w-4" />Exportar XLSX</Button></Form></>} aside={<><OperationalStat label="Cliente" value={process.clientName || process.clientRazao || "-"} /><OperationalStat label="Peso do processo" value={process.totalWeight ? `${formatMoney(Number(process.totalWeight))} kg` : "Nao informado"} /><OperationalStat label="Itens" value={items.length} /><OperationalStat label="Custo final estimado" value={`R$ ${formatMoney(calculation.totals.totalLandedCostBrl)}`} /></>} />
+      {savedMessage ? <div className="rounded-[22px] border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">{savedMessage}</div> : null}
       {error ? <div className="rounded-[22px] border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</div> : null}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.65fr)_360px]">
