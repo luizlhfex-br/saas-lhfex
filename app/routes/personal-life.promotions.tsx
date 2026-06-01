@@ -145,6 +145,11 @@ function daysUntilEnd(dateStr: string): number {
   return Math.round((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
+function isPromotionOpen(promotion: Pick<Promotion, "participationStatus" | "endDate">): boolean {
+  const status = promotion.participationStatus ?? "pending";
+  return (status === "pending" || status === "participated") && daysUntilEnd(promotion.endDate) >= 0;
+}
+
 function normalizeLuckyNumber(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const groups = raw.match(/\d+/g);
@@ -218,10 +223,7 @@ function normalizeDateInput(raw: string | null | undefined): string | null {
 }
 
 function buildPromotionKpis(items: Promotion[]): PromotionKpis {
-  const active = items.filter(
-    (promotion) =>
-      promotion.participationStatus === "pending" || promotion.participationStatus === "participated"
-  );
+  const active = items.filter(isPromotionOpen);
   const won = items.filter((promotion) => promotion.participationStatus === "won");
   const expiringSoon = active.filter((promotion) => {
     const days = daysUntilEnd(promotion.endDate);
@@ -264,9 +266,7 @@ export async function loader({ request }: { request: Request }) {
     warnings.push("Falha ao carregar promoções.");
   }
 
-    const active = allPromotions.filter(
-      (p) => p.participationStatus === "pending" || p.participationStatus === "participated"
-    );
+    const active = allPromotions.filter(isPromotionOpen);
     const won = allPromotions.filter((p) => p.participationStatus === "won");
 
     const filtered =

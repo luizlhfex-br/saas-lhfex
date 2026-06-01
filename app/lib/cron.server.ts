@@ -6,7 +6,7 @@
 import { db } from "./db.server";
 import { invoices, processes, clients, automationLogs, automations, auditLogs, personalFinance, openclawAgentWorkItems } from "../../drizzle/schema";
 import { bills } from "../../drizzle/schema/bills";
-import { eq, lt, isNull, and, sql, lte, gte, desc } from "drizzle-orm";
+import { eq, lt, isNull, and, sql, lte, gte, desc, inArray } from "drizzle-orm";
 import { fireTrigger } from "./automation-engine.server";
 import { enrichCNPJ } from "./ai.server";
 import { generatePersonalNewsDigest, getPersonalNewsOwnerUserId } from "./personal-news.server";
@@ -1119,6 +1119,7 @@ async function sendDeadlinesAlert() {
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().slice(0, 10);
 
     const calcDaysUntil = (dateStr?: string | null) => {
       if (!dateStr) return null;
@@ -1136,6 +1137,23 @@ async function sendDeadlinesAlert() {
       extra?: string;
     };
 
+    const closedExpiredPromos = await db
+      .update(promotions)
+      .set({ participationStatus: "lost", updatedAt: new Date() })
+      .where(
+        and(
+          eq(promotions.userId, userId),
+          isNull(promotions.deletedAt),
+          inArray(promotions.participationStatus, ["pending", "participated"]),
+          lt(promotions.endDate, todayStr),
+        ),
+      )
+      .returning({ id: promotions.id, name: promotions.name });
+
+    if (closedExpiredPromos.length > 0) {
+      console.log(`[CRON] deadlines_alert: ${closedExpiredPromos.length} promocao(oes) vencida(s) encerrada(s) automaticamente`);
+    }
+
     const promoRows = await db
       .select({
         name: promotions.name,
@@ -1143,7 +1161,14 @@ async function sendDeadlinesAlert() {
         participationStatus: promotions.participationStatus,
       })
       .from(promotions)
-      .where(and(eq(promotions.userId, userId), isNull(promotions.deletedAt)));
+      .where(
+        and(
+          eq(promotions.userId, userId),
+          isNull(promotions.deletedAt),
+          inArray(promotions.participationStatus, ["pending", "participated"]),
+          gte(promotions.endDate, todayStr),
+        ),
+      );
 
     const goalRows = await db
       .select({

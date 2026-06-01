@@ -28,6 +28,17 @@ type Entry = {
 
 const CHANGELOG: Entry[] = [
   {
+    date: "2026-05-31",
+    version: "2.9.62",
+    type: "release",
+    title: "Promocoes vencidas encerradas automaticamente",
+    items: [
+      "O alerta diario de prazos agora encerra promocoes vencidas ainda pendentes ou participadas antes de montar a mensagem do Telegram",
+      "Promocoes vencidas passam para Nao ganhei e deixam de aparecer como ativas, reduzindo repeticao de alerta no Hermes/Telegram",
+      "A tela de Promocoes agora calcula ativos considerando status e data final, entao itens vencidos saem da visao principal de acompanhamento",
+    ],
+  },
+  {
     date: "2026-03-28",
     version: "2.9.61",
     type: "release",

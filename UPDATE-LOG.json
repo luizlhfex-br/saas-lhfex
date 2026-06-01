@@ -1,17 +1,39 @@
 {
   "release": {
-    "version": "v2.9.61",
-    "date": "2026-03-28T00:00:00Z",
-    "type": "feature",
-    "title": "Memoria de impostos com exportacao XLSX"
+    "version": "v2.9.62",
+    "date": "2026-05-31T00:00:00Z",
+    "type": "fix",
+    "title": "Promocoes vencidas encerradas automaticamente"
   },
   "summary": {
     "commits": 1,
-    "filesCreated": 1,
+    "filesCreated": 0,
     "filesModified": 5,
     "routesAdded": 0,
     "openclaw_changes": 0,
     "coolify_env_vars_added": 0
+  },
+  "session_2026_05_31_promocoes_vencidas": {
+    "date": "2026-05-31",
+    "release_version": "2.9.62",
+    "objective": "Parar alertas repetidos no Telegram sobre promocoes vencidas e mover automaticamente esses itens para encerradas",
+    "files_changed": [
+      "app/lib/cron.server.ts",
+      "app/routes/personal-life.promotions.tsx",
+      "app/config/version.ts",
+      "app/routes/changelog.tsx",
+      "UPDATE-LOG.json"
+    ],
+    "changes": [
+      "O cron deadlines_alert passou a marcar promocoes vencidas com status pending ou participated como lost antes de montar o alerta do Telegram",
+      "A consulta de promocoes no alerta passou a considerar apenas itens ativos com endDate igual ou superior ao dia atual",
+      "A tela de Promocoes passou a considerar como ativas apenas promocoes pendentes ou participadas que ainda nao venceram"
+    ],
+    "verification": [
+      "npx tsc --noEmit passou sem erros",
+      "npm run build passou sem erros bloqueantes",
+      "npm run test:unit passou com 22 testes"
+    ]
   },
   "session_2026_03_28_process_tax_memory_export": {
     "date": "2026-03-28",

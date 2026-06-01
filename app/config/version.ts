@@ -3,8 +3,8 @@
  * Update this file whenever releasing a new version
  */
 
-export const APP_VERSION = "2.9.61";
-export const APP_RELEASE_DATE = "2026-03-28";
+export const APP_VERSION = "2.9.62";
+export const APP_RELEASE_DATE = "2026-05-31";
 export const APP_NAME = "LHFEX SaaS";
 
 export type ChangelogItemType = "feature" | "improvement" | "fix" | "infra";
@@ -20,6 +20,15 @@ export interface ChangelogEntry {
 }
 
 export const VERSION_HISTORY: ChangelogEntry[] = [
+  {
+    version: "2.9.62",
+    date: "2026-05-31",
+    title: "Promocoes vencidas encerradas automaticamente",
+    items: [
+      { type: "fix", text: "Promocoes: o alerta diario deixa de repetir sorteios vencidos; itens vencidos pendentes passam a ser marcados automaticamente como Nao ganhei" },
+      { type: "improvement", text: "Vida Pessoal: a aba Promocoes passou a considerar como ativas apenas promocoes pendentes ou participadas que ainda nao venceram" },
+    ],
+  },
   {
     version: "2.9.61",
     date: "2026-03-28",
